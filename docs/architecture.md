@@ -29,7 +29,7 @@ Terms are defined in [`CONTEXT.md`](../CONTEXT.md). Decisions and their reasons 
                          └─────────────────────────────┬─────────────────────────────────────┘
                                                        ▼
                                              external services
- D1 (one database) · R2 (files) · AI Gateway → Workers AI / Anthropic / … (per model role)
+ D1 (one database) · R2 (files) · AI Gateway → Workers AI by default / other providers optional (per model role)
 ```
 
 ## Layers
