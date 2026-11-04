@@ -81,7 +81,7 @@ export function GalleryView({ info, spec }: { info: ObjectInfo; spec: GallerySpe
       ) : !rows.length ? (
         <EmptyState
           icon={LayoutGridIcon}
-          title={`No ${(info.plural ?? info.label).toLowerCase()} here`}
+          title="Nothing to show here"
         />
       ) : (
         <VirtualFeed
