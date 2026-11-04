@@ -1,5 +1,6 @@
 // Cmd-K command palette: global search (via the SearchAdapter), create actions, navigation and
-// preferences. Commands filter locally; search hits come from the adapter as you type.
+// preferences. Commands filter locally; search hits come from the adapter as you type, and hits
+// related by meaning (search.hybrid) are merged in under their own group once typing pauses.
 import {
   Command,
   CommandEmpty,
@@ -63,6 +64,10 @@ interface PaletteCommand {
   shortcut?: string;
   run: () => void;
 }
+
+/** Hybrid (meaning) search waits for this pause in typing, and this many characters. */
+const RELATED_DELAY_MS = 400;
+const RELATED_MIN_CHARS = 3;
 
 function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -157,6 +162,16 @@ export function CommandPalette({
     enabled: open && debounced.length > 0,
     staleTime: 10_000,
   });
+  // Related by meaning: once typing pauses, never per keystroke.
+  const paused = useDebounced(query.trim(), RELATED_DELAY_MS);
+  const relatedSearch = search.related?.bind(search);
+  const related = useQuery({
+    queryKey: ["search-related", paused],
+    queryFn: () => relatedSearch?.(paused, { limit: 8 }) ?? Promise.resolve([]),
+    enabled: open && Boolean(relatedSearch) && paused.length >= RELATED_MIN_CHARS,
+    staleTime: 30_000,
+    retry: false,
+  });
 
   const close = (then: () => void) => () => {
     onOpenChange(false);
@@ -229,8 +244,16 @@ export function CommandPalette({
     ["Preferences", prefs.filter((c) => matches(c, query))],
   ];
   const searchHits = debounced ? (hits.data ?? []) : [];
+  const shown = new Set(searchHits.map((hit) => `${hit.object}:${hit.id}`));
+  const relatedHits =
+    paused.length >= RELATED_MIN_CHARS && paused === query.trim()
+      ? (related.data ?? []).filter((hit) => !shown.has(`${hit.object}:${hit.id}`))
+      : [];
   const nothing =
-    groups.every(([, list]) => list.length === 0) && searchHits.length === 0 && !hits.isFetching;
+    groups.every(([, list]) => list.length === 0) &&
+    searchHits.length === 0 &&
+    relatedHits.length === 0 &&
+    !hits.isFetching;
 
   const sections: ReactNode[] = [];
   if (searchHits.length > 0) {
@@ -239,6 +262,20 @@ export function CommandPalette({
         {searchHits.map((hit) => (
           <SearchHitItem
             key={`${hit.object}:${hit.id}`}
+            hit={hit}
+            onSelect={close(() => navigate({ href: hit.href }))}
+          />
+        ))}
+      </CommandGroup>,
+    );
+  }
+  if (relatedHits.length > 0) {
+    if (sections.length) sections.push(<CommandSeparator key="sep:related" />);
+    sections.push(
+      <CommandGroup key="related" heading="Related by meaning" data-testid="search-related">
+        {relatedHits.map((hit) => (
+          <SearchHitItem
+            key={`related:${hit.object}:${hit.id}`}
             hit={hit}
             onSelect={close(() => navigate({ href: hit.href }))}
           />

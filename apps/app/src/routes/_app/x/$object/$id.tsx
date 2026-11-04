@@ -5,6 +5,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BoxIcon, Trash2Icon } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
+import { SimilarRecordsCard } from "#/components/ai/similar-records";
+import { RecordSummaryCard } from "#/components/ai/summary";
 import { EmptyState } from "#/components/empty-state";
 import { FieldsCard } from "#/components/fields/fields-card";
 import { useRecordHistory, useTimeline } from "#/components/record/adapters";
@@ -176,6 +178,7 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
       ]}
       side={
         <>
+          {info.name === "deals.deal" && <RecordSummaryCard object="deals.deal" id={id} />}
           {recordViews.panels}
           <dl className="grid gap-1 rounded-lg border p-4 text-sm">
             <dt className="text-muted-foreground">Created</dt>
@@ -185,6 +188,7 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
             <dt className="text-muted-foreground">Extension</dt>
             <dd>{info.extension}</dd>
           </dl>
+          {info.name === "deals.deal" && <SimilarRecordsCard object="deals.deal" id={id} />}
         </>
       }
     />

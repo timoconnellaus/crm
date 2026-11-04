@@ -13,6 +13,7 @@ import {
   ScrollTextIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   Trash2Icon,
   UserCogIcon,
   UserPlusIcon,
@@ -36,7 +37,8 @@ export interface NavItem {
     | "/settings/audit"
     | "/settings/connected-apps"
     | "/settings/extensions"
-    | "/settings/integrations";
+    | "/settings/integrations"
+    | "/settings/ai";
   label: string;
   icon: LucideIcon;
   /** Extra words the palette matches on. */
@@ -124,6 +126,13 @@ export const SETTINGS_NAV: NavItem[] = [
     label: "Extensions",
     icon: PuzzleIcon,
     keywords: ["objects", "fields", "tools", "quarantine", "rollback", "settings"],
+    adminOnly: true,
+  },
+  {
+    to: "/settings/ai",
+    label: "AI settings",
+    icon: SparklesIcon,
+    keywords: ["models", "model roles", "providers", "api keys", "usage", "embeddings"],
     adminOnly: true,
   },
 ];
