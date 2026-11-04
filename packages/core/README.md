@@ -7,8 +7,8 @@ timeline, one D1 batch). Decisions: ADR 0003, 0011, 0016, 0017, 0018.
 ```
 src/
   operations/          one file per object; index.ts lists them all
-    person.ts          the reference implementation — copy its shape
-    policy.ts
+    person.ts          the reference implementation — copy its shape (+ changeJob, merge, *Many, erase)
+    organisation.ts    mirrors person; affiliation.ts, trash.ts (list + purge), user.ts, policy.ts
     index.ts           coreOperations = [...personOperations, ...]
   fields/              field registry per object (person, organisation, activity, task)
   operation.ts         defineOperation, HandlerContext, RecordChange
@@ -17,6 +17,11 @@ src/
   gate.ts              presets, floor (APPROVAL_FLOOR), evaluateGate
   filter.ts list.ts    filter JSON → SQL; listInputSchema, runListQuery, selectFields
   records/tags.ts      loadTags / queueSetTags (shared by any taggable object)
+  records/bulk-tags.ts queueBulkTags (add/remove tags on many records, for *.updateMany)
+  records/common.ts    TRASH_RETENTION_DAYS, BATCH_MAX, chunk (D1's 100-parameter limit), helpers
+  records/links.ts     move activity/task links (merge); activities/tasks an erase removes
+  records/erase.ts     queueErase: hard delete + audit redaction markers (ADR 0019)
+  purge.ts             runTrashPurge: the scheduled purge, as an automation through invoke()
   ids.ts               newId("person") → per_01J…
   errors.ts            typed errors (NotFoundError, ConflictError, ValidationError, …)
   users.ts             resolveActingUser (Principal → core_user)
@@ -76,6 +81,12 @@ src/
    touching it posts a `system` activity on that record automatically. For events that aren't field
    changes (a job change), call `ctx.postActivity({ subject, payload: { kind: "job_change", … },
    links: [{ object: "person", id }, { object: "organisation", id: orgId }] })`.
+
+   **Batch operations** (`<object>.updateMany`, `.deleteMany`): risk `bulk-write` or
+   `destructive`, `bulkSize: (input) => input.ids.length`, at most `BATCH_MAX` ids, and chunk
+   `IN (...)` lists with `chunk()` (D1 allows 100 bound parameters per statement). One call is one
+   batch, so it is atomic; say in the description that larger selections take several calls
+   (ADR 0018 amendment).
 
 6. **Lists.** Take `listInputSchema` (filter, sort, cursor, limit, fields), select from the
    object's `crm_*` view and call `runListQuery(query, organisationObject, input)`; return

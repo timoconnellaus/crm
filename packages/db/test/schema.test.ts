@@ -234,6 +234,94 @@ describe("audit log", () => {
     await expect(run("UPDATE core_audit_changes SET diff = '[]'")).rejects.toThrow(/append-only/);
     await expect(run("DELETE FROM core_audit_changes")).rejects.toThrow(/append-only/);
   });
+
+  it("allows only the canonical redaction, and only through a marker (ADR 0019)", async () => {
+    await run(
+      `INSERT INTO core_audit (id, at, operation, risk, actor, origin, input, result, gate_decision, outcome, error)
+       VALUES ('aud_r1', ?, 'person.update', 'write', 'human', '{"surface":"ui"}',
+         '{"id":"per_r1","emails":[{"email":"ada@example.com"}]}', '{"id":"per_r1"}', 'auto', 'error',
+         '{"code":"conflict","message":"ada@example.com is taken","details":{"email":"ada@example.com"}}')`,
+      NOW,
+    );
+    await run(
+      `INSERT INTO core_audit_changes (audit_id, object_type, record_id, action, diff, at)
+       VALUES ('aud_r1', 'person', 'per_r1', 'update', '{"displayName":{"before":"Ada","after":"Ada L"},"emails":{"before":[],"after":["ada@example.com"]}}', ?)`,
+      NOW,
+    );
+    const change = await db()
+      .prepare("SELECT id FROM core_audit_changes WHERE audit_id = 'aud_r1'")
+      .first<{ id: number }>();
+    const changeId = change?.id;
+
+    // Without a marker, even the canonical values are refused.
+    await expect(
+      run(`UPDATE core_audit SET input = '"[erased]"' WHERE id = 'aud_r1'`),
+    ).rejects.toThrow(/append-only/);
+
+    const mark = (column: "audit_id" | "change_id", id: unknown) =>
+      run(
+        `INSERT INTO core_audit_redactions (${column}, object_type, record_id, operation, user_id, at)
+         VALUES (?, 'person', 'per_r1', 'person.erase', 'usr_admin', ?)`,
+        id,
+        NOW,
+      );
+    await mark("audit_id", "aud_r1");
+    await mark("change_id", changeId);
+
+    const audit = await db()
+      .prepare("SELECT * FROM core_audit WHERE id = 'aud_r1'")
+      .first<Record<string, string>>();
+    expect(audit).toMatchObject({
+      input: '"[erased]"',
+      result: '"[erased]"',
+      operation: "person.update",
+      user_id: null,
+      outcome: "error",
+      origin: '{"surface":"ui"}',
+    });
+    expect(JSON.parse(String(audit?.error))).toEqual({ code: "conflict", message: "[erased]" });
+    const diff = await db()
+      .prepare("SELECT diff, record_id, action FROM core_audit_changes WHERE id = ?")
+      .bind(changeId)
+      .first<{ diff: string; record_id: string; action: string }>();
+    expect(diff?.record_id).toBe("per_r1");
+    expect(JSON.parse(String(diff?.diff))).toEqual({
+      displayName: { before: "[erased]", after: "[erased]" },
+      emails: { before: "[erased]", after: "[erased]" },
+    });
+
+    // A marked row still refuses anything but the canonical values, and deletes.
+    await expect(
+      run(`UPDATE core_audit SET input = '{"forged":true}' WHERE id = 'aud_r1'`),
+    ).rejects.toThrow(/append-only/);
+    await expect(run(`UPDATE core_audit SET outcome = 'ok' WHERE id = 'aud_r1'`)).rejects.toThrow(
+      /append-only/,
+    );
+    await expect(
+      run(`UPDATE core_audit_changes SET diff = '{}' WHERE id = ?`, changeId),
+    ).rejects.toThrow(/append-only/);
+    await expect(
+      run(`UPDATE core_audit_changes SET record_id = 'per_x' WHERE id = ?`, changeId),
+    ).rejects.toThrow(/append-only/);
+    await expect(run("DELETE FROM core_audit WHERE id = 'aud_r1'")).rejects.toThrow(/append-only/);
+    await expect(run("DELETE FROM core_audit_changes WHERE id = ?", changeId)).rejects.toThrow(
+      /append-only/,
+    );
+
+    // Markers are append-only too, and name exactly one target.
+    await expect(run("DELETE FROM core_audit_redactions")).rejects.toThrow(/append-only/);
+    await expect(run("UPDATE core_audit_redactions SET user_id = NULL")).rejects.toThrow(
+      /append-only/,
+    );
+    await expect(
+      run(
+        `INSERT INTO core_audit_redactions (audit_id, change_id, object_type, record_id, operation, at)
+         VALUES ('aud_r1', ?, 'person', 'per_r1', 'person.erase', ?)`,
+        changeId,
+        NOW,
+      ),
+    ).rejects.toThrow(/CHECK/);
+  });
 });
 
 describe("crm_* read views", () => {

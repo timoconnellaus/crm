@@ -23,9 +23,10 @@ Migrations:
 | `0005_views_audit.sql` | `core_views` (saved views), `core_audit` + `core_audit_changes` (append-only) |
 | `0006_search.sql` | `core_search_docs` + FTS5 `core_search`, sync triggers |
 | `0007_crm_views.sql` | `crm_*` read views (`crm.*` in the docs; D1 has no schemas) |
+| `0008_audit_redaction.sql` | `core_audit_redactions` + guarded audit triggers: the sanctioned "[erased]" redaction path (ADR 0019) |
 
 `test/schema.test.ts` covers the constraints and triggers (live-unique emails/domains, primary
-flags, first admin, FTS sync, append-only audit, views).
+flags, first admin, FTS sync, append-only audit and its redaction path, views).
 
 To add a migration: create `migrations/NNNN_name.sql`, end it by updating
 `core_meta.schema_version`, bump `CORE_SCHEMA_VERSION`, and update `src/schema.ts`.

@@ -71,7 +71,9 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
 
 - **Core schema** (`core_*` tables): our versioned migrations, applied on deploy or upgrade. It covers
   the minimal core objects (People, Organisations, Activities, Tasks), users, settings, the approval
-  queue and the audit log.
+  queue and the audit log. Deletes are soft (Trash); a daily cron trigger on `crm-app` purges
+  records after 30 days through the operations pipeline, and admin erase redacts the append-only
+  audit log through a sanctioned path ([ADR 0019](adr/0019-audit-redaction-for-erasure.md)).
 - **Extension schema** (`x_<extension>_*` tables): declared in extension code (`defineObject`) and
   reconciled into D1 by the host, additive-first. Core migrations never touch `x_` tables.
 - **`crm.*` views**: generated read views with friendly names, spelled `crm_people`,

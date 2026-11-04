@@ -49,3 +49,16 @@ export async function resolveActingUser(db: CrmDb, principal: PrincipalLike): Pr
   if (!row) throw new Error(`Could not resolve a CRM user for ${email}`);
   return { id: row.id, email: row.email, name: row.name, role: row.role as Role };
 }
+
+/**
+ * The user system-run operations act as (the scheduled Trash purge). It is not a `core_user` row,
+ * so it never appears in user lists and cannot sign in; the audit log records its id, `system`.
+ * Only trusted server code (a Worker's scheduled handler) may use it, always with actor
+ * `automation` and origin surface `system`.
+ */
+export const SYSTEM_USER: ActingUser = Object.freeze({
+  id: "system",
+  email: "system@crm.invalid",
+  name: "System",
+  role: "admin",
+});
