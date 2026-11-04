@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Prepares local development: creates each Worker's .dev.vars from its .dev.vars.example when
-// missing (generating BETTER_AUTH_SECRET), then applies core migrations to the local D1 database.
+// missing (generating BETTER_AUTH_SECRET and opening sign-up so the e2e test user can be created),
+// then applies core migrations to the local D1 database.
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -14,10 +15,11 @@ for (const app of ["apps/app", "apps/runner"]) {
   const target = join(root, app, ".dev.vars");
   if (existsSync(target) || !existsSync(example)) continue;
   copyFileSync(example, target);
-  const vars = readFileSync(target, "utf8").replace(
+  let vars = readFileSync(target, "utf8").replace(
     /^BETTER_AUTH_SECRET=$/m,
     `BETTER_AUTH_SECRET=${randomBytes(32).toString("hex")}`,
   );
+  if (app === "apps/app") vars += "\n# Local only: anyone can sign up.\nAUTH_ALLOW_SIGNUP=true\n";
   writeFileSync(target, vars);
   console.log(`created ${app}/.dev.vars`);
 }

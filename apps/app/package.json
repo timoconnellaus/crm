@@ -8,7 +8,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "node ../../scripts/deploy.mjs",
     "types": "wrangler types --strict-vars=false",
     "typecheck": "wrangler types --strict-vars=false --check && tsc --noEmit",
     "test": "vitest run",
@@ -42,5 +42,27 @@
     "vite": "8.3.5",
     "vitest": "5.1.0",
     "wrangler": "4.157.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "BETTER_AUTH_SECRET": {
+        "description": "Signs sessions. At least 32 random characters, e.g. the output of `openssl rand -hex 32`."
+      },
+      "BETTER_AUTH_URL": {
+        "description": "Public origin of the app, e.g. https://crm.example.com. Optional: inferred from requests when empty."
+      },
+      "GOOGLE_CLIENT_ID": {
+        "description": "Optional. Google OAuth client ID for Google sign-in."
+      },
+      "GOOGLE_CLIENT_SECRET": {
+        "description": "Optional. Google OAuth client secret for Google sign-in."
+      },
+      "CF_ACCESS_TEAM_DOMAIN": {
+        "description": "Only with IDENTITY_PROVIDER=cloudflare-access: your team domain."
+      },
+      "CF_ACCESS_AUD": {
+        "description": "Only with IDENTITY_PROVIDER=cloudflare-access: the Access application's AUD tag."
+      }
+    }
   }
 }
