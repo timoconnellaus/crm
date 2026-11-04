@@ -1,0 +1,32 @@
+{
+  "name": "@crm/gatekeeper-microsoft",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gatekeeper Worker for Microsoft 365 (SharePoint and OneDrive, Outlook mail, Outlook Calendar). Vendored from cloudflare-os.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/microsoft.ts",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "types": "node ../../scripts/gatekeeper-worker-types.mjs",
+    "typecheck": "node ../../scripts/gatekeeper-worker-types.mjs --check && tsc --noEmit",
+    "test": "vitest run && vitest run -c vitest.worker.config.ts && vitest run -c vitest.smoke.config.ts"
+  },
+  "dependencies": {
+    "@crm/gatekeeper-configurator-ui": "workspace:*",
+    "@crm/gatekeeper-interface": "workspace:*",
+    "@crm/gatekeeper-kit": "workspace:*",
+    "@crm/gatekeeper-observability": "workspace:*",
+    "capnweb": "0.12.0",
+    "capnweb-validate": "0.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@crm/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vite": "7.3.6",
+    "vitest": "5.1.0",
+    "wrangler": "4.157.0"
+  }
+}
