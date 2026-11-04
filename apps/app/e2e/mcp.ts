@@ -1,4 +1,4 @@
-// Connecting an MCP client to the dev server the way Claude does: dynamic client registration,
+// Connecting an MCP client to the dev server the way an external MCP client does: dynamic client registration,
 // the consent page in the browser (signed in as the e2e user), a PKCE code exchange, then the MCP
 // TypeScript client on /mcp. Specs use it to queue real change sets for the Approvals inbox.
 import { createHash, randomBytes } from "node:crypto";
@@ -21,7 +21,8 @@ const base64url = (bytes: Buffer) => bytes.toString("base64url");
 export async function connectApp(
   page: Page,
   baseURL: string,
-  name = `E2E Claude ${unique()}`,
+  name = `E2E agent ${unique()}`,
+  scopes: ("read" | "write" | "admin")[] = ["read", "write"],
 ): Promise<ConnectedApp> {
   const registered = await fetch(`${baseURL}/oauth/register`, {
     method: "POST",
@@ -45,7 +46,7 @@ export async function connectApp(
     response_type: "code",
     client_id: clientId,
     redirect_uri: REDIRECT,
-    scope: "read write",
+    scope: scopes.join(" "),
     state: "e2e",
     code_challenge: challenge,
     code_challenge_method: "S256",
@@ -56,6 +57,9 @@ export async function connectApp(
   await expect(page.getByRole("heading", { name: `Connect ${name} to the CRM?` })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: /Read/ })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: /Write/ })).toBeChecked();
+  if (scopes.includes("admin")) {
+    await expect(page.getByRole("checkbox", { name: /Admin/ })).toBeChecked();
+  }
   // Nothing listens on the redirect URI: read the code off the redirected request.
   const callback = page.waitForRequest((request) => request.url().startsWith(REDIRECT));
   await page.getByRole("button", { name: "Allow" }).click();

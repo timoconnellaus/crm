@@ -1,39 +1,38 @@
 #!/usr/bin/env node
-// The stage 2 MCP eval (docs/stages/02-mcp.md, criterion 11): drives Claude against a locally
-// running deployment over MCP through the 20 tasks in tasks.ts and writes a pass/fail report to
-// reports/. Runs with Node's built-in TypeScript type stripping (Node >= 24):
+// The stage 2 MCP eval (docs/stages/02-mcp.md, criterion 11): drives an MCP client model against a
+// locally running deployment over MCP through the 20 tasks in tasks.ts and writes a pass/fail
+// report to reports/. The model is reached over an OpenAI-compatible chat-completions endpoint,
+// Workers AI by default. Runs with Node's built-in TypeScript type stripping (Node >= 24):
 //
-//   ANTHROPIC_API_KEY=… node evals/mcp/runner.ts --base-url http://localhost:5173
-//   node evals/mcp/runner.ts --only create-person,merge --model claude-opus-5-5 --max-turns 20
+//   CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… node evals/mcp/runner.ts --base-url http://localhost:5173
+//   node evals/mcp/runner.ts --only create-person,merge --model @cf/openai/gpt-oss-120b --max-turns 20
 //
 // See README.md for setting up the deployment.
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import Anthropic from "@anthropic-ai/sdk";
-import type { ModelClient } from "./lib/agent.ts";
+import {
+  checkCredentials,
+  modelCliOptions,
+  parseModelArgs,
+  parseOnly,
+  parsePositiveInt,
+} from "./lib/cli.ts";
 import { type HarnessDeps, runTask, todayUtc } from "./lib/harness.ts";
 import { openMcpSession } from "./lib/mcp.ts";
+import { chatCompletionsModel, isFatalModelError, type ModelParams } from "./lib/model.ts";
 import { authorize, type EvalUser, signIn } from "./lib/oauth.ts";
 import { type Report, summaryLine, type TaskResult, writeReport } from "./lib/report.ts";
 import { tasks } from "./tasks.ts";
 
-const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
-type Effort = (typeof EFFORTS)[number];
-
 export const TARGET = 17;
-
-export const MISSING_KEY_MESSAGE =
-  "ANTHROPIC_API_KEY is not set. The MCP eval calls the Claude API, so it needs a key:\n" +
-  "  export ANTHROPIC_API_KEY=sk-ant-…\n" +
-  "then run it again. No report was written.";
 
 export interface CliOptions {
   baseUrl: string;
   only: string[] | null;
   model: string;
+  params: ModelParams;
   maxTurns: number;
-  effort: Effort;
   user: EvalUser;
 }
 
@@ -43,32 +42,22 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliOptions {
     options: {
       "base-url": { type: "string", default: "http://localhost:5173" },
       only: { type: "string" },
-      model: { type: "string", default: "claude-opus-5-5" },
       "max-turns": { type: "string", default: "20" },
-      effort: { type: "string", default: "high" },
       email: { type: "string" },
       password: { type: "string" },
+      ...modelCliOptions,
     },
   });
-  const effort = values.effort as Effort;
-  if (!EFFORTS.includes(effort)) throw new Error(`--effort must be one of ${EFFORTS.join(", ")}`);
-  const maxTurns = Number(values["max-turns"]);
-  if (!Number.isInteger(maxTurns) || maxTurns < 1)
-    throw new Error("--max-turns must be a positive integer");
-  const only = values.only
-    ? values.only
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : null;
-  const unknown = (only ?? []).filter((id) => !tasks.some((t) => t.id === id));
-  if (unknown.length) throw new Error(`Unknown task id(s): ${unknown.join(", ")}`);
+  const { model, params } = parseModelArgs(values, env);
   return {
     baseUrl: values["base-url"] as string,
-    only,
-    model: values.model as string,
-    maxTurns,
-    effort,
+    only: parseOnly(
+      values.only,
+      tasks.map((t) => t.id),
+    ),
+    model,
+    params,
+    maxTurns: parsePositiveInt(values["max-turns"] as string, "--max-turns"),
     user: {
       email: values.email ?? env.MCP_EVAL_EMAIL ?? "mcp-eval@example.com",
       password: values.password ?? env.MCP_EVAL_PASSWORD ?? "mcp-eval-correct-horse",
@@ -77,29 +66,13 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliOptions {
   };
 }
 
-/** Exit code 2 and a clear message when there is no API key; null when there is one. */
-export function checkApiKey(env: NodeJS.ProcessEnv): { code: number; message: string } | null {
-  return env.ANTHROPIC_API_KEY?.trim() ? null : { code: 2, message: MISSING_KEY_MESSAGE };
-}
-
-function anthropicModel(client: Anthropic): ModelClient {
-  return {
-    // Streaming keeps long turns clear of HTTP timeouts; finalMessage() gives the whole message.
-    createMessage: (params) => client.messages.stream(params).finalMessage(),
-  };
-}
-
-const isFatal = (error: unknown) =>
-  error instanceof Anthropic.AuthenticationError ||
-  error instanceof Anthropic.PermissionDeniedError ||
-  error instanceof Anthropic.NotFoundError;
-
 async function main(): Promise<number> {
-  const missing = checkApiKey(process.env);
-  if (missing) {
-    console.error(missing.message);
-    return missing.code;
+  const credentials = checkCredentials(process.env);
+  if ("code" in credentials) {
+    console.error(credentials.message);
+    return credentials.code;
   }
+  const { provider } = credentials;
   const options = parseCli(process.argv.slice(2), process.env);
   const selected = options.only ? tasks.filter((t) => options.only?.includes(t.id)) : tasks;
 
@@ -120,13 +93,13 @@ async function main(): Promise<number> {
         await authorize(options.baseUrl, cookie, clientName),
         clientName,
       ),
-    model: anthropicModel(new Anthropic()),
+    model: chatCompletionsModel(provider),
     modelId: options.model,
-    effort: options.effort,
+    params: options.params,
     maxTurns: options.maxTurns,
     today: todayUtc(),
     log: (line) => console.error(line),
-    isFatal,
+    isFatal: isFatalModelError,
   };
 
   const startedAt = new Date().toISOString();
@@ -141,7 +114,8 @@ async function main(): Promise<number> {
     startedAt,
     finishedAt: new Date().toISOString(),
     model: options.model,
-    effort: options.effort,
+    provider: provider.label,
+    params: options.params,
     baseUrl: options.baseUrl,
     target: options.only ? results.length : TARGET,
     total: results.length,

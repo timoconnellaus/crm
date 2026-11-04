@@ -257,10 +257,10 @@ describe("reconciler: fields on core objects", () => {
     expect(audit?.risk).toBe("destructive");
   });
 
-  it("dropHidden is human-only", async () => {
+  it("dropHidden asked for by an MCP client always waits for a person", async () => {
     await expect(
       invokeByName("extension.dropHidden", { id: "whatever" }, context(admin, { actor: "mcp" })),
-    ).rejects.toMatchObject({ code: "forbidden" });
+    ).rejects.toMatchObject({ code: "pending_approval" });
   });
 });
 

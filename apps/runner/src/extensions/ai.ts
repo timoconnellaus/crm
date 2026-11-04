@@ -35,6 +35,29 @@ function prompt(role: "summarise" | "extract" | "classify", args: readonly unkno
   }
 }
 
+/**
+ * Model role `build` for one prompt: the AI-written summary of an extension proposal. Null when
+ * the deployment has no `ai` binding (the approval screen then says no AI summary is available).
+ */
+export async function runBuildRole(
+  env: object,
+  prompt: string,
+): Promise<{ text: string; model: string } | null> {
+  const { AI, AI_GATEWAY_ID } = env as AiEnv;
+  if (!AI) return null;
+  const choice = modelFor("build");
+  const result = (await AI.run(
+    choice.model,
+    {
+      messages: [{ role: "user", content: prompt.slice(0, 60_000) }],
+      max_tokens: choice.maxTokens,
+    },
+    AI_GATEWAY_ID ? { gateway: { id: AI_GATEWAY_ID } } : {},
+  )) as { response?: string };
+  const text = (result.response ?? "").trim();
+  return text ? { text, model: choice.model } : null;
+}
+
 export async function runModelRole(
   env: object,
   role: "summarise" | "extract" | "classify",

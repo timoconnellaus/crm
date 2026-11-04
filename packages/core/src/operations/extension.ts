@@ -9,6 +9,7 @@ import { checkExtension, installExtension, requireHost } from "../extensions/ins
 import { HIDDEN_RETENTION_DAYS, planDropHidden } from "../extensions/reconciler.ts";
 import { loadSchemaState } from "../extensions/schema.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
+import { shippedIssue, shippedRefusal } from "./extension-authoring.ts";
 
 const extensionId = z.string().regex(EXTENSION_ID_RE).describe("Extension id, e.g. example");
 const filesSchema = z
@@ -132,15 +133,40 @@ export const extensionList = defineOperation({
   name: "extension.list",
   description:
     "List installed extensions (shipped and runtime) with version, status (active, disabled or " +
-    "quarantined), declared permissions, objects and tools. Read-only.",
+    "quarantined), declared permissions, objects and tools, plus `workspace`: every extension " +
+    "in the extension workspace with its working-copy files and whether it has uncommitted " +
+    "edits or is installed, and `shipped`: the shipped extension ids (extend them, don't " +
+    "modify them). Read-only.",
   input: z.object({}),
-  output: z.object({ items: z.array(extensionSummarySchema) }),
+  output: z.object({
+    items: z.array(extensionSummarySchema),
+    workspace: z.array(
+      z.object({
+        id: z.string(),
+        head: z.string().nullable(),
+        files: z.array(z.string()),
+        changed: z.boolean(),
+        installed: z.boolean(),
+        ejected: z.boolean(),
+      }),
+    ),
+    shipped: z.array(z.string()),
+  }),
   permission: "records:read",
   risk: "read",
-  mcp: { idempotent: true },
+  mcp: { curated: true, idempotent: true, title: "List extensions" },
   async handler(_input, ctx) {
     const rows = await ctx.db.selectFrom("core_extensions").selectAll().orderBy("id").execute();
-    return { items: rows.map(summary) };
+    const host = ctx.extensionHost;
+    const [workspace, shipped] = host
+      ? await Promise.all([host.listWorkspace(), host.shipped()])
+      : [[], []];
+    const installed = new Set(rows.map((r) => r.id));
+    return {
+      items: rows.map(summary),
+      workspace: workspace.map((w) => ({ ...w, installed: installed.has(w.id) })),
+      shipped: shipped.map((s) => s.id),
+    };
   },
 });
 
@@ -245,20 +271,44 @@ const checkOutput = z.object({
 export const extensionCheck = defineOperation({
   name: "extension.check",
   description:
-    "Check extension source without installing it: transpile (syntax), allowed imports, the " +
-    "defineExtension contract, formula parsing and types, and a dry-run of the schema " +
-    "reconcile (the DDL it would run and the changes it makes, e.g. lossy type changes are " +
-    "refused). Pass files (path → source, entry index.ts) or a workspace commit. Returns " +
-    "structured issues with stage, code, path and message. Changes nothing.",
+    "Check extension source without installing it: TypeScript (syntax and types against " +
+    "@crm/sdk), allowed imports, the defineExtension contract, formula parsing and types, and " +
+    "a dry-run of the schema reconcile (the DDL it would run and the changes it makes, e.g. " +
+    "lossy type changes are refused). Pass just id to check its working copy (what " +
+    "extension.write wrote), or files (path → source, entry index.ts), or a workspace commit. " +
+    "Returns structured issues with stage, code, path, message and often a suggestion; fix " +
+    "them all and check again until ok is true. Changes nothing.",
   input: z.union([
     z.object({ id: extensionId, files: filesSchema }),
     z.object({ id: extensionId, commit: z.string().min(4).max(64) }),
+    z.object({ id: extensionId }),
   ]),
   output: checkOutput,
   permission: "extensions:manage",
   risk: "read",
+  mcp: { curated: true, idempotent: true, title: "Check an extension" },
   async handler(input, ctx) {
-    const result = await checkExtension(ctx, input);
+    const host = requireHost(ctx);
+    let target: { id: string; commit: string } | { id: string; files: Record<string, string> };
+    if ("files" in input || "commit" in input) {
+      target = input;
+    } else {
+      const wc = await host.workingCopy(input.id);
+      if (!wc.exists || !Object.keys(wc.files).length) {
+        throw new NotFoundError("extension in the workspace (write its files first)", input.id);
+      }
+      target = { id: input.id, files: wc.files };
+    }
+    const refusal = await shippedRefusal(ctx, host, input.id);
+    const result = await checkExtension(ctx, target);
+    if (refusal) {
+      return {
+        ...result,
+        ok: false,
+        issues: [shippedIssue(refusal), ...result.issues],
+        manifest: result.manifest as Record<string, unknown> | null,
+      };
+    }
     return { ...result, manifest: result.manifest as Record<string, unknown> | null };
   },
 });
@@ -391,7 +441,9 @@ export const extensionDropHidden = defineOperation({
   output: z.object({ changes: z.array(changeSchema), ddl: z.array(z.string()) }),
   permission: "extensions:manage",
   risk: "destructive",
-  actors: ["human"],
+  // An AI may ask for it (extension.propose's dropHidden), but only a person can approve it.
+  actors: ["human", "mcp", "assistant"],
+  alwaysReview: ["mcp", "assistant"],
   async handler(input, ctx) {
     const plan = await planDropHidden(ctx.db, input.id, {
       now: ctx.now,

@@ -15,6 +15,7 @@ import { formatDateTime, formatRelative } from "#/lib/format";
 import { errorMessage, useOp } from "#/lib/query";
 import { ChangePreview, RiskBadge, StatusBadge } from "./change-preview.tsx";
 import { actionTitle, groupPreview, summariseDecision } from "./describe.ts";
+import { ExtensionProposal } from "./extension-proposal.tsx";
 import { decide, useRecordNames, useRefreshAfterDecision } from "./hooks.ts";
 
 type ChangeSet = CoreOutput<"approval.get">;
@@ -130,7 +131,7 @@ function ChangeSetView({
   const allEntries = useMemo(() => actions.flatMap((a) => a.preview), [actions]);
   const names = useRecordNames(allEntries);
   const titles = useMemo(
-    () => new Map(actions.map((a) => [a.id, actionTitle(a.operation, a.preview)])),
+    () => new Map(actions.map((a) => [a.id, actionTitle(a.operation, a.preview, a.input)])),
     [actions],
   );
 
@@ -350,7 +351,11 @@ function ActionItem({
         <p className="text-sm text-muted-foreground">
           <span className="sr-only">The agent's </span>Reason: {action.reason}
         </p>
-        <ChangePreview groups={groups} names={names} />
+        {action.operation === "extension.apply" ? (
+          <ExtensionProposal actionId={action.id} />
+        ) : (
+          <ChangePreview groups={groups} names={names} />
+        )}
         {!pending && action.statusReason && (
           <p
             className={cn(

@@ -138,6 +138,13 @@ export interface InstallResult {
   changed: boolean;
 }
 
+function firstIssue(issues: CheckIssue[]): string {
+  const first = issues[0];
+  if (!first) return "";
+  const more = issues.length > 1 ? ` (and ${issues.length - 1} more)` : "";
+  return `: ${first.path}: ${first.message}${more}`;
+}
+
 /** The core_user id of an extension's principal (ADR 0025). */
 export function extensionPrincipalId(id: string): string {
   return `extension:${id}`;
@@ -151,7 +158,13 @@ export function extensionPrincipalId(id: string): string {
  */
 export async function installExtension(
   ctx: HandlerContext,
-  input: { id: string; commit: string; source: "shipped" | "runtime" },
+  input: {
+    id: string;
+    commit: string;
+    source: "shipped" | "runtime";
+    /** Allow a shipped extension to become a runtime one (an approved eject, ADR 0041). */
+    eject?: boolean;
+  },
 ): Promise<InstallResult> {
   const host = requireHost(ctx);
   const existing = await ctx.db
@@ -159,7 +172,8 @@ export async function installExtension(
     .selectAll()
     .where("id", "=", input.id)
     .executeTakeFirst();
-  if (existing && existing.source !== input.source) {
+  const ejecting = input.eject && existing?.source === "shipped" && input.source === "runtime";
+  if (existing && existing.source !== input.source && !ejecting) {
     throw new ValidationError(
       `${input.id} is already installed as a ${existing.source} extension`,
       { id: input.id },
@@ -167,9 +181,8 @@ export async function installExtension(
   }
   const evaluated = await host.evaluate({ id: input.id, commit: input.commit });
   if (!evaluated.ok) {
-    throw new ValidationError(`${input.id} failed its check`, {
-      issues: evaluated.issues.map(fromSource),
-    });
+    const issues = evaluated.issues.map(fromSource);
+    throw new ValidationError(`${input.id} failed its check${firstIssue(issues)}`, { issues });
   }
   const { issues, manifest, plan } = await checkManifest(
     ctx.db,
@@ -178,7 +191,7 @@ export async function installExtension(
     ctx.now,
   );
   if (issues.length || !manifest || !plan) {
-    throw new ValidationError(`${input.id} failed its check`, { issues });
+    throw new ValidationError(`${input.id} failed its check${firstIssue(issues)}`, { issues });
   }
   const unchanged =
     existing?.commit_oid === input.commit &&
@@ -239,6 +252,7 @@ export async function installExtension(
       })
       .onConflict((oc) =>
         oc.column("id").doUpdateSet({
+          source: input.source,
           status: "active",
           status_reason: null,
           version: manifest.version,

@@ -24,6 +24,9 @@ export function defineWorkersTestConfig({
       include,
       setupFiles,
       testTimeout: 20_000,
+      // beforeAll hooks boot Durable Objects and, in crm-runner, load the bundled TypeScript
+      // compiler; on shared CI runners that can exceed vitest's 10s default.
+      hookTimeout: 60_000,
     },
   });
 }

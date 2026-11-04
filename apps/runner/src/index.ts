@@ -2,6 +2,7 @@
 // stage 0 Workflow, and the extension host, which forwards to the extension workspace DO.
 import { WorkerEntrypoint } from "cloudflare:workers";
 import {
+  type CodeResult,
   type EvaluateResult,
   type ExtensionHost,
   type ExtensionVersion,
@@ -11,6 +12,8 @@ import {
   type RunToolResult,
   type ShippedExtension,
   type ShippedInstallResult,
+  type WorkingCopy,
+  type WorkspaceEntry,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
 import type { HelloOutput } from "./hello-workflow.ts";
@@ -38,6 +41,13 @@ export function extensionHost(env: Env): ExtensionHost {
     runTool: (input) => ws().runTool(input) as Promise<RunToolResult>,
     versions: (id) => ws().versions(id),
     files: (id, commit) => ws().files(id, commit),
+    listWorkspace: () => ws().listWorkspace(),
+    workingCopy: (id) => ws().workingCopy(id),
+    writeFiles: (input) => ws().writeFiles(input),
+    commitWorkingCopy: (input) => ws().commitWorkingCopy(input),
+    eject: (id) => ws().eject(id),
+    runCode: (input) => ws().runCode(input) as Promise<CodeResult>,
+    describeChange: (prompt) => ws().describeChange(prompt),
   };
 }
 
@@ -83,6 +93,27 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
   }
   files(id: string, commit: string): Promise<Record<string, string>> {
     return extensionHost(this.env).files(id, commit);
+  }
+  listWorkspace(): Promise<WorkspaceEntry[]> {
+    return extensionHost(this.env).listWorkspace();
+  }
+  workingCopy(id: string): Promise<WorkingCopy> {
+    return extensionHost(this.env).workingCopy(id);
+  }
+  writeFiles(input: Parameters<ExtensionHost["writeFiles"]>[0]): Promise<WorkingCopy> {
+    return extensionHost(this.env).writeFiles(input);
+  }
+  commitWorkingCopy(input: Parameters<ExtensionHost["commitWorkingCopy"]>[0]) {
+    return extensionHost(this.env).commitWorkingCopy(input);
+  }
+  eject(id: string): Promise<WorkingCopy> {
+    return extensionHost(this.env).eject(id);
+  }
+  runCode(input: Parameters<ExtensionHost["runCode"]>[0]): Promise<CodeResult> {
+    return extensionHost(this.env).runCode(input);
+  }
+  describeChange(prompt: string) {
+    return extensionHost(this.env).describeChange(prompt);
   }
 
   /** Installs or upgrades the shipped extensions bundled with this release (boot / deploy). */

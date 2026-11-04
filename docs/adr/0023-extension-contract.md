@@ -12,3 +12,8 @@ Status: accepted, 2026-11-04 (stage 3 interview).
 
 ## Why
 A single typed entry point is easy for a model to write and for the host to validate and diff. Compiling formulas to SQL keeps them queryable without running code per row.
+
+## Note, 2026-11-04 (stage 3b build)
+"Extend, don't modify" is enforced on the extension's id: a shipped extension cannot be written,
+checked or proposed in place until it is ejected, while other extensions may add fields to its
+objects, views over them and tools that write them within their permissions. See ADR 0041.
