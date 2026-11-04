@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 Inter,system-ui,sans-serif;color:#0a0a0a;background:#fff}
+.app{display:flex;min-height:100vh}.side{width:220px;border-right:1px solid #e5e5e5;background:#fafafa;padding:12px;flex-shrink:0}
+.side a{display:flex;justify-content:space-between;padding:6px 8px;border-radius:6px;color:#404040}.side a.on{background:#f0f0f0;color:#000;font-weight:500}
+.badge{background:#0a0a0a;color:#fff;border-radius:999px;padding:0 7px;font-size:12px}
+main{flex:1;min-width:0;padding:20px 24px}h1{font-size:18px;margin:0 0 4px}.muted{color:#737373;font-size:13px}
+.set{border:1px solid #e5e5e5;border-radius:10px;margin-top:16px;overflow:hidden}.sethead{display:flex;gap:12px;align-items:center;padding:12px 14px;background:#fafafa;border-bottom:1px solid #e5e5e5}
+.btn{border:1px solid #e5e5e5;border-radius:6px;padding:5px 10px;background:#fff;font-size:13px}.btn.p{background:#0a0a0a;color:#fff}
+.item{display:flex;gap:12px;padding:12px 14px;border-bottom:1px solid #f0f0f0;align-items:flex-start}.item:last-child{border:0}
+.risk{font-size:11px;border-radius:4px;padding:1px 6px;background:#fef3c7;color:#92400e}.risk.d{background:#fee2e2;color:#991b1b}
+.diff{font:12px ui-monospace,monospace;background:#fafafa;border-radius:6px;padding:6px 8px;margin-top:6px}.del{color:#b91c1c}.add{color:#15803d}
+@media(max-width:800px){.side{display:none}.sethead{flex-wrap:wrap}}
+</style></head><body><div class="app">
+<nav class="side" data-name="sidebar"><div style="font-weight:600;padding:6px 8px 14px">◆ CRM</div><a>People</a><a>Organisations</a><a>Tasks</a><a class="on" data-name="approvals nav">Approvals <span class="badge">3</span></a><a>Settings</a></nav>
+<main><h1>Approvals</h1><div class="muted">Changes waiting for you. Agents kept working on top of these as if they'd been applied.</div>
+<div class="set" data-name="change set">
+<div class="sethead"><div style="flex:1"><b>Claude Desktop</b> · “Clean up duplicate contacts from the Sydney event import” <div class="muted">Tim's connection · 14 changes · 2 need review · 12 applied automatically · 10 min ago</div></div>
+<button class="btn" data-name="reject all">Reject all</button><button class="btn p" data-name="approve all">Approve 2</button></div>
+<div class="item" data-name="pending merge"><input type="checkbox" checked><div style="flex:1"><b>Merge</b> Sarah Chen (per_01JB…) ← Sarah Chen (per_01JC…) <span class="risk d">destructive</span>
+<div class="muted">Reason: same email sarah@acme.io, second record created by CSV import</div>
+<div class="diff"><span class="add">+ 4 activities, 1 task moved</span><br><span class="del">− per_01JC… → Trash</span></div></div><button class="btn">View</button></div>
+<div class="item" data-name="pending bulk tag"><input type="checkbox" checked><div style="flex:1"><b>Update 38 people</b>: add tag <code>sydney-2026</code> <span class="risk">bulk-write</span>
+<div class="muted">Reason: tag everyone from the event list who wasn't a duplicate</div>
+<div class="diff"><span class="add">+ tags: sydney-2026</span> on 38 records · <a href="#">show list</a></div></div><button class="btn">View</button></div>
+</div>
+<div class="set"><div class="sethead"><div style="flex:1"><b>Claude Code</b> · “Delete test orgs” <div class="muted">Tim's connection · 1 change · yesterday · expires in 6 days</div></div><button class="btn">Reject</button><button class="btn p">Approve</button></div>
+<div class="item"><input type="checkbox" checked><div style="flex:1"><b>Delete 6 organisations</b> <span class="risk d">destructive</span><div class="muted">Reason: names start with “TEST –”, created during setup</div></div><button class="btn">View</button></div></div>
+</main></div></body></html>
