@@ -469,10 +469,11 @@ function stepClauses(
   for (const write of step.writes ?? []) clauses.push(writeClause(step, write, ctx));
   for (const notify of step.notifies ?? []) clauses.push(notifyClause(notify, ctx));
   if (clauses.length) return clauses;
-  if (step.reads?.length) {
+  const reads = step.reads ?? [];
+  if (reads.length) {
     const out = new Text().t("checks ");
-    step.reads.forEach((object, i) => {
-      if (i > 0) out.t(i === step.reads!.length - 1 ? " and " : ", ");
+    reads.forEach((object, i) => {
+      if (i > 0) out.t(i === reads.length - 1 ? " and " : ", ");
       out.b(ctx.labels.object(object).plural);
     });
     return [out];

@@ -85,7 +85,7 @@ describe("Won deal → onboarding", () => {
         "notifyManager",
         "Onboarding not started for Acme renewal 2027",
         ["usr_admin"],
-        ["no manager field: sent to admins"],
+        ["Users have no manager field: sent to the admins instead"],
       ],
     ]);
     expect(run.notifications[0]?.link).toEqual({ kind: "record", ...DEAL });

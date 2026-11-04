@@ -342,7 +342,7 @@ export function createTestHost(extension: Extension, options: TestHostOptions = 
       if (typeof to.userId === "string") ids.push(to.userId);
       else if (to.role === "admin") ids.push(...admins);
       else if (typeof to.managerOf === "string") {
-        notes.push("no manager field: sent to admins");
+        notes.push("Users have no manager field: sent to the admins instead");
         ids.push(...admins);
       } else if (typeof to.field === "string") {
         const ref = to.record as { object: string; id: string };
