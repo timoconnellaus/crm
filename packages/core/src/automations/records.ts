@@ -105,7 +105,6 @@ export async function idsMatchingConditions(
 
 /**
  * Ids of live records of `object` whose date field `field` falls on `date` (`YYYY-MM-DD`): the
- * daily date-relative scan. A range on the field's column (indexable: declare an index on the
  * field), at most `limit` ids.
  */
 export async function recordsOnDate(
@@ -122,7 +121,7 @@ export async function recordsOnDate(
   const next = new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
   const rows = await sql<{ id: string }>`
     SELECT id FROM ${sql.table(def.source)}
-    WHERE ${sql.ref(column)} >= ${date} AND ${sql.ref(column)} < ${next} AND deleted_at IS NULL
+    WHERE ${sql.ref(column)} >= ${date} AND ${sql.ref(column)} < ${next}
     ORDER BY ${sql.ref(column)}
     LIMIT ${limit}
   `.execute(db);

@@ -14,7 +14,7 @@ import {
 } from "../errors.ts";
 import { approvalDecidedMessages, emitEvents, eventOriginOf } from "../automations/events.ts";
 import type { ApprovalDecidedMessage, EventSink } from "../automations/types.ts";
-import { newId, replaceIds } from "../ids.ts";
+import { isProvisionalId, newId, replaceIds } from "../ids.ts";
 import { type OutboundInput, outboundAppliedAudit } from "../integrations/outbound.ts";
 import type { IntegrationRuntime } from "../integrations/runtime.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
@@ -628,6 +628,7 @@ function decisionMessages(
   decisionOf: (id: string) => Decision | null,
   by: { actor: Actor; userId: string | null; origin: Origin; operation: string },
   now: string,
+  bindings?: ReadonlyMap<string, Record<string, string>>,
 ): ApprovalDecidedMessage[] {
   const origin = eventOriginOf({
     actor: by.actor,
@@ -643,10 +644,11 @@ function decisionMessages(
     rows.flatMap((row) => {
       const decision = decisionOf(row.id);
       if (!decision) return [];
-      const records = parse<{ object: string; id: string }[]>(row.preview, []).map((p) => ({
-        object: p.object,
-        id: p.id,
-      }));
+      // Provisional ids become the real ones an applied action bound; ones never created drop.
+      const bound = bindings?.get(row.id) ?? {};
+      const records = parse<{ object: string; id: string }[]>(row.preview, [])
+        .map((p) => ({ object: p.object, id: bound[p.id] ?? p.id }))
+        .filter((r) => !isProvisionalId(r.id));
       return [
         {
           actionId: row.id,
@@ -666,6 +668,7 @@ async function emitDecisions(
   ctx: HandlerContext,
   rows: readonly PendingRow[],
   decisionOf: (id: string) => Decision | null,
+  bindings?: ReadonlyMap<string, Record<string, string>>,
 ): Promise<void> {
   if (!ctx.events) return;
   await emitEvents(
@@ -675,6 +678,7 @@ async function emitDecisions(
       decisionOf,
       { actor: "human", userId: ctx.user.id, origin: ctx.origin, operation: ctx.operation },
       ctx.now,
+      bindings,
     ),
   );
 }
@@ -963,7 +967,8 @@ export const approvalApprove = defineOperation({
         results.map((r) => [r.actionId, r.status === "applied" ? "approved" : "failed"]),
       );
       for (const s of stranded) decided.set(s.id, "failed");
-      await emitDecisions(ctx, [...targets, ...stranded], (id) => decided.get(id) ?? null);
+      const bound = new Map(results.map((r) => [r.actionId, r.bindings ?? {}]));
+      await emitDecisions(ctx, [...targets, ...stranded], (id) => decided.get(id) ?? null, bound);
       return { results, counts: counts(results) };
     });
   },
