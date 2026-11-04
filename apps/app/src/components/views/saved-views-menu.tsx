@@ -1,5 +1,5 @@
 // Saved views picker for a list: apply a view, save the current state as a view, update or
-// delete the active one, or reset to the default. Persistence is the SavedViewsAdapter.
+// delete the active one, or reset to the default. Persistence is the SavedViewsAdapter (view.*).
 import { Button } from "@crm/ui/components/button";
 import {
   Dialog,
@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { errorMessage } from "#/lib/query";
 import {
   type SavedView,
+  type SavedViewObject,
   type SavedViewSpec,
   type SavedViewsAdapter,
   savedViews,
@@ -34,7 +35,7 @@ import type { ViewStateApi } from "./view-state.ts";
 
 export interface SavedViewsMenuProps {
   /** Registry name of the list's object, e.g. "person". */
-  object: string;
+  object: SavedViewObject;
   /** Label of the unsaved default view, e.g. "All people". */
   defaultLabel: string;
   /** The list's view state (from useViewState). */

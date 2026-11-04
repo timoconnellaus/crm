@@ -54,20 +54,37 @@ export function useOp<N extends CoreOperationName>(
 }
 
 /**
+ * Reads every write can change besides its own object: the audit log and History tabs, timelines
+ * (system activities for tracked fields, job changes, task completion), Trash, and search.
+ */
+export const WRITE_SIDE_EFFECTS = ["audit.", "activity.", "trash.", "search."] as const;
+
+/** Refetches what any write may have changed: its object's queries plus WRITE_SIDE_EFFECTS. */
+export function invalidateAfterWrite(
+  client: QueryClient,
+  name: string,
+  extra: readonly string[] = [],
+): Promise<void> {
+  const object = `${name.split(".")[0]}.`;
+  const prefixes = new Set([object, ...WRITE_SIDE_EFFECTS, ...extra]);
+  return Promise.all([...prefixes].map((prefix) => invalidateOps(client, prefix))).then(
+    () => undefined,
+  );
+}
+
+/**
  * Runs a write operation as a mutation. On success it invalidates queries for the operation's
- * object (`person.update` → every `person.*` query) plus any extra `invalidates` prefixes.
+ * object (`person.update` → every `person.*` query), the side effects every write may have
+ * (audit, timelines, Trash, search) and any extra `invalidates` prefixes.
  */
 export function useOpMutation<N extends CoreOperationName>(
   name: N,
   { invalidates = [] }: { invalidates?: string[] } = {},
 ) {
   const client = useQueryClient();
-  const object = `${name.split(".")[0]}.`;
   return useMutation<CoreOutput<N>, Error, CoreInput<N>>({
     mutationFn: (input) => callOp(name, input),
-    onSuccess: async () => {
-      await Promise.all([object, ...invalidates].map((prefix) => invalidateOps(client, prefix)));
-    },
+    onSuccess: () => invalidateAfterWrite(client, name, invalidates),
   });
 }
 

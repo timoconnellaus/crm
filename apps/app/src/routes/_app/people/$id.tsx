@@ -33,22 +33,29 @@ import {
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
+import { useAppCommands } from "#/components/app-commands";
 import { EmptyState } from "#/components/empty-state";
 import { PersonDetailsCard } from "#/components/people/person-details-card";
 import {
-  type RecordRef,
-  useCreateActivity,
-  usePersonAffiliations,
+  type ActivityType,
+  type AffiliationItem,
+  useAffiliations,
+  useLogActivity,
   useRecordHistory,
   useRecordTasks,
   useTaskActions,
   useTimeline,
 } from "#/components/record/adapters";
+import {
+  AddAffiliationDialog,
+  ChangeJobDialog,
+  EndAffiliationDialog,
+} from "#/components/record/affiliation-dialogs";
 import { AffiliationsCard } from "#/components/record/affiliations-card";
 import { HistoryList } from "#/components/record/history";
 import { RecordLayout } from "#/components/record/record-layout";
 import { TaskList, TasksCard } from "#/components/record/tasks";
-import { ActivityComposer, Timeline } from "#/components/record/timeline";
+import { ActivityComposer, Timeline, TimelineFilter } from "#/components/record/timeline";
 import { formatDate } from "#/lib/format";
 import { OperationCallError } from "#/lib/operations";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
@@ -125,15 +132,40 @@ function PersonRecord({
   tab: Tab;
   onTabChange: (tab: string) => void;
 }) {
-  const ref: RecordRef = { object: "person", id: person.id };
   const deleted = Boolean(person.deletedAt);
-  const timeline = useTimeline(ref);
-  const composer = useCreateActivity(ref);
-  const tasks = useRecordTasks(ref);
-  const taskActions = useTaskActions(ref);
-  const affiliations = usePersonAffiliations(person);
-  const history = useRecordHistory(ref);
+  const [types, setTypes] = useState<ActivityType[]>([]);
+  const timeline = useTimeline("person", person.id, { types });
+  const composer = useLogActivity("person", person.id);
+  const tasks = useRecordTasks("person", person.id);
+  const taskActions = useTaskActions("person", person.id);
+  const affiliations = useAffiliations("person", person.id);
+  const history = useRecordHistory("person", person.id);
   const restore = useOpMutation("person.restore");
+  const { create } = useAppCommands();
+  const [dialog, setDialog] = useState<"add" | "changeJob" | null>(null);
+  const [ending, setEnding] = useState<AffiliationItem | null>(null);
+  const addTask = deleted
+    ? null
+    : () =>
+        create("task", { link: { object: "person", id: person.id, title: person.displayName } });
+  const primary = affiliations.data.find((a) => a.primary) ?? null;
+  const toggle = deleted ? null : taskActions.setDone;
+  const timelinePanel = (limit?: number) => (
+    <>
+      {!deleted && <ActivityComposer onSubmit={composer.log} isPending={composer.isPending} />}
+      <TimelineFilter value={types} onChange={setTypes} />
+      <Timeline
+        items={timeline.data}
+        isPending={timeline.isPending}
+        error={timeline.error}
+        hasMore={timeline.hasMore}
+        onLoadMore={timeline.loadMore}
+        isLoadingMore={timeline.isLoadingMore}
+        emptyTitle={types.length ? "No matching activity" : "No activity yet"}
+        {...(limit ? { limit } : {})}
+      />
+    </>
+  );
 
   const subtitle =
     person.primaryAffiliation &&
@@ -171,8 +203,12 @@ function PersonRecord({
               icon={<SparklesIcon />}
               reason="The AI assistant arrives in a later stage."
             />
-            {/* TODO(stage-1-wire): open task quick-add (task.create) linked to this person. */}
-            <DisabledAction label="Task" icon={<PlusIcon />} reason="Tasks are coming soon." />
+            {addTask && (
+              <Button variant="outline" size="sm" onClick={addTask} aria-keyshortcuts="c">
+                <PlusIcon />
+                Task
+              </Button>
+            )}
             {!deleted && <DeleteAction id={person.id} name={person.displayName} />}
           </>
         }
@@ -200,50 +236,33 @@ function PersonRecord({
           {
             value: "overview",
             label: "Overview",
-            content: (
-              <>
-                {!deleted && (
-                  <ActivityComposer onSubmit={composer.create} isPending={composer.isPending} />
-                )}
-                <Timeline
-                  items={timeline.data}
-                  isPending={timeline.isPending}
-                  wired={timeline.wired}
-                  limit={10}
-                />
-              </>
-            ),
+            content: timelinePanel(10),
           },
           {
             value: "timeline",
             label: "Timeline",
-            content: (
-              <>
-                {!deleted && (
-                  <ActivityComposer onSubmit={composer.create} isPending={composer.isPending} />
-                )}
-                <Timeline
-                  items={timeline.data}
-                  isPending={timeline.isPending}
-                  wired={timeline.wired}
-                />
-              </>
-            ),
+            content: timelinePanel(),
           },
           {
             value: "tasks",
             label: "Tasks",
             count: openTasks,
             content: (
-              <TaskList
-                tasks={tasks.data}
-                isPending={tasks.isPending}
-                wired={tasks.wired}
-                onToggle={
-                  taskActions.setDone &&
-                  ((taskId, done) => void taskActions.setDone?.(taskId, done))
-                }
-              />
+              <>
+                {addTask && (
+                  <Button variant="outline" size="sm" className="w-fit" onClick={addTask}>
+                    <PlusIcon />
+                    Add task
+                  </Button>
+                )}
+                <TaskList
+                  tasks={tasks.data}
+                  isPending={tasks.isPending}
+                  error={tasks.error}
+                  onToggle={toggle}
+                  emptyTitle="No tasks"
+                />
+              </>
             ),
           },
           {
@@ -254,7 +273,10 @@ function PersonRecord({
                 object={personObject}
                 entries={history.data}
                 isPending={history.isPending}
-                wired={history.wired}
+                error={history.error}
+                hasMore={history.hasMore}
+                onLoadMore={history.loadMore}
+                isLoadingMore={history.isLoadingMore}
               />
             ),
           },
@@ -263,21 +285,40 @@ function PersonRecord({
           <>
             <PersonDetailsCard person={person} readOnly={deleted} />
             <AffiliationsCard
+              object="person"
               affiliations={affiliations.data}
               isPending={affiliations.isPending}
-              wired={affiliations.wired}
+              error={affiliations.error}
+              onAdd={deleted ? null : () => setDialog("add")}
+              onChangeJob={deleted ? null : () => setDialog("changeJob")}
+              onEnd={deleted ? null : setEnding}
             />
             <TasksCard
               tasks={tasks.data}
               isPending={tasks.isPending}
-              wired={tasks.wired}
-              onToggle={
-                taskActions.setDone && ((taskId, done) => void taskActions.setDone?.(taskId, done))
-              }
-              onAdd={null}
+              error={tasks.error}
+              onToggle={toggle}
+              onAdd={addTask}
             />
           </>
         }
+      />
+      <AddAffiliationDialog
+        personId={person.id}
+        personName={person.displayName}
+        open={dialog === "add"}
+        onOpenChange={(open) => setDialog(open ? "add" : null)}
+      />
+      <ChangeJobDialog
+        personId={person.id}
+        personName={person.displayName}
+        current={primary}
+        open={dialog === "changeJob"}
+        onOpenChange={(open) => setDialog(open ? "changeJob" : null)}
+      />
+      <EndAffiliationDialog
+        affiliation={ending}
+        onOpenChange={(open) => !open && setEnding(null)}
       />
     </div>
   );

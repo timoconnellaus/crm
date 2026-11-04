@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import {
   AppCommandsProvider,
   type CreateKind,
+  type CreateOptions,
   useAppCommands,
   useAppCommandsState,
 } from "../components/app-commands.tsx";
@@ -16,6 +17,7 @@ import { AppSidebar } from "../components/app-sidebar.tsx";
 import { CommandPalette } from "../components/command-palette.tsx";
 import { CreatePersonDialog } from "../components/people/create-person-dialog.tsx";
 import { ShortcutSheet } from "../components/shortcut-sheet.tsx";
+import { CreateTaskDialog } from "../components/tasks/create-task-dialog.tsx";
 import { UserMenu } from "../components/user-menu.tsx";
 import { useHotkey } from "../lib/hotkeys.ts";
 import { getSession } from "../server/session.public.ts";
@@ -71,8 +73,20 @@ function AppHeader() {
   );
 }
 
-function createKindFor(_pathname: string): CreateKind {
-  return "person";
+/**
+ * What `c` creates on a screen: a task on Tasks, a task about the record on a record page, a
+ * person on People and elsewhere. Null where the screen owns its own create (Organisations).
+ */
+function createKindFor(pathname: string): { kind: CreateKind; options?: CreateOptions } | null {
+  const record = /^\/(people|organisations)\/((?:per|org)_[^/]+)\/?$/.exec(pathname);
+  if (record?.[2]) {
+    const object = record[1] === "people" ? "person" : "organisation";
+    return { kind: "task", options: { link: { object, id: record[2] } } };
+  }
+  if (pathname.startsWith("/tasks")) return { kind: "task" };
+  // The organisation list's create dialog lives with the organisation screens.
+  if (pathname.startsWith("/organisations")) return null;
+  return { kind: "person" };
 }
 
 /** Dialogs controlled by AppCommands, plus the global shortcuts that open them. */
@@ -83,9 +97,11 @@ function AppOverlays() {
 
   useHotkey("mod+k", () => state.setPalette(!state.palette), { global: true });
   useHotkey("?", () => state.setShortcuts(true));
-  // `c` creates in context. A person is the only create so far; when organisations and tasks
-  // land, pick the kind from `pathname` (TODO(stage-1-wire)).
-  useHotkey("c", () => state.create(createKindFor(pathname)));
+  // `c` creates in context (see createKindFor).
+  useHotkey("c", () => {
+    const target = createKindFor(pathname);
+    if (target) state.create(target.kind, target.options);
+  });
   // Marks the signed-in shell interactive; end-to-end tests wait for it before using shortcuts.
   useEffect(() => {
     document.documentElement.dataset.hydrated = "true";
@@ -104,6 +120,11 @@ function AppOverlays() {
       <CreatePersonDialog
         open={state.creating === "person"}
         onOpenChange={(open) => state.setCreating(open ? "person" : null)}
+      />
+      <CreateTaskDialog
+        open={state.creating === "task"}
+        onOpenChange={(open) => state.setCreating(open ? "task" : null)}
+        {...(state.createOptions.link ? { link: state.createOptions.link } : {})}
       />
     </>
   );
