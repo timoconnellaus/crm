@@ -128,7 +128,9 @@ export function RecordLayout({
               </div>
               {subtitle && <div className="truncate text-sm text-muted-foreground">{subtitle}</div>}
             </div>
-            {actions && <div className="flex w-full items-center gap-2 sm:w-auto">{actions}</div>}
+            {actions && (
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">{actions}</div>
+            )}
           </div>
           {banner}
         </div>

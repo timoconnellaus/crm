@@ -121,7 +121,7 @@ describe("Deals on the host", () => {
       "x_deals_deal__organisation",
     );
     const restored = await reconcile(manifest);
-    expect(restored.changes.filter((c) => c.kind === "add_index")).toHaveLength(5);
+    expect(restored.changes.filter((c) => c.kind === "add_index")).toHaveLength(6);
   });
 
   it("keeps the base currency in settings; currency fields without one use it", async () => {

@@ -94,7 +94,12 @@ export interface WorkerEntry {
     files: Record<string, { hash: string; size: number }>;
   };
   /** Queues this Worker consumes, with consumer settings (resolved queue names are placeholders). */
-  queueConsumers: { queue: string; settings: Record<string, unknown> }[];
+  queueConsumers: {
+    queue: string;
+    settings: Record<string, unknown>;
+    /** The dead-letter queue (a `$QUEUE_NAME(…)` placeholder), sent beside the settings. */
+    deadLetterQueue?: string;
+  }[];
   /** Other Workers of the release this one binds to; they deploy first. */
   dependsOn: string[];
   /**
@@ -302,6 +307,11 @@ export function assertUnresolved(manifest: ReleaseManifest): void {
       }
     }
     for (const consumer of worker.queueConsumers) {
+      if (consumer.deadLetterQueue && !consumer.deadLetterQueue.startsWith("$QUEUE_NAME(")) {
+        problems.push(
+          `${worker.name}: dead-letter queue ${consumer.deadLetterQueue} is not a placeholder`,
+        );
+      }
       if (!consumer.queue.startsWith("$QUEUE_NAME(")) {
         problems.push(`${worker.name}: queue consumer ${consumer.queue} is not a placeholder`);
       }

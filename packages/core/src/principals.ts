@@ -30,8 +30,16 @@ export const originSchema = z.object({
    * group by it, and only it sees their simulated state.
    */
   sessionId: z.string().optional(),
-  /** The automation id (later stages). */
+  /** The automation id (`<extension>.<key>`, or a system job such as `trash.purge`). */
   automationId: z.string().optional(),
+  /** An automation run (arn_…): its pending actions go in one change set per run (ADR 0130). */
+  runId: z.string().optional(),
+  /** Cascade tags (ADR 0130): how deep in an automation cascade this call is, and its chain. */
+  depth: z.number().int().min(0).optional(),
+  chain: z.array(z.string()).max(10).optional(),
+  rootEventId: z.string().optional(),
+  /** Test mode: the call is simulated, nothing is written (ADR 0133). */
+  test: z.boolean().optional(),
   /** The extension whose code made the call (actor `extension`). */
   extensionId: z.string().optional(),
 });

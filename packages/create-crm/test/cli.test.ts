@@ -109,6 +109,19 @@ describe("create-crm install", () => {
     expect(code, output).toBe(0);
     expect(output).toContain("https://crm-app.acme.workers.dev");
     expect([...world.cf.scripts.keys()].sort()).toEqual(["crm-app", "crm-runner"]);
+    // Stage 5 and 7a resources the release declares: queues (with the DLQ wired to the
+    // consumer), the Workflow, and the Vectorize index with its metadata index.
+    expect([...world.cf.queues.values()].map((q) => q.name).sort()).toEqual([
+      "crm-automation-events",
+      "crm-automation-events-dlq",
+    ]);
+    expect(
+      [...world.cf.queues.values()].find((q) => q.name === "crm-automation-events")?.consumers[0],
+    ).toMatchObject({ script_name: "crm-runner", dead_letter_queue: "crm-automation-events-dlq" });
+    expect(world.cf.workflows.has("crm-automation")).toBe(true);
+    expect(world.cf.vectorizeMetadata.get("crm-records")).toEqual([
+      { propertyName: "object", indexType: "string" },
+    ]);
     const app = world.cf.scripts.get("crm-app");
     expect(app?.secrets.get("BETTER_AUTH_URL")).toBe("https://crm-app.acme.workers.dev");
     expect(app?.secrets.get("CRM_UPDATE_TOKEN")).toBe("update-token-abcdef123");
@@ -197,6 +210,11 @@ describe("crm upgrade, rollback and status", () => {
     const { code, output } = await cli("upgrade", "--yes");
     expect(code, output).toBe(0);
     expect(output).toContain("Updated to crm 1.1.0");
+    // Automations were paused with the kill switch and resumed after the smoke check.
+    expect(output).toContain("pause…");
+    expect(
+      await sql("SELECT value FROM core_settings WHERE key = 'automations_kill_switch'"),
+    ).toEqual([{ value: "false" }]);
     expect(world.cf.liveBinding("crm-app", "CRM_RELEASE_VERSION")?.text).toBe("1.1.0");
     const runs = await sql(
       "SELECT kind, status, from_version, to_version, bookmark FROM core_update_runs",

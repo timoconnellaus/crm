@@ -11,7 +11,20 @@ import { checkGrant } from "@crm/sdk";
 import { type Compilable, type CompiledQuery, sql } from "kysely";
 import { matchesPreviewValue } from "./approvals/caps.ts";
 import { type DryRunResult, prepareQueuedAction } from "./approvals/queue.ts";
-import { isSimulatedRead, loadSessionOverlay, overlayRead } from "./approvals/simulation.ts";
+import {
+  isSimulatedRead,
+  loadSessionOverlay,
+  overlayRead,
+  simulatedTitle,
+} from "./approvals/simulation.ts";
+import {
+  emitEvents,
+  eventOriginOf,
+  isBulkOperation,
+  recordEventMessages,
+} from "./automations/events.ts";
+import type { TestSimulation } from "./automations/simulate.ts";
+import type { AutomationHost, EventSink } from "./automations/types.ts";
 import type { WidgetCache } from "./dashboards/cache.ts";
 import { diffRecords, type FieldDiff } from "./diff.ts";
 import {
@@ -31,6 +44,7 @@ import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from
 import { findProvisionalIds, newId } from "./ids.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
 import type { ModelRunner } from "./models.ts";
+import { notifyStatements } from "./notifications/send.ts";
 import {
   type AnyOperation,
   type ApplyingApproval,
@@ -93,6 +107,18 @@ export interface InvocationContext {
   widgetCache?: WidgetCache;
   /** The self-updater (ADR 0164): GitHub Releases and the Cloudflare API. */
   updater?: UpdaterRuntime;
+  /**
+   * Where committed record changes go as automation events (ADR 0130): crm-app and crm-runner
+   * pass a Queue producer. Absent: no events (tests, scripts). Nested invocations inherit it.
+   */
+  events?: EventSink;
+  /** crm-runner's automation host (automation.test, run, retry, replay, cancel). */
+  automationHost?: AutomationHost;
+  /**
+   * Test mode (ADR 0133): the call is simulated against this in-memory overlay. The gate is
+   * evaluated and recorded, writes are dry-run, nothing is written and no events are sent.
+   */
+  simulate?: TestSimulation;
 }
 
 /** The installed extension whose principal is `userId`, with its declared permissions. */
@@ -288,8 +314,9 @@ function auditChangeInserts(
   return statements;
 }
 
-/** Writes a standalone audit row (refusals and failures). Never throws. */
+/** Writes a standalone audit row (refusals and failures). Never throws. Not in test mode. */
 async function auditAlone(row: AuditRow): Promise<void> {
+  if (row.ctx.simulate) return;
   try {
     await row.ctx.db.batch([auditInsert(row.ctx.db, row)]);
   } catch (error) {
@@ -452,7 +479,10 @@ export async function invokeOperation<O extends AnyOperation>(
   if (forced && decision === "auto" && !ctx.approval) decision = "review";
   // A write that refers to a record still pending creation can only be queued after it.
   const provisionalRefs = op.risk === "read" ? [] : findProvisionalIds(rawInput);
-  if (decision === "auto" && provisionalRefs.length && !ctx.approval) decision = "review";
+  // (Test mode reports what the gate decides: its provisional ids stand for real ones.)
+  if (decision === "auto" && provisionalRefs.length && !ctx.approval && !ctx.simulate) {
+    decision = "review";
+  }
 
   if (op.actors && !op.actors.includes(ctx.actor)) {
     const error = new ForbiddenError(`${op.name} cannot be called by ${ctx.actor} actors`, {
@@ -462,7 +492,7 @@ export async function invokeOperation<O extends AnyOperation>(
     await auditAlone({ ...base, gate: decision, outcome: "forbidden", error });
     throw error;
   }
-  if (ctx.actor === "extension") {
+  if (ctx.actor === "extension" || (ctx.actor === "automation" && ctx.extension)) {
     // The runtime passes the caller; an approved pending action re-run by an admin does not, so
     // it is loaded from the extension principal's installed manifest.
     const caller = ctx.extension ?? (await loadExtensionCaller(ctx.db, ctx.user.id));
@@ -538,6 +568,8 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.models ? { models: ctx.models } : {}),
     ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
     ...(ctx.updater ? { updater: ctx.updater } : {}),
+    ...(ctx.events && !ctx.simulate ? { events: ctx.events } : {}),
+    ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
     pipeline: {
       crm: ctx.db,
       invoke: (name, nestedInput, nested) => {
@@ -560,6 +592,9 @@ export async function invokeOperation<O extends AnyOperation>(
           ...(ctx.blobs ? { blobs: ctx.blobs } : {}),
           ...(ctx.models ? { models: ctx.models } : {}),
           ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
+          ...(ctx.events ? { events: ctx.events } : {}),
+          ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
+          ...(ctx.simulate ? { simulate: ctx.simulate } : {}),
         });
       },
     },
@@ -571,8 +606,18 @@ export async function invokeOperation<O extends AnyOperation>(
     throw typed;
   };
 
+  if (ctx.simulate && op.risk !== "read") {
+    return simulateWrite(op, rawInput, input, ctx, handlerCtx, {
+      now,
+      bulkSize,
+      decision,
+      reason: gate,
+    }) as Promise<OperationOutput<O>>;
+  }
+
   if (decision === "review" && !ctx.approval) {
     let queued: Awaited<ReturnType<typeof prepareQueuedAction>>;
+    let notices: Compilable[] = [];
     try {
       const overlay = await loadSessionOverlay(ctx.db.query, ctx.origin.sessionId, now);
       queued = await prepareQueuedAction({
@@ -609,12 +654,16 @@ export async function invokeOperation<O extends AnyOperation>(
           return { output, changes: dryChanges };
         },
       });
+      if (queued.changeSetCreated && ctx.actor !== "human") {
+        notices = await pendingApprovalNotice(ctx, queued.pending.changeSetId, now);
+      }
     } catch (error) {
       return fail(error, "review");
     }
     try {
       await ctx.db.batch([
         ...queued.statements,
+        ...notices,
         auditInsert(ctx.db, {
           ...base,
           pendingActionId: queued.actionId,
@@ -629,9 +678,11 @@ export async function invokeOperation<O extends AnyOperation>(
     throw new PendingApprovalError(queued.pending);
   }
 
-  // Reads by an MCP session see its pending actions applied (ADR 0022).
-  if (op.risk === "read" && ctx.origin.sessionId && isSimulatedRead(op.name)) {
-    const overlay = await loadSessionOverlay(ctx.db.query, ctx.origin.sessionId, now);
+  // Reads by an MCP session see its pending actions applied (ADR 0022); reads in test mode see
+  // the run's simulated writes (ADR 0133).
+  if (op.risk === "read" && (ctx.origin.sessionId || ctx.simulate) && isSimulatedRead(op.name)) {
+    const overlay =
+      ctx.simulate?.overlay ?? (await loadSessionOverlay(ctx.db.query, ctx.origin.sessionId, now));
     if (!overlay.empty) {
       let output: unknown;
       try {
@@ -647,7 +698,7 @@ export async function invokeOperation<O extends AnyOperation>(
       } catch (error) {
         return fail(error);
       }
-      if (audited) await countRead(op, ctx, now, true);
+      if (audited && !ctx.simulate) await countRead(op, ctx, now, true);
       return output as OperationOutput<O>;
     }
   }
@@ -701,7 +752,7 @@ export async function invokeOperation<O extends AnyOperation>(
     op.auditSummary && !deferred ? op.auditSummary(output, input) : defaultSummary(output, changes);
   if (audited && op.risk === "read") {
     // A successful non-human read: counted, not audited row by row (ADR 0090).
-    await countRead(op, ctx, now, false);
+    if (!ctx.simulate) await countRead(op, ctx, now, false);
   } else if (audited) {
     statements.push(
       auditInsert(ctx.db, { ...base, gate: decision, outcome: "ok", result: summary ?? null }),
@@ -735,6 +786,19 @@ export async function invokeOperation<O extends AnyOperation>(
     }
   }
 
+  // Committed: the record changes become automation events (ADR 0130). One send per operation.
+  if (ctx.events && changes.length) {
+    const origin = eventOriginOf({
+      actor: ctx.actor,
+      userId: ctx.user.id,
+      origin: ctx.origin,
+      operation: op.name,
+      auditId,
+      bulk: isBulkOperation(op.name, bulkSize),
+    });
+    await emitEvents(ctx.events, recordEventMessages(auditId, now, origin, changes));
+  }
+
   if (deferred) {
     const checked = op.output.safeParse(await runAfterCommit(deferred));
     if (!checked.success) {
@@ -745,4 +809,171 @@ export async function invokeOperation<O extends AnyOperation>(
     output = checked.data;
   }
   return output as OperationOutput<O>;
+}
+
+/** One line on why the gate decided what it did, for test-mode reports. */
+function gateReason(gate: GateResult, op: AnyOperation, actor: Actor, bulkSize: number): string {
+  const what = `${op.risk}${bulkSize > 1 ? ` of ${bulkSize} records` : ""}`;
+  const floor = gate.floorDecision ? `; the deployment floor says ${gate.floorDecision}` : "";
+  return `${gate.preset} policy: ${actor} ${what} → ${gate.policyDecision}${floor}`;
+}
+
+/** The title a create or change would give its record, from the overlay or the diff. */
+function writeTitle(
+  object: string,
+  record: { object: string; id: string; record: Record<string, unknown> | null } | undefined,
+  diff: FieldDiff,
+): string | null {
+  if (record?.record) {
+    const title = simulatedTitle({ ...record, state: "live", actionId: "", changeSetId: "" });
+    if (title) return title;
+  }
+  const titleField = getObject(object)?.titleField;
+  const value =
+    (titleField ? diff[titleField]?.after : undefined) ??
+    diff.title?.after ??
+    diff.name?.after ??
+    diff.displayName?.after ??
+    diff.subject?.after;
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * Test mode (ADR 0133): records the gate's decision, dry-runs the handler as the approval queue
+ * does, adds the simulated records to the run's overlay and returns the simulated output (or
+ * throws PendingApprovalError when the gate would queue it). Nothing is written.
+ */
+async function simulateWrite(
+  op: AnyOperation,
+  rawInput: unknown,
+  input: unknown,
+  ctx: InvocationContext,
+  handlerCtx: HandlerContext,
+  info: { now: string; bulkSize: number; decision: GateDecision; reason: GateResult },
+): Promise<unknown> {
+  const sim = ctx.simulate as TestSimulation;
+  const review = info.decision === "review" && !ctx.approval;
+  sim.gates.push({
+    operation: op.name,
+    gate: info.decision,
+    bulkSize: info.bulkSize,
+    reason: gateReason(info.reason, op, ctx.actor, info.bulkSize),
+  });
+  const overlay = sim.overlay;
+  const queued = await prepareQueuedAction({
+    op,
+    rawInput,
+    input,
+    db: ctx.db,
+    actor: ctx.actor,
+    user: ctx.user,
+    origin: ctx.origin,
+    grantedPermissions: ctx.grantedPermissions,
+    reason: ctx.reason,
+    bulkSize: info.bulkSize,
+    now: info.now,
+    expiryDays: ctx.approvalExpiryDays,
+    overlay,
+    dryRun: async (): Promise<DryRunResult> => {
+      const dryChanges: RecordChange[] = [];
+      const dryCtx: HandlerContext = {
+        ...handlerCtx,
+        write: () => {},
+        recordChange: (change) => {
+          dryChanges.push(change);
+        },
+        postActivity: () => newId("activity"),
+        simulation: overlay,
+      };
+      const result = await op.handler(input, dryCtx);
+      let output: unknown = null;
+      if (!isAfterCommit(result)) {
+        const checked = op.output.safeParse(result);
+        output = checked.success ? checked.data : null;
+      }
+      return { output, changes: dryChanges };
+    },
+  });
+  overlay.add(queued.actionId, queued.pending.changeSetId, queued.records);
+  for (const p of queued.preview) {
+    sim.writes.push({
+      object: p.object,
+      id: p.id,
+      action: p.action,
+      title: writeTitle(
+        p.object,
+        queued.records.find((r) => r.object === p.object && r.id === p.id),
+        p.diff,
+      ),
+      operation: op.name,
+    });
+  }
+  if (op.name === "notification.send") {
+    const out = (queued.pending.simulated ?? {}) as { userIds?: unknown };
+    const userIds = Array.isArray(out.userIds) ? out.userIds.map(String) : [];
+    const names = userIds.length
+      ? await ctx.db.query
+          .selectFrom("core_user")
+          .select(["id", "name"])
+          .where("id", "in", userIds)
+          .execute()
+      : [];
+    const sent = input as { title?: string; type?: string };
+    sim.notifications.push({
+      to: userIds,
+      toNames: userIds.map((id) => names.find((n) => n.id === id)?.name ?? id),
+      type: sent.type ?? (ctx.actor === "automation" ? "automation.message" : "system.message"),
+      title: String(sent.title ?? ""),
+    });
+  }
+  if (review) {
+    throw new PendingApprovalError({
+      ...queued.pending,
+      message: `Test mode: ${op.name} would wait for approval (${gateReason(info.reason, op, ctx.actor, info.bulkSize)}). Nothing was queued.`,
+    });
+  }
+  return queued.pending.simulated;
+}
+
+/**
+ * The `approval.pending` notice for a change set a non-human actor just opened (ADR 0130): its
+ * user for MCP and the assistant, the admins for automations and extensions. Committed with the
+ * pending action; a failure to plan it never blocks the queueing.
+ */
+async function pendingApprovalNotice(
+  ctx: InvocationContext,
+  changeSetId: string,
+  now: string,
+): Promise<Compilable[]> {
+  const toAdmins = ctx.actor === "automation" || ctx.actor === "extension";
+  const who =
+    ctx.actor === "automation"
+      ? `The automation ${ctx.origin.automationId ?? ""}`.trim()
+      : ctx.actor === "extension"
+        ? `The extension ${ctx.extension?.id ?? ctx.origin.extensionId ?? ""}`.trim()
+        : (ctx.origin.clientName ?? "An AI agent");
+  try {
+    const plan = await notifyStatements(
+      ctx.db.query,
+      {
+        to: toAdmins ? [{ role: "admin" }] : [{ userId: ctx.user.id }],
+        type: "approval.pending",
+        title: `${who} is waiting for your approval`,
+        body: "Review the changes in the Approvals inbox.",
+        link: { kind: "approval", changeSetId },
+        dedupeKey: `approval:${changeSetId}`,
+        source: {
+          actor: ctx.actor,
+          userId: ctx.user.id,
+          ...(ctx.origin.automationId ? { automationId: ctx.origin.automationId } : {}),
+          ...(ctx.origin.runId ? { runId: ctx.origin.runId } : {}),
+        },
+      },
+      now,
+    );
+    return plan.statements;
+  } catch (error) {
+    console.error("pending approval notice failed", error);
+    return [];
+  }
 }

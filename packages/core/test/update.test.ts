@@ -10,9 +10,15 @@ import type {
   RunRecord,
   UpdateOutcome,
 } from "@crm/release";
+import { KILL_SWITCH_SETTING } from "@crm/release";
 import { buildFixtureRelease } from "@crm/release/testing";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { type ActingUser, invokeByName, type UpdaterRuntime } from "../src/index.ts";
+import {
+  type ActingUser,
+  AUTOMATION_SETTINGS,
+  invokeByName,
+  type UpdaterRuntime,
+} from "../src/index.ts";
 import { auditRows, context, createUser } from "./helpers.ts";
 
 let admin: ActingUser;
@@ -170,6 +176,62 @@ describe("update.status and channels", () => {
         context(admin, { actor: "mcp", updater: runtime() }),
       ),
     ).rejects.toBeTruthy();
+  });
+});
+
+describe("pausing automations (Stage 5 kill switch)", () => {
+  const killSwitch = async () =>
+    (
+      await env.DB.prepare("SELECT value FROM core_settings WHERE key = ?")
+        .bind(AUTOMATION_SETTINGS.killSwitch)
+        .first<{ value: string }>()
+    )?.value;
+  const setKillSwitch = (on: boolean) =>
+    env.DB.prepare("UPDATE core_settings SET value = ? WHERE key = ?")
+      .bind(JSON.stringify(on), AUTOMATION_SETTINGS.killSwitch)
+      .run();
+
+  /** A runtime whose update observes the kill switch between pause and resume. */
+  function observing(seen: string[], outcome: "succeeded" | "rolled_back" = "succeeded") {
+    return runtime({
+      async apply({ version, automations }): Promise<UpdateOutcome> {
+        await automations.pause();
+        seen.push(String(await killSwitch()));
+        await automations.resume();
+        seen.push(String(await killSwitch()));
+        return { status: outcome, from: "1.0.0", to: version, bookmark: "bm", migrations: [] };
+      },
+    });
+  }
+
+  it("uses the same setting as the release library", () => {
+    expect(KILL_SWITCH_SETTING).toBe(AUTOMATION_SETTINGS.killSwitch);
+  });
+
+  it("turns the kill switch on during the update and off after, even after a rollback", async () => {
+    await setKillSwitch(false);
+    for (const outcome of ["succeeded", "rolled_back"] as const) {
+      const seen: string[] = [];
+      await invokeByName(
+        "update.apply",
+        { version: "1.1.0" },
+        context(admin, { updater: observing(seen, outcome) }),
+      );
+      expect(seen).toEqual(["true", "false"]);
+      await resetRuns();
+    }
+  });
+
+  it("leaves the kill switch on when an admin had turned it on before", async () => {
+    await setKillSwitch(true);
+    const seen: string[] = [];
+    await invokeByName(
+      "update.apply",
+      { version: "1.1.0" },
+      context(admin, { updater: observing(seen) }),
+    );
+    expect(seen).toEqual(["true", "true"]);
+    await setKillSwitch(false);
   });
 });
 

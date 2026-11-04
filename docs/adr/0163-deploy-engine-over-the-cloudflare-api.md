@@ -49,3 +49,15 @@ and in Workers (the self-updater) alike. No wrangler at runtime.
 - We maintain a small API client instead of depending on wrangler's internals. Fields such as
   `worker_loader` are documented only in wrangler's source; the real-account test (ADR 0168) is the
   backstop.
+
+## Amendment, 2026-11-05: stage 5 queues and stage 7a's Vectorize index
+- Queue consumers carry their dead-letter queue as a top-level `dead_letter_queue` (a queue name),
+  next to `settings`. The manifest keeps it as `deadLetterQueue: "$QUEUE_NAME(…)"` and renders it at
+  deploy time. Stage 5's `crm-automation-events` and `crm-automation-events-dlq` are provisioned
+  from the manifest. The `crm-automation` Workflow is registered by crm-runner's upload, and the
+  rate limit namespace 4201 passes through.
+- Vectorize indexes are created from `deploy-inputs.json` `vectorize` settings when wrangler.jsonc
+  cannot express them (dimensions, metric and `metadataIndexes`), e.g. 7a's `crm-records` (384,
+  cosine, `object` string metadata index). Missing metadata indexes are created on every run, so the
+  step is idempotent (`POST …/vectorize/v2/indexes/{name}/metadata_index/create`,
+  [docs](https://developers.cloudflare.com/api/resources/vectorize/subresources/indexes/subresources/metadata_index/methods/create/)).

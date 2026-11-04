@@ -7,6 +7,7 @@ import { activityOperations } from "./activity.ts";
 import { affiliationOperations } from "./affiliation.ts";
 import { approvalOperations } from "./approval.ts";
 import { auditOperations } from "./audit.ts";
+import { automationOperations } from "./automation.ts";
 import { codeOperations } from "./code.ts";
 import { connectedAppOperations } from "./connected-app.ts";
 import { countOperations } from "./count.ts";
@@ -19,6 +20,7 @@ import { extensionUiOperations } from "./extension-ui.ts";
 import { importOperations } from "./import.ts";
 import { importRecordsOperations } from "./import-records.ts";
 import { integrationOperations } from "./integration.ts";
+import { notificationOperations } from "./notification.ts";
 import { organisationOperations } from "./organisation.ts";
 import { personOperations } from "./person.ts";
 import { policyOperations } from "./policy.ts";
@@ -69,4 +71,6 @@ export const coreOperations = [
   ...extensionUiOperations,
   ...updateOperations,
   ...setupOperations,
+  ...automationOperations,
+  ...notificationOperations,
 ] as const;

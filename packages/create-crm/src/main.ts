@@ -11,6 +11,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  apiKillSwitchStore,
   appliedMigrationsViaApi,
   applyBundleMigrations,
   CHANNELS,
@@ -29,6 +30,7 @@ import {
   getRelease,
   healthSmoke,
   installedExtensionsViaApi,
+  killSwitchControl,
   listReleases,
   locateDeployment,
   neededResources,
@@ -589,6 +591,8 @@ async function upgrade(flags: Flags, deps: Deps): Promise<number> {
       return previousBundle;
     },
     migrations: d1ApiMigrations(s.api, s.accountId, databaseId),
+    // Stage 5's kill switch, reversibly: on before migrating, off after the smoke check or rollback.
+    automations: killSwitchControl(apiKillSwitchStore(s.api, s.accountId, databaseId)),
     smoke: (hostname, version) =>
       healthSmoke(hostname, version, {
         ...(deps.fetch ? { fetch: deps.fetch } : {}),
@@ -669,6 +673,7 @@ async function rollback(flags: Flags, deps: Deps): Promise<number> {
     previous: previous.bundle,
     previousDigest: previous.digest,
     bookmark: last.bookmark,
+    automations: killSwitchControl(apiKillSwitchStore(s.api, s.accountId, databaseId)),
     log: (l) => io.out(l),
   });
   // The restore rewound core_update_runs too: record both runs again.

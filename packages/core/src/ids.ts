@@ -31,6 +31,10 @@ export const ID_PREFIXES = {
   /** Stage history rows (ADR 0100). */
   stageHistory: "sth",
   dashboard: "dsh",
+  /** Automation runs (ADR 0130). */
+  automationRun: "arn",
+  /** Notifications (ADR 0132). */
+  notification: "ntf",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

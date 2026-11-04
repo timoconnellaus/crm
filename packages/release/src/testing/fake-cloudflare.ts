@@ -56,9 +56,20 @@ export class FakeCloudflare {
   readonly kv = new Map<string, string>();
   readonly queues = new Map<
     string,
-    { name: string; consumers: { consumer_id: string; script_name: string; settings: unknown }[] }
+    {
+      name: string;
+      consumers: {
+        consumer_id: string;
+        script_name: string;
+        settings: unknown;
+        dead_letter_queue?: string | undefined;
+      }[];
+    }
   >();
   readonly vectorize = new Map<string, Record<string, unknown>>();
+  readonly vectorizeMetadata = new Map<string, { propertyName: string; indexType: string }[]>();
+  /** Workflows registered by script uploads (a workflow binding without script_name). */
+  readonly workflows = new Map<string, { className: string; script: string }>();
   readonly scripts = new Map<string, FakeScript>();
   readonly domains: { hostname: string; service: string; zone_id: string }[] = [];
   readonly uploadedAssets = new Set<string>();
@@ -225,16 +236,25 @@ export class FakeCloudflare {
     if (m) {
       const queue = this.queues.get(m[1] as string);
       if (!queue) return fail(404, 11000, "queue not found");
+      const dlq = b.dead_letter_queue as string | undefined;
+      if (dlq !== undefined && ![...this.queues.values()].some((q) => q.name === dlq)) {
+        return fail(400, 11003, `dead letter queue ${dlq} does not exist`);
+      }
+      if (/^\$/.test(String(b.script_name)) || dlq?.startsWith("$")) {
+        return fail(400, 11004, "unresolved placeholder in consumer");
+      }
       if (m[2]) {
         const consumer = queue.consumers.find((c) => c.consumer_id === m?.[2]);
         if (!consumer) return fail(404, 11000, "consumer not found");
         consumer.settings = b.settings;
+        consumer.dead_letter_queue = dlq;
         return ok(consumer);
       }
       const consumer = {
         consumer_id: this.id("c"),
         script_name: String(b.script_name),
         settings: b.settings,
+        dead_letter_queue: dlq,
       };
       queue.consumers.push(consumer);
       return ok(consumer);
@@ -245,6 +265,21 @@ export class FakeCloudflare {
         return ok({ name: b.name });
       }
       return ok([...this.vectorize.keys()].map((name) => ({ name })));
+    }
+    m = new RegExp(`^${a}/vectorize/v2/indexes/([^/]+)/metadata_index/(list|create)$`).exec(path);
+    if (m) {
+      const index = m[1] as string;
+      if (!this.vectorize.has(index)) return fail(404, 40002, "index not found");
+      const list = this.vectorizeMetadata.get(index) ?? [];
+      if (m[2] === "create") {
+        if (list.some((p) => p.propertyName === b.propertyName)) {
+          return fail(400, 40014, "metadata index already exists");
+        }
+        list.push({ propertyName: String(b.propertyName), indexType: String(b.indexType) });
+        this.vectorizeMetadata.set(index, list);
+        return ok({ mutationId: this.id("mut") });
+      }
+      return ok({ metadataIndexes: list });
     }
 
     // Workers
@@ -310,6 +345,7 @@ export class FakeCloudflare {
         workersDev: false,
         bindings: [],
       };
+      this.registerWorkflows(name, metadata);
       this.applySecrets(target, metadata);
       const versionId = this.id("ver");
       target.versions.push({ id: versionId, metadata, modules });
@@ -340,6 +376,7 @@ export class FakeCloudflare {
       const { metadata, modules } = await this.readUpload(form);
       if (metadata.migrations)
         return fail(400, 10211, "migrations are not supported with versions");
+      this.registerWorkflows(name, metadata);
       this.applySecrets(script, metadata);
       const id = this.id("ver");
       script.versions.push({ id, metadata, modules });
@@ -380,6 +417,24 @@ export class FakeCloudflare {
   private needsMigration(metadata: Record<string, unknown>) {
     const bindings = (metadata.bindings ?? []) as { type: string; script_name?: string }[];
     return bindings.some((b) => b.type === "durable_object_namespace" && !b.script_name);
+  }
+
+  private registerWorkflows(script: string, metadata: Record<string, unknown>) {
+    const bindings = (metadata.bindings ?? []) as {
+      type: string;
+      workflow_name?: string;
+      class_name?: string;
+      script_name?: string;
+    }[];
+    for (const b of bindings) {
+      if (b.type !== "workflow" || !b.workflow_name) continue;
+      if (b.workflow_name.startsWith("$") || b.script_name?.startsWith("$")) {
+        throw new Error(`unresolved placeholder in workflow binding ${b.workflow_name}`);
+      }
+      if (!b.script_name || b.script_name === script) {
+        this.workflows.set(b.workflow_name, { className: String(b.class_name), script });
+      }
+    }
   }
 
   private applySecrets(script: FakeScript, metadata: Record<string, unknown>) {

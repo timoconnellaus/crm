@@ -73,6 +73,12 @@ export interface DeployablePackage {
   bindingDocs: Record<string, { description?: string }>;
   /** deploy-inputs.json secrets, if any. */
   inputSecrets: { name: string; required: boolean; description?: string }[];
+  /**
+   * deploy-inputs.json `vectorize`: how each index is created (wrangler.jsonc cannot say), e.g.
+   * `{ "crm-records": { "dimensions": 384, "metric": "cosine", "metadataIndexes":
+   * [{ "propertyName": "object", "indexType": "string" }] } }`.
+   */
+  vectorize: Record<string, Record<string, unknown>>;
 }
 
 /** Every wrangler.jsonc under apps/ and packages/, sorted by directory. */
@@ -90,10 +96,11 @@ export function readDeployablePackages(root: string): DeployablePackage[] {
       const config = parseJsonc(readFileSync(configPath, "utf8")) as WranglerConfig;
       const pkg = JSON.parse(readFileSync(join(root, dir, "package.json"), "utf8"));
       let inputSecrets: DeployablePackage["inputSecrets"] = [];
+      let vectorize: DeployablePackage["vectorize"] = {};
       try {
-        inputSecrets = JSON.parse(
-          readFileSync(join(root, dir, "deploy-inputs.json"), "utf8"),
-        ).secrets;
+        const inputs = JSON.parse(readFileSync(join(root, dir, "deploy-inputs.json"), "utf8"));
+        inputSecrets = inputs.secrets ?? [];
+        vectorize = inputs.vectorize ?? {};
       } catch {
         inputSecrets = [];
       }
@@ -103,6 +110,7 @@ export function readDeployablePackages(root: string): DeployablePackage[] {
         config,
         bindingDocs: pkg.cloudflare?.bindings ?? {},
         inputSecrets,
+        vectorize,
       });
     }
   }
@@ -339,12 +347,10 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
     if (consumer.retry_delay !== undefined) settings.retry_delay = consumer.retry_delay;
     queueConsumers.push({
       queue: ref,
-      settings: {
-        ...settings,
-        ...(consumer.dead_letter_queue
-          ? { dead_letter_queue: placeholder("QUEUE_NAME", consumer.dead_letter_queue) }
-          : {}),
-      },
+      settings,
+      ...(consumer.dead_letter_queue
+        ? { deadLetterQueue: placeholder("QUEUE_NAME", consumer.dead_letter_queue) }
+        : {}),
     });
   }
   for (const index of config.vectorize ?? []) {
@@ -360,9 +366,10 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
         // wrangler.jsonc does not say how an index was created; the default embedding model's
         // preset (ADR 0160) unless the binding carries dimensions/metric.
         config:
-          index.dimensions && index.metric
+          pkg.vectorize[index.index_name] ??
+          (index.dimensions && index.metric
             ? { dimensions: index.dimensions, metric: index.metric }
-            : { preset: index.preset ?? "@cf/baai/bge-base-en-v1.5" },
+            : { preset: index.preset ?? "@cf/baai/bge-base-en-v1.5" }),
       },
       name,
       optional,

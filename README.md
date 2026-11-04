@@ -11,7 +11,9 @@ writes, you approve, and the CRM runs safely.
 ## Install
 
 ```sh
-npx create-crm        # or: pnpm dlx create-crm
+# Not on npm yet: run the CLI from a checkout (docs/deploying.md)
+pnpm install && pnpm --filter create-crm build
+node packages/create-crm/dist/cli.js
 ```
 
 The CLI asks for a scoped Cloudflare API token, your account and hostname (`workers.dev` or your own

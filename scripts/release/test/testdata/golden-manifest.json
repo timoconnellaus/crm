@@ -162,6 +162,18 @@
       "sha256": "7b8e34ffa316e8be792c4cdb38f72fb4f03a8545ba860e52dacac5f1aafda5ee"
     },
     {
+      "name": "0130_automations.sql",
+      "sha256": "73f4921a6397b08245ba7dcbd56137cbb4c2ecd70b261fd35dcd5591da3e3f54"
+    },
+    {
+      "name": "0131_notifications.sql",
+      "sha256": "20ff2421a3a91e6e63ffb2e1fc9202866b2ffefac8710de2c94434a440d0eddf"
+    },
+    {
+      "name": "0132_automation_runtime.sql",
+      "sha256": "89c20a47db513f4c177055f102d3df663d825a39686d9420360ae2bc604c1aec"
+    },
+    {
       "name": "0160_releases.sql",
       "sha256": "0fb887d8573a393d45e8390f99f080b842bf0c5d89df6a84dea96082ad40945f"
     },
@@ -250,12 +262,42 @@
     },
     {
       "implicit": false,
+      "name": "crm-automation-events",
+      "optional": false,
+      "placeholder": "$QUEUE_NAME(crm-automation-events)",
+      "type": "queue",
+      "usedBy": [
+        "crm-app",
+        "crm-runner"
+      ]
+    },
+    {
+      "implicit": false,
+      "name": "crm-automation-events-dlq",
+      "optional": false,
+      "placeholder": "$QUEUE_NAME(crm-automation-events-dlq)",
+      "type": "queue",
+      "usedBy": [
+        "crm-runner"
+      ]
+    },
+    {
+      "implicit": false,
       "name": "crm-blobs",
       "optional": false,
       "placeholder": "$R2_NAME(crm-blobs)",
       "type": "r2",
       "usedBy": [
         "crm-app",
+        "crm-runner"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "crm-automation",
+      "optional": false,
+      "type": "workflow",
+      "usedBy": [
         "crm-runner"
       ]
     },
@@ -305,6 +347,11 @@
           "name": "RUNNER",
           "service": "$WORKER_NAME(crm-runner)",
           "type": "service"
+        },
+        {
+          "name": "AUTOMATION_EVENTS",
+          "queue_name": "$QUEUE_NAME(crm-automation-events)",
+          "type": "queue"
         },
         {
           "name": "MCP_RATE_LIMIT",
@@ -492,7 +539,7 @@
           "source": "user"
         }
       ],
-      "sha256": "a526e65ba9718bfc38c45813610d67fb79f34abb3594a5bf328fc6da830c2ffa"
+      "sha256": "957a50c093a7a52ebffc6baf901c16e715e6f97ca65d5107b0bcd7392cbef137"
     },
     {
       "bindings": [
@@ -544,6 +591,26 @@
           "workflow_name": "crm-hello"
         },
         {
+          "class_name": "AutomationWorkflow",
+          "name": "AUTOMATION_WORKFLOW",
+          "type": "workflow",
+          "workflow_name": "crm-automation"
+        },
+        {
+          "name": "AUTOMATION_EVENTS",
+          "queue_name": "$QUEUE_NAME(crm-automation-events)",
+          "type": "queue"
+        },
+        {
+          "name": "AUTOMATION_RATE_LIMIT",
+          "namespace_id": "4201",
+          "simple": {
+            "limit": 60,
+            "period": 60
+          },
+          "type": "ratelimit"
+        },
+        {
           "name": "LOADER",
           "type": "worker_loader"
         },
@@ -573,7 +640,9 @@
         "nodejs_compat",
         "allow_irrevocable_stub_storage"
       ],
-      "crons": [],
+      "crons": [
+        "* * * * *"
+      ],
       "dependsOn": [],
       "durableObjectMigrations": [
         {
@@ -627,10 +696,20 @@
       "optional": false,
       "package": "apps/runner",
       "public": false,
-      "queueConsumers": [],
+      "queueConsumers": [
+        {
+          "deadLetterQueue": "$QUEUE_NAME(crm-automation-events-dlq)",
+          "queue": "$QUEUE_NAME(crm-automation-events)",
+          "settings": {
+            "batch_size": 100,
+            "max_retries": 5,
+            "max_wait_time_ms": 5000
+          }
+        }
+      ],
       "role": "runner",
       "secrets": [],
-      "sha256": "3b6d967dc857fc01d443d55c306dcb7ce9721640308c90ffe2708cee331a8268"
+      "sha256": "710a3b468b6f2fe3200ec1fd84665e1d7c4ed3accd2e7fd3601ea43b8bbff513"
     },
     {
       "bindings": [],

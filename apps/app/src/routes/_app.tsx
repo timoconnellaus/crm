@@ -17,6 +17,7 @@ import {
 } from "../components/app-commands.tsx";
 import { AppSidebar } from "../components/app-sidebar.tsx";
 import { CommandPalette } from "../components/command-palette.tsx";
+import { NotificationBell } from "../components/notifications/notification-bell.tsx";
 import { CreateOrganisationDialog } from "../components/organisations/create-organisation-dialog.tsx";
 import { CreatePersonDialog } from "../components/people/create-person-dialog.tsx";
 import { ShortcutSheet } from "../components/shortcut-sheet.tsx";
@@ -104,6 +105,7 @@ function AppHeader() {
         <Kbd className="ml-auto hidden sm:inline-flex">⌘K</Kbd>
       </Button>
       <div className="hidden flex-1 sm:block" />
+      <NotificationBell />
       <UserMenu principal={principal} signOutUrl={signOutUrl} />
     </header>
   );

@@ -195,8 +195,28 @@ export async function provisionResources(
       }
       case "vectorize": {
         const exists = (await api.listVectorize(accountId)).some((i) => i.name === resource.name);
-        if (!exists) await api.createVectorize(accountId, resource.name, resource.config ?? {});
+        const { metadataIndexes, ...indexConfig } = (resource.config ?? {}) as {
+          metadataIndexes?: { propertyName: string; indexType: "string" | "number" | "boolean" }[];
+        } & Record<string, unknown>;
+        if (!exists) await api.createVectorize(accountId, resource.name, indexConfig);
         log(`  Vectorize ${resource.name}: ${exists ? "exists" : "created"}`);
+        if (metadataIndexes?.length) {
+          const have = new Set(
+            (await api.listVectorizeMetadataIndexes(accountId, resource.name)).map(
+              (m) => m.propertyName,
+            ),
+          );
+          for (const m of metadataIndexes) {
+            if (have.has(m.propertyName)) continue;
+            await api.createVectorizeMetadataIndex(
+              accountId,
+              resource.name,
+              m.propertyName,
+              m.indexType,
+            );
+            log(`  Vectorize ${resource.name}: metadata index ${m.propertyName}`);
+          }
+        }
         out[key(resource)] = resource.name;
         break;
       }
@@ -463,6 +483,7 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
         deployedName,
         consumer.settings,
         existing,
+        consumer.deadLetterQueue ? renderString(consumer.deadLetterQueue, values) : undefined,
       );
     }
     const onWorkersDev = worker.public && state.hostnameMode === "workers.dev";

@@ -412,13 +412,13 @@ describe("shipped extensions: extend, don't modify; eject", () => {
     const index = read.files["index.ts"] as string;
     await call(admin, "extension.write", {
       id: "deals",
-      files: { "index.ts": index.replace('version: "1.0.0"', 'version: "1.1.0"') },
+      files: { "index.ts": index.replace(/version: "[^"]+"/, 'version: "9.9.9"') },
     });
     const proposed = await call<Proposed>(admin, "extension.propose", { id: "deals" });
     expect(proposed.status).toBe("pending_approval");
     expect(proposed.impact.kind).toBe("eject");
     await call(admin, "extension.approve", { actionId: proposed.actionId });
-    expect(await extensionRow("deals")).toMatchObject({ source: "runtime", version: "1.1.0" });
+    expect(await extensionRow("deals")).toMatchObject({ source: "runtime", version: "9.9.9" });
     // New releases leave it alone.
     expect(await installShippedExtensions({ db, host })).toEqual([
       { id: "deals", outcome: "ejected" },

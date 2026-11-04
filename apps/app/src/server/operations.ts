@@ -5,12 +5,15 @@
 // with a different actor and origin.
 import type { Principal } from "@crm/auth";
 import {
+  type AutomationHost,
+  type EventSink,
   type ExtensionHost,
   fakeBuildModel,
   type InvocationContext,
   invokeByName,
   modelRunnerFromEnv,
   parseFloor,
+  queueEventSink,
   type RateLimitBinding,
   resolveActingUser,
   type SerializedOperationError,
@@ -33,6 +36,8 @@ export interface OperationsEnv {
   OAUTH_KV?: KVNamespace;
   /** crm-runner: the extension host (ADR 0025). */
   RUNNER?: Fetcher;
+  /** The automation events queue (ADR 0130): committed changes start automations in crm-runner. */
+  AUTOMATION_EVENTS?: Queue;
   /** Workers AI, for model roles (ADR 0009). Optional: without it AI features say so. */
   AI?: unknown;
   /** Route model calls through this AI Gateway when set. */
@@ -60,6 +65,29 @@ export function extensionHostFor(env: OperationsEnv): ExtensionHost | undefined 
   if (!env.RUNNER) return undefined;
   const host = runner({ RUNNER: env.RUNNER }) as unknown as ExtensionHost;
   return withCodeModeRateLimit(rpcHost(host), env.CODE_MODE_RATE_LIMIT);
+}
+
+/**
+ * The automation wiring for an invocation (ADR 0130): committed record changes go to the
+ * AUTOMATION_EVENTS queue, and automation.test / run / retry / replay / cancel reach crm-runner.
+ */
+export function automationWiring(env: OperationsEnv): {
+  events?: EventSink;
+  automationHost?: AutomationHost;
+} {
+  const out: { events?: EventSink; automationHost?: AutomationHost } = {};
+  if (env.AUTOMATION_EVENTS) out.events = queueEventSink(env.AUTOMATION_EVENTS);
+  if (env.RUNNER) {
+    const stub = runner({ RUNNER: env.RUNNER });
+    out.automationHost = {
+      testAutomation: (input) => stub.testAutomation(input),
+      startManualRun: (input) => stub.startManualRun(input),
+      retryRun: (runId) => stub.retryRun(runId),
+      replayRun: (runId) => stub.replayRun(runId),
+      cancelRun: (runId) => stub.cancelRun(runId),
+    };
+  }
+  return out;
 }
 
 /** The RPC stub's methods as a plain object (an RPC stub cannot be spread). */
@@ -162,6 +190,7 @@ export async function runOperation(
       db,
       floor: parseFloor(env.APPROVAL_FLOOR),
       ...(extensionHost ? { extensionHost } : {}),
+      ...automationWiring(env),
       ...(models ? { models } : {}),
       updater: updaterRuntimeFor(env),
       approvalExpiryDays: Number.parseInt(env.APPROVAL_EXPIRY_DAYS ?? "", 10) || undefined,

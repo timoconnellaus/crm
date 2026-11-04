@@ -285,8 +285,14 @@ export class CloudflareClient {
     scriptName: string,
     settings: Record<string, unknown>,
     existingConsumerId?: string,
+    deadLetterQueue?: string,
   ) {
-    const body = { type: "worker", script_name: scriptName, settings };
+    const body = {
+      type: "worker",
+      script_name: scriptName,
+      settings,
+      ...(deadLetterQueue ? { dead_letter_queue: deadLetterQueue } : {}),
+    };
     if (existingConsumerId) {
       await this.request(
         "PUT",
@@ -306,6 +312,31 @@ export class CloudflareClient {
 
   async createVectorize(accountId: string, name: string, config: Record<string, unknown>) {
     await this.request("POST", `/accounts/${accountId}/vectorize/v2/indexes`, { name, config });
+  }
+
+  async listVectorizeMetadataIndexes(accountId: string, index: string) {
+    return (
+      (
+        await this.request<{ metadataIndexes?: { propertyName: string; indexType: string }[] }>(
+          "GET",
+          `/accounts/${accountId}/vectorize/v2/indexes/${index}/metadata_index/list`,
+        )
+      ).result.metadataIndexes ?? []
+    );
+  }
+
+  /** Metadata indexes make a property filterable; create them before inserting vectors. */
+  async createVectorizeMetadataIndex(
+    accountId: string,
+    index: string,
+    propertyName: string,
+    indexType: "string" | "number" | "boolean",
+  ) {
+    await this.request(
+      "POST",
+      `/accounts/${accountId}/vectorize/v2/indexes/${index}/metadata_index/create`,
+      { propertyName, indexType },
+    );
   }
 
   async deleteVectorize(accountId: string, name: string) {

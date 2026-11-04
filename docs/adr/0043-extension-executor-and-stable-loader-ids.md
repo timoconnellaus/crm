@@ -136,3 +136,5 @@ source goes straight into the worker (no more `/code/<uuid>` directories). Its l
   state in module scope. The SDK README now says so.
 - Upstreaming a reuse-safe mode (a `loaderId` option) to `cloudflare/computer` remains a possible
   follow-up (audit D1, option a). Nothing here depends on it.
+
+> Amended 2026-11-05: the crm-runner main-module budget is raised from 4,096 to 5,120 KiB (stage 5's automation engine reached 4,221 KiB; stage 7a's AI SDK adds about 1.1 MB). The rule that the TypeScript compiler must not be in the main module is unchanged.

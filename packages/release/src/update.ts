@@ -25,7 +25,7 @@ import {
   writeDeploymentState,
 } from "./deploy.ts";
 
-/** Pauses and resumes automations around an update. Stage 5 provides the real one. */
+/** Pauses and resumes automations around an update. */
 export interface AutomationControl {
   pause(): Promise<void>;
   resume(): Promise<void>;
@@ -35,6 +35,73 @@ export const noAutomationControl: AutomationControl = {
   async pause() {},
   async resume() {},
 };
+
+/** Stage 5's admin kill switch (core_settings, JSON boolean, migration 0130). */
+export const KILL_SWITCH_SETTING = "automations_kill_switch";
+
+/** Where the kill switch is read and written: D1 directly (the app) or over the REST API (CLI). */
+export interface KillSwitchStore {
+  /** The current value; false when unset. */
+  read(): Promise<boolean>;
+  write(on: boolean): Promise<void>;
+}
+
+/**
+ * Pauses automations with Stage 5's kill switch, reversibly: pause turns it on and remembers
+ * whether it was already on; resume turns it off only if pause turned it on. So a switch an
+ * admin had flipped before the update stays on afterwards. Resume runs after the smoke check,
+ * and after a rollback too (a Time Travel restore brings back the "on" taken after pause, which
+ * resume then turns off).
+ */
+export function killSwitchControl(store: KillSwitchStore): AutomationControl {
+  let turnedOn = false;
+  return {
+    async pause() {
+      if (await store.read()) return;
+      await store.write(true);
+      turnedOn = true;
+    },
+    async resume() {
+      if (!turnedOn) return;
+      await store.write(false);
+      turnedOn = false;
+    },
+  };
+}
+
+/** The kill switch over the D1 REST API, for `crm upgrade` and `crm rollback`. */
+export function apiKillSwitchStore(
+  api: CloudflareClient,
+  accountId: string,
+  databaseId: string,
+): KillSwitchStore {
+  return {
+    async read() {
+      try {
+        const [first] = await api.queryD1<{ value: string }>(
+          accountId,
+          databaseId,
+          "SELECT value FROM core_settings WHERE key = ?",
+          [KILL_SWITCH_SETTING],
+        );
+        const row = first?.results[0];
+        return row ? JSON.parse(row.value) === true : false;
+      } catch {
+        // No core_settings yet (a database older than any automation): nothing runs to pause.
+        return true;
+      }
+    },
+    async write(on) {
+      const now = new Date().toISOString();
+      await api.queryD1(
+        accountId,
+        databaseId,
+        "INSERT INTO core_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+        [KILL_SWITCH_SETTING, JSON.stringify(on), now],
+      );
+    },
+  };
+}
 
 export type UpdateStep =
   | "pause"

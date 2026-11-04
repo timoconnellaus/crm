@@ -5,6 +5,7 @@ import type { AuditChangeAction, CoreDatabase, CrmDb } from "@crm/db";
 import type { PermissionsManifest } from "@crm/sdk";
 import type { Compilable, CompiledQuery, Kysely } from "kysely";
 import type { z } from "zod";
+import type { AutomationHost, EventSink } from "./automations/types.ts";
 import type { WidgetCache } from "./dashboards/cache.ts";
 import type { FieldDiff } from "./diff.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
@@ -141,6 +142,10 @@ export interface HandlerContext {
   readonly widgetCache?: WidgetCache;
   /** The self-updater (ADR 0164), when the adapter provides one (update.*). */
   readonly updater?: UpdaterRuntime;
+  /** Post-commit automation events (ADR 0130), for operations that emit their own (approvals). */
+  readonly events?: EventSink;
+  /** crm-runner's automation host, for automation.* operations. */
+  readonly automationHost?: AutomationHost;
 }
 
 /** The extension an `extension`-actor call runs for, and its approved permissions. */

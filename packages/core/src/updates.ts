@@ -13,7 +13,11 @@ import type {
   RunRecord,
   UpdateOutcome,
 } from "@crm/release";
+import { killSwitchControl } from "@crm/release";
 import type { Kysely } from "kysely";
+import { AUTOMATION_SETTINGS } from "./automations/types.ts";
+
+const KILL_SWITCH_SETTING = AUTOMATION_SETTINGS.killSwitch;
 
 export type { AutomationControl } from "@crm/release";
 
@@ -50,11 +54,34 @@ export interface UpdaterRuntime {
 }
 
 /**
- * Pausing automations during an update. Stage 5 (automations) replaces this with one that holds
- * scheduled and event-triggered runs and resumes them after; until then there is nothing to pause.
+ * Pausing automations during an update with Stage 5's kill switch (ADR 0164 amendment): reversible,
+ * so a switch an admin had already turned on stays on. Written directly, outside the update
+ * operation's batch, because it must take effect before migrations start.
  */
-export function automationControlFor(_db: Kysely<CoreDatabase>): AutomationControl {
-  return { async pause() {}, async resume() {} };
+export function automationControlFor(db: Kysely<CoreDatabase>): AutomationControl {
+  return killSwitchControl({
+    async read() {
+      const row = await db
+        .selectFrom("core_settings")
+        .select("value")
+        .where("key", "=", KILL_SWITCH_SETTING)
+        .executeTakeFirst();
+      try {
+        return row ? JSON.parse(row.value) === true : false;
+      } catch {
+        return false;
+      }
+    },
+    async write(on) {
+      const value = JSON.stringify(on);
+      const now = new Date().toISOString();
+      await db
+        .insertInto("core_settings")
+        .values({ key: KILL_SWITCH_SETTING, value, updated_at: now, updated_by: null })
+        .onConflict((oc) => oc.column("key").doUpdateSet({ value, updated_at: now }))
+        .execute();
+    },
+  });
 }
 
 export type { PreflightResult };

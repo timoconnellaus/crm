@@ -19,7 +19,12 @@ import {
   type SourceIssue,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
-import { type ExtensionManifest, GATEKEEPER_MODULES, type RunResponse } from "@crm/sdk";
+import {
+  type AutomationRunRequest,
+  type ExtensionManifest,
+  GATEKEEPER_MODULES,
+  type RunResponse,
+} from "@crm/sdk";
 import { runBuildRole } from "../extensions/ai.ts";
 import {
   buildScript,
@@ -30,7 +35,14 @@ import {
 import { recordRun } from "../extensions/runs.ts";
 import { type BuildEnv, prepare, workspaceStub } from "./build-cache.ts";
 import type { CodeModeGate } from "./code-gate.ts";
-import { type HostEnv, RunHost, type RunState } from "./host.ts";
+import {
+  type AutomationRunContext,
+  type HostEnv,
+  RunHost,
+  type RunLog,
+  type RunOperation,
+  type RunState,
+} from "./host.ts";
 import { extensionWorkerCode, manifestWorkerId, moduleSet, toolWorkerId } from "./worker-code.ts";
 
 /** Consecutive failed runs that quarantine an extension (ADR 0025). */
@@ -59,7 +71,34 @@ interface ExtensionEntrypoint {
     request: { runId: string; tool: string; input: unknown; version: string; deadline: number },
     host: RunHost,
   ): Promise<RunResponse>;
+  runAutomation(request: AutomationRunRequest, host: RunHost): Promise<RunResponse>;
 }
+
+/** One automation advance (or a whole test run) and what the host saw it do (ADR 0130). */
+export interface AutomationExecution {
+  response: RunResponse;
+  operations: RunOperation[];
+  logs: RunLog[];
+  ms: number;
+  /** The worker id it ran on (LOADER.get with the tool worker's stable id). */
+  workerId: string | null;
+}
+
+export interface RunAutomationInput {
+  extensionId: string;
+  commit: string;
+  request: AutomationRunRequest;
+  automation: AutomationRunContext;
+}
+
+/** Automation step failures that retrying cannot fix: the Workflow stops at once. */
+export const PERMANENT_AUTOMATION_ERRORS = new Set([
+  "disabled",
+  "build",
+  "entry",
+  "unknown_automation",
+  "undeclared_step",
+]);
 
 interface CodeEntrypoint {
   run(
@@ -332,6 +371,107 @@ export class Executor {
     }
     if (response.ok) return { ok: true, value: response.value, runId };
     return { ok: false, error: response.error, runId, quarantined };
+  }
+
+  /**
+   * One advance of an automation run, or a whole test run (ADR 0130, ADR 0133), in the
+   * extension's tool worker: `LOADER.get` with the stable tool worker id, never `load()`. A
+   * failure counts towards quarantine like a tool failure.
+   */
+  async runAutomation(input: RunAutomationInput): Promise<AutomationExecution> {
+    const db = createCrmDb(this.#env.DB).query;
+    const row = await db
+      .selectFrom("core_extensions as e")
+      .innerJoin("core_user as u", "u.id", "e.user_id")
+      .select(["e.status", "e.manifest", "e.failure_count", "u.id as user_id", "u.email", "u.name"])
+      .where("e.id", "=", input.extensionId)
+      .executeTakeFirst();
+    if (row?.status !== "active") {
+      return {
+        response: {
+          ok: false,
+          error: {
+            code: "disabled",
+            message: `Extension ${input.extensionId} is ${row?.status ?? "not installed"}`,
+          },
+        },
+        operations: [],
+        logs: [],
+        ms: 0,
+        workerId: null,
+      };
+    }
+    const manifest = JSON.parse(row.manifest) as ExtensionManifest;
+    const modules = moduleSet(manifest.permissions.modules);
+    const workerId = await toolWorkerId({
+      extensionId: input.extensionId,
+      commit: input.commit,
+      modules,
+    });
+    let buildIssues: SourceIssue[] | null = null;
+    const worker = this.#loader.get(workerId, async () => {
+      const prepared = await prepare(this.#env, this.#loader, {
+        id: input.extensionId,
+        commit: input.commit,
+      });
+      if (!prepared.build.ok) {
+        buildIssues = prepared.build.issues;
+        throw new Error("The extension does not build");
+      }
+      return extensionWorkerCode(prepared.build.modules, modules);
+    });
+    const run: RunState = {
+      runId: input.automation.runId,
+      extensionId: input.extensionId,
+      automation: input.automation,
+      modules: new Set(modules),
+      user: { id: row.user_id, email: row.email, name: row.name, role: "member" },
+      permissions: manifest.permissions,
+      deadline: Date.now() + this.#toolTimeoutMs,
+      logs: [],
+      operations: [],
+    };
+    const host = new RunHost(this.#env, run);
+    const request = { ...input.request, version: manifest.version };
+    const outcome = await invoke<ExtensionEntrypoint, RunResponse>(
+      worker,
+      this.#toolTimeoutMs,
+      (ep) => ep.runAutomation(request, host),
+      host,
+    );
+    const issues = buildIssues as SourceIssue[] | null;
+    const response: RunResponse = issues
+      ? { ok: false, error: { code: "build", message: issues.map((i) => i.message).join("; ") } }
+      : "error" in outcome
+        ? { ok: false, error: outcome.error }
+        : isResponse(outcome.value)
+          ? outcome.value
+          : { ok: false, error: { code: "crashed", message: "The worker returned no result" } };
+    // Quarantine (ADR 0025): consecutive failures of real runs count; test runs do not.
+    if (!input.automation.simulate) {
+      const failures = response.ok ? 0 : row.failure_count + 1;
+      if (failures !== row.failure_count) {
+        const quarantined = failures >= QUARANTINE_AFTER;
+        await db
+          .updateTable("core_extensions")
+          .set({
+            failure_count: failures,
+            ...(quarantined
+              ? {
+                  status: "quarantined" as const,
+                  status_reason: `Quarantined after ${QUARANTINE_AFTER} consecutive failed runs (last: ${
+                    response.ok ? "" : response.error.message.slice(0, 200)
+                  })`,
+                }
+              : {}),
+            updated_at: new Date().toISOString(),
+          })
+          .where("id", "=", input.extensionId)
+          .where("status", "=", "active")
+          .execute();
+      }
+    }
+    return { response, operations: run.operations, logs: run.logs, ms: outcome.ms, workerId };
   }
 
   /**

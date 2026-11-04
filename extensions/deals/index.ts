@@ -5,6 +5,7 @@
 // deal and its organisation, for every actor. It runs through the same runtime as AI-written
 // extensions.
 import { defineExtension } from "@crm/sdk";
+import { dealAutomations } from "./automations.ts";
 import { pipelineHealth, salesOverview } from "./dashboards.ts";
 import { stageMetrics } from "./tools.ts";
 
@@ -48,15 +49,16 @@ const stage = (
 
 export default defineExtension({
   id: "deals",
-  version: "1.0.0",
+  version: "1.1.0",
   contractVersion: 1,
   label: "Deals",
   description:
     "Deals moving through pipelines of stages, with stage rules, probabilities, stage history " +
     "and the people involved.",
   permissions: {
-    read: ["organisation", "person"],
-    operations: ["query.sql"],
+    read: ["organisation", "person", "activity"],
+    write: ["task"],
+    operations: ["query.sql", "notification.send"],
     modules: ["crm", "log"],
   },
   objects: {
@@ -248,6 +250,8 @@ export default defineExtension({
         ["status", "closedAt"],
         ["organisation"],
         ["owner", "status"],
+        // The daily stalled-deal scan: open deals not changed since a date.
+        ["status", "updatedAt"],
       ],
     },
     participant: {
@@ -390,4 +394,5 @@ export default defineExtension({
   },
   dashboards: { salesOverview, pipelineHealth },
   tools: { stageMetrics },
+  automations: dealAutomations,
 });

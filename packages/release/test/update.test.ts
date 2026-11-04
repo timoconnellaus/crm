@@ -3,11 +3,14 @@
 // the previous release, and preflight.
 import { describe, expect, it } from "vitest";
 import {
+  apiKillSwitchStore,
   applyBundleMigrations,
   CloudflareClient,
   type DeploymentState,
   d1ApiMigrations,
   deployWorkers,
+  KILL_SWITCH_SETTING,
+  killSwitchControl,
   neededResources,
   openBundle,
   preflight,
@@ -176,6 +179,103 @@ describe("deploy engine", () => {
     expect(cf.liveBinding("crm-app", "CRM_RELEASE_VERSION")?.text).toBe("1.0.0");
     expect(await rows(api, databaseId, "SELECT name FROM core_person")).toEqual([{ name: "Ada" }]);
     expect((await readDeploymentState(api, ACCOUNT, databaseId))?.version).toBe("1.0.0");
+  });
+});
+
+describe("Stage 5 and 7a resources", () => {
+  it("provisions queues, the DLQ, consumers, Workflows and the Vectorize index, idempotently", async () => {
+    const { cf, api, state, bundle } = await setup();
+    expect([...cf.queues.values()].map((q) => q.name).sort()).toEqual([
+      "crm-automation-events",
+      "crm-automation-events-dlq",
+    ]);
+    const events = [...cf.queues.values()].find((q) => q.name === "crm-automation-events");
+    expect(events?.consumers).toEqual([
+      expect.objectContaining({
+        script_name: "crm-runner",
+        dead_letter_queue: "crm-automation-events-dlq",
+        settings: { batch_size: 100, max_retries: 5, max_wait_time_ms: 5000 },
+      }),
+    ]);
+    expect(cf.workflows.get("crm-automation")).toEqual({
+      className: "AutomationWorkflow",
+      script: "crm-runner",
+    });
+    expect(cf.liveBinding("crm-runner", "AUTOMATION_EVENTS")?.queue_name).toBe(
+      "crm-automation-events",
+    );
+    expect(cf.liveBinding("crm-runner", "AUTOMATION_RATE_LIMIT")).toMatchObject({
+      namespace_id: "4201",
+    });
+    expect(cf.vectorize.get("crm-records")).toEqual({ dimensions: 384, metric: "cosine" });
+    expect(cf.vectorizeMetadata.get("crm-records")).toEqual([
+      { propertyName: "object", indexType: "string" },
+    ]);
+    // A second run changes nothing and creates no second consumer or metadata index.
+    await provisionResources(api, ACCOUNT, neededResources(bundle.manifest, []));
+    await deployWorkers({ api, bundle, state, secrets: {} });
+    expect(cf.queues.size).toBe(2);
+    expect(events?.consumers).toHaveLength(1);
+    expect(cf.vectorizeMetadata.get("crm-records")).toHaveLength(1);
+  });
+});
+
+describe("pausing automations with the kill switch", () => {
+  const killSwitch = async (api: CloudflareClient, db: string) =>
+    (await rows(api, db, `SELECT value FROM core_settings WHERE key = '${KILL_SWITCH_SETTING}'`))[0]
+      ?.value ?? null;
+
+  it("is on while migrations run and off again after the smoke check", async () => {
+    const { api, state, databaseId, bundle } = await setup();
+    const target = await openBundle((await buildFixtureRelease({ version: "1.1.0" })).bundle);
+    const seen: Record<string, unknown> = {};
+    const outcome = await runUpdate({
+      api,
+      state,
+      databaseId,
+      target,
+      previous: async () => bundle,
+      migrations: d1ApiMigrations(api, ACCOUNT, databaseId),
+      automations: killSwitchControl(apiKillSwitchStore(api, ACCOUNT, databaseId)),
+      smoke: async () => {
+        seen.smoke = await killSwitch(api, databaseId);
+      },
+      onStep: async (step) => {
+        if (step === "migrate" || step === "switch") seen[step] = await killSwitch(api, databaseId);
+      },
+    });
+    expect(outcome.status).toBe("succeeded");
+    expect(seen).toEqual({ migrate: "true", switch: "true", smoke: "true" });
+    expect(await killSwitch(api, databaseId)).toBe("false");
+  });
+
+  it("is resumed after a rollback, and left on if an admin had it on before", async () => {
+    const { api, state, databaseId, bundle } = await setup();
+    const failing = await openBundle(
+      (
+        await buildFixtureRelease({
+          version: "1.1.0",
+          migrations: [["0161_bad.sql", "ALTER TABLE nope ADD x TEXT;"]],
+        })
+      ).bundle,
+    );
+    const run = () =>
+      runUpdate({
+        api,
+        state,
+        databaseId,
+        target: failing,
+        previous: async () => bundle,
+        migrations: d1ApiMigrations(api, ACCOUNT, databaseId),
+        automations: killSwitchControl(apiKillSwitchStore(api, ACCOUNT, databaseId)),
+        smoke: async () => {},
+      });
+    expect((await run()).status).toBe("rolled_back");
+    expect(await killSwitch(api, databaseId)).toBe("false");
+
+    await apiKillSwitchStore(api, ACCOUNT, databaseId).write(true);
+    expect((await run()).status).toBe("rolled_back");
+    expect(await killSwitch(api, databaseId)).toBe("true");
   });
 });
 

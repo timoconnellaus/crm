@@ -32,8 +32,7 @@ Status: accepted, 2026-11-05 (stage 8 build). Implements ADR 0054.
   `src/server/updater.ts`).
 - **Token:** optional `CRM_UPDATE_TOKEN` secret (same permissions as the installer). Without it the
   page shows the `npx create-crm upgrade` command, which does the same from an operator's machine.
-- **Pausing automations:** `automationControlFor()` in core is a no-op today; stage 5 replaces it
-  (hold scheduled and event-triggered runs, resume after).
+- **Pausing automations:** with stage 5's admin kill switch (see the amendment below).
 - **Smoke check:** CLI: `/api/health` reports `status: ok`, the target version (health now reports
   `CRM_RELEASE_VERSION`) and an up-to-date schema. In-Worker: the runner answers over its binding
   and, when the Worker can reach its own hostname, health reports the target version.
@@ -44,3 +43,15 @@ Status: accepted, 2026-11-05 (stage 8 build). Implements ADR 0054.
   CPU limit; the bundle is ~6 MB today.
 - A Worker cannot always fetch its own workers.dev URL, so the in-app smoke check is weaker than the
   CLI's; the CI install test covers the full check.
+
+## Amendment, 2026-11-05: automations pause with the stage 5 kill switch
+Stage 5 landed with an admin kill switch (`automation.killSwitch`, the `automations_kill_switch`
+setting) that stops every automation from dispatching or running. Updates use it:
+`killSwitchControl()` (`packages/release`) turns it on before the bookmark and migrations, and
+turns it off after the smoke check, and after a rollback. It is **reversible**: if the switch was
+already on when the update started, it stays on afterwards. The app writes it through its D1 binding
+(`automationControlFor` in core), and the CLI writes it over the D1 REST API (`apiKillSwitchStore`).
+Because the bookmark is taken after pausing, a restore brings back the "on" state, and resume then
+turns it off. The setting is written directly rather than through `automation.killSwitch`, because
+it is a system pause around a human-approved update, not an admin's decision. The update run row
+records it.

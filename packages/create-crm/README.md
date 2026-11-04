@@ -5,6 +5,9 @@ upgrade and roll it back. It downloads a release from GitHub Releases, verifies 
 GitHub build attestation, and talks to the Cloudflare API with your token. No wrangler, no service
 of ours, no telemetry.
 
+Not published to npm yet: build it from a checkout (`pnpm --filter create-crm build`) and run
+`node packages/create-crm/dist/cli.js` wherever this says `npx create-crm`.
+
 ```sh
 npx create-crm                  # install (or repair an install)
 npx create-crm upgrade          # update to the newest release on your channel

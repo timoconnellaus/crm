@@ -36,6 +36,7 @@ export const BASE_MIGRATIONS: [string, string][] = [
       "CREATE TABLE core_install (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL);",
       "CREATE TABLE core_update_runs (id TEXT PRIMARY KEY, kind TEXT NOT NULL, from_version TEXT, to_version TEXT NOT NULL, status TEXT NOT NULL, step TEXT, bookmark TEXT, bundle_digest TEXT, preflight TEXT, error TEXT, started_by TEXT, surface TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT);",
       "CREATE TABLE core_extensions (id TEXT PRIMARY KEY, source TEXT NOT NULL, status TEXT NOT NULL, manifest TEXT NOT NULL);",
+      "CREATE TABLE core_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL, updated_by TEXT);",
       "UPDATE core_meta SET value = '160' WHERE key = 'schema_version';",
     ].join("\n"),
   ],
@@ -147,12 +148,38 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     bindings: [
       { type: "d1", name: "DB", database_id: "$D1_ID(crm)" },
       { type: "durable_object_namespace", name: "WORKSPACE", class_name: "Workspace" },
+      // Stage 5 shapes: a Workflow, the automation events queue (consumed with a DLQ) and a
+      // rate limit; stage 7a's shape: a Vectorize index.
+      {
+        type: "workflow",
+        name: "AUTOMATION_WORKFLOW",
+        workflow_name: "crm-automation",
+        class_name: "AutomationWorkflow",
+      },
+      {
+        type: "queue",
+        name: "AUTOMATION_EVENTS",
+        queue_name: "$QUEUE_NAME(crm-automation-events)",
+      },
+      {
+        type: "ratelimit",
+        name: "AUTOMATION_RATE_LIMIT",
+        namespace_id: "4201",
+        simple: { limit: 60, period: 60 },
+      },
+      { type: "vectorize", name: "VECTORS", index_name: "$VECTORIZE_NAME(crm-records)" },
       { type: "plain_text", name: "APP_ORIGIN", text: "https://$HOSTNAME" },
     ],
     secrets: [],
     crons: [],
     public: false,
-    queueConsumers: [],
+    queueConsumers: [
+      {
+        queue: "$QUEUE_NAME(crm-automation-events)",
+        settings: { batch_size: 100, max_retries: 5, max_wait_time_ms: 5000 },
+        deadLetterQueue: "$QUEUE_NAME(crm-automation-events-dlq)",
+      },
+    ],
     dependsOn: [],
     gatekeeperBindings: { prefix: "GATEKEEPER_", entrypoint: "GatekeeperVendor" },
   });
@@ -225,6 +252,42 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       {
         type: "durable_object",
         name: "Workspace",
+        implicit: true,
+        usedBy: ["crm-runner"],
+        optional: false,
+      },
+      {
+        type: "queue",
+        name: "crm-automation-events",
+        placeholder: "$QUEUE_NAME(crm-automation-events)",
+        implicit: false,
+        usedBy: ["crm-runner"],
+        optional: false,
+      },
+      {
+        type: "queue",
+        name: "crm-automation-events-dlq",
+        placeholder: "$QUEUE_NAME(crm-automation-events-dlq)",
+        implicit: false,
+        usedBy: ["crm-runner"],
+        optional: false,
+      },
+      {
+        type: "vectorize",
+        name: "crm-records",
+        placeholder: "$VECTORIZE_NAME(crm-records)",
+        implicit: false,
+        usedBy: ["crm-runner"],
+        optional: false,
+        config: {
+          dimensions: 384,
+          metric: "cosine",
+          metadataIndexes: [{ propertyName: "object", indexType: "string" }],
+        },
+      },
+      {
+        type: "workflow",
+        name: "crm-automation",
         implicit: true,
         usedBy: ["crm-runner"],
         optional: false,
