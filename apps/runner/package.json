@@ -7,21 +7,26 @@
     "./rpc": "./src/rpc.ts"
   },
   "scripts": {
-    "dev": "wrangler dev",
-    "build": "wrangler deploy --dry-run --outdir dist",
+    "bundle": "node scripts/bundle.mjs",
+    "dev": "node scripts/bundle.mjs && wrangler dev",
+    "build": "node scripts/bundle.mjs && wrangler deploy --dry-run --outdir dist",
     "types": "wrangler types --strict-vars=false",
-    "typecheck": "wrangler types --strict-vars=false --check && tsc --noEmit",
-    "test": "vitest run",
-    "spike": "node scripts/spike-bench.mjs"
+    "typecheck": "node scripts/bundle.mjs && wrangler types --strict-vars=false --check && tsc --noEmit",
+    "test": "node scripts/bundle.mjs && vitest run"
   },
   "dependencies": {
     "@cloudflare/computer": "0.9.0",
+    "@crm/core": "workspace:*",
     "@crm/db": "workspace:*",
-    "@platformatic/vfs": "0.5.0"
+    "@crm/sdk": "workspace:*",
+    "@platformatic/vfs": "0.5.0",
+    "kysely": "0.29.8",
+    "sucrase": "3.35.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
     "@crm/config": "workspace:*",
+    "esbuild": "0.28.2",
     "typescript": "6.0.3",
     "vitest": "5.1.0",
     "wrangler": "4.157.0"

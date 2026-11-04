@@ -87,35 +87,86 @@ export function createTestHost(extension: Extension, options: TestHostOptions = 
   const logs: TestHost["logs"] = [];
   const storage = new Map<string, unknown>();
 
+  // Records are stored flat ({ id, ...values }) and returned in the host's record shape.
+  const titleOf = (object: string, row: Values): string | null => {
+    const local = object.startsWith(`${manifest.id}.`)
+      ? object.slice(manifest.id.length + 1)
+      : null;
+    const field = local ? manifest.objects[local]?.titleField : undefined;
+    const title = field ? row[field] : (row.name ?? row.displayName ?? row.title);
+    return title == null ? null : String(title);
+  };
+  const shape = (object: string, row: Values) => {
+    const { id, ...values } = row;
+    return { object, id, title: titleOf(object, row), values, createdAt: null, updatedAt: null };
+  };
+  const matches = (row: Values, filter: unknown): boolean => {
+    if (!filter || typeof filter !== "object") return true;
+    const f = filter as {
+      and?: unknown[];
+      or?: unknown[];
+      field?: string;
+      op?: string;
+      value?: unknown;
+    };
+    if (f.and) return f.and.every((child) => matches(row, child));
+    if (f.or) return f.or.some((child) => matches(row, child));
+    const value = f.field ? row[f.field] : undefined;
+    switch (f.op) {
+      case "eq":
+        return value === f.value;
+      case "neq":
+        return value !== f.value;
+      case "is_null":
+        return value == null;
+      case "is_not_null":
+        return value != null;
+      case "in":
+        return Array.isArray(f.value) && f.value.includes(value);
+      default:
+        throw new ExtensionToolError(
+          "unsupported",
+          `The test host does not fake filter op ${f.op}`,
+        );
+    }
+  };
   const builtIn: Record<string, OperationFake> = {
     "record.create": (input) => {
       sequence += 1;
+      const object = String(input.object);
       const id = `rec_test${sequence}`;
       const row = { ...(input.values as Record<string, unknown>), id };
-      table(String(input.object)).set(id, row);
-      return row;
+      table(object).set(id, row);
+      return shape(object, row);
     },
     "record.get": (input) => {
-      const row = table(String(input.object)).get(String(input.id));
-      if (!row) throw new ExtensionToolError("not_found", `No ${input.object} with id ${input.id}`);
-      return row;
+      const object = String(input.object);
+      const row = table(object).get(String(input.id));
+      if (!row) throw new ExtensionToolError("not_found", `No ${object} with id ${input.id}`);
+      return shape(object, row);
     },
     "record.update": (input) => {
-      const rows = table(String(input.object));
+      const object = String(input.object);
+      const rows = table(object);
       const row = rows.get(String(input.id));
-      if (!row) throw new ExtensionToolError("not_found", `No ${input.object} with id ${input.id}`);
+      if (!row) throw new ExtensionToolError("not_found", `No ${object} with id ${input.id}`);
       const next = { ...row, ...(input.values as Record<string, unknown>), id: row.id };
       rows.set(row.id, next);
-      return next;
+      return shape(object, next);
     },
     "record.delete": (input) => {
       table(String(input.object)).delete(String(input.id));
       return { id: input.id };
     },
-    "record.list": (input) => ({
-      items: [...table(String(input.object)).values()],
-      nextCursor: null,
-    }),
+    "record.list": (input) => {
+      const object = String(input.object);
+      return {
+        items: [...table(object).values()]
+          .filter((row) => matches(row, input.filter))
+          .map((row) => shape(object, row)),
+        nextCursor: null,
+      };
+    },
   };
   for (const object of CORE_OBJECT_NAMES) {
     builtIn[`${object}.get`] = (input) => builtIn["record.get"]?.({ ...input, object });
@@ -134,10 +185,24 @@ export function createTestHost(extension: Extension, options: TestHostOptions = 
           object: objectOf(name, body),
         });
         calls.push({ operation: name, input: body, allowed: decision.ok });
-        if (!decision.ok) throw new ExtensionToolError("forbidden", decision.reason);
+        if (!decision.ok)
+          return { ok: false, error: { code: "forbidden", message: decision.reason } };
         const fake = options.operations?.[name] ?? builtIn[name];
-        if (!fake) throw new ExtensionToolError("unknown_operation", `No fake for ${name}`);
-        return structuredClone(await fake(body));
+        if (!fake) {
+          return {
+            ok: false,
+            error: { code: "unknown_operation", message: `No fake for ${name}` },
+          };
+        }
+        try {
+          return { ok: true, value: structuredClone(await fake(body)) };
+        } catch (error) {
+          const e = error as { code?: string; message?: string };
+          return {
+            ok: false,
+            error: { code: e.code ?? "internal", message: e.message ?? String(error) },
+          };
+        }
       },
     };
   }

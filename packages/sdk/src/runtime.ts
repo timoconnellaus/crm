@@ -30,6 +30,23 @@ export type RunResponse =
   | { ok: true; value: unknown }
   | { ok: false; error: { code: string; message: string; details?: unknown } };
 
+/** What `codemode:crm`'s `call` returns. */
+export type CrmReply =
+  | { ok: true; value: unknown }
+  | { ok: false; error: { code: string; message: string; details?: unknown } };
+
+/** Thrown by `ctx.crm.call` when the operation fails; `code` is the pipeline's error code. */
+export class CrmCallError extends Error {
+  override name = "CrmCallError";
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly details?: unknown,
+  ) {
+    super(message);
+  }
+}
+
 function missing(name: string): never {
   throw new Error(
     `Host module "${name}" is not declared. Add "${name}" to permissions.modules in defineExtension.`,
@@ -52,7 +69,14 @@ export function buildContext(
   pending: Promise<unknown>[] = [],
 ): ExtensionContext {
   const crm: CrmModule = raw.crm
-    ? { call: (operation, input) => raw.crm?.call(operation, input ?? {}) as Promise<never> }
+    ? {
+        call: async (operation, input) => {
+          // The host answers with an envelope so error codes survive the isolate boundary.
+          const reply = (await raw.crm?.call(operation, input ?? {})) as CrmReply;
+          if (reply.ok) return reply.value as never;
+          throw new CrmCallError(reply.error.code, reply.error.message, reply.error.details);
+        },
+      }
     : absent("crm");
   const storage: StorageModule = raw.storage
     ? {

@@ -51,7 +51,6 @@ export const RESERVED_FIELD_NAMES = new Set([
   "createdBy",
   "deletedBy",
   "tags",
-  "title",
 ]);
 /** Operation prefixes no extension may be granted. */
 export const FORBIDDEN_OPERATION_PREFIXES = ["extension.", "policy.", "user.", "audit."] as const;
@@ -249,6 +248,76 @@ export function toManifest(extension: Extension): ExtensionManifest {
   return parsed.data;
 }
 
+/**
+ * Core fields formulas on core objects can read, by formula type. The host checks this list
+ * against its field registry (packages/core/test/sdk-core-fields.test.ts), so the SDK and the
+ * testing harness agree with the host without depending on it.
+ */
+export const CORE_FORMULA_FIELDS: Record<
+  (typeof CORE_OBJECT_NAMES)[number],
+  Record<string, "text" | "number" | "boolean" | "date" | "datetime">
+> = {
+  person: {
+    id: "text",
+    displayName: "text",
+    givenName: "text",
+    familyName: "text",
+    primaryEmail: "text",
+    primaryPhone: "text",
+    jobTitle: "text",
+    organisationId: "text",
+    organisationName: "text",
+    location: "text",
+    timezone: "text",
+    ownerId: "text",
+    createdAt: "datetime",
+    updatedAt: "datetime",
+  },
+  organisation: {
+    id: "text",
+    name: "text",
+    primaryDomain: "text",
+    website: "text",
+    industry: "text",
+    parentId: "text",
+    parentName: "text",
+    ownerId: "text",
+    currentPeopleCount: "number",
+    createdAt: "datetime",
+    updatedAt: "datetime",
+  },
+  activity: {
+    id: "text",
+    type: "text",
+    subject: "text",
+    body: "text",
+    occurredAt: "datetime",
+    authorUserId: "text",
+    authorActor: "text",
+    createdAt: "datetime",
+  },
+  task: {
+    id: "text",
+    title: "text",
+    notes: "text",
+    dueAt: "datetime",
+    status: "text",
+    completedAt: "datetime",
+    assigneeId: "text",
+    createdBy: "text",
+    createdAt: "datetime",
+    updatedAt: "datetime",
+  },
+};
+
+function coreFormulaRefs(object: string): Record<string, FormulaFieldRef> {
+  const fields = (CORE_FORMULA_FIELDS as Record<string, Record<string, string>>)[object];
+  if (!fields) return {};
+  return Object.fromEntries(
+    Object.entries(fields).map(([name, type]) => [name, { type, sql: name } as FormulaFieldRef]),
+  );
+}
+
 export interface ValidateOptions {
   /**
    * Fields a formula on `object` may read, other than the extension's own fields on it: the
@@ -425,7 +494,8 @@ export function validateManifest(
       contract(path, "Declare fields of your own objects in objects.<name>.fields");
       continue;
     }
-    const env = { ...(options.baseFields?.(target) ?? {}), ...formulaFields(fields) };
+    const base = options.baseFields?.(target) ?? coreFormulaRefs(target);
+    const env = { ...base, ...formulaFields(fields) };
     checkFields(path, target, fields, env);
   }
 

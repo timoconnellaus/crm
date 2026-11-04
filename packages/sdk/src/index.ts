@@ -9,6 +9,8 @@ export * from "./manifest.ts";
 export * from "./permissions.ts";
 export {
   buildContext,
+  CrmCallError,
+  type CrmReply,
   type RawHostModules,
   type RunRequest,
   type RunResponse,
