@@ -13,7 +13,7 @@ risk for the next.
 | 4 | Deals + views | Deals/Pipelines as the first shipped extension; view specs, dashboards with read-only SQL | spec agreed |
 | 5 | Automations | Triggers (record events via Queues, schedules), Workflows for long runs, run history | spec agreed |
 | 6 | Integrations | Vendor `gatekeeper-kit` + gatekeepers (Google, Microsoft, email, Slack, MCP); Workshop-side interface in the runner; email/calendar sync onto the timeline | — |
-| 7 | In-app AI | Model-role registry UI, assistant chat, summaries, embeddings search, policy adjudicator (`review` role) | — |
+| 7 | In-app AI | Model-role registry UI, assistant chat, summaries, embeddings search, policy adjudicator (`review` role) | spec agreed |
 | 8 | Distribution | Release bundles, deploy service, in-app "update available" | — |
 
 The approval pipeline is built up over several stages: the gate in 1, the queue and simulation in 2,
