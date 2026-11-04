@@ -29,7 +29,7 @@ Terms are defined in [`CONTEXT.md`](../CONTEXT.md). Decisions and their reasons 
                          └─────────────────────────────┬─────────────────────────────────────┘
                                                        ▼
                                              external services
- D1 (one database) · R2 (files) · AI Gateway → Workers AI / Anthropic / … (per model role)
+ D1 (one database) · R2 (files) · AI Gateway → Workers AI by default / other providers optional (per model role)
 ```
 
 ## Layers
@@ -156,6 +156,10 @@ everyone else reads real data. A person approves or rejects (`approval.approve` 
 approval re-runs each action through the pipeline as the original actor, binding provisional to
 real ids, and fails an action cleanly if its record changed or was deleted meanwhile. Rejection
 cascades to dependents; pending actions expire after `APPROVAL_EXPIRY_DAYS` (default 7).
+People review in the **Approvals inbox** (`/approvals`: change sets with readable diffs, approve or
+reject whole or per item), with a count in the sidebar and **pending-change badges** on record
+headers and list rows (`approval.pendingForRecord`). An erase also scrubs pending actions that
+mention the erased record (ADR 0032 amendment).
 
 ### MCP
 

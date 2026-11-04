@@ -33,6 +33,11 @@ export const auditEntrySchema = z.object({
   gateDecision: z.string(),
   outcome: z.string(),
   error: z.unknown(),
+  /**
+   * The pending action (pac_…) this row belongs to: the queued request (outcome `review`) or,
+   * after approval, the applied result (gate `review`, outcome `ok`). ADR 0032.
+   */
+  pendingActionId: z.string().nullable(),
   changes: z.array(auditChangeSchema),
 });
 
@@ -46,8 +51,9 @@ export const auditList = defineOperation({
   description:
     "The admin audit log: every write, every refusal and every non-human read, newest first. " +
     "Filter by userId, actor (human, assistant, mcp, automation), operation (exact name, or a " +
-    "prefix ending in '.*' such as 'person.*'), outcome, a record (object + recordId) and a date " +
-    "range (from inclusive, to exclusive). Each entry includes its field diffs. Admins only. " +
+    "prefix ending in '.*' such as 'person.*'), outcome, a record (object + recordId), a pending " +
+    "action (pendingActionId: its queued request and applied result) and a date range (from " +
+    "inclusive, to exclusive). Each entry includes its field diffs. Admins only. " +
     "Read-only.",
   input: z.object({
     userId: z.string().max(64).optional(),
@@ -60,6 +66,7 @@ export const auditList = defineOperation({
     outcome: z.enum(["ok", "forbidden", "denied", "review", "error"]).optional(),
     object: recordRefSchema.shape.object.optional(),
     recordId: z.string().max(64).optional(),
+    pendingActionId: z.string().startsWith("pac_").max(64).optional(),
     from: isoDateTime.optional(),
     to: isoDateTime.optional(),
     cursor: z.string().max(1000).optional(),
@@ -78,6 +85,9 @@ export const auditList = defineOperation({
     if (input.userId) query = query.where("a.user_id", "=", input.userId);
     if (input.actor) query = query.where("a.actor", "=", input.actor);
     if (input.outcome) query = query.where("a.outcome", "=", input.outcome);
+    if (input.pendingActionId) {
+      query = query.where("a.pending_action_id", "=", input.pendingActionId);
+    }
     if (input.operation?.endsWith(".*")) {
       const prefix = input.operation.slice(0, -1); // keep the dot
       query = query.where(sql<boolean>`substr(a.operation, 1, ${prefix.length}) = ${prefix}`);
@@ -146,6 +156,7 @@ export const auditList = defineOperation({
         gateDecision: row.gate_decision,
         outcome: row.outcome,
         error: parse(row.error),
+        pendingActionId: row.pending_action_id,
         changes: changes.get(row.id) ?? [],
       })),
       nextCursor:

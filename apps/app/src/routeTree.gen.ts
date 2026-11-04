@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
+import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppStatusRouteImport } from './routes/_app/status'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
@@ -25,6 +26,7 @@ import { Route as AppPeopleIdRouteImport } from './routes/_app/people/$id'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsApprovalPolicyRouteImport } from './routes/_app/settings/approval-policy'
 import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
+import { Route as AppSettingsConnectedAppsRouteImport } from './routes/_app/settings/connected-apps'
 import { Route as AppSettingsExtensionsRouteImport } from './routes/_app/settings/extensions'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -48,6 +50,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppActivityRoute = AppActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppApprovalsRoute = AppApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
   getParentRoute: () => AppRoute,
 } as any)
 const AppImportRoute = AppImportRouteImport.update({
@@ -111,6 +118,12 @@ const AppSettingsAuditRoute = AppSettingsAuditRouteImport.update({
   path: '/settings/audit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsConnectedAppsRoute =
+  AppSettingsConnectedAppsRouteImport.update({
+    id: '/settings/connected-apps',
+    path: '/settings/connected-apps',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSettingsExtensionsRoute = AppSettingsExtensionsRouteImport.update({
   id: '/settings/extensions',
   path: '/settings/extensions',
@@ -141,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/sign-in': typeof SignInRoute
   '/activity': typeof AppActivityRoute
+  '/approvals': typeof AppApprovalsRoute
   '/import': typeof AppImportRoute
   '/status': typeof AppStatusRoute
   '/tasks': typeof AppTasksRoute
@@ -150,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/settings/audit': typeof AppSettingsAuditRoute
+  '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -162,6 +177,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/activity': typeof AppActivityRoute
+  '/approvals': typeof AppApprovalsRoute
   '/import': typeof AppImportRoute
   '/status': typeof AppStatusRoute
   '/tasks': typeof AppTasksRoute
@@ -172,6 +188,7 @@ export interface FileRoutesByTo {
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/settings/audit': typeof AppSettingsAuditRoute
+  '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -186,6 +203,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/_app/activity': typeof AppActivityRoute
+  '/_app/approvals': typeof AppApprovalsRoute
   '/_app/import': typeof AppImportRoute
   '/_app/status': typeof AppStatusRoute
   '/_app/tasks': typeof AppTasksRoute
@@ -196,6 +214,7 @@ export interface FileRoutesById {
   '/_app/people/$id': typeof AppPeopleIdRoute
   '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/_app/settings/audit': typeof AppSettingsAuditRoute
+  '/_app/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/_app/settings/extensions': typeof AppSettingsExtensionsRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -211,6 +230,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/activity'
+    | '/approvals'
     | '/import'
     | '/status'
     | '/tasks'
@@ -220,6 +240,7 @@ export interface FileRouteTypes {
     | '/people/$id'
     | '/settings/approval-policy'
     | '/settings/audit'
+    | '/settings/connected-apps'
     | '/settings/extensions'
     | '/settings/users'
     | '/api/auth/$'
@@ -232,6 +253,7 @@ export interface FileRouteTypes {
   to:
     | '/sign-in'
     | '/activity'
+    | '/approvals'
     | '/import'
     | '/status'
     | '/tasks'
@@ -242,6 +264,7 @@ export interface FileRouteTypes {
     | '/people/$id'
     | '/settings/approval-policy'
     | '/settings/audit'
+    | '/settings/connected-apps'
     | '/settings/extensions'
     | '/settings/users'
     | '/api/auth/$'
@@ -255,6 +278,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/sign-in'
     | '/_app/activity'
+    | '/_app/approvals'
     | '/_app/import'
     | '/_app/status'
     | '/_app/tasks'
@@ -265,6 +289,7 @@ export interface FileRouteTypes {
     | '/_app/people/$id'
     | '/_app/settings/approval-policy'
     | '/_app/settings/audit'
+    | '/_app/settings/connected-apps'
     | '/_app/settings/extensions'
     | '/_app/settings/users'
     | '/api/auth/$'
@@ -310,6 +335,13 @@ declare module '@tanstack/react-router' {
       path: '/activity'
       fullPath: '/activity'
       preLoaderRoute: typeof AppActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/approvals': {
+      id: '/_app/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof AppApprovalsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/import': {
@@ -396,6 +428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsAuditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/connected-apps': {
+      id: '/_app/settings/connected-apps'
+      path: '/settings/connected-apps'
+      fullPath: '/settings/connected-apps'
+      preLoaderRoute: typeof AppSettingsConnectedAppsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/extensions': {
       id: '/_app/settings/extensions'
       path: '/settings/extensions'
@@ -436,6 +475,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
+  AppApprovalsRoute: typeof AppApprovalsRoute
   AppImportRoute: typeof AppImportRoute
   AppStatusRoute: typeof AppStatusRoute
   AppTasksRoute: typeof AppTasksRoute
@@ -445,6 +485,7 @@ interface AppRouteChildren {
   AppPeopleIdRoute: typeof AppPeopleIdRoute
   AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
+  AppSettingsConnectedAppsRoute: typeof AppSettingsConnectedAppsRoute
   AppSettingsExtensionsRoute: typeof AppSettingsExtensionsRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
   AppOrganisationsIndexRoute: typeof AppOrganisationsIndexRoute
@@ -456,6 +497,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
+  AppApprovalsRoute: AppApprovalsRoute,
   AppImportRoute: AppImportRoute,
   AppStatusRoute: AppStatusRoute,
   AppTasksRoute: AppTasksRoute,
@@ -465,6 +507,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPeopleIdRoute: AppPeopleIdRoute,
   AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
   AppSettingsAuditRoute: AppSettingsAuditRoute,
+  AppSettingsConnectedAppsRoute: AppSettingsConnectedAppsRoute,
   AppSettingsExtensionsRoute: AppSettingsExtensionsRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,
   AppOrganisationsIndexRoute: AppOrganisationsIndexRoute,
