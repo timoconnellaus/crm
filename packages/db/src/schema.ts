@@ -920,7 +920,42 @@ export interface CrmStageHistoryView {
   entered_by: string | null;
 }
 
+/** Cached `summarise` output (migration 0150, ADR 0153). */
+export interface CoreAiSummaryTable {
+  kind: "record" | "meeting" | "activity" | "changeset";
+  subject_type: string;
+  subject_id: string;
+  input_hash: string;
+  text: string;
+  model: string;
+  /** JSON array of the record ids the input was built from. */
+  sources: string;
+  created_at: string;
+  created_by: string | null;
+}
+
+/** One embedded record: the hash of the embedded text (migration 0150, ADR 0154). */
+export interface CoreEmbeddingTable {
+  object_type: string;
+  record_id: string;
+  vector_id: string;
+  text_hash: string;
+  model: string;
+  embedded_at: string;
+}
+
+/** Records whose embedding may be stale, drained in batches (migration 0150, ADR 0154). */
+export interface CoreEmbeddingQueueTable {
+  object_type: string;
+  record_id: string;
+  queued_at: string;
+  attempts: Generated<number>;
+}
+
 export interface CoreDatabase {
+  core_ai_summary: CoreAiSummaryTable;
+  core_embedding: CoreEmbeddingTable;
+  core_embedding_queue: CoreEmbeddingQueueTable;
   core_meta: CoreMetaTable;
   core_migrations: CoreMigrationsTable;
   core_user: CoreUserTable;

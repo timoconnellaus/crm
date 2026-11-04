@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { formatDateTime, formatValue } from "#/lib/format";
 import { callOp } from "#/lib/operations";
 import { errorMessage, useOpMutation } from "#/lib/query";
+import { ActivityLine, MeetingPrepButton, useActivityLines } from "../ai/timeline-ai.tsx";
 import { EmptyState, ErrorState } from "../empty-state.tsx";
 import { LoadMoreSentinel } from "../layout/infinite.tsx";
 import { Markdown } from "../markdown.tsx";
@@ -215,6 +216,7 @@ export function Timeline({
   loadMoreFailed,
   emptyTitle = "No activity yet",
 }: TimelineProps) {
+  const lines = useActivityLines(limit ? items.slice(0, limit) : items);
   if (isPending) return <TimelineSkeleton />;
   if (error) return <ErrorState title="Could not load activity" error={error} />;
   if (!items.length) {
@@ -232,7 +234,7 @@ export function Timeline({
       <ol className="relative grid gap-4 border-l pl-6" aria-label="Timeline">
         {shown.map((item) => (
           <li key={item.id} className="relative" data-activity-type={item.type}>
-            <TimelineEntry item={item} showLinks={showLinks} />
+            <TimelineEntry item={item} showLinks={showLinks} aiLine={lines.get(item.id)} />
           </li>
         ))}
       </ol>
@@ -253,7 +255,16 @@ export function Timeline({
 }
 
 /** One activity: type icon (hung on the timeline's rule), subject, time, author and body. */
-export function TimelineEntry({ item, showLinks }: { item: TimelineItem; showLinks?: boolean }) {
+export function TimelineEntry({
+  item,
+  showLinks,
+  aiLine,
+}: {
+  item: TimelineItem;
+  showLinks?: boolean;
+  /** An AI one-line summary of a long body (useActivityLines). */
+  aiLine?: string;
+}) {
   const Icon = TYPE_ICON[item.type] ?? SparklesIcon;
   const summary = payloadSummary(item);
   const links = showLinks ? item.links.filter((l) => LINK_ROUTE[l.object]) : [];
@@ -274,7 +285,9 @@ export function TimelineEntry({ item, showLinks }: { item: TimelineItem; showLin
         )}
         {item.synced && <SyncedMarkers item={item} />}
       </div>
+      {aiLine && <ActivityLine text={aiLine} />}
       {summary && <p className="mt-0.5 text-xs text-muted-foreground">{summary}</p>}
+      {item.type === "meeting" && <MeetingPrepButton id={item.id} subject={item.subject} />}
       {item.payload.kind === "job_change" && <JobChange payload={item.payload} />}
       {item.payload.changes?.length ? (
         <ul className="mt-1 text-sm text-muted-foreground">

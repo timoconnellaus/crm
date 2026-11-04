@@ -26,3 +26,8 @@ Status: accepted, 2026-11-05 (stage 4a build). Applies ADR 0009.
 ## Consequences
 - The stage-7 registry replaces `modelRunnerFromEnv` with per-role providers and admin overrides;
   callers keep asking for the `build` role.
+
+## Amendment, 2026-11-05 (stage 7a, ADR 0150)
+`modelRunnerFromEnv` now builds the registry-backed runner: the `build` role resolves through
+shipped defaults, deploy config and Settings → AI overrides, with a fallback, through AI Gateway.
+`AI_FAKE_MODEL=true` answers every role locally, not just `build` (ADR 0156).

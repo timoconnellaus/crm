@@ -8,10 +8,8 @@ import {
   type AutomationHost,
   type EventSink,
   type ExtensionHost,
-  fakeBuildModel,
   type InvocationContext,
   invokeByName,
-  modelRunnerFromEnv,
   parseFloor,
   queueEventSink,
   type RateLimitBinding,
@@ -21,11 +19,12 @@ import {
   withCodeModeRateLimit,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
+import { type AiAppEnv, aiContextFor } from "./ai.ts";
 import { blobStoreFor, integrationRuntimeFor } from "./integrations.ts";
 import { deleteGrantTokens } from "./mcp/handler.ts";
 import { runner } from "./runner.ts";
 
-export interface OperationsEnv {
+export interface OperationsEnv extends AiAppEnv {
   DB: D1Database;
   /** Deploy-time approval floor (ADR 0011), JSON. Empty means none. */
   APPROVAL_FLOOR?: string;
@@ -37,12 +36,6 @@ export interface OperationsEnv {
   RUNNER?: Fetcher;
   /** The automation events queue (ADR 0130): committed changes start automations in crm-runner. */
   AUTOMATION_EVENTS?: Queue;
-  /** Workers AI, for model roles (ADR 0009). Optional: without it AI features say so. */
-  AI?: unknown;
-  /** Route model calls through this AI Gateway when set. */
-  AI_GATEWAY_ID?: string;
-  /** "true": a deterministic stand-in for the build role when there is no AI binding (local/e2e). */
-  AI_FAKE_MODEL?: string;
   /** Code Mode runs per user (Workers Rate Limiting, ADR 0043). */
   CODE_MODE_RATE_LIMIT?: RateLimitBinding;
   /** Synced email bodies (R2, ADR 0112). */
@@ -173,7 +166,6 @@ export async function runOperation(
     const extensionHost = extensionHostFor(env);
     const integrations = integrationRuntimeFor(env, appOrigin);
     const blobs = blobStoreFor(env);
-    const models = modelRunnerFromEnv(env, fakeBuildModel);
     const ctx: InvocationContext = {
       ...(integrations ? { integrations } : {}),
       ...(blobs ? { blobs } : {}),
@@ -184,7 +176,7 @@ export async function runOperation(
       floor: parseFloor(env.APPROVAL_FLOOR),
       ...(extensionHost ? { extensionHost } : {}),
       ...automationWiring(env),
-      ...(models ? { models } : {}),
+      ...aiContextFor(env, db),
       approvalExpiryDays: Number.parseInt(env.APPROVAL_EXPIRY_DAYS ?? "", 10) || undefined,
     };
     const data = await invokeByName(call.name, call.input, ctx);

@@ -5,6 +5,9 @@ import type { AuditChangeAction, CoreDatabase, CrmDb } from "@crm/db";
 import type { PermissionsManifest } from "@crm/sdk";
 import type { Compilable, CompiledQuery, Kysely } from "kysely";
 import type { z } from "zod";
+import type { AiAdmin } from "./ai/admin.ts";
+import type { AiEnv } from "./ai/client.ts";
+import type { VectorStore } from "./ai/vectors.ts";
 import type { AutomationHost, EventSink } from "./automations/types.ts";
 import type { WidgetCache } from "./dashboards/cache.ts";
 import type { FieldDiff } from "./diff.ts";
@@ -139,6 +142,12 @@ export interface HandlerContext {
   readonly models?: ModelRunner;
   /** The dashboard widget result cache (ADR 0057). Absent: the Workers Cache API. */
   readonly widgetCache?: WidgetCache;
+  /** Record embeddings (ADR 0154). Absent: semantic search is not configured. */
+  readonly vectors?: VectorStore;
+  /** Cloudflare API access for Settings → AI (ADR 0151, 0152), when configured. */
+  readonly aiAdmin?: AiAdmin;
+  /** The AI part of the Worker environment (bindings present, deploy config). */
+  readonly aiEnv?: AiEnv;
   /** Post-commit automation events (ADR 0130), for operations that emit their own (approvals). */
   readonly events?: EventSink;
   /** crm-runner's automation host, for automation.* operations. */

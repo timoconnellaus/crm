@@ -15,6 +15,7 @@ import {
   ScrollTextIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   Trash2Icon,
   UserCogIcon,
   UserPlusIcon,
@@ -42,7 +43,8 @@ export interface NavItem {
     | "/settings/connected-apps"
     | "/settings/extensions"
     | "/settings/automations"
-    | "/settings/integrations";
+    | "/settings/integrations"
+    | "/settings/ai";
   label: string;
   icon: LucideIcon;
   /** Extra words the palette matches on. */
@@ -143,6 +145,13 @@ export const SETTINGS_NAV: NavItem[] = [
     label: "Automation settings",
     icon: OctagonXIcon,
     keywords: ["kill switch", "timezone", "debounce", "schedule", "settings"],
+  },
+  {
+    to: "/settings/ai",
+    label: "AI settings",
+    icon: SparklesIcon,
+    keywords: ["models", "model roles", "providers", "api keys", "usage", "embeddings"],
+    adminOnly: true,
   },
 ];
 

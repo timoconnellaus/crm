@@ -93,3 +93,14 @@ refused on both tables, unconditionally.
   so there is nothing in them to redact. Compacted pending actions are still found through
   `core_pending_action_records` and redacted as before. `packages/core/test/retention.test.ts`
   covers both.
+
+## Amendment, 2026-11-05 (stage 7a: AI summaries and embeddings)
+- **Summaries**: an erase deletes every `core_ai_summary` row about the erased records, their
+  deleted activities and tasks, or built from any of them (`sources`), in the erase's own batch
+  (ADR 0153).
+- **Vectors**: an erase queues the erased records and every activity and task that held their
+  text (their own, which are deleted, and shared ones, which are scrubbed) for the embedding
+  drain, which runs right after the commit: records with no text left lose their Vectorize vector
+  and `core_embedding` row; scrubbed shared ones are re-embedded from the scrubbed text
+  (ADR 0154). `core_embedding` holds only ids and hashes. Tested in
+  `packages/core/test/ai-embeddings.test.ts` ("erase removes the person's vectors…").

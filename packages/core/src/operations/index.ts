@@ -5,6 +5,7 @@
 import { syncOperations } from "../sync/ingest.ts";
 import { activityOperations } from "./activity.ts";
 import { affiliationOperations } from "./affiliation.ts";
+import { aiOperations } from "./ai.ts";
 import { approvalOperations } from "./approval.ts";
 import { auditOperations } from "./audit.ts";
 import { automationOperations } from "./automation.ts";
@@ -30,6 +31,7 @@ import { retentionOperations } from "./retention.ts";
 import { searchOperations } from "./search.ts";
 import { settingsOperations } from "./settings.ts";
 import { suggestionOperations } from "./suggestions.ts";
+import { summaryOperations } from "./summary.ts";
 import { taskOperations } from "./task.ts";
 import { trashOperations } from "./trash.ts";
 import { userOperations } from "./user.ts";
@@ -67,6 +69,8 @@ export const coreOperations = [
   ...settingsOperations,
   ...dashboardOperations,
   ...extensionUiOperations,
+  ...aiOperations,
+  ...summaryOperations,
   ...automationOperations,
   ...notificationOperations,
 ] as const;

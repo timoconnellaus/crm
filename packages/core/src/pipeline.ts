@@ -9,6 +9,10 @@
 import type { AuditChangeAction, CrmDb } from "@crm/db";
 import { checkGrant } from "@crm/sdk";
 import { type Compilable, type CompiledQuery, sql } from "kysely";
+import type { AiAdmin } from "./ai/admin.ts";
+import type { AiEnv } from "./ai/client.ts";
+import { embeddingQueueStatement, SELF_ENQUEUEING } from "./ai/embedding.ts";
+import type { VectorStore } from "./ai/vectors.ts";
 import { matchesPreviewValue } from "./approvals/caps.ts";
 import { type DryRunResult, prepareQueuedAction } from "./approvals/queue.ts";
 import {
@@ -116,6 +120,32 @@ export interface InvocationContext {
    * evaluated and recorded, writes are dry-run, nothing is written and no events are sent.
    */
   simulate?: TestSimulation;
+  /** Record embeddings (Vectorize, ADR 0154); absent: semantic search is off. */
+  vectors?: VectorStore;
+  /**
+   * Set where the automation events consumer embeds committed changes (a Vectorize binding on
+   * crm-runner, ADR 0154 amendment): with `events`, the pipeline then writes no embedding queue
+   * row, so every write is embedded exactly once, from its event.
+   */
+  embedViaEvents?: boolean;
+  /** Cloudflare API access for Settings → AI (keys, usage; ADR 0151, 0152). */
+  aiAdmin?: AiAdmin;
+  /** The Worker's AI environment, for provider readiness in Settings → AI. */
+  aiEnv?: AiEnv;
+  /**
+   * Called after a successful commit (ADR 0154): the post-commit hook. crm-app uses it to drain
+   * the embedding queue in the background when the call queued anything (only without an event
+   * sink, and for operations that queue themselves: erase, sync).
+   */
+  onCommitted?: (event: CommitEvent) => void;
+}
+
+/** What a committed call changed, for post-commit hooks. */
+export interface CommitEvent {
+  operation: string;
+  changes: { object: string; id: string; action: string }[];
+  /** The batch queued records in core_embedding_queue for (re-)embedding. */
+  embeddingsQueued: boolean;
 }
 
 /** The installed extension whose principal is `userId`, with its declared permissions. */
@@ -564,6 +594,9 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.extension ? { extension: ctx.extension } : {}),
     ...(ctx.models ? { models: ctx.models } : {}),
     ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
+    ...(ctx.vectors ? { vectors: ctx.vectors } : {}),
+    ...(ctx.aiAdmin ? { aiAdmin: ctx.aiAdmin } : {}),
+    ...(ctx.aiEnv ? { aiEnv: ctx.aiEnv } : {}),
     ...(ctx.events && !ctx.simulate ? { events: ctx.events } : {}),
     ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
     pipeline: {
@@ -588,6 +621,11 @@ export async function invokeOperation<O extends AnyOperation>(
           ...(ctx.blobs ? { blobs: ctx.blobs } : {}),
           ...(ctx.models ? { models: ctx.models } : {}),
           ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
+          ...(ctx.vectors ? { vectors: ctx.vectors } : {}),
+          ...(ctx.aiAdmin ? { aiAdmin: ctx.aiAdmin } : {}),
+          ...(ctx.aiEnv ? { aiEnv: ctx.aiEnv } : {}),
+          ...(ctx.onCommitted ? { onCommitted: ctx.onCommitted } : {}),
+          ...(ctx.embedViaEvents ? { embedViaEvents: true } : {}),
           ...(ctx.events ? { events: ctx.events } : {}),
           ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
           ...(ctx.simulate ? { simulate: ctx.simulate } : {}),
@@ -743,6 +781,15 @@ export async function invokeOperation<O extends AnyOperation>(
     changeRows.push({ o: change.object, r: change.id, a: change.action, d: JSON.stringify(diff) });
   }
   statements.push(...activities);
+  // Records whose text changed must be re-embedded exactly once (ADR 0154 amendment): where the
+  // stage 5 events consumer embeds (`embedViaEvents`), it does so from the record events this call
+  // emits and no queue row is written; otherwise (no Vectorize, local dev, tests, scripts) they
+  // are queued in this batch for the post-commit drain and the cron.
+  const embedding =
+    op.risk === "read" || (ctx.events && ctx.embedViaEvents && !ctx.simulate)
+      ? null
+      : embeddingQueueStatement(ctx.db.query, changes, now);
+  if (embedding) statements.push(embedding);
 
   const summary =
     op.auditSummary && !deferred ? op.auditSummary(output, input) : defaultSummary(output, changes);
@@ -779,6 +826,18 @@ export async function invokeOperation<O extends AnyOperation>(
       await ctx.db.batch(statements);
     } catch (error) {
       return fail(error, decision);
+    }
+  }
+
+  if (statements.length && ctx.onCommitted) {
+    try {
+      ctx.onCommitted({
+        operation: op.name,
+        changes: changes.map(({ object, id, action }) => ({ object, id, action })),
+        embeddingsQueued: Boolean(embedding) || SELF_ENQUEUEING.has(op.name),
+      });
+    } catch (error) {
+      console.error("post-commit hook failed", op.name, error);
     }
   }
 

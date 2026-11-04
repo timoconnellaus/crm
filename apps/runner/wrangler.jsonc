@@ -107,8 +107,13 @@
     // Extension code calls operations here (codemode:crm), so the runner applies the same
     // approval floor as crm-app. Keep the two in step. See docs/deploying.md.
     "APPROVAL_FLOOR": "",
-    // Optional AI Gateway id for codemode:ai. Workers AI also needs an `ai` binding.
+    // codemode:ai and proposal summaries use the model role registry (ADR 0150), like crm-app:
+    // keep these in step with apps/app/wrangler.jsonc. Workers AI needs an `ai` binding, added
+    // by `pnpm run deploy` (CRM_AI, docs/deploying.md).
     "AI_GATEWAY_ID": "",
+    "CLOUDFLARE_ACCOUNT_ID": "",
+    "AI_MODEL_ROLES": "",
+    "AI_PROVIDERS": "",
     // The CRM's public origin (https://crm.example.com), where connect popups are handed back.
     // crm-app passes the request's origin; this is the fallback.
     "APP_ORIGIN": "",
