@@ -31,6 +31,7 @@ function fakeRuntime(calls: Calls): IntegrationRuntime {
     bindResource: no,
     unbindResource: no,
     configure: no,
+    supportedResources: no,
     call: no,
     types: no,
     setSync: no,

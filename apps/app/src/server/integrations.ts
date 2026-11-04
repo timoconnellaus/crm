@@ -16,6 +16,7 @@ const METHODS = [
   "disconnect",
   "bindResource",
   "unbindResource",
+  "supportedResources",
   "configure",
   "call",
   "types",

@@ -375,9 +375,22 @@ function connectPath(accountId: string, nonce: string): string {
 
 /** Routes the fake provider's public pages (from crm-runner's fetch). */
 export async function fakeProviderFetch(env: Env, request: Request): Promise<Response> {
-  const match = /^\/gatekeeper\/fake\/connect\/([0-9a-f]{64})\/[A-Za-z0-9_-]+$/.exec(
-    new URL(request.url).pathname,
-  );
+  const pathname = new URL(request.url).pathname;
+  // Development and e2e only (the fake provider is off in production): put mail and events into
+  // a fake mailbox, as the provider receiving them would. POST { messages?: [], events?: [] }.
+  const seed = /^\/gatekeeper\/fake\/seed\/([^/]+)$/.exec(pathname);
+  if (seed?.[1] && request.method === "POST") {
+    const body = (await request.json()) as { messages?: FakeMessage[]; events?: FakeEvent[] };
+    const target = provider(env, decodeURIComponent(seed[1]));
+    for (const m of body.messages ?? []) await target.putMessage(m);
+    for (const e of body.events ?? []) await target.putEvent(e);
+    return Response.json({ ok: true });
+  }
+  const sent = /^\/gatekeeper\/fake\/sent\/([^/]+)$/.exec(pathname);
+  if (sent?.[1] && request.method === "GET") {
+    return Response.json(await provider(env, decodeURIComponent(sent[1])).sent());
+  }
+  const match = /^\/gatekeeper\/fake\/connect\/([0-9a-f]{64})\/[A-Za-z0-9_-]+$/.exec(pathname);
   if (!match?.[1]) return new Response("Not found", { status: 404 });
   return account(env, match[1]).fetch(request);
 }

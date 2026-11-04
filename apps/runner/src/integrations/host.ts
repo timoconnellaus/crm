@@ -617,6 +617,41 @@ export class IntegrationHost extends DurableObject<Env> {
     );
   }
 
+  async supportedResources(): Promise<
+    { urlPattern: string; title: string; description: string; grantable: boolean; vendor: string }[]
+  > {
+    const meta = await this.#meta();
+    const out: {
+      urlPattern: string;
+      title: string;
+      description: string;
+      grantable: boolean;
+      vendor: string;
+    }[] = [];
+    const accounts: [string, Stub][] = [[meta.vendor, await this.#account()]];
+    for (const [key, stub] of await this.ctx.storage.list<Stub>({ prefix: "companion:" })) {
+      accounts.push([key.slice("companion:".length), stub]);
+    }
+    for (const [vendor, account] of accounts) {
+      const list = (await account.getSupportedResources()) as {
+        urlPattern: string;
+        title: string;
+        description?: string;
+        grantable?: boolean;
+      }[];
+      for (const r of list ?? []) {
+        out.push({
+          urlPattern: r.urlPattern,
+          title: r.title,
+          description: r.description ?? "",
+          grantable: r.grantable !== false,
+          vendor,
+        });
+      }
+    }
+    return out;
+  }
+
   async configure(pattern: string, method: string, args: unknown[]): Promise<unknown> {
     let ui = this.#configurators.get(pattern);
     if (!ui) {

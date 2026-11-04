@@ -784,6 +784,42 @@ export const connectionConfigure = defineOperation({
   },
 });
 
+export const connectionResourceTypes = defineOperation({
+  name: "connection.resourceTypes",
+  description:
+    "The kinds of resource a connection's account can grant (a mailbox, calendars, Drive " +
+    "folders, channels …), each with its URL pattern, for the resource picker. Read-only.",
+  input: z.object({ id: connectionId }),
+  output: z.object({
+    items: z.array(
+      z.object({
+        urlPattern: z.string(),
+        title: z.string(),
+        description: z.string(),
+        grantable: z.boolean(),
+        vendor: z.string(),
+        syncKind: z.enum(["mail", "calendar"]).nullable(),
+      }),
+    ),
+  }),
+  permission: "records:read",
+  risk: "read",
+  actors: ["human"],
+  mcp: { expose: false },
+  async handler(input, ctx) {
+    const integrations = requireIntegrations(ctx);
+    const row = await loadIntegrationConnection(ctx.db, input.id);
+    assertManage(ctx, row);
+    const items = await integrations.supportedResources({ connectionId: row.id });
+    return {
+      items: items.map((i) => ({
+        ...i,
+        syncKind: syncKindOf(row.vendor, i.urlPattern.replace(/:[^/]+.*$/, "")),
+      })),
+    };
+  },
+});
+
 export const connectionSetSync = defineOperation({
   name: "connection.setSync",
   description:
@@ -1115,6 +1151,7 @@ export const integrationOperations = [
   connectionBindResource,
   connectionUnbindResource,
   connectionConfigure,
+  connectionResourceTypes,
   connectionSetSync,
   connectionSyncNow,
   integrationCall,

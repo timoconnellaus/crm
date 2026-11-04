@@ -50,6 +50,7 @@ export function integrationRuntime(env: Env): IntegrationRuntime {
     disconnect: (i) => hostFor(env, i.connectionId).disconnect(),
     bindResource: (i) => hostFor(env, i.connectionId).bindResource(i.url),
     unbindResource: (i) => hostFor(env, i.connectionId).unbindResource(i.key),
+    supportedResources: (i) => hostFor(env, i.connectionId).supportedResources(),
     configure: (i) => hostFor(env, i.connectionId).configure(i.pattern, i.method, i.args),
     call: (i) =>
       hostFor(env, i.connectionId).call({

@@ -100,6 +100,12 @@ export interface IntegrationRuntime {
   /** Creates (or returns) the facet for a resource URL on the connection. */
   bindResource(input: { connectionId: string; url: string }): Promise<BoundResource>;
   unbindResource(input: { connectionId: string; key: string }): Promise<void>;
+  /** The resource types the connection's account offers (and its companion's), for pickers. */
+  supportedResources(input: {
+    connectionId: string;
+  }): Promise<
+    { urlPattern: string; title: string; description: string; grantable: boolean; vendor: string }[]
+  >;
   /** Calls a method of the account's resource configurator `ui` capability (resource pickers). */
   configure(input: {
     connectionId: string;
