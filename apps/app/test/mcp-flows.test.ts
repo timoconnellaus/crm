@@ -1,6 +1,7 @@
 // /mcp end to end, continued (stage 2 AC3-7 and 9): scopes and revocation, the Balanced gate,
 // simulation and approval in one session, rejection cascades, and per-token rate limits.
 import { env } from "cloudflare:workers";
+import { memoryRateLimit } from "@crm/core";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { runOperation } from "../src/server/operations.ts";
 import {
@@ -260,9 +261,11 @@ describe("simulation and approval (AC5, AC6, AC7)", () => {
   });
 });
 
+// The Workers Rate Limiting binding (ADR 0056) is replaced by an exact fake per test.
 describe("rate limits (AC9)", () => {
-  it("limits writes per minute per token with a clear error", async () => {
-    const limited = testEnv({ MCP_RATE_LIMIT_WRITES: "2" });
+  it("limits writes per connected app with a clear error", async () => {
+    const writes = memoryRateLimit(2);
+    const limited = testEnv({ MCP_WRITE_RATE_LIMIT: writes });
     const app = appFor(limited);
     const tokens = await connect(app, member);
     const client = await mcpClient(app, tokens.access_token);
@@ -273,7 +276,12 @@ describe("rate limits (AC9)", () => {
     const third = await make();
     expect(third.isError).toBe(true);
     expect(third.data).toMatchObject({ error: { code: "rate_limited" } });
-    expect(JSON.stringify(third.data)).toMatch(/2 changes per minute/);
+    expect(JSON.stringify(third.data)).toMatch(/too many changes/);
+    // Keyed per connected app, not per access token.
+    const app_ = await env.DB.prepare("SELECT id FROM core_connected_app WHERE client_id = ?")
+      .bind(tokens.clientId)
+      .first<{ id: string }>();
+    expect(writes.hits(app_?.id ?? "")).toBe(3);
     // Reads still work, and another token has its own budget.
     expect((await call(client, "task_list", {})).isError).toBe(false);
     const other = await mcpClient(app, (await connect(app, member)).access_token);
@@ -282,8 +290,8 @@ describe("rate limits (AC9)", () => {
     ).toBe(false);
   });
 
-  it("limits requests per minute per token", async () => {
-    const limited = testEnv({ MCP_RATE_LIMIT_REQUESTS: "3" });
+  it("limits requests per connected app", async () => {
+    const limited = testEnv({ MCP_RATE_LIMIT: memoryRateLimit(3) });
     const app = appFor(limited);
     const tokens = await connect(app, member);
     const post = () =>
@@ -302,7 +310,7 @@ describe("rate limits (AC9)", () => {
     expect(over.status).toBe(429);
     expect(over.headers.get("retry-after")).toBeTruthy();
     expect(await over.json()).toMatchObject({
-      error: { message: expect.stringMatching(/3 requests per minute/) },
+      error: { message: expect.stringMatching(/too many requests/) },
     });
   });
 });

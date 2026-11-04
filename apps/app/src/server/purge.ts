@@ -2,7 +2,15 @@
 // directly in workerd; src/server.ts calls it from the Worker's `scheduled` handler. It runs
 // trash.purge through the operations pipeline as an automation (SYSTEM_USER, origin `system`),
 // so every round is gated by the approval policy and floor, and audited.
-import { expirePendingActions, parseFloor, pruneRateLimits, runTrashPurge } from "@crm/core";
+import {
+  compactPendingActions,
+  expirePendingActions,
+  measureStorage,
+  parseFloor,
+  purgeRunHistory,
+  runAuditPurge,
+  runTrashPurge,
+} from "@crm/core";
 import { createCrmDb } from "@crm/db";
 
 export interface PurgeEnv {
@@ -21,13 +29,42 @@ export async function runScheduledPurge(env: PurgeEnv, clock?: () => Date) {
   return result;
 }
 
-/** The daily cron: the Trash purge, then expiring pending approvals and old rate-limit windows. */
+/**
+ * The daily cron: the Trash purge, expiring pending approvals, then storage retention (ADR 0090):
+ * the audit retention purge, run history, compacting old pending actions, and measuring the
+ * database for the storage gauge. Each step is chunked and bounded; what is left is picked up
+ * the next day. A failing step is logged and does not stop the others.
+ */
 export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date) {
   const purge = await runScheduledPurge(env, clock);
   const db = createCrmDb(env.DB);
   const now = (clock?.() ?? new Date()).toISOString();
   const expired = await expirePendingActions(db.query, now);
-  await pruneRateLimits(db.query, now);
   if (expired) console.log(`approvals: ${expired} pending action(s) expired`);
-  return { purge, expired };
+
+  const step = async <T>(name: string, run: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await run();
+    } catch (error) {
+      console.error(`maintenance: ${name} failed`, error);
+      return null;
+    }
+  };
+  const audit = await step("audit purge", () =>
+    runAuditPurge(db, { floor: parseFloor(env.APPROVAL_FLOOR), ...(clock ? { clock } : {}) }),
+  );
+  if (audit?.rounds) {
+    console.log(
+      `audit retention: ${audit.auditRows} audit row(s), ${audit.changeRows} change row(s), ` +
+        `${audit.readCountRows} read count row(s)${audit.more ? ", more due" : ""}`,
+    );
+  }
+  const runs = await step("run history", () => purgeRunHistory(db.query, now));
+  if (runs?.deleted) console.log(`run history: ${runs.deleted} run(s) purged`);
+  const compacted = await step("pending action compaction", () =>
+    compactPendingActions(db.query, now),
+  );
+  if (compacted?.compacted) console.log(`approvals: ${compacted.compacted} action(s) compacted`);
+  const storage = await step("storage measurement", () => measureStorage(db, now));
+  return { purge, expired, audit, runs, compacted, storage };
 }

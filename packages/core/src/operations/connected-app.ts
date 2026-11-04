@@ -305,32 +305,3 @@ export async function touchConnection(
     .where((eb) => eb.or([eb("last_used_at", "is", null), eb("last_used_at", "<", cutoff)]))
     .execute();
 }
-
-/**
- * Counts one hit against `key` in the current one-minute window and reports whether it is within
- * `limit`. Fixed windows: simple and good enough to stop a runaway agent.
- */
-export async function consumeRateLimit(
-  db: Kysely<CoreDatabase>,
-  key: string,
-  limit: number,
-  now: string,
-): Promise<{ ok: boolean; count: number; retryAfterSeconds: number }> {
-  const window = `${now.slice(0, 16)}:00.000Z`;
-  const row = await db
-    .insertInto("core_rate_limit")
-    .values({ key, window_start: window, count: 1 })
-    .onConflict((oc) =>
-      oc.columns(["key", "window_start"]).doUpdateSet((eb) => ({ count: eb("count", "+", 1) })),
-    )
-    .returning("count")
-    .executeTakeFirstOrThrow();
-  const retryAfterSeconds = Math.max(1, 60 - new Date(now).getUTCSeconds());
-  return { ok: row.count <= limit, count: row.count, retryAfterSeconds };
-}
-
-/** Deletes rate-limit windows older than ten minutes (daily cron). */
-export async function pruneRateLimits(db: Kysely<CoreDatabase>, now: string): Promise<void> {
-  const cutoff = new Date(Date.parse(now) - 600_000).toISOString();
-  await db.deleteFrom("core_rate_limit").where("window_start", "<", cutoff).execute();
-}
