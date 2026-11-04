@@ -119,3 +119,43 @@ jobs:
           else
             gh release edit "${GITHUB_REF_NAME}" --draft=false --latest
           fi
+
+  npm:
+    # `npx create-crm` runs the CLI published to npm. Needs the NPM_TOKEN secret (and the package
+    # name; see docs/deploying.md). Skipped cleanly without it.
+    name: Publish the CLI to npm
+    needs: [build, publish]
+    if: ${{ always() && needs.publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - name: Token configured?
+        id: check
+        run: |
+          if [[ -n "$NPM_TOKEN" ]]; then echo "enabled=true" >> "$GITHUB_OUTPUT"; else echo "::notice::NPM_TOKEN is not set; not publishing the CLI."; fi
+      - uses: actions/checkout@v5
+        if: steps.check.outputs.enabled == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.check.outputs.enabled == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.check.outputs.enabled == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - if: steps.check.outputs.enabled == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Build and publish
+        if: steps.check.outputs.enabled == 'true'
+        working-directory: packages/create-crm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm version "${{ needs.build.outputs.version }}" --no-git-tag-version
+          pnpm run build
+          tag=latest; if [[ "${{ needs.build.outputs.prerelease }}" == "true" ]]; then tag=beta; fi
+          npm publish --provenance --access public --tag "$tag"

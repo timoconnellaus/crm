@@ -101,6 +101,12 @@ checkout, no wrangler, no service of ours.
 npx create-crm            # or: pnpm dlx create-crm
 ```
 
+The release workflow publishes the CLI to npm when the repository has an `NPM_TOKEN` secret.
+**Needs a human:** the npm name `create-crm` is already taken by an unrelated package, so the
+maintainer must either obtain it or rename `packages/create-crm` to a scoped name (for example
+`@timoconnellaus/create-crm`, run as `npm init @timoconnellaus/crm`). Until then, run it from a
+checkout: `pnpm --filter create-crm build && node packages/create-crm/dist/cli.js`.
+
 It asks for, in order:
 
 1. **A Cloudflare API token.** Create one at *My Profile → API Tokens → Create Token → Custom token*
