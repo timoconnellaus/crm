@@ -40,6 +40,7 @@ export * from "./operations/code.ts";
 export * from "./operations/connected-app.ts";
 export * from "./operations/count.ts";
 export * from "./operations/dashboard.ts";
+export * from "./operations/enrichment.ts";
 export * from "./operations/export.ts";
 export * from "./operations/extension.ts";
 export * from "./operations/extension-authoring.ts";
