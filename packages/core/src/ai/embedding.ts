@@ -49,7 +49,7 @@ const ACTIVITY_TYPES = ["note", "email", "call", "meeting"];
 
 /** Fields whose change can change a record's embedding text, per core object. */
 const TEXT_FIELDS: Record<string, readonly string[]> = {
-  person: ["displayName", "givenName", "familyName", "jobTitle", "organisationId", "description", "tags"],
+  person: ["displayName", "givenName", "familyName", "jobTitle", "organisationId", "location", "description", "tags"],
   organisation: ["name", "industry", "description", "domains", "primaryDomain", "tags"],
   activity: ["subject", "body", "type", "private", "privateTo", "disclosure"],
   task: ["title", "notes"],
@@ -118,6 +118,14 @@ export function embeddingQueueStatement(
   now: string,
 ): Statement | null {
   const refs = changes.filter(changeAffectsEmbedding).map((c) => ({ object: c.object, id: c.id }));
+  // A person's job title and organisation come from their affiliations.
+  for (const c of changes) {
+    if (c.object !== "affiliation") continue;
+    for (const snapshot of [c.before, c.after]) {
+      const personId = snapshot?.personId;
+      if (typeof personId === "string") refs.push({ object: "person", id: personId });
+    }
+  }
   return enqueueEmbeddings(db, refs, now);
 }
 
@@ -338,27 +346,17 @@ export async function drainEmbeddingQueue(deps: EmbeddingDeps): Promise<DrainRes
         })),
       );
       result.embedded += batch.length;
+      // One JSON parameter, so a batch of any size stays under D1's 100 bound variables.
+      const json = JSON.stringify(batch.map((b) => [b.object, b.id, b.vectorId, b.hash]));
       statements.push(
-        db.query
-          .insertInto("core_embedding")
-          .values(
-            batch.map((b) => ({
-              object_type: b.object,
-              record_id: b.id,
-              vector_id: b.vectorId,
-              text_hash: b.hash,
-              model,
-              embedded_at: now,
-            })),
-          )
-          .onConflict((oc) =>
-            oc.columns(["object_type", "record_id"]).doUpdateSet((eb) => ({
-              text_hash: eb.ref("excluded.text_hash"),
-              vector_id: eb.ref("excluded.vector_id"),
-              model: eb.ref("excluded.model"),
-              embedded_at: eb.ref("excluded.embedded_at"),
-            })),
-          ),
+        sql`INSERT INTO core_embedding (object_type, record_id, vector_id, text_hash, model, embedded_at)
+          SELECT json_extract(j.value, '$[0]'), json_extract(j.value, '$[1]'), json_extract(j.value, '$[2]'),
+            json_extract(j.value, '$[3]'), ${model}, ${now}
+          FROM json_each(${json}) j WHERE true
+          ON CONFLICT (object_type, record_id) DO UPDATE SET text_hash = excluded.text_hash,
+            vector_id = excluded.vector_id, model = excluded.model, embedded_at = excluded.embedded_at`.compile(
+          db.query,
+        ),
       );
     }
     dequeue(rows);

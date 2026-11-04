@@ -69,13 +69,14 @@ export const summaryGet = defineOperation({
   async handler(input, ctx) {
     const summary = await inputFor(ctx, input.subject);
     const cached = await readCachedSummary(ctx.db, summary, await summariseModel(ctx.models));
-    const status: "fresh" | "stale" | "missing" | "unavailable" = cached
-      ? cached.fresh
-        ? "fresh"
-        : "stale"
-      : ctx.models
-        ? "missing"
-        : "unavailable";
+    // Without AI the cached text is still shown, but it cannot be checked or refreshed.
+    const status: "fresh" | "stale" | "missing" | "unavailable" = !ctx.models
+      ? "unavailable"
+      : cached
+        ? cached.fresh
+          ? "fresh"
+          : "stale"
+        : "missing";
     return {
       status,
       text: cached?.text ?? null,
