@@ -1,6 +1,6 @@
-// Generic list page for an extension object (`/x/<extension>.<object>`): the same DataTable,
-// FilterBuilder, ColumnPicker and saved views as core lists, driven by the field registry
-// (schema.objects) and fed by record.list.
+// Generic list page for an extension object (`/x/<extension>.<object>`): the same fixed header,
+// live count, virtualised DataTable, FilterBuilder, ColumnPicker and saved views as core lists,
+// driven by the field registry (schema.objects) and fed by record.list.
 import type { ObjectDefinition } from "@crm/core/client";
 import { Button } from "@crm/ui/components/button";
 import { Skeleton } from "@crm/ui/components/skeleton";
@@ -13,6 +13,7 @@ import { EmptyState } from "#/components/empty-state";
 import { CreateRecordDialog } from "#/components/fields/create-record-dialog";
 import { FieldDisplay } from "#/components/fields/field-widgets";
 import { FilterBuilder } from "#/components/filter-builder/filter-builder";
+import { PageCount, PageLayout } from "#/components/layout/page-layout";
 import { SavedViewsMenu } from "#/components/views/saved-views-menu";
 import {
   parseViewSearchLoose,
@@ -20,6 +21,7 @@ import {
   type ViewDefaults,
   type ViewSearch,
 } from "#/components/views/view-state";
+import { useRecordCount } from "#/lib/count";
 import { callOp } from "#/lib/operations";
 import { type ObjectInfo, toObjectDefinition, useObjectInfo } from "#/lib/schema";
 
@@ -33,14 +35,22 @@ type Row = Record<string, unknown> & { id: string };
 function ExtensionListPage() {
   const { object: name } = Route.useParams();
   const { object, isPending } = useObjectInfo(name);
-  if (isPending) return <Skeleton className="mx-auto h-64 w-full max-w-7xl" />;
+  if (isPending) {
+    return (
+      <PageLayout title={<Skeleton className="h-7 w-40" />}>
+        <Skeleton className="h-64 w-full" />
+      </PageLayout>
+    );
+  }
   if (!object) {
     return (
-      <EmptyState
-        icon={BoxIcon}
-        title="No such object"
-        description={`${name} is not an object in this CRM. Its extension may have been removed.`}
-      />
+      <PageLayout title="Not found">
+        <EmptyState
+          icon={BoxIcon}
+          title="No such object"
+          description={`${name} is not an object in this CRM. Its extension may have been removed.`}
+        />
+      </PageLayout>
     );
   }
   return <ObjectList key={object.name} info={object} />;
@@ -107,32 +117,47 @@ function ObjectList({ info }: { info: ObjectInfo }) {
   }, [info, titleField]);
 
   const plural = info.plural ?? info.label;
+  const count = useRecordCount(info.name, view.state.filter);
   return (
-    <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{plural}</h1>
+    <PageLayout
+      title={plural}
+      width="fluid"
+      scroll="none"
+      count={
+        <PageCount
+          value={count.data?.count}
+          capped={count.data?.capped}
+          isPending={count.isPending}
+          noun={plural.toLowerCase()}
+        />
+      }
+      titleAddon={
         <SavedViewsMenu
           object={info.name}
           defaultLabel={`All ${plural.toLowerCase()}`}
           view={view}
         />
-        <div className="flex-1" />
+      }
+      actions={
         <Button onClick={() => setCreating(true)}>
           <PlusIcon />
-          New {info.label.toLowerCase()}
+          <span className="max-sm:sr-only">New {info.label.toLowerCase()}</span>
         </Button>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterBuilder object={definition} value={view.state.filter} onChange={view.setFilter} />
-        <div className="flex-1" />
-        <ColumnPicker
-          object={definition}
-          available={available}
-          value={view.state.columns}
-          onChange={view.setColumns}
-          required={[titleField]}
-        />
-      </div>
+      }
+      toolbar={
+        <>
+          <FilterBuilder object={definition} value={view.state.filter} onChange={view.setFilter} />
+          <div className="flex-1" />
+          <ColumnPicker
+            object={definition}
+            available={available}
+            value={view.state.columns}
+            onChange={view.setColumns}
+            required={[titleField]}
+          />
+        </>
+      }
+    >
       <DataTable<Row>
         object={definition}
         label={plural}
@@ -144,6 +169,7 @@ function ObjectList({ info }: { info: ObjectInfo }) {
         sort={view.state.sort}
         onSortChange={view.setSort}
         filter={view.state.filter}
+        total={count.data}
         onOpen={(row) =>
           navigate({ to: "/x/$object/$id", params: { object: info.name, id: row.id } })
         }
@@ -171,6 +197,6 @@ function ObjectList({ info }: { info: ObjectInfo }) {
           navigate({ to: "/x/$object/$id", params: { object: info.name, id } });
         }}
       />
-    </div>
+    </PageLayout>
   );
 }

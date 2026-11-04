@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { formatDate, formatDateTime } from "#/lib/format";
 import { errorMessage } from "#/lib/query";
-import { EmptyState } from "../empty-state.tsx";
+import { EmptyState, ErrorState } from "../empty-state.tsx";
 import type { TaskItem } from "./adapters.ts";
 import { RecordLink } from "./timeline.tsx";
 
@@ -66,14 +66,7 @@ export function TaskList({
 }: TaskListProps) {
   if (isPending) return <Skeleton className="h-16" />;
   if (error) {
-    return (
-      <EmptyState
-        icon={CheckSquareIcon}
-        title="Could not load tasks"
-        description={errorMessage(error)}
-        className="py-6"
-      />
-    );
+    return <ErrorState title="Could not load tasks" error={error} className="py-6" />;
   }
   const shown = openOnly ? tasks.filter((t) => t.status === "open") : tasks;
   if (!shown.length) {

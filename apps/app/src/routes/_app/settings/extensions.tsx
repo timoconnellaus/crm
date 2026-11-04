@@ -1,6 +1,7 @@
 // Settings → Extensions: installed extensions (shipped and runtime) with version, status, declared
 // permissions, run history and rollback (ADR 0025). A quarantined extension is announced at the
 // top of the page and offers its last-known-good version. Authoring and approvals arrive in 3b.
+
 import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
@@ -10,7 +11,7 @@ import { AlertTriangleIcon, PuzzleIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState } from "#/components/empty-state";
-import { BackToSettings } from "#/components/settings/back-to-settings";
+import { PageLayout } from "#/components/layout/page-layout";
 import { formatDateTime } from "#/lib/format";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
 
@@ -44,15 +45,12 @@ function ExtensionsPage() {
   const items = (list.data?.items ?? []) as Summary[];
   const quarantined = items.filter((i) => i.status === "quarantined");
   return (
-    <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-6">
-      <BackToSettings />
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Extensions</h1>
-        <p className="text-sm text-muted-foreground">
-          Objects, fields and tools added as code. Each runs in a sandbox with only the permissions
-          it declares.
-        </p>
-      </div>
+    <PageLayout
+      title="Extensions"
+      width="lg"
+      back={{ to: "/settings", label: "Settings" }}
+      description="Objects, fields and tools added as code. Each runs in a sandbox with only the permissions it declares."
+    >
       {quarantined.map((ext) => (
         <div
           key={ext.id}
@@ -79,7 +77,7 @@ function ExtensionsPage() {
       {items.map((ext) => (
         <ExtensionCard key={ext.id} ext={ext} isAdmin={isAdmin} />
       ))}
-    </div>
+    </PageLayout>
   );
 }
 

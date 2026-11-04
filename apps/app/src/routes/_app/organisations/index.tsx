@@ -1,6 +1,7 @@
-// Organisations list: DataTable over organisation.list with the filter builder, column picker,
-// saved views, import/export, and bulk merge, tags/owner and delete. Filter, sort and columns
-// live in the URL.
+// Organisations list: a fixed header (title, live count, saved views, actions, filter builder,
+// column picker) over a virtualised, infinitely scrolling DataTable of organisation.list, with
+// import/export and bulk merge, tags/owner and delete. Filter, sort and columns live in the URL;
+// hovering a link here preloads the first page and the count.
 import { organisationObject } from "@crm/core/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@crm/ui/components/avatar";
 import { Button } from "@crm/ui/components/button";
@@ -10,9 +11,16 @@ import { Building2Icon, PlusIcon } from "lucide-react";
 import { useCallback } from "react";
 import { useAppCommands } from "#/components/app-commands";
 import { ColumnPicker } from "#/components/data-table/column-picker";
-import { DataTable, type ListPage, type ListPageRequest } from "#/components/data-table/data-table";
+import {
+  DataTable,
+  type ListPage,
+  type ListPageRequest,
+  listFields,
+  listQueryOptions,
+} from "#/components/data-table/data-table";
 import { EmptyState } from "#/components/empty-state";
 import { FilterBuilder } from "#/components/filter-builder/filter-builder";
+import { PageCount, PageLayout } from "#/components/layout/page-layout";
 import { BulkActions, ListActionsMenu } from "#/components/list/list-actions";
 import {
   faviconUrl,
@@ -21,14 +29,47 @@ import {
   type OrganisationRow,
 } from "#/components/organisations/config";
 import { SavedViewsMenu } from "#/components/views/saved-views-menu";
-import { parseViewSearch, useViewState, type ViewSearch } from "#/components/views/view-state";
+import {
+  parseViewSearch,
+  searchToViewState,
+  useViewState,
+  type ViewSearch,
+} from "#/components/views/view-state";
+import { countQueryOptions, useRecordCount } from "#/lib/count";
 import { initials } from "#/lib/format";
 import { callOp } from "#/lib/operations";
 import { useUserLabel } from "#/lib/users-adapter";
 
+const QUERY_KEY = ["op", "organisation.list", "table"] as const;
+const EXTRA_FIELDS = ["name", "primaryDomain", "parentId"] as const;
+const fetchOrganisations = (input: ListPageRequest): Promise<ListPage<OrganisationRow>> =>
+  callOp("organisation.list", input);
+
 export const Route = createFileRoute("/_app/organisations/")({
   validateSearch: (search: Record<string, unknown>): ViewSearch =>
     parseViewSearch(organisationObject, search),
+  loaderDeps: ({ search }) => ({ search }),
+  // Intent preloading: warm the first page and the count (browser only).
+  loader: ({ context, deps }) => {
+    if (typeof window === "undefined") return;
+    const state = searchToViewState(organisationObject, deps.search, ORGANISATION_LIST_DEFAULTS);
+    const { fields } = listFields(
+      organisationObject,
+      state.columns,
+      ORGANISATION_COLUMNS,
+      EXTRA_FIELDS,
+    );
+    void context.queryClient.ensureInfiniteQueryData(
+      listQueryOptions({
+        queryKey: QUERY_KEY,
+        fetchPage: fetchOrganisations,
+        filter: state.filter,
+        sort: state.sort,
+        fields,
+      }),
+    );
+    void context.queryClient.ensureQueryData(countQueryOptions("organisation", state.filter));
+  },
   component: OrganisationsPage,
 });
 
@@ -47,53 +88,69 @@ function OrganisationsPage() {
   });
   const { create } = useAppCommands();
   const userLabel = useUserLabel();
-
-  const fetchPage = useCallback(
-    (input: ListPageRequest): Promise<ListPage<OrganisationRow>> =>
-      callOp("organisation.list", input),
-    [],
-  );
+  const count = useRecordCount("organisation", view.state.filter);
 
   return (
-    <div className="mx-auto grid w-full grid-cols-1 max-w-7xl gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Organisations</h1>
+    <PageLayout
+      title="Organisations"
+      width="fluid"
+      scroll="none"
+      count={
+        <PageCount
+          value={count.data?.count}
+          capped={count.data?.capped}
+          isPending={count.isPending}
+          noun="organisations"
+        />
+      }
+      titleAddon={
         <SavedViewsMenu object="organisation" defaultLabel="All organisations" view={view} />
-        <div className="flex-1" />
-        <ListActionsMenu object="organisation" definition={organisationObject} view={view.state} />
-        <Button onClick={() => create("organisation")} aria-keyshortcuts="c">
-          <PlusIcon />
-          New organisation
-          <Kbd className="ml-1 hidden bg-primary-foreground/20 text-primary-foreground sm:inline-flex">
-            C
-          </Kbd>
-        </Button>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterBuilder
-          object={organisationObject}
-          value={view.state.filter}
-          onChange={view.setFilter}
-        />
-        <div className="flex-1" />
-        <ColumnPicker
-          object={organisationObject}
-          available={ORGANISATION_COLUMNS}
-          value={view.state.columns}
-          onChange={view.setColumns}
-        />
-      </div>
+      }
+      actions={
+        <>
+          <ListActionsMenu
+            object="organisation"
+            definition={organisationObject}
+            view={view.state}
+          />
+          <Button onClick={() => create("organisation")} aria-keyshortcuts="c">
+            <PlusIcon />
+            <span className="max-sm:sr-only">New organisation</span>
+            <Kbd className="ml-1 hidden bg-primary-foreground/20 text-primary-foreground sm:inline-flex">
+              C
+            </Kbd>
+          </Button>
+        </>
+      }
+      toolbar={
+        <>
+          <FilterBuilder
+            object={organisationObject}
+            value={view.state.filter}
+            onChange={view.setFilter}
+          />
+          <div className="flex-1" />
+          <ColumnPicker
+            object={organisationObject}
+            available={ORGANISATION_COLUMNS}
+            value={view.state.columns}
+            onChange={view.setColumns}
+          />
+        </>
+      }
+    >
       <DataTable<OrganisationRow>
         object={organisationObject}
         label="Organisations"
-        queryKey={["op", "organisation.list", "table"]}
-        fetchPage={fetchPage}
+        queryKey={QUERY_KEY}
+        fetchPage={fetchOrganisations}
         columns={view.state.columns}
         availableColumns={ORGANISATION_COLUMNS}
-        extraFields={["name", "primaryDomain", "parentId"]}
+        extraFields={EXTRA_FIELDS}
         sort={view.state.sort}
         onSortChange={view.setSort}
         filter={view.state.filter}
+        total={count.data}
         pendingObject="organisation"
         onOpen={(row) => navigate({ to: "/organisations/$id", params: { id: row.id } })}
         renderCell={{
@@ -101,7 +158,7 @@ function OrganisationsPage() {
             <Link
               to="/organisations/$id"
               params={{ id: row.id }}
-              className="inline-flex items-center gap-2 font-medium hover:underline"
+              className="inline-flex min-w-0 items-center gap-2 font-medium hover:underline"
             >
               <Avatar className="size-6 rounded-md">
                 {row.primaryDomain && (
@@ -111,7 +168,7 @@ function OrganisationsPage() {
                   {initials(row.name ?? "")}
                 </AvatarFallback>
               </Avatar>
-              {row.name}
+              <span className="truncate">{row.name}</span>
             </Link>
           ),
           parentName: (row) =>
@@ -129,8 +186,8 @@ function OrganisationsPage() {
           ownerId: (row) =>
             userLabel(row.ownerId) || <span className="text-muted-foreground">—</span>,
         }}
-        bulkActions={({ selected, clear }) => (
-          <BulkActions object="organisation" selected={selected} onDone={clear} />
+        bulkActions={({ ids, clear }) => (
+          <BulkActions object="organisation" selected={ids.map((id) => ({ id }))} onDone={clear} />
         )}
         empty={
           <EmptyState
@@ -146,6 +203,6 @@ function OrganisationsPage() {
           />
         }
       />
-    </div>
+    </PageLayout>
   );
 }

@@ -1,9 +1,11 @@
 // System status: the /api/health report and the hello-world Workflow (stage 0 smoke test).
+
 import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
+import { PageLayout } from "#/components/layout/page-layout";
 import {
   getHelloWorkflowStatus,
   getSystemHealth,
@@ -43,13 +45,15 @@ function StatusPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-3xl gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">System status</h1>
+    <PageLayout
+      title="System status"
+      width="md"
+      actions={
         <Button variant="outline" size="sm" onClick={() => router.invalidate()}>
           Refresh
         </Button>
-      </div>
+      }
+    >
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -95,6 +99,6 @@ function StatusPage() {
           <Button onClick={runWorkflow}>Run workflow</Button>
         </CardContent>
       </Card>
-    </div>
+    </PageLayout>
   );
 }
