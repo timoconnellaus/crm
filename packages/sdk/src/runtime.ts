@@ -344,7 +344,14 @@ export async function runAutomation(
   };
 
   const pending: Promise<unknown>[] = [];
-  const ctx = buildAutomationContext(extension, raw, request.event, pending);
+  // Every crm call carries the step it ran in, so the host can file it under that step (and
+  // flag writes the step did not declare).
+  let current: string | null = null;
+  const crm = raw.crm;
+  const tagged: RawHostModules = crm
+    ? { ...raw, crm: { call: (operation, input) => crm.call(operation, input, { step: current }) } }
+    : raw;
+  const ctx = buildAutomationContext(extension, tagged, request.event, pending);
   const step = {
     async do(name: string, a: unknown, b?: unknown): Promise<unknown> {
       const fn = (typeof a === "function" ? a : b) as () => unknown;
@@ -361,7 +368,13 @@ export async function runAutomation(
       }
       const r = replayed(name, "do");
       if (r) return r.value;
-      const value = plain(await fn());
+      current = name;
+      let value: unknown;
+      try {
+        value = plain(await fn());
+      } finally {
+        current = null;
+      }
       if (test) {
         testSteps.push({ name, kind: "do", value });
         return value;

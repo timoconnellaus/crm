@@ -13,6 +13,8 @@ import { RpcTarget } from "cloudflare:workers";
 import {
   type ActingUser,
   type CodeCaller,
+  type EventSink,
+  type TestSimulation,
   invokeByName,
   PendingApprovalError,
   type Permission,
@@ -55,12 +57,36 @@ export interface RunOperation {
   code?: string;
   pendingActionId?: string;
   ms: number;
+  /** Automation runs: the object the call touched, the step it ran in, and what it returned. */
+  object?: string | null;
+  step?: string | null;
+  pending?: { actionId: string; changeSetId: string; expiresAt: string };
+  /** Created / changed record ids, when the output names one. */
+  recordId?: string;
+  /** Records the call wrote (bulk calls: the input's ids), for the writes-per-hour rail. */
+  writes?: number;
+}
+
+/**
+ * An automation run (ADR 0130): operations run as actor `automation` under the extension
+ * principal, with the run's cascade tags on their origin, and post-commit events. In test mode
+ * (ADR 0133) they run against `simulate` and send no events.
+ */
+export interface AutomationRunContext {
+  automationId: string;
+  runId: string;
+  depth: number;
+  chain: string[];
+  rootEventId: string;
+  events?: EventSink;
+  simulate?: TestSimulation;
 }
 
 export interface RunState {
   runId: string;
   extensionId: string;
   code?: CodeRun;
+  automation?: AutomationRunContext;
   modules: ReadonlySet<HostModule>;
   user: ActingUser;
   permissions: ExtensionManifest["permissions"];
@@ -121,7 +147,8 @@ export class RunHost extends RpcTarget {
     const list = Array.isArray(args) ? args : [];
     switch (module) {
       case "crm":
-        return run.code ? this.#codeCall(run.code, list) : this.#crmCall(list);
+        if (run.code) return this.#codeCall(run.code, list);
+        return run.automation ? this.#automationCall(run.automation, list) : this.#crmCall(list);
       case "storage":
         return this.#storage(method as "get" | "set" | "del" | "list", list);
       case "log":
@@ -160,6 +187,73 @@ export class RunHost extends RpcTarget {
       ok: reply.ok,
       ...(reply.ok ? {} : { code: reply.error.code }),
       ms: Date.now() - started,
+    });
+    return json(reply);
+  }
+
+  /**
+   * `codemode:crm` in an automation run: actor `automation` under the extension principal, with
+   * the run's cascade origin. A call the gate queues for review answers with the pending envelope
+   * (as in Code Mode); the Workflow then waits for the decision.
+   */
+  async #automationCall(automation: AutomationRunContext, args: unknown[]): Promise<unknown> {
+    const run = this.#run;
+    const [name, input, meta] = args;
+    const operation = String(name);
+    const started = Date.now();
+    let reply: Envelope;
+    let pending: RunOperation["pending"];
+    try {
+      const value = await invokeByName(operation, input ?? {}, {
+        actor: "automation",
+        user: run.user,
+        origin: {
+          surface: "automation",
+          automationId: automation.automationId,
+          runId: automation.runId,
+          extensionId: run.extensionId,
+          depth: automation.depth,
+          chain: automation.chain,
+          rootEventId: automation.rootEventId,
+          ...(automation.simulate ? { test: true } : {}),
+        },
+        db: createCrmDb(this.#env.DB),
+        floor: parseFloor(this.#env.APPROVAL_FLOOR),
+        extension: { id: run.extensionId, permissions: run.permissions },
+        reason: `Automation ${automation.automationId}`,
+        ...(automation.events ? { events: automation.events } : {}),
+        ...(automation.simulate ? { simulate: automation.simulate } : {}),
+      });
+      reply = { ok: true, value };
+    } catch (error) {
+      if (error instanceof PendingApprovalError) {
+        pending = {
+          actionId: error.pending.actionId,
+          changeSetId: error.pending.changeSetId,
+          expiresAt: error.pending.expiresAt,
+        };
+        reply = { ok: true, value: error.pending };
+      } else {
+        reply = errorEnvelope(error);
+      }
+    }
+    const value = reply.ok ? (reply.value as { id?: unknown; ids?: unknown } | null) : null;
+    const record = input as { object?: unknown; ids?: unknown } | null;
+    const step = (meta as { step?: unknown } | null)?.step;
+    run.operations.push({
+      operation,
+      ok: reply.ok,
+      ...(reply.ok ? {} : { code: reply.error.code }),
+      ...(pending ? { pendingActionId: pending.actionId, pending } : {}),
+      ms: Date.now() - started,
+      object: operation.startsWith("record.")
+        ? typeof record?.object === "string"
+          ? record.object
+          : null
+        : (operation.split(".")[0] ?? null),
+      step: typeof step === "string" ? step : null,
+      ...(!pending && typeof value?.id === "string" ? { recordId: value.id } : {}),
+      writes: Array.isArray(record?.ids) ? record.ids.length : 1,
     });
     return json(reply);
   }
