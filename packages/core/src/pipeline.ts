@@ -259,6 +259,7 @@ export async function invokeOperation<O extends AnyOperation>(
     origin: ctx.origin,
     now,
     db: ctx.db.query,
+    floor: ctx.floor ?? {},
     write: (...statements) => {
       writes.push(...statements);
     },

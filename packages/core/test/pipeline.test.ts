@@ -95,6 +95,11 @@ describe("permissions", () => {
       loosened: false,
     });
     expect((await invoke("policy.get", {}, context(viewer))).preset).toBe("cautious");
+    const floor = { "*": { destructive: "review" as const } };
+    expect(await invoke("policy.get", {}, context(viewer, { floor }))).toMatchObject({
+      floor,
+      matrix: { assistant: { write: "review" } },
+    });
 
     const loosen = await invoke("policy.update", { preset: "autonomous" }, context(admin));
     expect(loosen.loosened).toBe(true);
