@@ -49,8 +49,10 @@ describe("migration runner", () => {
     expect(tmp).toBeNull();
   });
 
-  it("migration count matches CORE_SCHEMA_VERSION", () => {
-    expect(env.TEST_MIGRATIONS).toHaveLength(CORE_SCHEMA_VERSION);
+  it("the last migration's number is CORE_SCHEMA_VERSION", () => {
+    // Numbers may skip (parallel stages reserve ranges), but the highest one is the version.
+    const numbers = env.TEST_MIGRATIONS.map((m) => Number(m.name.slice(0, 4)));
+    expect(Math.max(...numbers)).toBe(CORE_SCHEMA_VERSION);
   });
 
   it("gives typed access to core tables", async () => {
