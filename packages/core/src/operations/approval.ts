@@ -5,11 +5,14 @@ import type { CoreDatabase, PendingActionStatus } from "@crm/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ApprovalStateError, objectOfId } from "../approvals/queue.ts";
+import { approvalDecidedMessages, emitEvents, eventOriginOf } from "../automations/events.ts";
+import type { ApprovalDecidedMessage, EventSink } from "../automations/types.ts";
 import { ForbiddenError, NotFoundError, toOperationError, ValidationError } from "../errors.ts";
 import { newId, replaceIds } from "../ids.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import {
   type ActingUser,
+  type Actor,
   type Origin,
   ROLES,
   type Role,
@@ -561,6 +564,71 @@ async function dependentsOf(
   return out;
 }
 
+type Decision = ApprovalDecidedMessage["decision"];
+
+/** The approval messages for decided actions (ADR 0130): automations and waiting runs. */
+function decisionMessages(
+  rows: readonly {
+    id: string;
+    change_set_id: string;
+    operation: string;
+    origin: string;
+    preview: string;
+  }[],
+  decisionOf: (id: string) => Decision | null,
+  by: { actor: Actor; userId: string | null; origin: Origin; operation: string },
+  now: string,
+): ApprovalDecidedMessage[] {
+  const origin = eventOriginOf({
+    actor: by.actor,
+    userId: by.userId ?? "system",
+    origin: by.origin,
+    operation: by.operation,
+    auditId: newId("audit"),
+    bulk: false,
+  });
+  return approvalDecidedMessages(
+    now,
+    origin,
+    rows.flatMap((row) => {
+      const decision = decisionOf(row.id);
+      if (!decision) return [];
+      const records = parse<{ object: string; id: string }[]>(row.preview, []).map((p) => ({
+        object: p.object,
+        id: p.id,
+      }));
+      return [
+        {
+          actionId: row.id,
+          changeSetId: row.change_set_id,
+          operation: row.operation,
+          decision,
+          decidedBy: by.userId,
+          records,
+          actionOrigin: parse<Origin>(row.origin, { surface: "system" }),
+        },
+      ];
+    }),
+  );
+}
+
+async function emitDecisions(
+  ctx: HandlerContext,
+  rows: readonly PendingRow[],
+  decisionOf: (id: string) => Decision | null,
+): Promise<void> {
+  if (!ctx.events) return;
+  await emitEvents(
+    ctx.events,
+    decisionMessages(
+      rows,
+      decisionOf,
+      { actor: "human", userId: ctx.user.id, origin: ctx.origin, operation: ctx.operation },
+      ctx.now,
+    ),
+  );
+}
+
 function closeSets(ctx: HandlerContext, ids: Iterable<string>) {
   const list = [...new Set(ids)];
   if (!list.length) return;
@@ -758,6 +826,11 @@ export const approvalApprove = defineOperation({
             .where("status", "=", "pending"),
         ]);
       }
+      const decided = new Map<string, Decision>(
+        results.map((r) => [r.actionId, r.status === "applied" ? "approved" : "failed"]),
+      );
+      for (const s of stranded) decided.set(s.id, "failed");
+      await emitDecisions(ctx, [...targets, ...stranded], (id) => decided.get(id) ?? null);
       return { results, counts: counts(results) };
     });
   },
@@ -817,7 +890,12 @@ export const approvalReject = defineOperation({
       ctx,
       [...targets, ...cascaded].map((r) => r.change_set_id),
     );
-    return { results, counts: counts(results) };
+    const output = { results, counts: counts(results) };
+    if (!ctx.events) return output;
+    return ctx.afterCommit(async () => {
+      await emitDecisions(ctx, [...targets, ...cascaded], () => "rejected");
+      return output;
+    });
   },
 });
 
@@ -940,18 +1018,40 @@ export const changesetCommit = defineOperation({
   },
 });
 
-/** Marks pending actions past their expiry as expired. Run by the daily cron (and tests). */
+/**
+ * Marks pending actions past their expiry as expired. Run by the daily cron (and tests). With
+ * `events`, each expiry is sent as an `approval` message (decision `expired`, ADR 0130).
+ */
 export async function expirePendingActions(
   db: Kysely<CoreDatabase>,
   now: string = new Date().toISOString(),
+  events?: EventSink,
 ): Promise<number> {
-  const result = await db
+  const rows = await db
     .updateTable("core_pending_action")
     .set({ status: "expired", status_reason: "Not approved before it expired" })
     .where("status", "=", "pending")
     .where("expires_at", "<=", now)
-    .executeTakeFirst();
-  return Number(result.numUpdatedRows ?? 0);
+    .returning(["id", "change_set_id", "operation", "origin", "preview"])
+    .execute();
+  if (events && rows.length) {
+    await emitEvents(
+      events,
+      decisionMessages(
+        rows,
+        () => "expired",
+        // The expiry sweep is a system job (an automation in actor terms).
+        {
+          actor: "automation",
+          userId: null,
+          origin: { surface: "system", automationId: "approval.expire" },
+          operation: "approval.expire",
+        },
+        now,
+      ),
+    );
+  }
+  return rows.length;
 }
 
 export { objectOfId };

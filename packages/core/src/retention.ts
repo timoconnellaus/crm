@@ -196,6 +196,58 @@ export async function purgeRunHistory(
     deleted += result.deleted;
     more ||= result.more;
   }
+  const automation = await purgeAutomationRuns(db, now, { chunk, maxChunks });
+  return { deleted: deleted + automation.deleted, more: more || automation.more };
+}
+
+/** Automation run counters (rails) are kept this long. */
+export const COUNTER_RETENTION_DAYS = 2;
+
+/**
+ * Automation run history (ADR 0130): finished runs older than 30 days (failed ones 90) with their
+ * run records, and rate-limit counters older than two days. Each chunk takes the oldest runs of
+ * one status through core_automation_runs_status_idx; running and waiting runs are never touched.
+ */
+export async function purgeAutomationRuns(
+  db: Kysely<CoreDatabase>,
+  now: string,
+  { chunk = 500, maxChunks = 20 }: ChunkOptions = {},
+): Promise<{ deleted: number; more: boolean }> {
+  let deleted = 0;
+  let more = false;
+  const plans = [
+    { status: "completed", days: RUN_RETENTION_DAYS.ok },
+    { status: "cancelled", days: RUN_RETENTION_DAYS.ok },
+    { status: "expired", days: RUN_RETENTION_DAYS.ok },
+    { status: "skipped", days: RUN_RETENTION_DAYS.ok },
+    { status: "failed", days: RUN_RETENTION_DAYS.failed },
+  ] as const;
+  for (const { status, days } of plans) {
+    const cutoff = daysBefore(now, days);
+    const result = await deleteInChunks(
+      async () => {
+        const due = await db
+          .selectFrom("core_automation_runs")
+          .select("id")
+          .where("status", "=", status)
+          .where("started_at", "<", cutoff)
+          .orderBy("started_at")
+          .limit(chunk)
+          .execute();
+        if (!due.length) return 0;
+        const ids = jsonList(due.map((r) => r.id));
+        await db.deleteFrom("core_automation_run_records").where("run_id", "in", ids).execute();
+        const r = await db.deleteFrom("core_automation_runs").where("id", "in", ids).executeTakeFirst();
+        return Number(r.numDeletedRows ?? 0);
+      },
+      chunk,
+      maxChunks,
+    );
+    deleted += result.deleted;
+    more ||= result.more;
+  }
+  const hour = daysBefore(now, COUNTER_RETENTION_DAYS).slice(0, 13);
+  await db.deleteFrom("core_automation_counters").where("hour", "<", hour).execute();
   return { deleted, more };
 }
 
