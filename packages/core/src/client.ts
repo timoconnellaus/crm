@@ -2,6 +2,8 @@
 // approval-policy presets. It never pulls in operation handlers or the database package, so the
 // UI bundle stays small and cannot reach D1. Import it as `@crm/core/client`.
 export { COMMON_CURRENCIES } from "./currencies.ts";
+export { type Row, resolveClickThrough } from "./dashboards/click-through.ts";
+export * from "./dashboards/spec.ts";
 export type { FieldDiff } from "./diff.ts";
 export * from "./fields/field-types.ts";
 export * from "./fields/index.ts";
@@ -35,3 +37,25 @@ export {
   ROLES,
   type Role,
 } from "./principals.ts";
+export {
+  type BoardViewSpec,
+  boardViewSpecSchema,
+  CALENDAR_MODES,
+  type CalendarViewSpec,
+  calendarViewSpecSchema,
+  type GalleryViewSpec,
+  galleryViewSpecSchema,
+  groupValues,
+  isDateField,
+  isGroupable,
+  isSummable,
+  OBJECT_VIEW_TYPES,
+  type ObjectViewSpec,
+  type ObjectViewType,
+  objectViewSpecSchema,
+  type TableViewSpec,
+  tableViewSpecSchema,
+  VIEW_TYPES,
+  type ViewSpec,
+  type ViewType,
+} from "./views/spec.ts";

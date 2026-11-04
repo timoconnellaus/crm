@@ -28,6 +28,7 @@ import {
   ORGANISATION_LIST_DEFAULTS,
   type OrganisationRow,
 } from "#/components/organisations/config";
+import { ObjectViewBody, scrollFor, ViewTypeSwitcher } from "#/components/views/object-views";
 import { SavedViewsMenu } from "#/components/views/saved-views-menu";
 import {
   parseViewSearch,
@@ -38,6 +39,7 @@ import {
 import { countQueryOptions, useRecordCount } from "#/lib/count";
 import { initials } from "#/lib/format";
 import { callOp } from "#/lib/operations";
+import { useObjectInfo } from "#/lib/schema";
 import { useUserLabel } from "#/lib/users-adapter";
 
 const QUERY_KEY = ["op", "organisation.list", "table"] as const;
@@ -89,12 +91,14 @@ function OrganisationsPage() {
   const { create } = useAppCommands();
   const userLabel = useUserLabel();
   const count = useRecordCount("organisation", view.state.filter);
+  const { object: info } = useObjectInfo("organisation");
+  const type = view.state.type;
 
   return (
     <PageLayout
       title="Organisations"
       width="fluid"
-      scroll="none"
+      scroll={scrollFor(type)}
       count={
         <PageCount
           value={count.data?.count}
@@ -130,79 +134,90 @@ function OrganisationsPage() {
             onChange={view.setFilter}
           />
           <div className="flex-1" />
-          <ColumnPicker
-            object={organisationObject}
-            available={ORGANISATION_COLUMNS}
-            value={view.state.columns}
-            onChange={view.setColumns}
-          />
+          {info && <ViewTypeSwitcher info={info} view={view} />}
+          {type === "table" && (
+            <ColumnPicker
+              object={organisationObject}
+              available={ORGANISATION_COLUMNS}
+              value={view.state.columns}
+              onChange={view.setColumns}
+            />
+          )}
         </>
       }
     >
-      <DataTable<OrganisationRow>
-        object={organisationObject}
-        label="Organisations"
-        queryKey={QUERY_KEY}
-        fetchPage={fetchOrganisations}
-        columns={view.state.columns}
-        availableColumns={ORGANISATION_COLUMNS}
-        extraFields={EXTRA_FIELDS}
-        sort={view.state.sort}
-        onSortChange={view.setSort}
-        filter={view.state.filter}
-        total={count.data}
-        pendingObject="organisation"
-        onOpen={(row) => navigate({ to: "/organisations/$id", params: { id: row.id } })}
-        renderCell={{
-          name: (row) => (
-            <Link
-              to="/organisations/$id"
-              params={{ id: row.id }}
-              className="inline-flex min-w-0 items-center gap-2 font-medium hover:underline"
-            >
-              <Avatar className="size-6 rounded-md">
-                {row.primaryDomain && (
-                  <AvatarImage src={faviconUrl(row.primaryDomain) ?? undefined} alt="" />
-                )}
-                <AvatarFallback className="rounded-md text-[10px]">
-                  {initials(row.name ?? "")}
-                </AvatarFallback>
-              </Avatar>
-              <span className="truncate">{row.name}</span>
-            </Link>
-          ),
-          parentName: (row) =>
-            row.parentId ? (
+      {type !== "table" ? (
+        info && <ObjectViewBody info={info} view={view} />
+      ) : (
+        <DataTable<OrganisationRow>
+          object={organisationObject}
+          label="Organisations"
+          queryKey={QUERY_KEY}
+          fetchPage={fetchOrganisations}
+          columns={view.state.columns}
+          availableColumns={ORGANISATION_COLUMNS}
+          extraFields={EXTRA_FIELDS}
+          sort={view.state.sort}
+          onSortChange={view.setSort}
+          filter={view.state.filter}
+          total={count.data}
+          pendingObject="organisation"
+          onOpen={(row) => navigate({ to: "/organisations/$id", params: { id: row.id } })}
+          renderCell={{
+            name: (row) => (
               <Link
                 to="/organisations/$id"
-                params={{ id: row.parentId }}
-                className="hover:underline"
+                params={{ id: row.id }}
+                className="inline-flex min-w-0 items-center gap-2 font-medium hover:underline"
               >
-                {row.parentName ?? row.parentId}
+                <Avatar className="size-6 rounded-md">
+                  {row.primaryDomain && (
+                    <AvatarImage src={faviconUrl(row.primaryDomain) ?? undefined} alt="" />
+                  )}
+                  <AvatarFallback className="rounded-md text-[10px]">
+                    {initials(row.name ?? "")}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="truncate">{row.name}</span>
               </Link>
-            ) : (
-              <span className="text-muted-foreground">—</span>
             ),
-          ownerId: (row) =>
-            userLabel(row.ownerId) || <span className="text-muted-foreground">—</span>,
-        }}
-        bulkActions={({ ids, clear }) => (
-          <BulkActions object="organisation" selected={ids.map((id) => ({ id }))} onDone={clear} />
-        )}
-        empty={
-          <EmptyState
-            icon={Building2Icon}
-            title="No organisations yet"
-            description="Add an organisation, or import a CSV of companies."
-            action={
-              <Button onClick={() => create("organisation")}>
-                <PlusIcon />
-                New organisation
-              </Button>
-            }
-          />
-        }
-      />
+            parentName: (row) =>
+              row.parentId ? (
+                <Link
+                  to="/organisations/$id"
+                  params={{ id: row.parentId }}
+                  className="hover:underline"
+                >
+                  {row.parentName ?? row.parentId}
+                </Link>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              ),
+            ownerId: (row) =>
+              userLabel(row.ownerId) || <span className="text-muted-foreground">—</span>,
+          }}
+          bulkActions={({ ids, clear }) => (
+            <BulkActions
+              object="organisation"
+              selected={ids.map((id) => ({ id }))}
+              onDone={clear}
+            />
+          )}
+          empty={
+            <EmptyState
+              icon={Building2Icon}
+              title="No organisations yet"
+              description="Add an organisation, or import a CSV of companies."
+              action={
+                <Button onClick={() => create("organisation")}>
+                  <PlusIcon />
+                  New organisation
+                </Button>
+              }
+            />
+          }
+        />
+      )}
     </PageLayout>
   );
 }

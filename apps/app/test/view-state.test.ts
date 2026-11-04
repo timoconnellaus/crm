@@ -17,7 +17,13 @@ describe("view state in the URL", () => {
   it("leaves defaults out of the URL", () => {
     expect(
       viewStateToSearch(
-        { filter: undefined, sort: defaults.sort, columns: [...defaults.columns] },
+        {
+          type: "table",
+          filter: undefined,
+          sort: defaults.sort,
+          columns: [...defaults.columns],
+          layout: {},
+        },
         defaults,
       ),
     ).toEqual({});
@@ -25,9 +31,11 @@ describe("view state in the URL", () => {
 
   it("round-trips filter, sort and columns", () => {
     const state = {
+      type: "table" as const,
       filter: { and: [{ field: "tags", op: "eq" as const, value: "VIP" }] },
       sort: { field: "updatedAt", direction: "desc" as const },
       columns: ["displayName", "tags", "updatedAt"],
+      layout: {},
     };
     const search = viewStateToSearch(state, defaults);
     expect(search).toEqual({
@@ -71,9 +79,33 @@ describe("view state in the URL", () => {
 
   it("falls back to defaults", () => {
     expect(searchToViewState(personObject, {}, defaults)).toEqual({
+      type: "table",
       filter: undefined,
       sort: defaults.sort,
       columns: defaults.columns,
+      layout: {},
     });
+  });
+
+  it("round-trips a gallery or board view type and its layout", () => {
+    const state = {
+      type: "gallery" as const,
+      filter: undefined,
+      sort: defaults.sort,
+      columns: [...defaults.columns],
+      layout: { cardFields: ["jobTitle", "organisationName"], imageField: "avatarKey" },
+    };
+    const search = viewStateToSearch(state, defaults);
+    expect(search).toEqual({ vt: "gallery", layout: state.layout });
+    const reparsed = parseViewSearch(personObject, JSON.parse(JSON.stringify(search)));
+    expect(searchToViewState(personObject, reparsed, defaults)).toEqual(state);
+    // A layout given as JSON text, with junk keys and values dropped.
+    expect(
+      parseViewSearch(personObject, {
+        vt: "board",
+        layout: '{"groupBy":"status","mode":"year","cardFields":[1,2],"evil":"x"}',
+      }),
+    ).toEqual({ vt: "board", layout: { groupBy: "status" } });
+    expect(parseViewSearch(personObject, { vt: "spreadsheet" })).toEqual({});
   });
 });

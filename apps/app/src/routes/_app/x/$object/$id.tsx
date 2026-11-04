@@ -10,6 +10,7 @@ import { FieldsCard } from "#/components/fields/fields-card";
 import { useRecordHistory, useTimeline } from "#/components/record/adapters";
 import { HistoryList } from "#/components/record/history";
 import { RecordLayout, RecordLayoutSkeleton } from "#/components/record/record-layout";
+import { isRecordViewTab, useRecordViews } from "#/components/record/record-views";
 import { Timeline } from "#/components/record/timeline";
 import { formatDateTime } from "#/lib/format";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
@@ -21,11 +22,14 @@ import {
 } from "#/lib/schema";
 
 const TABS = ["overview", "timeline", "history"] as const;
-type Tab = (typeof TABS)[number];
+type Tab = (typeof TABS)[number] | `x:${string}`;
 
 export const Route = createFileRoute("/_app/x/$object/$id")({
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } =>
-    TABS.includes(search.tab as Tab) && search.tab !== "overview" ? { tab: search.tab as Tab } : {},
+    (TABS.includes(search.tab as (typeof TABS)[number]) && search.tab !== "overview") ||
+    isRecordViewTab(search.tab)
+      ? { tab: search.tab as Tab }
+      : {},
   component: ExtensionRecordPage,
 });
 
@@ -51,6 +55,7 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
   const navigate = useNavigate({ from: "/x/$object/$id" });
   const record = useOp("record.get", { object: info.name, id });
   const timeline = useTimeline(info.name, id);
+  const recordViews = useRecordViews(info.name, id);
   const history = useRecordHistory(info.name, id);
   const definition = useMemo(() => toObjectDefinition(info), [info]);
   const remove = useOpMutation("record.delete", { invalidates: ["record."] });
@@ -167,16 +172,20 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
             />
           ),
         },
+        ...recordViews.tabs,
       ]}
       side={
-        <dl className="grid gap-1 rounded-lg border p-4 text-sm">
-          <dt className="text-muted-foreground">Created</dt>
-          <dd>{formatDateTime(data.createdAt)}</dd>
-          <dt className="text-muted-foreground">Updated</dt>
-          <dd>{formatDateTime(data.updatedAt)}</dd>
-          <dt className="text-muted-foreground">Extension</dt>
-          <dd>{info.extension}</dd>
-        </dl>
+        <>
+          {recordViews.panels}
+          <dl className="grid gap-1 rounded-lg border p-4 text-sm">
+            <dt className="text-muted-foreground">Created</dt>
+            <dd>{formatDateTime(data.createdAt)}</dd>
+            <dt className="text-muted-foreground">Updated</dt>
+            <dd>{formatDateTime(data.updatedAt)}</dd>
+            <dt className="text-muted-foreground">Extension</dt>
+            <dd>{info.extension}</dd>
+          </dl>
+        </>
       }
     />
   );

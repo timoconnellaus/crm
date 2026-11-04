@@ -64,6 +64,7 @@ const optionSchema = z.object({
   value: z.string().min(1).max(100),
   label: z.string().min(1).max(100),
   color: z.string().max(20).optional(),
+  requires: z.array(z.string().max(80)).max(20).optional(),
 });
 
 export const fieldManifestSchema = z.object({
@@ -147,6 +148,43 @@ export const viewManifestSchema = z.object({
 });
 export type ViewManifest = z.infer<typeof viewManifestSchema>;
 
+const RECORD_VIEW_TYPES = ["table", "board", "calendar", "gallery"] as const;
+
+export const recordViewManifestSchema = z.object({
+  label: z.string().min(1).max(100),
+  on: z.string().min(1).max(80),
+  view: z.object({
+    type: z.enum(RECORD_VIEW_TYPES),
+    object: z.string().min(1).max(80),
+    relation: z.string().min(1).max(80),
+    filter: z.unknown().optional(),
+    sort: z
+      .object({ field: z.string().max(64), direction: z.enum(["asc", "desc"]).default("asc") })
+      .optional(),
+    columns: z.array(z.string().max(80)).max(100).optional(),
+    groupBy: z.string().max(80).optional(),
+    sumField: z.string().max(80).optional(),
+    dateField: z.string().max(80).optional(),
+    mode: z.enum(["month", "week", "agenda"]).optional(),
+    imageField: z.string().max(80).optional(),
+    cardFields: z.array(z.string().max(80)).max(8).optional(),
+  }),
+  order: z.number().int().min(0).max(10_000).default(100),
+});
+export type RecordViewManifest = z.infer<typeof recordViewManifestSchema>;
+
+export const settingManifestSchema = z.object({
+  type: z.enum(["text", "number", "boolean", "select"]),
+  label: z.string().min(1).max(100),
+  description: z.string().max(1000).optional(),
+  required: z.boolean().optional(),
+  default: z.union([z.string().max(1000), z.number(), z.boolean()]).optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  options: z.array(optionSchema).max(200).optional(),
+});
+export type SettingManifest = z.infer<typeof settingManifestSchema>;
+
 export const automationManifestSchema = z.object({
   description: z.string().min(1).max(2000),
   trigger: z.union([
@@ -181,6 +219,9 @@ export const manifestSchema = z.object({
   objects: z.record(z.string(), objectManifestSchema).default({}),
   fields: z.record(z.string(), z.record(z.string(), fieldManifestSchema)).default({}),
   views: z.record(z.string(), viewManifestSchema).default({}),
+  recordTabs: z.record(z.string(), recordViewManifestSchema).default({}),
+  recordPanels: z.record(z.string(), recordViewManifestSchema).default({}),
+  settings: z.record(z.string(), settingManifestSchema).default({}),
   tools: z.record(z.string(), toolManifestSchema).default({}),
   automations: z.record(z.string(), automationManifestSchema).default({}),
 });
@@ -255,6 +296,14 @@ export function toManifest(extension: Extension): ExtensionManifest {
       ]),
     ),
     views: extension.views ?? {},
+    recordTabs: extension.recordTabs ?? {},
+    recordPanels: extension.recordPanels ?? {},
+    settings: Object.fromEntries(
+      Object.entries(extension.settings ?? {}).map(([name, setting]) => [
+        name,
+        fieldToManifest(setting as unknown as Record<string, unknown>),
+      ]),
+    ),
     tools: Object.fromEntries(
       Object.entries(extension.tools ?? {}).map(([name, tool]) => [
         name,
@@ -447,6 +496,21 @@ export function validateManifest(
         if (new Set(values).size !== values.length) {
           contract(`${path}.options`, "Option values must be unique");
         }
+        for (const option of field.options ?? []) {
+          if (!option.requires?.length) continue;
+          if (field.type !== "select") {
+            contract(`${path}.options`, "Only select fields take `requires`");
+            continue;
+          }
+          for (const required of option.requires) {
+            if (!(required in fields)) {
+              contract(
+                `${path}.options`,
+                `Option "${option.value}" requires "${required}", which is not a field here`,
+              );
+            }
+          }
+        }
       } else if (field.options) {
         contract(`${path}.options`, `Only select and multiSelect fields take options`);
       }
@@ -549,6 +613,71 @@ export function validateManifest(
     if (!FIELD_NAME_RE.test(name)) contract(`views.${name}`, "View names must be camelCase");
     if (!known.has(view.object))
       contract(`views.${name}.object`, `Unknown object "${view.object}"`);
+  }
+
+  for (const [kind, entries] of [
+    ["recordTabs", m.recordTabs],
+    ["recordPanels", m.recordPanels],
+  ] as const) {
+    for (const [name, entry] of Object.entries(entries)) {
+      const path = `${kind}.${name}`;
+      if (!FIELD_NAME_RE.test(name)) contract(path, `${kind} names must be camelCase`);
+      if (!known.has(entry.on)) contract(`${path}.on`, `Unknown object "${entry.on}"`);
+      if (!known.has(entry.view.object)) {
+        contract(`${path}.view.object`, `Unknown object "${entry.view.object}"`);
+        continue;
+      }
+      // The extension's own objects can be checked here; the host checks the rest.
+      const own = entry.view.object.startsWith(`${m.id}.`)
+        ? m.objects[entry.view.object.slice(m.id.length + 1)]
+        : undefined;
+      if (own) {
+        const relation = own.fields[entry.view.relation];
+        if (!relation) {
+          contract(
+            `${path}.view.relation`,
+            `${entry.view.object} has no field "${entry.view.relation}"`,
+          );
+        } else if (relation.type !== "relation" || relation.to !== entry.on) {
+          contract(
+            `${path}.view.relation`,
+            `${entry.view.object}.${entry.view.relation} must be a relation to ${entry.on}`,
+          );
+        }
+        for (const key of ["groupBy", "sumField", "dateField", "imageField"] as const) {
+          const field = entry.view[key];
+          if (field && !own.fields[field]) {
+            contract(`${path}.view.${key}`, `${entry.view.object} has no field "${field}"`);
+          }
+        }
+      }
+      if (entry.view.type === "board" && !entry.view.groupBy) {
+        contract(`${path}.view.groupBy`, "board views need groupBy");
+      }
+      if (entry.view.type === "calendar" && !entry.view.dateField) {
+        contract(`${path}.view.dateField`, "calendar views need dateField");
+      }
+    }
+  }
+
+  for (const [name, setting] of Object.entries(m.settings)) {
+    const path = `settings.${name}`;
+    if (!FIELD_NAME_RE.test(name)) contract(path, "Setting names must be camelCase");
+    if (setting.type === "select") {
+      if (!setting.options?.length) contract(`${path}.options`, "select settings need options");
+      if (
+        setting.default !== undefined &&
+        !setting.options?.some((o) => o.value === setting.default)
+      ) {
+        contract(`${path}.default`, "The default must be one of the options");
+      }
+    } else if (setting.options) {
+      contract(`${path}.options`, "Only select settings take options");
+    }
+    const expected = { text: "string", select: "string", number: "number", boolean: "boolean" };
+    if (setting.default !== undefined && typeof setting.default !== expected[setting.type]) {
+      contract(`${path}.default`, `The default must be a ${expected[setting.type]}`);
+    }
   }
 
   for (const [name, automation] of Object.entries(m.automations)) {

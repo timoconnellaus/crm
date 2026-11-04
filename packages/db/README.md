@@ -31,6 +31,7 @@ Migrations:
 | `0007_crm_views.sql` | `crm_*` read views (`crm.*` in the docs; D1 has no schemas) |
 | `0008_audit_redaction.sql` | `core_audit_redactions` + guarded audit triggers: the sanctioned "[erased]" redaction path (ADR 0019) |
 | `0020_extensions.sql` | Stage 3: `core_audit` rebuilt to accept actor `extension`; `core_user.kind` (extension principals); `core_base_*` views under the reconciler-owned `crm_people/organisations/activities/tasks`; `core_extensions`, `core_extension_versions`, `core_extension_runs`, `core_extension_kv`, `core_extension_objects`, `core_extension_fields` (ADR 0040) |
+| `0080_views_dashboards.sql` | Stage 4a: `core_views.shared`, `core_dashboards`, `core_user_home` (Home), `core_extension_settings`, live `created_at` indexes on people and organisations for dashboard widgets (ADR 0056, ADR 0057) |
 
 `test/schema.test.ts` covers the constraints and triggers (live-unique emails/domains, primary
 flags, first admin, FTS sync, append-only audit and its redaction path, views).

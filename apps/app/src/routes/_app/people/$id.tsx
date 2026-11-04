@@ -56,6 +56,7 @@ import {
 import { AffiliationsCard } from "#/components/record/affiliations-card";
 import { HistoryList } from "#/components/record/history";
 import { RecordLayout, RecordLayoutSkeleton } from "#/components/record/record-layout";
+import { isRecordViewTab, useRecordViews } from "#/components/record/record-views";
 import { TaskList, TasksCard } from "#/components/record/tasks";
 import { ActivityComposer, Timeline, TimelineFilter } from "#/components/record/timeline";
 import { formatDate } from "#/lib/format";
@@ -63,11 +64,14 @@ import { callOp, OperationCallError } from "#/lib/operations";
 import { errorMessage, opKey, useOp, useOpMutation } from "#/lib/query";
 
 const TABS = ["overview", "timeline", "tasks", "history"] as const;
-type Tab = (typeof TABS)[number];
+type Tab = (typeof TABS)[number] | `x:${string}`;
 
 export const Route = createFileRoute("/_app/people/$id")({
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } =>
-    TABS.includes(search.tab as Tab) && search.tab !== "overview" ? { tab: search.tab as Tab } : {},
+    (TABS.includes(search.tab as (typeof TABS)[number]) && search.tab !== "overview") ||
+    isRecordViewTab(search.tab)
+      ? { tab: search.tab as Tab }
+      : {},
   // Intent preloading: hovering a link to this record warms the record and its timeline.
   loader: ({ context, params }) => {
     if (typeof window === "undefined") return;
@@ -133,6 +137,7 @@ function PersonRecord({
   const deleted = Boolean(person.deletedAt);
   const [types, setTypes] = useState<ActivityType[]>([]);
   const timeline = useTimeline("person", person.id, { types });
+  const recordViews = useRecordViews("person", person.id);
   const composer = useLogActivity("person", person.id);
   const tasks = useRecordTasks("person", person.id);
   const taskActions = useTaskActions("person", person.id);
@@ -289,10 +294,12 @@ function PersonRecord({
               />
             ),
           },
+          ...recordViews.tabs,
         ]}
         side={
           <>
             <PersonDetailsCard person={person} readOnly={deleted} />
+            {recordViews.panels}
             <ExtensionFieldsCards object="person" id={person.id} readOnly={deleted} />
             <AffiliationsCard
               object="person"

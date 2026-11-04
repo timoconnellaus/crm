@@ -38,7 +38,19 @@ interface FieldBase {
   readOnly?: boolean;
 }
 
-export type SelectOption = string | { value: string; label?: string; color?: string };
+export type SelectOption =
+  | string
+  | {
+      value: string;
+      label?: string;
+      color?: string;
+      /**
+       * Fields that must have a value for a record to hold this choice (a stage rule, ADR 0058).
+       * Moving a record to it without them is refused by the update operation, naming the field,
+       * so a board drag asks for it.
+       */
+      requires?: string[];
+    };
 
 export type FieldSpec =
   | (FieldBase & {
@@ -195,6 +207,52 @@ export interface ViewSpec {
   columns?: string[];
 }
 
+/**
+ * A view on another object's record page (ADR 0058): a tab, or a side panel, listing records of
+ * `view.object` whose `view.relation` field points at the record being shown, e.g. the projects
+ * of an organisation. The host renders it with its own components; extensions ship no UI.
+ */
+export interface RecordViewSpec {
+  label: string;
+  /** The record page it appears on: `person`, `organisation`, `task` or `<extension>.<object>`. */
+  on: string;
+  view: {
+    type: "table" | "board" | "calendar" | "gallery";
+    /** The object listed. */
+    object: string;
+    /** The field of `object` that holds the current record's id (a relation, or `linkedRecordId`). */
+    relation: string;
+    filter?: ViewFilter;
+    sort?: { field: string; direction?: "asc" | "desc" };
+    /** table: fields shown. */
+    columns?: string[];
+    /** board: the single-select field to group by, and an optional number field to sum. */
+    groupBy?: string;
+    sumField?: string;
+    /** calendar: the date field, and the starting mode. */
+    dateField?: string;
+    mode?: "month" | "week" | "agenda";
+    /** gallery: an image URL field. */
+    imageField?: string;
+    /** board, calendar, gallery: fields shown on each card. */
+    cardFields?: string[];
+  };
+  /** Order among the page's tabs or panels (lower first). Default 100. */
+  order?: number;
+}
+
+/** A typed extension setting, edited by admins in Settings → Extensions (ADR 0058). */
+export type SettingSpec = {
+  label: string;
+  description?: string;
+  required?: boolean;
+} & (
+  | { type: "text"; default?: string }
+  | { type: "number"; default?: number; min?: number; max?: number }
+  | { type: "boolean"; default?: boolean }
+  | { type: "select"; options: readonly SelectOption[]; default?: string }
+);
+
 // ---------------------------------------------------------------------------------------------
 // Host modules, as seen by tools through `ctx`
 
@@ -295,6 +353,12 @@ export interface ExtensionSpec {
   /** Fields added to other objects, keyed by target object (`organisation`, `other.object`). */
   fields?: Record<string, FieldSpecs>;
   views?: Record<string, ViewSpec>;
+  /** Tabs on other objects' record pages (ADR 0058). */
+  recordTabs?: Record<string, RecordViewSpec>;
+  /** Side panels on other objects' record pages (ADR 0058). */
+  recordPanels?: Record<string, RecordViewSpec>;
+  /** Typed settings, edited in Settings → Extensions (ADR 0058). */
+  settings?: Record<string, SettingSpec>;
   // biome-ignore lint/suspicious/noExplicitAny: tools of any input/output schema.
   tools?: Record<string, ToolSpec<any, any>>;
   automations?: Record<string, AutomationSpec>;

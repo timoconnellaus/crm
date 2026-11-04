@@ -232,6 +232,13 @@ Options:
 | U12 | Stage 8 self-updater, ADRs 0053/0054 | Unauthenticated GitHub API calls are limited to 60/hour per IP, and Workers share IPs. A Time Travel rollback discards mail synced during the update window. | Intermittent 403s, and data loss on rollback. | Check releases on the daily cron with ETags. Download from release-asset URLs. Pause sync and queue consumers during the update. Keep 2–3 bundles in R2 with a lifecycle rule. |
 | U13 | Stage 7 assistant transport | A non-hibernating socket per open tab keeps a DO awake. | About 1M GB-s a month for 10 users, about $8. | Use the WebSocket Hibernation API, and connect only while the panel is open. |
 
+> **U4 resolved, 2026-11-05 (stage 4a, ADR 0057).** The 60 s widget cache is the Workers Cache API,
+> keyed by a SHA-256 of the bound SQL, params, row limit and visibility scope, with manual refresh;
+> no D1 or KV writes. Overview widgets walk indexes (new live `created_at` indexes on people and
+> organisations), with `EXPLAIN QUERY PLAN` and rows-read budgets in
+> `packages/core/test/dashboards-rows-read.test.ts`. Not done: read replicas, `EXPLAIN` on save,
+> `last_activity_at`.
+
 ## 7. What is fine
 
 These were checked and are not a concern:

@@ -26,6 +26,7 @@ export const ID_PREFIXES = {
   connectedApp: "cap",
   /** Stage history rows (ADR 0100). */
   stageHistory: "sth",
+  dashboard: "dsh",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

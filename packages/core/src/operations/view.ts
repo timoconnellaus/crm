@@ -1,124 +1,129 @@
-// view.* operations: a user's saved list views (ADR 0016). A view spec is a `table`-type spec
-// `{ type: "table", object, filter, sort, columns }`, validated against the field registry.
-// Stage 4 adds more spec types to the discriminated union; stored table specs stay valid.
+// view.* operations: saved views of any object (ADR 0016, ADR 0027, ADR 0056). A saved view is a
+// name plus a view spec: `table`, `board`, `calendar` or `gallery` (views/spec.ts), validated
+// against the field registry. Views are personal unless shared: everyone who can read records
+// sees shared views; the owner and admins edit them. Stored stage-1 table specs stay valid.
 import type { CoreDatabase } from "@crm/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
-import { NotFoundError, ValidationError } from "../errors.ts";
-import { getObject } from "../fields/index.ts";
-import { compileFilter, filterSchema } from "../filter.ts";
+import { ForbiddenError, NotFoundError } from "../errors.ts";
 import { newId } from "../ids.ts";
-import { resolveSort, sortSchema } from "../list.ts";
-import { defineOperation } from "../operation.ts";
+import { defineOperation, type HandlerContext } from "../operation.ts";
+import {
+  type ObjectViewSpec,
+  objectViewSpecSchema,
+  parseStoredViewSpec,
+  validateViewSpec,
+  viewObjectName,
+} from "../views/spec.ts";
+
+export {
+  type BoardViewSpec,
+  boardViewSpecSchema,
+  type CalendarViewSpec,
+  calendarViewSpecSchema,
+  type GalleryViewSpec,
+  galleryViewSpecSchema,
+  type ObjectViewSpec,
+  objectViewSpecSchema,
+  parseStoredViewSpec,
+  type TableViewSpec,
+  tableViewSpecSchema,
+  type ViewSpec,
+  validateViewSpec,
+  viewSpecSchema,
+} from "../views/spec.ts";
 
 const viewId = z.string().startsWith("vw_").max(64).describe("Saved view id (vw_…)");
-const objectName = z
-  .string()
-  .min(1)
-  .max(80)
-  .regex(/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)?$/);
-
-export const tableViewSpecSchema = z.object({
-  type: z.literal("table"),
-  object: objectName.describe(
-    "The object listed: person, organisation, activity, task or an extension object",
-  ),
-  filter: filterSchema.nullish().describe("Structured filter JSON, as list operations take"),
-  sort: sortSchema.nullish(),
-  columns: z
-    .array(z.string().min(1).max(64))
-    .min(1)
-    .max(100)
-    .describe("Field names shown, in order"),
-});
-export const viewSpecSchema = z.discriminatedUnion("type", [tableViewSpecSchema]);
-export type ViewSpec = z.infer<typeof viewSpecSchema>;
 
 export const savedViewSchema = z.object({
   id: z.string(),
   name: z.string(),
   object: z.string(),
-  spec: viewSpecSchema,
+  spec: objectViewSpecSchema,
   position: z.number(),
+  /** Shared with the org: members see it; the owner and admins edit it. */
+  shared: z.boolean(),
+  ownerId: z.string(),
+  /** Whether the caller may change or delete it. */
+  canEdit: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 export type SavedView = z.infer<typeof savedViewSchema>;
 
-/** Checks a spec against the field registry; returns it normalised for storage. */
-export function validateViewSpec(spec: ViewSpec): ViewSpec {
-  const object = getObject(spec.object);
-  if (!object) throw new ValidationError(`Unknown object ${spec.object}`);
-  if (spec.filter) compileFilter(object, spec.filter);
-  if (spec.sort) resolveSort(object, spec.sort);
-  const names = new Set(object.fields.map((f) => f.name));
-  const unknown = spec.columns.filter((c) => !names.has(c));
-  if (unknown.length) {
-    throw new ValidationError(`Unknown ${spec.object} columns: ${unknown.join(", ")}`, {
-      field: "columns",
-    });
-  }
-  if (new Set(spec.columns).size !== spec.columns.length) {
-    throw new ValidationError("A column is listed twice", { field: "columns" });
-  }
-  return {
-    type: "table",
-    object: spec.object,
-    filter: spec.filter ?? null,
-    sort: spec.sort ?? null,
-    columns: spec.columns,
-  };
-}
-
-function toView(row: {
+interface ViewRow {
   id: string;
+  user_id: string;
   name: string;
   object: string;
   spec: string;
   position: number;
+  shared: number;
   created_at: string;
   updated_at: string;
-}): SavedView {
+}
+
+function toView(row: ViewRow, ctx: Pick<HandlerContext, "user">): SavedView {
+  const owner = row.user_id === ctx.user.id;
   return {
     id: row.id,
     name: row.name,
     object: row.object,
-    spec: JSON.parse(row.spec) as ViewSpec,
+    spec: parseStoredViewSpec(row.spec),
     position: row.position,
+    shared: row.shared === 1,
+    ownerId: row.user_id,
+    canEdit: owner || (row.shared === 1 && ctx.user.role === "admin"),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-/** The caller's own view, or NotFoundError (other users' views are invisible). */
-async function requireOwnView(db: Kysely<CoreDatabase>, id: string, userId: string) {
-  const row = await db
-    .selectFrom("core_views")
-    .selectAll()
-    .where("id", "=", id)
-    .where("user_id", "=", userId)
-    .executeTakeFirst();
-  if (!row) throw new NotFoundError("view", id);
-  return toView(row);
+/** A view the caller can see (their own, or a shared one), or NotFoundError. */
+async function requireVisibleView(
+  db: Kysely<CoreDatabase>,
+  ctx: Pick<HandlerContext, "user">,
+  id: string,
+): Promise<SavedView> {
+  const row = await db.selectFrom("core_views").selectAll().where("id", "=", id).executeTakeFirst();
+  if (!row || (row.user_id !== ctx.user.id && row.shared !== 1))
+    throw new NotFoundError("view", id);
+  return toView(row, ctx);
 }
 
-const snapshot = (v: Pick<SavedView, "name" | "spec" | "position">) => ({
+/** A view the caller may change: their own, or (as an admin) a shared one. */
+async function requireEditableView(ctx: HandlerContext, id: string): Promise<SavedView> {
+  const view = await requireVisibleView(ctx.db, ctx, id);
+  if (!view.canEdit) {
+    throw new ForbiddenError("Only the view's owner or an admin can change a shared view");
+  }
+  return view;
+}
+
+const snapshot = (v: Pick<SavedView, "name" | "spec" | "position" | "shared">) => ({
   name: v.name,
   spec: v.spec,
   position: v.position,
+  shared: v.shared,
 });
 
 const nameSchema = z.string().trim().min(1).max(200);
+const specDescription =
+  "A view spec: { type: 'table', object, filter, sort, columns } | { type: 'board', object, " +
+  "filter, groupBy (single-select field), sumField?, cardFields } | { type: 'calendar', object, " +
+  "filter, dateField, mode: month|week|agenda, cardFields } | { type: 'gallery', object, filter, " +
+  "sort, imageField?, cardFields }";
 
 export const viewCreate = defineOperation({
   name: "view.create",
   description:
-    "Save a list view for yourself: a name and a table view spec { type: 'table', object, " +
-    "filter, sort, columns }. Filter, sort and columns are checked against the object's fields. " +
-    "Views are private to the user who saves them. Returns the saved view.",
+    `Save a view of an object's records: a name and ${specDescription}. Fields are checked ` +
+    "against the object's registry. Personal by default; shared: true shows it to everyone in " +
+    "the org (you and admins can change it). Returns the saved view.",
   input: z.object({
     name: nameSchema,
-    spec: viewSpecSchema,
+    spec: objectViewSpecSchema,
+    shared: z.boolean().default(false),
     position: z.number().int().min(0).max(10_000).optional().describe("Order in the view list"),
   }),
   output: savedViewSchema,
@@ -139,27 +144,19 @@ export const viewCreate = defineOperation({
             .executeTakeFirst()
         )?.n ?? 0,
       );
-    const view: SavedView = {
+    const row: ViewRow = {
       id,
-      name: input.name,
+      user_id: ctx.user.id,
       object: spec.object,
-      spec,
+      name: input.name,
+      spec: JSON.stringify(spec),
       position,
-      createdAt: ctx.now,
-      updatedAt: ctx.now,
+      shared: input.shared ? 1 : 0,
+      created_at: ctx.now,
+      updated_at: ctx.now,
     };
-    ctx.write(
-      ctx.db.insertInto("core_views").values({
-        id,
-        user_id: ctx.user.id,
-        object: spec.object,
-        name: input.name,
-        spec: JSON.stringify(spec),
-        position,
-        created_at: ctx.now,
-        updated_at: ctx.now,
-      }),
-    );
+    ctx.write(ctx.db.insertInto("core_views").values(row));
+    const view = toView(row, ctx);
     ctx.recordChange({ object: "view", id, action: "create", after: snapshot(view) });
     return view;
   },
@@ -168,27 +165,34 @@ export const viewCreate = defineOperation({
 export const viewUpdate = defineOperation({
   name: "view.update",
   description:
-    "Rename, reorder or change the spec of one of your saved views. A new spec replaces the old " +
-    "one and is checked against the object's fields. Returns the updated view.",
+    "Rename, reorder, share or change the spec of a saved view you own (admins may also change " +
+    "shared views). A new spec replaces the old one, may change its type (table → board) and is " +
+    "checked against the object's fields. Returns the updated view.",
   input: z.object({
     id: viewId,
     name: nameSchema.optional(),
-    spec: viewSpecSchema.optional(),
+    spec: objectViewSpecSchema.optional(),
+    shared: z.boolean().optional(),
     position: z.number().int().min(0).max(10_000).optional(),
   }),
   output: savedViewSchema,
   permission: "records:write",
   risk: "write",
   async handler(input, ctx) {
-    const before = await requireOwnView(ctx.db, input.id, ctx.user.id);
+    const before = await requireEditableView(ctx, input.id);
+    if (input.shared === false && before.ownerId !== ctx.user.id) {
+      throw new ForbiddenError("Only the owner can make a shared view personal again");
+    }
+    const spec: ObjectViewSpec = input.spec ? validateViewSpec(input.spec) : before.spec;
     const after: SavedView = {
       ...before,
       name: input.name ?? before.name,
-      spec: input.spec ? validateViewSpec(input.spec) : before.spec,
+      spec,
+      object: spec.object,
+      shared: input.shared ?? before.shared,
       position: input.position ?? before.position,
       updatedAt: ctx.now,
     };
-    after.object = after.spec.object;
     ctx.write(
       ctx.db
         .updateTable("core_views")
@@ -197,10 +201,10 @@ export const viewUpdate = defineOperation({
           object: after.object,
           spec: JSON.stringify(after.spec),
           position: after.position,
+          shared: after.shared ? 1 : 0,
           updated_at: ctx.now,
         })
-        .where("id", "=", input.id)
-        .where("user_id", "=", ctx.user.id),
+        .where("id", "=", input.id),
     );
     ctx.recordChange({
       object: "view",
@@ -216,38 +220,70 @@ export const viewUpdate = defineOperation({
 export const viewDelete = defineOperation({
   name: "view.delete",
   description:
-    "Delete one of your saved views. This removes only the saved list configuration, never " +
-    "any records, and cannot be undone.",
+    "Delete a saved view you own (admins may also delete shared views). This removes only the " +
+    "saved configuration, never any records, and cannot be undone.",
   input: z.object({ id: viewId }),
   output: z.object({ id: z.string(), deleted: z.literal(true) }),
   permission: "records:write",
   risk: "write",
   async handler(input, ctx) {
-    const view = await requireOwnView(ctx.db, input.id, ctx.user.id);
-    ctx.write(
-      ctx.db.deleteFrom("core_views").where("id", "=", input.id).where("user_id", "=", ctx.user.id),
-    );
+    const view = await requireEditableView(ctx, input.id);
+    ctx.write(ctx.db.deleteFrom("core_views").where("id", "=", input.id));
     ctx.recordChange({ object: "view", id: input.id, action: "delete", before: snapshot(view) });
     return { id: input.id, deleted: true as const };
   },
 });
 
+export const viewGet = defineOperation({
+  name: "view.get",
+  description:
+    "Get one saved view you can see (your own or a shared one) with its spec. Read-only.",
+  input: z.object({ id: viewId }),
+  output: savedViewSchema,
+  permission: "records:read",
+  risk: "read",
+  mcp: { idempotent: true },
+  handler: (input, ctx) => requireVisibleView(ctx.db, ctx, input.id),
+});
+
 export const viewList = defineOperation({
   name: "view.list",
   description:
-    "List your saved views, optionally for one object, in their saved order. Each has the full " +
-    "spec to reload the list exactly. Read-only.",
-  input: z.object({ object: objectName.optional() }),
+    "List the saved views you can use, optionally for one object: your own and every shared " +
+    "view, in their saved order, each with its full spec (table, board, calendar or gallery) " +
+    "and whether you can edit it. Read-only.",
+  input: z.object({ object: viewObjectName.optional() }),
   output: z.object({ items: z.array(savedViewSchema) }),
   permission: "records:read",
   risk: "read",
   mcp: { idempotent: true },
   async handler(input, ctx) {
-    let query = ctx.db.selectFrom("core_views").selectAll().where("user_id", "=", ctx.user.id);
-    if (input.object) query = query.where("object", "=", input.object);
-    const rows = await query.orderBy("object").orderBy("position").orderBy("created_at").execute();
-    return { items: rows.map(toView) };
+    // Two indexed reads (own by (user_id, object, position); shared by the partial index)
+    // rather than one OR the planner would scan.
+    let own = ctx.db.selectFrom("core_views").selectAll().where("user_id", "=", ctx.user.id);
+    let shared = ctx.db
+      .selectFrom("core_views")
+      .selectAll()
+      .where("shared", "=", 1)
+      .where("user_id", "!=", ctx.user.id);
+    if (input.object) {
+      own = own.where("object", "=", input.object);
+      shared = shared.where("object", "=", input.object);
+    }
+    const [mine, others] = await Promise.all([
+      own.orderBy("object").orderBy("position").orderBy("created_at").execute(),
+      shared.orderBy("object").orderBy("position").orderBy("created_at").limit(500).execute(),
+    ]);
+    const items = [...mine, ...others]
+      .sort(
+        (a, b) =>
+          a.object.localeCompare(b.object) ||
+          a.position - b.position ||
+          a.created_at.localeCompare(b.created_at),
+      )
+      .map((row) => toView(row, ctx));
+    return { items };
   },
 });
 
-export const viewOperations = [viewCreate, viewUpdate, viewDelete, viewList] as const;
+export const viewOperations = [viewCreate, viewUpdate, viewDelete, viewGet, viewList] as const;

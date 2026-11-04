@@ -59,6 +59,7 @@ import {
 } from "#/components/record/adapters";
 import { HistoryList } from "#/components/record/history";
 import { RecordLayout, RecordLayoutSkeleton } from "#/components/record/record-layout";
+import { isRecordViewTab, useRecordViews } from "#/components/record/record-views";
 import { TaskList, TasksCard } from "#/components/record/tasks";
 import { ActivityComposer, Timeline, TimelineFilter } from "#/components/record/timeline";
 import { formatDate } from "#/lib/format";
@@ -66,11 +67,14 @@ import { callOp, OperationCallError } from "#/lib/operations";
 import { errorMessage, opKey, useOp, useOpMutation } from "#/lib/query";
 
 const TABS = ["overview", "timeline", "people", "tasks", "history"] as const;
-type Tab = (typeof TABS)[number];
+type Tab = (typeof TABS)[number] | `x:${string}`;
 
 export const Route = createFileRoute("/_app/organisations/$id")({
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } =>
-    TABS.includes(search.tab as Tab) && search.tab !== "overview" ? { tab: search.tab as Tab } : {},
+    (TABS.includes(search.tab as (typeof TABS)[number]) && search.tab !== "overview") ||
+    isRecordViewTab(search.tab)
+      ? { tab: search.tab as Tab }
+      : {},
   // Intent preloading: hovering a link to this record warms the record and its timeline.
   loader: ({ context, params }) => {
     if (typeof window === "undefined") return;
@@ -138,6 +142,7 @@ function OrganisationRecord({
   const deleted = Boolean(org.deletedAt);
   const [types, setTypes] = useState<ActivityType[]>([]);
   const timeline = useTimeline("organisation", org.id, { types });
+  const recordViews = useRecordViews("organisation", org.id);
   const composer = useLogActivity("organisation", org.id);
   const tasks = useRecordTasks("organisation", org.id);
   const taskActions = useTaskActions("organisation", org.id);
@@ -311,10 +316,12 @@ function OrganisationRecord({
             />
           ),
         },
+        ...recordViews.tabs,
       ]}
       side={
         <>
           <OrganisationDetailsCard organisation={org} readOnly={deleted} />
+          {recordViews.panels}
           <ExtensionFieldsCards object="organisation" id={org.id} readOnly={deleted} />
           <OrganisationPeopleCard
             affiliations={people.data}

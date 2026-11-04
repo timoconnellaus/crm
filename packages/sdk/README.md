@@ -91,6 +91,9 @@ Rules worth knowing before the first check:
 | `objects` | New record types. Stored in `x_<ext>_<object>`, read through `crm_x_<ext>_<object>`. Registry name `<ext>.<object>`. They get list and record pages, timelines, history, search, saved views, CSV export and Trash. |
 | `fields` | Fields on other objects, keyed by target (`person`, `organisation`, `activity`, `task`, `<otherext>.<object>`). Stored in a 1:1 side table `x_<ext>_<target>`, joined into the target's `crm_*` view as `<ext>__<column>`. Registry name `<ext>.<field>`; write them with `record.update`. |
 | `views` | `table` saved-view specs (`object`, `filter`, `sort`, `columns`). |
+| `recordTabs` | Tabs on another object's record page (ADR 0058): `{ label, on, view, order? }`. `on` is the page's object; `view` is `{ type: "table" \| "board" \| "calendar" \| "gallery", object, relation, filter?, sort?, columns?, groupBy?, sumField?, dateField?, mode?, imageField?, cardFields? }`, listing `object` records whose `relation` field equals the shown record's id. The host renders it; extensions ship no UI. |
+| `recordPanels` | The same shape, shown as a card in the record page's side panel. |
+| `settings` | Typed settings, edited by admins in Settings → Extensions: `{ type: "text" \| "number" \| "boolean" \| "select", label, description?, required?, default?, min?, max?, options? }`. Read them with `extensionSettings.list`. |
 | `tools` | Operations named `x.<ext>.<tool>` (zod input/output, description, risk `read`/`write`/`bulk-write`/`destructive`). They run in the sandbox. |
 | `automations` | `{ description, trigger, handler }`: typed and validated now; triggers fire from stage 5. |
 | `permissions` | `read` / `write` (objects; write implies read), `operations` (exact names, e.g. `task.create`, `search.global`), `modules` (`crm`, `storage`, `log`, `ai`). Own objects are always allowed. `extension.*`, `policy.*`, `user.*` and `audit.*` can never be granted. Destructive operations must be listed in `operations`. |
@@ -131,6 +134,32 @@ are reserved. Rename with `renamedFrom: "<old name>"`; without it a missing fiel
 | `relation` | TEXT id, or JSON array with `many: true` | record id(s) of `to` | id ops / has a value | ids, `; `-separated |
 | `user` | TEXT | a user id | eq, neq, in | the id |
 | `formula` | none (computed in the view) | its result type | its result type's ops | the value |
+
+A `select` option may list `requires: ["field"]` (a stage rule, ADR 0058): `record.create` and
+`record.update` refuse a record holding that choice without a value in each field, with an
+`invalid_input` error whose `details` are `{ field, fields, reason: "required_by_choice",
+choiceField, choice }`. A board view drag reads `details.field` to ask for the missing value and
+retry.
+
+```ts
+recordTabs: {
+  projects: {
+    label: "Projects",
+    on: "organisation",
+    view: { type: "table", object: "example.project", relation: "organisation" },
+  },
+},
+recordPanels: {
+  projectBoard: {
+    label: "Projects by status",
+    on: "organisation",
+    view: { type: "board", object: "example.project", relation: "organisation", groupBy: "status", sumField: "budget" },
+  },
+},
+settings: {
+  defaultStatus: { type: "select", label: "Status of new projects", options: ["planned", "active"], default: "planned" },
+},
+```
 
 Lossless type changes only: `text → longText`, `number ↔ currency/percent`, `date → datetime`,
 `select/email/phone/url → text/longText`. Anything else is refused by `check` with a suggestion
