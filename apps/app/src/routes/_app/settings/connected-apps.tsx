@@ -102,8 +102,8 @@ function McpAddress() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        In your MCP client, add a custom connector (remote MCP server), paste this address and
-        sign in.
+        In your MCP client, add a custom connector (remote MCP server), paste this address and sign
+        in.
       </p>
     </div>
   );
