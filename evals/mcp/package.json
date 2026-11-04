@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./lib/*": "./lib/*"
+    "./lib/*": "./lib/*",
+    "./test/fakes.ts": "./test/fakes.ts"
   },
   "scripts": {
     "eval": "node runner.ts",
