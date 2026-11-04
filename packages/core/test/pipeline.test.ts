@@ -157,16 +157,32 @@ describe("gate", () => {
     expect((await invoke("person.get", { id: person.id }, context(member))).deletedAt).toBeNull();
   });
 
-  it("lets AI reads through and audits them", async () => {
+  it("lets AI reads through and counts them per hour instead of auditing each (ADR 0090)", async () => {
     const person = await invoke("person.create", { displayName: unique("R") }, context(member));
-    await invoke(
-      "person.get",
-      { id: person.id },
-      context(member, { actor: "mcp", origin: { surface: "mcp", clientId: "claude" } }),
-    );
-    const rows = await auditRows("person.get", member.id);
-    expect(rows.at(-1)).toMatchObject({ actor: "mcp", outcome: "ok", risk: "read" });
-    expect(JSON.parse(String(rows.at(-1)?.origin))).toEqual({ surface: "mcp", clientId: "claude" });
+    const mcp = context(member, { actor: "mcp", origin: { surface: "mcp", clientId: "claude" } });
+    await invoke("person.get", { id: person.id }, mcp);
+    await invoke("person.get", { id: person.id }, mcp);
+    expect(await auditRows("person.get", member.id)).toEqual([]);
+    const counts = await env.DB.prepare(
+      "SELECT * FROM core_audit_read_counts WHERE operation = 'person.get' AND user_id = ?",
+    )
+      .bind(member.id)
+      .all<Record<string, unknown>>();
+    expect(counts.results).toHaveLength(1);
+    expect(counts.results[0]).toMatchObject({ actor: "mcp", caller: "claude", count: 2 });
+    expect(String(counts.results[0]?.hour)).toMatch(/^\d{4}-\d\d-\d\dT\d\d:00:00\.000Z$/);
+  });
+
+  it("still audits AI reads that fail or are refused, one row each", async () => {
+    const mcp = context(member, { actor: "mcp", origin: { surface: "mcp", clientId: "claude" } });
+    await expect(
+      invoke("person.get", { id: "per_01MISSINGMISSINGMISSING00" }, mcp),
+    ).rejects.toThrow();
+    await expect(invoke("audit.list", {}, mcp)).rejects.toThrow();
+    const failed = await auditRows("person.get", member.id);
+    expect(failed.at(-1)).toMatchObject({ actor: "mcp", outcome: "error", risk: "read" });
+    const refused = await auditRows("audit.list", member.id);
+    expect(refused.at(-1)).toMatchObject({ actor: "mcp", outcome: "forbidden" });
   });
 
   it("does not audit human reads", async () => {

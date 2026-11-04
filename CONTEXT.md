@@ -58,6 +58,20 @@ as an `automation` (`trash.purge`) and is audited like any operation. It removes
 organisations, activities and tasks, with their links and search entries. Live activities and
 tasks linked to a purged record stay and lose only that link.
 
+**Read counts**
+Successful reads by non-human actors (MCP, assistant, extension, automation), counted per hour,
+actor, user, caller and operation in `core_audit_read_counts` instead of one audit row each
+(`audit.readCounts`). Failed or refused reads still get an audit row (ADR 0090).
+
+**Audit retention**
+How long write audits are kept: forever by default, or 1, 2 or 7 years (human admins only,
+`audit.setRetention`). The daily cron's `audit.purge` deletes older audit rows through **purge
+markers** (`core_audit_purges`), the only way past the append-only triggers besides erase.
+
+**Compaction**
+30 days after a pending action was decided or expired, its input, preview and simulated records
+are replaced by a `summary` (records touched by action, sizes); who decided what, and when, stays.
+
 **Merge**
 Folding a duplicate record into a **survivor**: chosen field values, combined emails/phones/domains
 and tags, and the duplicate's affiliations, activity and task links moved over. The merged-away

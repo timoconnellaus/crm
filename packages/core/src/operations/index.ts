@@ -19,6 +19,7 @@ import { personOperations } from "./person.ts";
 import { policyOperations } from "./policy.ts";
 import { queryOperations } from "./query.ts";
 import { recordOperations } from "./record.ts";
+import { retentionOperations } from "./retention.ts";
 import { searchOperations } from "./search.ts";
 import { taskOperations } from "./task.ts";
 import { trashOperations } from "./trash.ts";
@@ -47,6 +48,7 @@ export const coreOperations = [
   ...codeOperations,
   ...approvalOperations,
   ...connectedAppOperations,
+  ...retentionOperations,
   ...countOperations,
   ...dashboardOperations,
   ...extensionUiOperations,

@@ -2,9 +2,11 @@
 // propose (commit + check + one pending action holding the diff and the host-computed impact),
 // apply (what approval runs: installExtension), approve and reject (people only), eject, and the
 // proposal detail the approvals inbox shows.
+
 import type { ExtensionManifest } from "@crm/sdk";
 import { EXTENSION_ID_RE } from "@crm/sdk";
 import { z } from "zod";
+import { capFileDiffs } from "../approvals/caps.ts";
 import {
   ConflictError,
   ForbiddenError,
@@ -492,7 +494,8 @@ export const extensionPropose = defineOperation({
         source: "runtime",
         version: check.manifest.version,
         message: input.message ?? ctx.reason ?? `Update ${input.id}`,
-        diff: JSON.stringify(diff),
+        // Capped so the row stays far below D1's 2 MB limit (ADR 0090).
+        diff: JSON.stringify(capFileDiffs(diff)),
         impact: JSON.stringify(impact),
         check_result: JSON.stringify({ ok: checkResult.ok, issues, plan: checkResult.plan }),
         ai_summary: ai?.text ?? null,

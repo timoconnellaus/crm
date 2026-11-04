@@ -65,6 +65,24 @@ export const pendingActionSchema = z.object({
   decidedAt: z.string().nullable(),
   requestAuditId: z.string().nullable(),
   appliedAuditId: z.string().nullable(),
+  /**
+   * Set when what was stored was capped at queue time (ADR 0090): preview entries and simulated
+   * records left out. Long before/after values in the preview read
+   * `{ "$truncated": true, head, length, hash }`.
+   */
+  truncated: z
+    .object({
+      previewOmitted: z.number(),
+      recordsOmitted: z.number(),
+      outputOmitted: z.boolean(),
+    })
+    .nullable(),
+  /**
+   * Set 30 days after the decision (or expiry): input, preview and simulated records were
+   * dropped, and `summary` says what they held (records touched, by action; input size).
+   */
+  compactedAt: z.string().nullable(),
+  summary: z.record(z.string(), z.unknown()).nullable(),
 });
 export type PendingActionView = z.infer<typeof pendingActionSchema>;
 
@@ -130,7 +148,10 @@ export function effectiveStatus(
 }
 
 function toActionView(row: PendingRow, now: string): PendingActionView {
-  const simulated = parse<{ output?: unknown }>(row.simulated, {});
+  const simulated = parse<{ output?: unknown; truncated?: PendingActionView["truncated"] }>(
+    row.simulated,
+    {},
+  );
   const status = effectiveStatus(row, now);
   return {
     id: row.id,
@@ -159,6 +180,9 @@ function toActionView(row: PendingRow, now: string): PendingActionView {
     decidedAt: row.decided_at,
     requestAuditId: row.request_audit_id,
     appliedAuditId: row.applied_audit_id,
+    truncated: simulated.truncated ?? null,
+    compactedAt: row.compacted_at,
+    summary: parse(row.summary, null),
   };
 }
 

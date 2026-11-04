@@ -49,7 +49,7 @@ Claude is described in [`mcp.md`](mcp.md).
 ### Rate limits
 
 MCP and Code Mode are rate limited with the [Workers Rate Limiting
-binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) (ADR 0056),
+binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) (ADR 0091),
 declared under `ratelimits` in `apps/app/wrangler.jsonc`. It needs no account setup or D1 writes,
 and it needs Wrangler 4.36.0 or later.
 
