@@ -24,6 +24,10 @@ export const ID_PREFIXES = {
   changeSet: "chs",
   pendingAction: "pac",
   connectedApp: "cap",
+  /** Integration connections (stage 6, ADR 0050). */
+  connection: "con",
+  integrationEvent: "iev",
+  jobChange: "jcs",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

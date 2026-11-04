@@ -49,6 +49,7 @@ export type Role = (typeof ROLES)[number];
  * - `users:manage`  change users' roles
  * - `policy:manage` change the approval policy (also human-only, see `actors`)
  * - `extensions:manage` install, check, disable, enable and roll back extensions (stage 3)
+ * - `integrations:manage` enable gatekeepers, create and manage org connections (stage 6)
  */
 export const PERMISSIONS = [
   "records:read",
@@ -58,6 +59,7 @@ export const PERMISSIONS = [
   "users:manage",
   "policy:manage",
   "extensions:manage",
+  "integrations:manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 

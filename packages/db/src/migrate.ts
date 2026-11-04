@@ -14,7 +14,7 @@ export const MIGRATIONS_TABLE = "core_migrations";
  * The core schema version this code expects. Each migration ends by writing its number to
  * `core_meta.schema_version`; bump this constant with every new migration.
  */
-export const CORE_SCHEMA_VERSION = 70;
+export const CORE_SCHEMA_VERSION = 111;
 
 const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

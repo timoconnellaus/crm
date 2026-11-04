@@ -8,6 +8,7 @@ import type { z } from "zod";
 import type { FieldDiff } from "./diff.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
 import type { GateFloor } from "./gate.ts";
+import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
 import {
   ACTORS,
   type ActingUser,
@@ -117,6 +118,10 @@ export interface HandlerContext {
   readonly extensionHost?: ExtensionHost;
   /** For actor `extension`: the calling extension. */
   readonly extension?: ExtensionCaller;
+  /** The integration host, when the adapter provides one (connection.*, integration.*). */
+  readonly integrations?: IntegrationRuntime;
+  /** Blob storage (R2) for email bodies, when the adapter provides it. */
+  readonly blobs?: BlobStore;
 }
 
 /** The extension an `extension`-actor call runs for, and its approved permissions. */
