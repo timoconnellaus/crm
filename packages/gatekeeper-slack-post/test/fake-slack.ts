@@ -71,6 +71,13 @@ export function resetSlack(): void {
       profile: { display_name: "ana" },
       email: "ana@example.com",
     },
+    {
+      id: "U0GUEST",
+      name: "gus",
+      is_restricted: true,
+      profile: { display_name: "gus" },
+      email: "gus@partner.example",
+    },
   ];
 }
 
