@@ -9,6 +9,12 @@ Read first: [`AGENTS.md`](../../AGENTS.md), [`docs/architecture.md`](../architec
 Builds on Stages 2–5: MCP, Code Mode, extensions, dashboards, automations, notifications. Stage 6
 (gatekeepers) is not required, but the daily digest gains email delivery if it exists.
 
+> **Split, 2026-11-05.** Stage 7 is built in two halves. **7a** (ADRs 0150–0156): the model
+> registry, Settings → AI, summaries (record, meeting prep, activity one-liners, change sets) and
+> semantic search, with embeddings queued by the pipeline (stage 5 was built in parallel; ADR 0154
+> leaves a seam for its event queue). **7b**: the assistant, the policy adjudicator and the daily
+> digest (which needs stage 5's notifications), and moving embeddings onto the event queue.
+
 ## Goal
 
 People who never install an MCP client still get the "configured by AI" CRM. A context-aware
