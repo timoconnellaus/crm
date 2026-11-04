@@ -11,6 +11,8 @@ export * from "./list.ts";
 export * from "./operation.ts";
 export * from "./operations/activity.ts";
 export * from "./operations/audit.ts";
+export * from "./operations/export.ts";
+export * from "./operations/import.ts";
 export { coreOperations } from "./operations/index.ts";
 export * from "./operations/person.ts";
 export * from "./operations/policy.ts";
