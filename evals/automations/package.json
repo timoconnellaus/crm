@@ -1,0 +1,23 @@
+{
+  "name": "@crm/evals-automations",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eval": "node runner.ts",
+    "smoke": "node smoke.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@crm/evals-mcp": "workspace:*"
+  },
+  "devDependencies": {
+    "@crm/config": "workspace:*",
+    "@crm/extension-deals": "workspace:*",
+    "@crm/sdk": "workspace:*",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
