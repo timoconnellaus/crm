@@ -2,9 +2,11 @@
 // exporting `<object>Operations = [...] as const`, then add one import and one spread line below.
 // One line per object so parallel changes merge cleanly.
 import { activityOperations } from "./activity.ts";
+import { auditOperations } from "./audit.ts";
 import { personOperations } from "./person.ts";
 import { policyOperations } from "./policy.ts";
 import { taskOperations } from "./task.ts";
+import { viewOperations } from "./view.ts";
 
 // biome-ignore format: one spread per line keeps parallel additions conflict-free.
 export const coreOperations = [
@@ -12,4 +14,6 @@ export const coreOperations = [
   ...policyOperations,
   ...activityOperations,
   ...taskOperations,
+  ...viewOperations,
+  ...auditOperations,
 ] as const;

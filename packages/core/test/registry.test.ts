@@ -40,7 +40,7 @@ describe("core registry", () => {
       });
 
       it("read operations use a read permission", () => {
-        if (op.risk === "read") expect(op.permission).toBe("records:read");
+        if (op.risk === "read") expect(["records:read", "audit:read"]).toContain(op.permission);
       });
     });
   }
