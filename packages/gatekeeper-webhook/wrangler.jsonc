@@ -1,0 +1,32 @@
+// crm-gatekeeper-webhook: inbound webhooks. External systems POST events to
+// https://<crm-origin>/gatekeeper/webhook/in/:endpointId, which the CRM proxies to this Worker's
+// fetch handler. It verifies the provider's signature, shapes the payload into a typed event and
+// delivers it to the hook the CRM's integration host bound. Account-agnostic: no account or
+// resource IDs are committed (ADR 0012). See README.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crm-gatekeeper-webhook",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["allow_irrevocable_stub_storage"],
+  // Internal only: reached through service bindings and the CRM's /gatekeeper/webhook/* proxy.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "invocation_logs": false }
+  },
+  "vars": {
+    // The public base the CRM serves this Worker under, e.g. https://crm.example.com/gatekeeper/webhook.
+    // Empty means the local dev server's (http://localhost:5173/gatekeeper/webhook).
+    "BASE_URL": ""
+  },
+  "rules": [{ "type": "Text", "globs": ["**/*.txt"], "fallthrough": false }],
+  "durable_objects": {
+    "bindings": [{ "name": "WEBHOOK_ENDPOINT", "class_name": "WebhookEndpoint" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["WebhookEndpoint", "WebhookEndpointGatekeeper"] }
+  ]
+}

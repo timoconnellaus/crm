@@ -1,0 +1,32 @@
+{
+  "name": "@crm/gatekeeper-webhook",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gatekeeper Worker for inbound webhooks: verifies provider signatures and delivers typed events to a bound hook.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/worker.ts",
+  "exports": {
+    ".": "./src/worker.ts",
+    "./types": "./src/types.d.ts",
+    "./configurator/endpoint": "./src/configurator/endpoint-configurator-ui.tsx"
+  },
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "types": "wrangler types",
+    "typecheck": "wrangler types --check && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@crm/gatekeeper-configurator-ui": "workspace:*",
+    "@crm/gatekeeper-interface": "workspace:*",
+    "@crm/gatekeeper-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@crm/config": "workspace:*",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0",
+    "wrangler": "4.157.0"
+  }
+}

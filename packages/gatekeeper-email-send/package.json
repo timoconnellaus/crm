@@ -1,0 +1,34 @@
+{
+  "name": "@crm/gatekeeper-email-send",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gatekeeper Worker that sends email through Cloudflare Email Service, each send an approval-queue action.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/worker.ts",
+  "exports": {
+    ".": "./src/worker.ts",
+    "./types": "./src/types.d.ts",
+    "./configurator/sender": "./src/configurator/sender-configurator-ui.tsx"
+  },
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "types": "wrangler types --strict-vars=false",
+    "typecheck": "wrangler types --strict-vars=false --check && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@crm/gatekeeper-configurator-ui": "workspace:*",
+    "@crm/gatekeeper-interface": "workspace:*",
+    "@crm/gatekeeper-kit": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@crm/config": "workspace:*",
+    "typescript": "6.0.3",
+    "vite": "7.3.6",
+    "vitest": "5.1.0",
+    "wrangler": "4.157.0"
+  }
+}

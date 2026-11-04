@@ -1,0 +1,38 @@
+// crm-gatekeeper-slack-post: our own outbound gatekeeper (not vendored). Posts Slack messages and
+// DMs with a bot token; every post is an approval-queue action. Account-agnostic: no account or
+// resource IDs are committed (ADR 0012).
+//
+// Secrets (not committed; set with `wrangler secret put`): CLIENT_ID and CLIENT_SECRET -- the SAME
+// Slack app as crm-gatekeeper-slack (same names), with the bot scopes chat:write, im:write,
+// channels:read, users:read and users:read.email added, and a second redirect URL,
+// <public base>/gatekeeper/slack-post/oauth. See README.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crm-gatekeeper-slack-post",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["allow_irrevocable_stub_storage"],
+  // Internal only: reached through service bindings. crm-app proxies
+  // https://<crm-origin>/gatekeeper/slack-post/* to this Worker's default fetch handler.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "invocation_logs": false }
+  },
+  "vars": {
+    // The public base of the connect routes, e.g. https://crm.example.com/gatekeeper/slack-post.
+    // Empty means the local dev default, http://localhost:8787/gatekeeper/slack-post.
+    "BASE_URL": "",
+    // Slack Web API base; empty means https://slack.com/api. Overridden by tests.
+    "SLACK_API_BASE": "",
+    // Slack OAuth v2 base (`/authorize` is appended); empty means https://slack.com/oauth/v2.
+    "SLACK_OAUTH_BASE": ""
+  },
+  "rules": [{ "type": "Text", "globs": ["**/*.txt"], "fallthrough": false }],
+  // Both classes are reached through ctx.exports; no binding is required.
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["SlackPostUserAccount", "SlackPostGatekeeper"] }
+  ]
+}
