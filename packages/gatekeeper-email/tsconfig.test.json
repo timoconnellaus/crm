@@ -1,0 +1,8 @@
+// Type-checks our smoke test separately so Worker-pool declarations stay out of the source check.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-plugin/types"]
+  },
+  "include": ["src", "test"]
+}

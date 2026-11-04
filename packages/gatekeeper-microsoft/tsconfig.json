@@ -1,0 +1,22 @@
+// One program for the source and the tests, as upstream's tsconfig.
+//
+// Local change: Node's types are listed explicitly. Upstream gets them transitively, through the
+// Playwright import in the configurator frame host, and the configurator modules (browser code)
+// rely on them for `clearTimeout(undefined)`. Left out, because we do not run them (see
+// UPSTREAM.md): the configurator frame suites and their Playwright host, and the live-tenant
+// contract suite, whose vitest config we do not keep.
+{
+  "extends": "@crm/config/tsconfig.vendored.json",
+  "compilerOptions": {
+    // Configurator modules (src/configurator/*.tsx) use the authoring API's `h`.
+    "jsx": "react",
+    "jsxFactory": "h",
+    "types": ["./worker-configuration.d.ts", "node"]
+  },
+  "include": ["src", "__tests__/**/*.ts", "test"],
+  "exclude": [
+    "__tests__/frame-host.ts",
+    "__tests__/*-configurator-frame.test.ts",
+    "__tests__/contract"
+  ]
+}
