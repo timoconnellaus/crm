@@ -100,3 +100,11 @@ linked to that record, in the same batch.
 - **Last admin.** `user.updateRole` refuses to demote the last admin, and its `UPDATE` re-checks in
   SQL (a `CASE` that writes a value the role `CHECK` rejects when no other admin remains), so two
   concurrent demotions cannot leave a deployment without an admin.
+
+## Amendment, 2026-11-04 (stage 1 integration)
+- **Audit diffs are written in chunks.** The pipeline inserts `core_audit_changes` rows from one
+  JSON parameter per ~500 KB chunk (`INSERT … SELECT … FROM json_each(?)`), not one statement per
+  touched record, so an import of thousands of records stays a few statements. The stored rows
+  are identical, so ADR 0019's redaction markers and guarded `UPDATE` triggers apply unchanged.
+  `BATCH_MAX` stays at 100 for `*Many` operations: timeline posts and per-record writes still
+  cost statements.

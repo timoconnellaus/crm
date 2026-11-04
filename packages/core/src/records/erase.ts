@@ -3,7 +3,7 @@
 import type { CoreDatabase } from "@crm/db";
 import { type Kysely, type SqlBool, sql } from "kysely";
 import type { HandlerContext } from "../operation.ts";
-import { chunk } from "./common.ts";
+import { chunk, jsonList } from "./common.ts";
 import { findOwnedActivitiesAndTasks } from "./links.ts";
 
 export interface EraseRequest {
@@ -118,6 +118,12 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
     ctx.write(ctx.db.deleteFrom("core_task").where("id", "in", ids));
   }
 
+  // 3b. Shared activities and tasks stay (they are also about other records), but lose what
+  // identifies the subject: payload entries naming them (meeting attendees, email from/to/cc, a
+  // call's phone number) and exact mentions of their emails, phone numbers and ids in the text.
+  // The search index follows by trigger.
+  await queueScrubShared(ctx, object, recordIds, terms, { activityIds, taskIds });
+
   // 4. The records. Merged-away records first: they point at the survivor.
   const ordered = [...recordIds.filter((id) => id !== recordId), recordId];
   for (const ids of chunk(ordered)) {
@@ -127,7 +133,132 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
         : ctx.db.deleteFrom("core_organisation").where("id", "in", ids),
     );
   }
+
+  // 5. FTS5 keeps deleted terms in older index segments until they are merged. Merge now, after
+  // every delete above, so the erased values leave the search index's storage, not just its
+  // results. (Linear in index size; erase is rare.)
+  const optimize = sql`INSERT INTO core_search (core_search) VALUES ('optimize')`.compile(ctx.db);
+  ctx.write({ compile: () => optimize });
   return { activities: activityIds.length, tasks: taskIds.length };
+}
+
+const ERASED = "[erased]";
+const digitsOf = (value: string) => value.replace(/\D/g, "");
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Recognises and blanks out the subject's identifying strings (lower-cased terms). */
+function subjectMatcher(terms: readonly string[]) {
+  const phoneDigits = new Set(
+    terms.map(digitsOf).filter((digits) => digits.length >= MIN_TERM_LENGTH),
+  );
+  const pattern = new RegExp(
+    [...terms]
+      .sort((a, b) => b.length - a.length)
+      .map(escapeRegExp)
+      .join("|"),
+    "gi",
+  );
+  return {
+    /** A whole value that is the subject's email, phone number (any formatting) or id. */
+    identifies(value: string): boolean {
+      if (terms.includes(value.trim().toLowerCase())) return true;
+      return !/[a-z@]/i.test(value) && phoneDigits.has(digitsOf(value));
+    },
+    text(value: string | null): string | null {
+      return value === null ? null : value.replace(pattern, ERASED);
+    },
+  };
+}
+type SubjectMatcher = ReturnType<typeof subjectMatcher>;
+
+/**
+ * Removes the subject from a JSON payload: array items and properties whose value identifies
+ * them, or that are objects holding such a value (`{ email, name }`, an attendee), are dropped;
+ * mentions inside other strings are blanked out.
+ */
+function scrubJson(value: unknown, m: SubjectMatcher): { value: unknown; identifies: boolean } {
+  if (typeof value === "string") {
+    return m.identifies(value)
+      ? { value, identifies: true }
+      : { value: m.text(value), identifies: false };
+  }
+  if (Array.isArray(value)) {
+    const kept = value.map((v) => scrubJson(v, m)).filter((r) => !r.identifies);
+    return { value: kept.map((r) => r.value), identifies: false };
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    let identifies = false;
+    for (const [key, child] of Object.entries(value)) {
+      const r = scrubJson(child, m);
+      if (r.identifies) {
+        if (typeof child === "string") identifies = true;
+        continue;
+      }
+      out[key] = r.value;
+    }
+    return { value: out, identifies };
+  }
+  return { value, identifies: false };
+}
+
+/** Queues updates that strip the subject from activities and tasks that survive the erase. */
+async function queueScrubShared(
+  ctx: HandlerContext,
+  object: string,
+  recordIds: readonly string[],
+  terms: readonly string[],
+  removed: { activityIds: readonly string[]; taskIds: readonly string[] },
+): Promise<void> {
+  if (!terms.length) return;
+  const m = subjectMatcher(terms);
+  const termsJson = JSON.stringify(terms);
+  const mentions = (text: ReturnType<typeof sql>) =>
+    sql<SqlBool>`EXISTS (SELECT 1 FROM json_each(${termsJson}) t
+      WHERE instr(lower(${text}), t.value) > 0)`;
+
+  const activities = await ctx.db
+    .selectFrom("core_activity as a")
+    .select(["a.id", "a.subject", "a.body", "a.payload"])
+    .where("a.id", "not in", jsonList(removed.activityIds))
+    .where((eb) =>
+      eb.or([
+        sql<SqlBool>`a.id IN (SELECT l.activity_id FROM core_activity_links l
+          WHERE l.object_type = ${object} AND l.record_id IN ${jsonList(recordIds)})`,
+        mentions(sql`coalesce(a.subject, '') || ' ' || coalesce(a.body, '') || ' ' || a.payload`),
+      ]),
+    )
+    .execute();
+  for (const a of activities) {
+    const subject = m.text(a.subject);
+    const body = m.text(a.body);
+    const payload = JSON.stringify(scrubJson(JSON.parse(a.payload), m).value);
+    if (subject === a.subject && body === a.body && payload === a.payload) continue;
+    ctx.write(
+      ctx.db
+        .updateTable("core_activity")
+        .set({ subject, body, payload, updated_at: ctx.now })
+        .where("id", "=", a.id),
+    );
+  }
+
+  const tasks = await ctx.db
+    .selectFrom("core_task as t")
+    .select(["t.id", "t.title", "t.notes"])
+    .where("t.id", "not in", jsonList(removed.taskIds))
+    .where(mentions(sql`t.title || ' ' || coalesce(t.notes, '')`))
+    .execute();
+  for (const t of tasks) {
+    const title = m.text(t.title) ?? t.title;
+    const notes = m.text(t.notes);
+    if (title === t.title && notes === t.notes) continue;
+    ctx.write(
+      ctx.db
+        .updateTable("core_task")
+        .set({ title, notes, updated_at: ctx.now })
+        .where("id", "=", t.id),
+    );
+  }
 }
 
 /** A record plus every record merged into it, transitively (bounded). */

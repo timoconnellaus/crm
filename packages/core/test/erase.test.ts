@@ -236,3 +236,137 @@ describe("organisation.erase", () => {
     await invoke("organisation.create", { name: "New", domains: [{ domain }] }, context(member));
   });
 });
+
+describe("person.erase across activity, task, import and search", () => {
+  it("leaves no personal data in audit content or the search index", async () => {
+    const tag = unique("zq").toLowerCase();
+    const name = `Quillon${tag}`;
+    const email = `${tag}.one@example.com`;
+    const email2 = `${tag}.two@example.com`;
+    const phone = "+61 400 123 987";
+    const org = await invoke(
+      "organisation.create",
+      { name: unique("Shared Org"), domains: [{ domain: `${unique("org")}.example` }] },
+      context(member),
+    );
+    const person = await invoke(
+      "person.create",
+      { displayName: name, emails: [{ email }] },
+      context(member),
+    );
+    const otherEmail = `${unique("other")}@example.com`;
+    const other = await invoke(
+      "person.create",
+      { displayName: unique("Other"), emails: [{ email: otherEmail }] },
+      context(member),
+    );
+
+    // Notes and a task only about them, and a meeting and a task shared with others.
+    const privateNote = await invoke(
+      "activity.log",
+      {
+        type: "note",
+        subject: `Call ${name}`,
+        body: `Reach ${name} on ${phone} or ${email}`,
+        links: [{ object: "person", id: person.id }],
+      },
+      context(member),
+    );
+    const sharedMeeting = await invoke(
+      "activity.log",
+      {
+        type: "meeting",
+        subject: "Quarterly review",
+        body: `Minutes went to ${email} and the team`,
+        payload: {
+          attendees: [
+            { email, name, personId: person.id },
+            { email: otherEmail, personId: other.id },
+          ],
+        },
+        links: [
+          { object: "person", id: person.id },
+          { object: "person", id: other.id },
+          { object: "organisation", id: org.id },
+        ],
+      },
+      context(member),
+    );
+    const privateTask = await invoke(
+      "task.create",
+      { title: `Follow up with ${name}`, links: [{ object: "person", id: person.id }] },
+      context(member),
+    );
+    const sharedTask = await invoke(
+      "task.create",
+      {
+        title: "Send the proposal",
+        notes: `Copy ${email}`,
+        links: [
+          { object: "person", id: person.id },
+          { object: "organisation", id: org.id },
+        ],
+      },
+      context(member),
+    );
+
+    // A CSV import then matches them by email and adds an email, a phone, an organisation and a tag.
+    const csv = [
+      "Name,Email,Phone,Company,Domain,Tags",
+      `${name},${email}; ${email2},${phone},${unique("Imported Org")},${unique("imp")}.example,vip`,
+    ].join("\n");
+    const imported = await invoke("import.csv.commit", { object: "person", csv }, context(member));
+    expect(imported.rows[0]).toMatchObject({ action: "update", id: person.id });
+    // A non-human read that names them is audited too.
+    await invoke("search.global", { query: email2 }, context(member, { actor: "assistant" }));
+
+    const tokens = [tag, email, email2, name, person.id, "400 123 987", "400123987"];
+    const searchDocs = async () =>
+      JSON.stringify(
+        (await env.DB.prepare("SELECT title, body FROM core_search_docs").all()).results,
+      ).toLowerCase();
+    expect(await searchDocs()).toContain(email2);
+    expect((await invoke("search.global", { query: tag }, context(member))).hits).not.toEqual([]);
+    const storedTerms = async () =>
+      (
+        await env.DB.prepare(
+          "SELECT COUNT(*) AS n FROM core_search_data WHERE instr(CAST(block AS TEXT), ?) > 0",
+        )
+          .bind(tag)
+          .first<{ n: number }>()
+      )?.n;
+    expect(await storedTerms()).toBeGreaterThan(0);
+
+    const result = await invoke("person.erase", { id: person.id }, context(admin));
+    expect(result.tasksDeleted).toBe(1);
+
+    // Their own note and task are gone; shared ones stay, without them.
+    expect(await rowExists("core_activity", privateNote.id)).toBe(false);
+    expect(await rowExists("core_task", privateTask.id)).toBe(false);
+    const meeting = await invoke("activity.get", { id: sharedMeeting.id }, context(member));
+    expect(meeting.links.map((l) => l.id).sort()).toEqual([org.id, other.id].sort());
+    expect(meeting.payload).toEqual({ attendees: [{ email: otherEmail, personId: other.id }] });
+    expect(meeting.body).toBe("Minutes went to [erased] and the team");
+    const task = await invoke("task.get", { id: sharedTask.id }, context(member));
+    expect(task.notes).toBe("Copy [erased]");
+    expect(task.links.map((l) => l.id)).toEqual([org.id]);
+
+    // Audit content: nothing identifies them. The erase's own row names the id it erased.
+    const audit = JSON.stringify(
+      (
+        await env.DB.prepare(
+          "SELECT a.input, a.result, a.error, c.diff FROM core_audit a LEFT JOIN core_audit_changes c ON c.audit_id = a.id WHERE a.operation != 'person.erase'",
+        ).all()
+      ).results,
+    ).toLowerCase();
+    for (const token of tokens) expect(audit).not.toContain(token.toLowerCase());
+
+    // Search: no documents, no hits, and (after the FTS merge) no stored index terms.
+    const docs = await searchDocs();
+    for (const token of tokens) expect(docs).not.toContain(token.toLowerCase());
+    for (const query of [tag, email, email2, name]) {
+      expect((await invoke("search.global", { query }, context(member))).hits).toEqual([]);
+    }
+    expect(await storedTerms()).toBe(0);
+  });
+});

@@ -42,6 +42,8 @@ _Avoid_: dedupe (that is finding duplicates), combine
 **Erase**
 An admin-only hard delete for GDPR requests (`person.erase`, `organisation.erase`). Unlike a purge
 it also **redacts** the audit log: content that mentions the record becomes `"[erased]"` (ADR 0019).
+Activities and tasks only about the record are deleted; shared ones are scrubbed of its emails,
+phone numbers and id, and the search index is purged of it.
 _Avoid_: purge (that is retention), delete (that is soft)
 
 **Activity**

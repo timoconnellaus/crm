@@ -64,3 +64,21 @@ refused on both tables, unconditionally.
   and admin-only; revisit with an index on subject ids if it becomes slow.
 - D1's Time Travel and backups still contain the old values until they age out; this ADR covers
   the live database only.
+
+## Amendment, 2026-11-04 (stage 1 integration of the record and activity slices)
+- **Shared activities and tasks are scrubbed, not just unlinked.** An activity or task that is
+  also about other records stays, but `queueErase` now removes what identifies the subject from
+  it: payload entries whose value is one of their emails, phone numbers (any formatting) or ids
+  (a meeting attendee, an email's from/to/cc, a call's phone number) are dropped, and exact
+  mentions of those strings in subject, body, title or notes become `[erased]`. Their search
+  documents follow by trigger. A name in free text is still not matched (see Consequences).
+- **The search index is merged after an erase.** FTS5 keeps deleted terms in older index
+  segments until they are merged, so an erase ends with `INSERT INTO core_search(core_search)
+  VALUES('optimize')`, after every delete, in the same batch. This is linear in index size; erase
+  is rare.
+- **Audit rows written by the activity slice** (`activity.*`, `task.*`, `import.csv.commit`,
+  `search.global` / `query.sql` reads by non-human actors) need no special handling: their inputs
+  and diffs carry the subject's ids (as links, `personId`) or emails, which the existing matching
+  catches. Change rows written in chunked `json_each` statements (ADR 0018 amendment) are ordinary
+  rows, so markers and guarded triggers apply unchanged. `packages/core/test/erase.test.ts` covers
+  notes, tasks, a CSV import and search together.
