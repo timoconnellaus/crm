@@ -10,6 +10,9 @@ import type { FieldDiff } from "./diff.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
 import type { GateFloor } from "./gate.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
+import type { AiAdmin } from "./ai/admin.ts";
+import type { AiEnv } from "./ai/client.ts";
+import type { VectorStore } from "./ai/vectors.ts";
 import type { ModelRunner } from "./models.ts";
 import {
   ACTORS,
@@ -138,6 +141,12 @@ export interface HandlerContext {
   readonly models?: ModelRunner;
   /** The dashboard widget result cache (ADR 0057). Absent: the Workers Cache API. */
   readonly widgetCache?: WidgetCache;
+  /** Record embeddings (ADR 0154). Absent: semantic search is not configured. */
+  readonly vectors?: VectorStore;
+  /** Cloudflare API access for Settings → AI (ADR 0151, 0152), when configured. */
+  readonly aiAdmin?: AiAdmin;
+  /** The AI part of the Worker environment (bindings present, deploy config). */
+  readonly aiEnv?: AiEnv;
 }
 
 /** The extension an `extension`-actor call runs for, and its approved permissions. */

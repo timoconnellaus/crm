@@ -29,7 +29,11 @@ import { refreshSchemaRegistry } from "./extensions/schema.ts";
 import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { findProvisionalIds, newId } from "./ids.ts";
+import type { AiAdmin } from "./ai/admin.ts";
+import type { AiEnv } from "./ai/client.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
+import { embeddingQueueStatement, SELF_ENQUEUEING } from "./ai/embedding.ts";
+import type { VectorStore } from "./ai/vectors.ts";
 import type { ModelRunner } from "./models.ts";
 import {
   type AnyOperation,
@@ -90,6 +94,25 @@ export interface InvocationContext {
   models?: ModelRunner;
   /** Widget result cache (ADR 0057); absent means the Workers Cache API. */
   widgetCache?: WidgetCache;
+  /** Record embeddings (Vectorize, ADR 0154); absent: semantic search is off. */
+  vectors?: VectorStore;
+  /** Cloudflare API access for Settings → AI (keys, usage; ADR 0151, 0152). */
+  aiAdmin?: AiAdmin;
+  /** The Worker's AI environment, for provider readiness in Settings → AI. */
+  aiEnv?: AiEnv;
+  /**
+   * Called after a successful commit (ADR 0154): the post-commit hook. crm-app uses it to drain
+   * the embedding queue in the background; stage 5 can hang its event queue here instead.
+   */
+  onCommitted?: (event: CommitEvent) => void;
+}
+
+/** What a committed call changed, for post-commit hooks. */
+export interface CommitEvent {
+  operation: string;
+  changes: { object: string; id: string; action: string }[];
+  /** The batch queued records for (re-)embedding. */
+  embeddingsQueued: boolean;
 }
 
 /** The installed extension whose principal is `userId`, with its declared permissions. */
@@ -534,6 +557,9 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.extension ? { extension: ctx.extension } : {}),
     ...(ctx.models ? { models: ctx.models } : {}),
     ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
+    ...(ctx.vectors ? { vectors: ctx.vectors } : {}),
+    ...(ctx.aiAdmin ? { aiAdmin: ctx.aiAdmin } : {}),
+    ...(ctx.aiEnv ? { aiEnv: ctx.aiEnv } : {}),
     pipeline: {
       crm: ctx.db,
       invoke: (name, nestedInput, nested) => {
@@ -556,6 +582,10 @@ export async function invokeOperation<O extends AnyOperation>(
           ...(ctx.blobs ? { blobs: ctx.blobs } : {}),
           ...(ctx.models ? { models: ctx.models } : {}),
           ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
+          ...(ctx.vectors ? { vectors: ctx.vectors } : {}),
+          ...(ctx.aiAdmin ? { aiAdmin: ctx.aiAdmin } : {}),
+          ...(ctx.aiEnv ? { aiEnv: ctx.aiEnv } : {}),
+          ...(ctx.onCommitted ? { onCommitted: ctx.onCommitted } : {}),
         });
       },
     },
@@ -692,6 +722,9 @@ export async function invokeOperation<O extends AnyOperation>(
     changeRows.push({ o: change.object, r: change.id, a: change.action, d: JSON.stringify(diff) });
   }
   statements.push(...activities);
+  // Records whose text changed are queued for re-embedding in the same batch (ADR 0154).
+  const embedding = op.risk === "read" ? null : embeddingQueueStatement(ctx.db.query, changes, now);
+  if (embedding) statements.push(embedding);
 
   const summary =
     op.auditSummary && !deferred ? op.auditSummary(output, input) : defaultSummary(output, changes);
@@ -728,6 +761,18 @@ export async function invokeOperation<O extends AnyOperation>(
       await ctx.db.batch(statements);
     } catch (error) {
       return fail(error, decision);
+    }
+  }
+
+  if (statements.length && ctx.onCommitted) {
+    try {
+      ctx.onCommitted({
+        operation: op.name,
+        changes: changes.map(({ object, id, action }) => ({ object, id, action })),
+        embeddingsQueued: Boolean(embedding) || SELF_ENQUEUEING.has(op.name),
+      });
+    } catch (error) {
+      console.error("post-commit hook failed", op.name, error);
     }
   }
 

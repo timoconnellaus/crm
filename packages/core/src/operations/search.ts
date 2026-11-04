@@ -28,8 +28,8 @@ export type SearchHit = z.infer<typeof searchHitSchema>;
 const MAX_TERMS = 8;
 const WORD_RE = /[\p{L}\p{N}]+/gu;
 // Snippet markers: control characters that never occur in indexed text.
-const OPEN = "\u0001";
-const CLOSE = "\u0002";
+export const SNIPPET_OPEN = "\u0001";
+export const SNIPPET_CLOSE = "\u0002";
 
 /** Lower-cased, accent-free form, matching the index's unicode61 remove_diacritics tokenizer. */
 function fold(text: string): string {
@@ -72,15 +72,15 @@ export function highlight(text: string, terms: readonly string[]): HighlightSegm
   return segments;
 }
 
-function snippetSegments(snippet: string | null): HighlightSegment[] | null {
-  if (!snippet?.includes(OPEN)) return null;
+export function snippetSegments(snippet: string | null): HighlightSegment[] | null {
+  if (!snippet?.includes(SNIPPET_OPEN)) return null;
   const segments: HighlightSegment[] = [];
-  for (const [i, part] of snippet.split(OPEN).entries()) {
+  for (const [i, part] of snippet.split(SNIPPET_OPEN).entries()) {
     if (i === 0) {
       if (part) segments.push({ text: part, match: false });
       continue;
     }
-    const [matched = "", rest = ""] = part.split(CLOSE);
+    const [matched = "", rest = ""] = part.split(SNIPPET_CLOSE);
     if (matched) segments.push({ text: matched, match: true });
     if (rest) segments.push({ text: rest, match: false });
   }
@@ -93,7 +93,7 @@ interface Display {
 }
 
 /** Titles and subtitles from the crm_* views (live records only), keyed `object:id`. */
-async function loadDisplays(
+export async function loadDisplays(
   db: Kysely<CoreDatabase>,
   ids: Map<string, string[]>,
 ): Promise<Map<string, Display>> {
@@ -229,7 +229,7 @@ export const searchGlobal = defineOperation({
       snip: string | null;
     }>`
       SELECT d.object_type, d.record_id,
-        snippet(core_search, 1, ${OPEN}, ${CLOSE}, '…', 10) AS snip
+        snippet(core_search, 1, ${SNIPPET_OPEN}, ${SNIPPET_CLOSE}, '…', 10) AS snip
       FROM core_search
       JOIN core_search_docs d ON d.id = core_search.rowid
       WHERE core_search MATCH ${ftsQuery(terms)}

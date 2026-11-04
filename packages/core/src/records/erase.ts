@@ -2,6 +2,8 @@
 // about them through the sanctioned path (markers in core_audit_redactions; migration 0008).
 import type { CoreDatabase } from "@crm/db";
 import { type Kysely, type SqlBool, sql } from "kysely";
+import { enqueueEmbeddings } from "../ai/embedding.ts";
+import { deleteSummariesStatement } from "../ai/summaries.ts";
 import type { HandlerContext } from "../operation.ts";
 import { chunk, jsonList } from "./common.ts";
 import { findOwnedActivitiesAndTasks } from "./links.ts";
@@ -128,6 +130,34 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
   // call's phone number) and exact mentions of their emails, phone numbers and ids in the text.
   // The search index follows by trigger.
   await queueScrubShared(ctx, object, recordIds, terms, { activityIds, taskIds });
+
+  // 3c. AI (ADR 0153, 0154): summaries about, or built from, the subject and its activities and
+  // tasks are deleted; every embedded record that held their text (the records, their own and
+  // shared activities and tasks) is queued, so the drain right after the commit deletes or
+  // re-embeds its vector. A record with no text left has its vector deleted.
+  const linked = await ctx.db
+    .selectFrom("core_activity_links")
+    .select("activity_id as id")
+    .where("object_type", "=", object)
+    .where("record_id", "in", recordIds)
+    .execute();
+  const linkedTasks = await ctx.db
+    .selectFrom("core_task_links")
+    .select("task_id as id")
+    .where("object_type", "=", object)
+    .where("record_id", "in", recordIds)
+    .execute();
+  ctx.write(deleteSummariesStatement(ctx.db, [...recordIds, ...activityIds, ...taskIds]));
+  const enqueue = enqueueEmbeddings(
+    ctx.db,
+    [
+      ...recordIds.map((id) => ({ object, id })),
+      ...[...activityIds, ...linked.map((l) => l.id)].map((id) => ({ object: "activity", id })),
+      ...[...taskIds, ...linkedTasks.map((l) => l.id)].map((id) => ({ object: "task", id })),
+    ],
+    ctx.now,
+  );
+  if (enqueue) ctx.write(enqueue);
 
   // 4. The records. Merged-away records first: they point at the survivor.
   const ordered = [...recordIds.filter((id) => id !== recordId), recordId];

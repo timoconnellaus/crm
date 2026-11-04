@@ -1,24 +1,27 @@
 // codemode:ai: the model roles extensions may use (summarise, extract, classify), resolved through
-// the minimal role → model mapping in @crm/core (ADR 0009). Workers AI is the default provider;
-// calls go through AI Gateway when AI_GATEWAY_ID is set. Without an `ai` binding the module fails
-// with a clear error rather than reaching any network.
-import { type ModelRole, modelFor } from "@crm/core";
+// the model role registry in @crm/core (ADR 0009, ADR 0150): shipped defaults (Workers AI) → deploy
+// config → Settings → AI overrides, through AI Gateway when AI_GATEWAY_ID is set. Without any
+// configured model the module fails with a clear error rather than reaching any network.
+import {
+  AiNotConfiguredError,
+  type AiEnv,
+  loadAiSettings,
+  type ModelRunner,
+  modelRunnerFromEnv,
+} from "@crm/core";
+import { createCrmDb } from "@crm/db";
 
-interface AiBinding {
-  run(
-    model: string,
-    input: { messages: { role: string; content: string }[]; max_tokens?: number },
-    options?: { gateway?: { id: string } },
-  ): Promise<{ response?: string } | unknown>;
-}
+export { AiNotConfiguredError };
 
-interface AiEnv {
-  AI?: AiBinding;
-  AI_GATEWAY_ID?: string;
-}
-
-export class AiNotConfiguredError extends Error {
-  override name = "AiNotConfiguredError";
+/** The registry-backed runner for crm-runner's environment, or null without AI. */
+export function runnerModels(env: object): ModelRunner | null {
+  const e = env as AiEnv & { DB?: D1Database };
+  const db = e.DB ? createCrmDb(e.DB) : null;
+  return (
+    modelRunnerFromEnv(e, {
+      ...(db ? { loadSettings: () => loadAiSettings(db.query) } : {}),
+    }) ?? null
+  );
 }
 
 function prompt(role: "summarise" | "extract" | "classify", args: readonly unknown[]): string {
@@ -37,25 +40,16 @@ function prompt(role: "summarise" | "extract" | "classify", args: readonly unkno
 
 /**
  * Model role `build` for one prompt: the AI-written summary of an extension proposal. Null when
- * the deployment has no `ai` binding (the approval screen then says no AI summary is available).
+ * the deployment has no AI (the approval screen then says no AI summary is available).
  */
 export async function runBuildRole(
   env: object,
-  prompt: string,
+  input: string,
 ): Promise<{ text: string; model: string } | null> {
-  const { AI, AI_GATEWAY_ID } = env as AiEnv;
-  if (!AI) return null;
-  const choice = modelFor("build");
-  const result = (await AI.run(
-    choice.model,
-    {
-      messages: [{ role: "user", content: prompt.slice(0, 60_000) }],
-      max_tokens: choice.maxTokens,
-    },
-    AI_GATEWAY_ID ? { gateway: { id: AI_GATEWAY_ID } } : {},
-  )) as { response?: string };
-  const text = (result.response ?? "").trim();
-  return text ? { text, model: choice.model } : null;
+  const models = runnerModels(env);
+  if (!models) return null;
+  const result = await models.run("build", [{ role: "user", content: input }], { maxTokens: 400 });
+  return result.text ? { text: result.text, model: result.model } : null;
 }
 
 export async function runModelRole(
@@ -63,19 +57,13 @@ export async function runModelRole(
   role: "summarise" | "extract" | "classify",
   args: readonly unknown[],
 ): Promise<unknown> {
-  const { AI, AI_GATEWAY_ID } = env as AiEnv;
-  if (!AI) {
+  const models = runnerModels(env);
+  if (!models) {
     throw new AiNotConfiguredError(
       "AI is not configured for this deployment: add an `ai` binding to crm-runner (docs/deploying.md)",
     );
   }
-  const choice = modelFor(role as ModelRole);
-  const result = (await AI.run(
-    choice.model,
-    { messages: [{ role: "user", content: prompt(role, args) }], max_tokens: choice.maxTokens },
-    AI_GATEWAY_ID ? { gateway: { id: AI_GATEWAY_ID } } : {},
-  )) as { response?: string };
-  const text = (result.response ?? "").trim();
+  const { text } = await models.run(role, [{ role: "user", content: prompt(role, args) }]);
   if (role === "summarise") return text;
   if (role === "classify") {
     const labels = (args[1] as string[] | undefined) ?? [];
