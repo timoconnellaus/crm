@@ -288,7 +288,18 @@ _Avoid_: workflow (that is the Cloudflare primitive a run executes on), rule, fl
 What starts an automation's runs: a record event (`created`, `updated`, `deleted`, `restored`), a
 field change (from / to), a `schedule` (cron in the automation timezone), `dateRelative` (N days
 before or after a date field, daily), `manual` (a record button or bulk action) or
-`approvalDecided`. Webhooks and sync events arrive in stage 6b.
+`approvalDecided`, a `webhook` (a verified delivery to an endpoint, optionally of given event types)
+or a `syncEvent` (email/calendar sync wrote, changed or removed an activity linked to a known
+person or organisation; the activity is the trigger record).
+
+**Connection binding**
+A person's consent that an automation uses a connection: the automation declares named
+connections it needs (`connections: [{ id, gatekeeper, purpose }]`) and someone binds each to a
+connection they own (or, an admin, to an org connection). Steps then act through it as the
+connection's owner. Recorded with who and when; revoking it, disconnecting or expiring the
+connection, or deactivating its owner pauses the automation and tells the admins. An automation
+with an unbound connection is "Waiting for connections".
+_Avoid_: grant (that is a gatekeeper's resource access), run-as user
 
 **Run**
 One execution of an automation, on a Cloudflare Workflow whose id derives from the run's
@@ -364,7 +375,13 @@ a new domain), applied with `person.changeJob` on confirmation.
 
 **Integration event**
 An inbound event for automations: a verified webhook delivery (typed, e.g. `invoice.paid`) or a sync
-event (`email.received`, `meeting.updated`). Kept 90 days; stage 5 turns them into triggers.
+event (`email.received`, `meeting.updated`). Kept 90 days; crm-runner's minute cron turns them
+into `webhook` and `syncEvent` triggers and marks them consumed.
+
+**Outbox** (automation events)
+Where an operation's automation events are written in the same batch as its change, sent to the
+queue after commit and deleted; crm-runner's cron retries any that are left, so a failed send
+never loses an event.
 
 **Principal**
 The authenticated caller of a request: `{ userId, email, name, roles }`, resolved by the identity

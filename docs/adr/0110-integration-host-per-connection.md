@@ -86,3 +86,10 @@ without real accounts.
   recipients) or `slack-post` (`slack.post`, `slack.dm`), sent with `integration.call` as a system
   caller. Admin-enabled auto-approval (`outbound.setAutoApprove`) covers fixed-template internal
   notifications (cost audit U8).
+
+## Amendments
+
+- 2026-11-05 (stage 6b): run-as, revocation and webhook triggers are built on these plug points:
+  [ADR 0170](0170-automation-run-as-bindings.md) and [ADR 0173](0173-integration-trigger-source.md).
+  Agent-requested hooks (`purpose: agent`) are still not bound to automations; webhook and sync
+  events reach automations through `core_integration_event` instead.

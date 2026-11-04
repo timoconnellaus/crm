@@ -374,7 +374,7 @@ export const userDeactivate = defineOperation({
       .select(["id", "name", "role", "kind", "deactivated_at"])
       .where("id", "=", input.id)
       .executeTakeFirst();
-    if (!user || user.kind !== "human") throw new NotFoundError("user", input.id);
+    if (user?.kind !== "human") throw new NotFoundError("user", input.id);
     if (user.id === ctx.user.id) throw new ConflictError("You cannot deactivate yourself");
     if (user.deactivated_at) {
       return { id: user.id, deactivatedAt: user.deactivated_at, pausedAutomations: [] };
