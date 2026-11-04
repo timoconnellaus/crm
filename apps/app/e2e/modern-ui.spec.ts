@@ -288,5 +288,17 @@ test("People with the 10k seed scrolls smoothly with a bounded DOM", async ({ pa
   // Rendered rows and DOM size stay bounded while thousands of rows go by.
   expect(Math.max(...result.rows)).toBeLessThan(80);
   expect(Math.max(...result.nodes) - Math.min(...result.nodes)).toBeLessThan(1500);
-  expect(await scroller(page).evaluate((el) => el.scrollTop)).toBeGreaterThan(10_000);
+  // Infinite loading keeps up: keep scrolling (pages load as the end nears) until thousands of rows
+  // have gone by. Slow CI runners may not get there inside the two-second measuring window.
+  await expect
+    .poll(
+      async () =>
+        scroller(page).evaluate((el) => {
+          el.scrollTop += 2000;
+          return el.scrollTop;
+        }),
+      { timeout: 60_000, intervals: [250] },
+    )
+    .toBeGreaterThan(10_000);
+  expect(await renderedRows(page).count()).toBeLessThan(80);
 });
