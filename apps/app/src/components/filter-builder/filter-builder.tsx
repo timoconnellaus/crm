@@ -76,6 +76,9 @@ export function FilterBuilder({
     [object, fields],
   );
 
+  const defaultField =
+    offered.find((f) => f.name === object.defaultSort.field)?.name ?? offered[0]?.name;
+
   // The value changed from outside (back button, saved view): rebuild the draft.
   useEffect(() => {
     if (!same(value, lastEmitted.current)) {
@@ -99,7 +102,7 @@ export function FilterBuilder({
     "/",
     () => {
       if (!open && draft.children.length === 0) {
-        setDraft((d) => appendChild(d, d.id, newCondition(object, offered[0]?.name)));
+        setDraft((d) => appendChild(d, d.id, newCondition(object, defaultField)));
       }
       setOpen(true);
     },
@@ -110,7 +113,7 @@ export function FilterBuilder({
 
   function onOpenChange(next: boolean) {
     if (next && draft.children.length === 0) {
-      setDraft((d) => appendChild(d, d.id, newCondition(object, offered[0]?.name)));
+      setDraft((d) => appendChild(d, d.id, newCondition(object, defaultField)));
     }
     setOpen(next);
   }
@@ -160,6 +163,7 @@ export function FilterBuilder({
       >
         <GroupEditor
           object={object}
+          defaultField={defaultField}
           fields={offered}
           group={draft}
           depth={1}
@@ -181,6 +185,8 @@ export function FilterBuilder({
 
 interface GroupEditorProps {
   object: ObjectDefinition;
+  /** Field a new condition starts with. */
+  defaultField: string | undefined;
   fields: FieldDefinition[];
   group: DraftGroup;
   root: DraftGroup;
@@ -188,7 +194,15 @@ interface GroupEditorProps {
   onChange: (root: DraftGroup) => void;
 }
 
-function GroupEditor({ object, fields, group, root, depth, onChange }: GroupEditorProps) {
+function GroupEditor({
+  object,
+  defaultField,
+  fields,
+  group,
+  root,
+  depth,
+  onChange,
+}: GroupEditorProps) {
   const isRoot = depth === 1;
   return (
     <fieldset
@@ -231,6 +245,7 @@ function GroupEditor({ object, fields, group, root, depth, onChange }: GroupEdit
             {child.kind === "group" ? (
               <GroupEditor
                 object={object}
+                defaultField={defaultField}
                 fields={fields}
                 group={child}
                 root={root}
@@ -260,9 +275,7 @@ function GroupEditor({ object, fields, group, root, depth, onChange }: GroupEdit
         <Button
           variant="ghost"
           size="sm"
-          onClick={() =>
-            onChange(appendChild(root, group.id, newCondition(object, fields[0]?.name)))
-          }
+          onClick={() => onChange(appendChild(root, group.id, newCondition(object, defaultField)))}
         >
           <PlusIcon />
           Add condition
@@ -273,7 +286,7 @@ function GroupEditor({ object, fields, group, root, depth, onChange }: GroupEdit
             size="sm"
             onClick={() => {
               const sub = emptyGroup(group.mode === "and" ? "or" : "and");
-              sub.children.push(newCondition(object, fields[0]?.name));
+              sub.children.push(newCondition(object, defaultField));
               onChange(appendChild(root, group.id, sub));
             }}
           >

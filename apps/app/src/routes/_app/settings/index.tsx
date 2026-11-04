@@ -46,7 +46,7 @@ function Section({
 function SettingsPage() {
   const { isAdmin } = Route.useRouteContext();
   return (
-    <div className="mx-auto grid max-w-3xl gap-6">
+    <div className="mx-auto grid w-full grid-cols-1 max-w-3xl gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
       <div className="grid gap-3 sm:grid-cols-2">
         <Section

@@ -85,7 +85,7 @@ function ApprovalPolicyPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-4xl gap-6">
+    <div className="mx-auto grid w-full grid-cols-1 max-w-4xl gap-6">
       <div className="grid gap-1">
         <Link
           to="/settings"

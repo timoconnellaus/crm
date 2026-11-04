@@ -182,7 +182,7 @@ export function DataTable<Row extends { id: string }>({
   }
 
   return (
-    <div className="grid gap-2">
+    <div className="grid min-w-0 grid-cols-1 gap-2">
       {selectable && selectedRows.length > 0 && (
         <div
           className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm"

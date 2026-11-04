@@ -92,7 +92,10 @@ src/
 ## Calling operations
 
 - **UI**: `callOp("person.create", input)` from `apps/app/src/lib/operations.ts` — typed from the
-  schemas, runs as actor `human` through one server function.
+  schemas, runs as actor `human` through one server function. In components, use `useOp` /
+  `useOpMutation` from `apps/app/src/lib/query.ts` (TanStack Query keyed by operation name). UI code
+  that needs registry values (fields, filter ops, presets) imports `@crm/core/client`, the
+  browser-safe entry without handlers or `@crm/db`; type-only imports from `@crm/core` are fine.
 - **Server code / tests**: `invoke(name, input, { actor, user, origin, db: createCrmDb(env.DB),
   floor })`. Resolve `user` from a Principal with `resolveActingUser(db, principal)`.
 - Errors are `OperationError`s with a stable `code`; adapters send `error.toJSON()`.

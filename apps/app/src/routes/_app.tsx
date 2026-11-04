@@ -5,8 +5,10 @@ import { Kbd } from "@crm/ui/components/kbd";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@crm/ui/components/sidebar";
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { SearchIcon } from "lucide-react";
+import { useEffect } from "react";
 import {
   AppCommandsProvider,
+  type CreateKind,
   useAppCommands,
   useAppCommandsState,
 } from "../components/app-commands.tsx";
@@ -36,9 +38,9 @@ function AppLayout() {
         <AppSidebar />
         <SidebarInset className="min-w-0">
           <AppHeader />
-          <main className="min-w-0 flex-1 px-4 py-4 sm:px-6 sm:py-6" id="main">
+          <div className="min-w-0 flex-1 px-4 py-4 sm:px-6 sm:py-6" id="main">
             <Outlet />
-          </main>
+          </div>
         </SidebarInset>
       </SidebarProvider>
       <AppOverlays />
@@ -69,6 +71,10 @@ function AppHeader() {
   );
 }
 
+function createKindFor(_pathname: string): CreateKind {
+  return "person";
+}
+
 /** Dialogs controlled by AppCommands, plus the global shortcuts that open them. */
 function AppOverlays() {
   const { isAdmin } = Route.useRouteContext();
@@ -77,8 +83,13 @@ function AppOverlays() {
 
   useHotkey("mod+k", () => state.setPalette(!state.palette), { global: true });
   useHotkey("?", () => state.setShortcuts(true));
-  // `c` creates in context; on other screens it creates a person (the only create so far).
-  useHotkey("c", () => state.create("person"), { enabled: pathname !== "/settings" });
+  // `c` creates in context. A person is the only create so far; when organisations and tasks
+  // land, pick the kind from `pathname` (TODO(stage-1-wire)).
+  useHotkey("c", () => state.create(createKindFor(pathname)));
+  // Marks the signed-in shell interactive; end-to-end tests wait for it before using shortcuts.
+  useEffect(() => {
+    document.documentElement.dataset.hydrated = "true";
+  }, []);
 
   return (
     <>

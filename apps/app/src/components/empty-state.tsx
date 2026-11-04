@@ -43,7 +43,7 @@ export function ComingSoon({
   description?: string;
 }) {
   return (
-    <div className="mx-auto grid max-w-5xl gap-6">
+    <div className="mx-auto grid w-full grid-cols-1 max-w-5xl gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
       <EmptyState
         {...(icon ? { icon } : {})}

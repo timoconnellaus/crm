@@ -47,7 +47,7 @@ export function RecordLayout({
 }: RecordLayoutProps) {
   const overview = tab === tabs[0]?.value;
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
+    <div className="mx-auto grid w-full grid-cols-1 max-w-7xl gap-4">
       <header className="flex flex-wrap items-start gap-3 sm:gap-4" data-testid="record-header">
         <Avatar className="size-12 text-base sm:size-14">
           {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}

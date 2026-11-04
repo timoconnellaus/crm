@@ -60,7 +60,7 @@ function PeoplePage() {
   );
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
+    <div className="mx-auto grid w-full grid-cols-1 max-w-7xl gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">People</h1>
         <SavedViewsMenu object="person" defaultLabel="All people" view={view} />

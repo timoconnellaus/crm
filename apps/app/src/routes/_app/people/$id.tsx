@@ -70,7 +70,7 @@ function PersonPage() {
 
   if (person.isPending) {
     return (
-      <div className="mx-auto grid max-w-7xl gap-4" aria-busy="true">
+      <div className="mx-auto grid w-full grid-cols-1 max-w-7xl gap-4" aria-busy="true">
         <div className="flex items-center gap-4">
           <Skeleton className="size-14 rounded-full" />
           <div className="grid gap-2">
@@ -153,7 +153,7 @@ function PersonRecord({
   const openTasks = tasks.data.filter((t) => t.status === "open").length;
 
   return (
-    <div className="grid gap-2">
+    <div className="grid grid-cols-1 gap-2">
       <Link
         to="/people"
         className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

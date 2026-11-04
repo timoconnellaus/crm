@@ -87,7 +87,11 @@ export function emptyGroup(mode: GroupMode = "and"): DraftGroup {
 
 export function newCondition(object: ObjectDefinition, fieldName?: string): DraftCondition {
   const fields = filterableFields(object);
-  const field = (fieldName && fields.find((f) => f.name === fieldName)) || fields[0];
+  // Default to the field lists sort by (usually the name), else the first filterable one.
+  const field =
+    (fieldName && fields.find((f) => f.name === fieldName)) ||
+    fields.find((f) => f.name === object.defaultSort.field) ||
+    fields[0];
   if (!field) throw new Error(`${object.name} has no filterable fields`);
   const op = defaultOp(field);
   return {
