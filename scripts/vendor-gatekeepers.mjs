@@ -99,6 +99,48 @@ const PACKAGES = [
     files: [["packages/gatekeeper-google/README.md", "README.md"]],
     keep: ["src/generated"],
   },
+  {
+    target: "packages/gatekeeper-microsoft",
+    upstream: "packages/gatekeeper-microsoft",
+    dirs: ["src", "__tests__"],
+    files: [
+      ["packages/gatekeeper-microsoft/README.md", "README.md"],
+      ["packages/gatekeeper-microsoft/AGENTS.md", "AGENTS.md"],
+      ["packages/gatekeeper-microsoft/storage-schema.md", "storage-schema.md"],
+    ],
+    keep: ["src/generated"],
+  },
+  {
+    target: "packages/gatekeeper-slack",
+    upstream: "packages/gatekeeper-slack",
+    // Upstream keeps Slack's tests next to the source, in src/.
+    dirs: ["src"],
+    files: [["packages/gatekeeper-slack/README.md", "README.md"]],
+    keep: ["src/generated"],
+  },
+  {
+    target: "packages/gatekeeper-email",
+    upstream: "packages/gatekeeper-email",
+    dirs: ["src"],
+    files: [["packages/gatekeeper-email/README.md", "README.md"]],
+    keep: ["src/generated"],
+  },
+  {
+    target: "packages/gatekeeper-zoominfo",
+    upstream: "packages/gatekeeper-zoominfo",
+    dirs: ["src"],
+    files: [["packages/gatekeeper-zoominfo/README.md", "README.md"]],
+    keep: ["src/generated"],
+  },
+  {
+    target: "packages/gatekeeper-websearch",
+    upstream: "packages/gatekeeper-websearch",
+    dirs: ["src", "__tests__"],
+    files: [
+      ["packages/gatekeeper-websearch/README.md", "README.md"],
+      ["packages/gatekeeper-websearch/AGENTS.md", "AGENTS.md"],
+    ],
+  },
 ];
 
 const TEXT_EXTENSIONS = [".ts", ".tsx", ".mts", ".js", ".mjs", ".md", ".json", ".txt"];
