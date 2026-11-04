@@ -182,6 +182,9 @@ importers:
       '@crm/db':
         specifier: workspace:*
         version: link:../db
+      '@crm/sdk':
+        specifier: workspace:*
+        version: link:../sdk
       kysely:
         specifier: 0.29.8
         version: 0.29.8
@@ -228,13 +231,26 @@ importers:
         version: 5.1.0(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0))
 
   packages/sdk:
+    dependencies:
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 1.5.1
+        version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)))
+      '@cloudflare/workers-types':
+        specifier: 5.20261104.1
+        version: 5.20261104.1
       '@crm/config':
         specifier: workspace:*
         version: link:../config
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0))
 
   packages/ui:
     dependencies:
