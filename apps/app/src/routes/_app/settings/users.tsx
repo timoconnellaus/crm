@@ -1,5 +1,6 @@
 // Settings → Users and roles (admin): every user (user.list) and their role, changed with
 // user.updateRole. The last admin cannot be demoted; that refusal is shown inline on the row.
+
 import { Avatar, AvatarFallback, AvatarImage } from "@crm/ui/components/avatar";
 import { Badge } from "@crm/ui/components/badge";
 import {
@@ -14,8 +15,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LockIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { EmptyState } from "#/components/empty-state";
-import { BackToSettings } from "#/components/settings/back-to-settings";
+import { ErrorState } from "#/components/empty-state";
+import { PageLayout } from "#/components/layout/page-layout";
 import { formatDate, initials } from "#/lib/format";
 import { OperationCallError } from "#/lib/operations";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
@@ -61,14 +62,12 @@ function UsersPage() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-4">
-      <BackToSettings />
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Users and roles</h1>
-        <p className="text-sm text-muted-foreground">
-          Everyone who can sign in. People join by signing in; admins set their role here.
-        </p>
-      </div>
+    <PageLayout
+      title="Users and roles"
+      width="md"
+      back={{ to: "/settings", label: "Settings" }}
+      description="Everyone who can sign in. People join by signing in; admins set their role here."
+    >
       {!isAdmin && (
         <p className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground">
           <LockIcon className="size-4" aria-hidden />
@@ -78,7 +77,11 @@ function UsersPage() {
       {users.isPending ? (
         <Skeleton className="h-40" />
       ) : users.isError ? (
-        <EmptyState title="Could not load users" description={errorMessage(users.error)} />
+        <ErrorState
+          title="Could not load users"
+          error={users.error}
+          onRetry={() => void users.refetch()}
+        />
       ) : (
         <ul className="grid divide-y rounded-md border" aria-label="Users">
           {users.data.items.map((u) => {
@@ -143,6 +146,6 @@ function UsersPage() {
           </div>
         ))}
       </dl>
-    </div>
+    </PageLayout>
   );
 }

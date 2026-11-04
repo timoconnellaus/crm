@@ -1,7 +1,6 @@
 // Generic record page for an extension object: RecordLayout with Overview (its fields, from the
 // field registry, edited with the field widgets), Timeline and History tabs, and Trash.
 import { Button } from "@crm/ui/components/button";
-import { Skeleton } from "@crm/ui/components/skeleton";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BoxIcon, Trash2Icon } from "lucide-react";
 import { useMemo } from "react";
@@ -10,7 +9,7 @@ import { EmptyState } from "#/components/empty-state";
 import { FieldsCard } from "#/components/fields/fields-card";
 import { useRecordHistory, useTimeline } from "#/components/record/adapters";
 import { HistoryList } from "#/components/record/history";
-import { RecordLayout } from "#/components/record/record-layout";
+import { RecordLayout, RecordLayoutSkeleton } from "#/components/record/record-layout";
 import { Timeline } from "#/components/record/timeline";
 import { formatDateTime } from "#/lib/format";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
@@ -33,13 +32,14 @@ export const Route = createFileRoute("/_app/x/$object/$id")({
 function ExtensionRecordPage() {
   const { object: name, id } = Route.useParams();
   const { object, isPending } = useObjectInfo(name);
-  if (isPending) return <Skeleton className="mx-auto h-64 w-full max-w-7xl" />;
+  if (isPending) return <RecordLayoutSkeleton />;
   if (!object) {
     return (
       <EmptyState
         icon={BoxIcon}
         title="No such object"
         description={`${name} is not an object in this CRM.`}
+        className="mx-4 my-6 sm:mx-auto sm:max-w-xl"
       />
     );
   }
@@ -55,7 +55,7 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
   const definition = useMemo(() => toObjectDefinition(info), [info]);
   const remove = useOpMutation("record.delete", { invalidates: ["record."] });
 
-  if (record.isPending) return <Skeleton className="mx-auto h-64 w-full max-w-7xl" />;
+  if (record.isPending) return <RecordLayoutSkeleton />;
   if (record.error || !record.data) {
     return (
       <EmptyState
@@ -69,6 +69,7 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
             </Link>
           </Button>
         }
+        className="mx-4 my-6 sm:mx-auto sm:max-w-xl"
       />
     );
   }
@@ -89,6 +90,8 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
 
   return (
     <RecordLayout
+      back={{ to: "/x/$object", params: { object: info.name }, label: info.plural ?? info.label }}
+      squareAvatar
       title={data.title ?? "(untitled)"}
       subtitle={
         <Link to="/x/$object" params={{ object: info.name }} className="hover:underline">
@@ -144,6 +147,7 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
               hasMore={timeline.hasMore}
               onLoadMore={timeline.loadMore}
               isLoadingMore={timeline.isLoadingMore}
+              loadMoreFailed={timeline.loadMoreFailed}
             />
           ),
         },
@@ -159,6 +163,7 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
               hasMore={history.hasMore}
               onLoadMore={history.loadMore}
               isLoadingMore={history.isLoadingMore}
+              loadMoreFailed={history.loadMoreFailed}
             />
           ),
         },

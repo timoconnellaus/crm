@@ -1,5 +1,6 @@
 // Settings → Approval policy: view the org's preset and the deploy-time floor; admins change the
 // preset (policy.update). Loosening asks for confirmation.
+
 import {
   type GateFloor,
   type GateMatrix,
@@ -24,10 +25,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@crm/
 import { Label } from "@crm/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@crm/ui/components/radio-group";
 import { Skeleton } from "@crm/ui/components/skeleton";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeftIcon, LockIcon } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { LockIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { PageLayout, SaveBar } from "#/components/layout/page-layout";
 import { FloorTable, GateMatrixTable } from "#/components/settings/gate-matrix";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
 
@@ -85,22 +87,27 @@ function ApprovalPolicyPage() {
   }
 
   return (
-    <div className="mx-auto grid w-full grid-cols-1 max-w-4xl gap-6">
-      <div className="grid gap-1">
-        <Link
-          to="/settings"
-          className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeftIcon className="size-4" />
-          Settings
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Approval policy</h1>
-        <p className="text-muted-foreground">
-          How much the in-app assistant, external AI clients and automations may do before a person
-          reviews it. People using the app are limited only by their role.
-        </p>
-      </div>
-
+    <PageLayout
+      title="Approval policy"
+      width="lg"
+      back={{ to: "/settings", label: "Settings" }}
+      description="How much the in-app assistant, external AI clients and automations may do before a person reviews it. People using the app are limited only by their role."
+      footer={
+        isAdmin ? (
+          <SaveBar
+            dirty={changed || update.isPending}
+            message={selected ? `Switch to ${PRESET_COPY[selected].title}?` : undefined}
+          >
+            <Button variant="ghost" onClick={() => setSelected(current ?? null)}>
+              Cancel
+            </Button>
+            <Button onClick={onSave} disabled={!changed || update.isPending}>
+              {update.isPending ? "Saving…" : "Save preset"}
+            </Button>
+          </SaveBar>
+        ) : undefined
+      }
+    >
       {!isAdmin && (
         <p
           className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm"
@@ -152,18 +159,6 @@ function ApprovalPolicyPage() {
                 </Label>
               ))}
             </RadioGroup>
-          )}
-          {isAdmin && (
-            <div className="flex items-center justify-end gap-2">
-              {changed && (
-                <Button variant="ghost" onClick={() => setSelected(current ?? null)}>
-                  Cancel
-                </Button>
-              )}
-              <Button onClick={onSave} disabled={!changed || update.isPending}>
-                {update.isPending ? "Saving…" : "Save preset"}
-              </Button>
-            </div>
           )}
         </CardContent>
       </Card>
@@ -219,6 +214,6 @@ function ApprovalPolicyPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageLayout>
   );
 }

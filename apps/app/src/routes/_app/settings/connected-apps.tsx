@@ -2,6 +2,7 @@
 // a user authorized over OAuth, with their scopes, when they connected and when they were last
 // used, and a revoke button. Admins also see every user's apps and can revoke any of them.
 // Revoking stops the app's access and refresh tokens at once (connectedApp.revoke).
+
 import type { CoreOutput } from "@crm/core";
 import {
   AlertDialog,
@@ -24,7 +25,7 @@ import { CopyIcon, PlugIcon, UnplugIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState } from "#/components/empty-state";
-import { BackToSettings } from "#/components/settings/back-to-settings";
+import { PageLayout } from "#/components/layout/page-layout";
 import { formatDate, formatDateTime, formatRelative } from "#/lib/format";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
 
@@ -39,15 +40,12 @@ function ConnectedAppsPage() {
   const [includeRevoked, setIncludeRevoked] = useState(false);
   const mine = useOp("connectedApp.list", { includeRevoked });
   return (
-    <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-6">
-      <BackToSettings />
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Connected apps</h1>
-        <p className="text-sm text-muted-foreground">
-          AI apps you have let use the CRM for you over MCP. They act as you, within the scopes you
-          granted, and risky changes still wait in Approvals.
-        </p>
-      </div>
+    <PageLayout
+      title="Connected apps"
+      width="lg"
+      back={{ to: "/settings", label: "Settings" }}
+      description="AI apps you have let use the CRM for you over MCP. They act as you, within the scopes you granted, and risky changes still wait in Approvals."
+    >
       <McpAddress />
       <section className="grid gap-3" aria-labelledby="my-apps">
         <div className="flex flex-wrap items-center gap-3">
@@ -74,7 +72,7 @@ function ConnectedAppsPage() {
         />
       </section>
       {isAdmin && <EveryonesApps includeRevoked={includeRevoked} />}
-    </div>
+    </PageLayout>
   );
 }
 

@@ -1,17 +1,27 @@
 import { Toaster } from "@crm/ui/components/sonner";
 import { TooltipProvider } from "@crm/ui/components/tooltip";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-import { type ReactNode, useState } from "react";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createRootRouteWithContext,
+  HeadContent,
+  Outlet,
+  Scripts,
+  useRouter,
+} from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { THEME_INIT_SCRIPT, ThemeProvider, useTheme } from "../components/theme.tsx";
-import { createQueryClient } from "../lib/query.ts";
 import appCss from "../styles.css?url";
 
-export const Route = createRootRoute({
+/** What every route's loader gets: the page's QueryClient (see router.tsx). */
+export interface RouterContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "CRM" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
@@ -41,10 +51,10 @@ function RootDocument({ children }: { children: ReactNode }) {
   );
 }
 
-/** One QueryClient per page load (and per server render). Data is fetched in the browser. */
+/** The router's QueryClient (one per page load), which route loaders also prefetch into. */
 function QueryProvider({ children }: { children: ReactNode }) {
-  const [client] = useState(createQueryClient);
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const { queryClient } = useRouter().options.context as RouterContext;
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
 
 function ThemedToaster() {

@@ -4,6 +4,7 @@
 //   2. Columns: map each column to a field (suggested from the headers) or ignore it
 //   3. Review: per-row create / update / skip with overrides, and how duplicates were found
 //   4. Import: one commit (all rows in one transaction), then a summary
+
 import type { CoreOutput } from "@crm/core";
 import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
@@ -24,6 +25,7 @@ import {
 import { type ChangeEvent, type ReactNode, useMemo, useState } from "react";
 import { callOp, OperationCallError } from "#/lib/operations";
 import { errorMessage, invalidateAfterWrite } from "#/lib/query";
+import { PageLayout } from "../layout/page-layout.tsx";
 import { byteSize, formatBytes, IMPORT_LIMITS, readCsvRows } from "./csv.ts";
 
 export type ImportObject = "person" | "organisation";
@@ -152,37 +154,36 @@ export function ImportWizard({ initialObject = "person" }: { initialObject?: Imp
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4">
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Import CSV</h1>
-        <p className="text-sm text-muted-foreground">
-          Bring people or organisations in from a spreadsheet. Nothing changes until the last step.
-        </p>
-      </div>
-      <ol className="flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label="Import steps">
-        {STEPS.map((label, i) => (
-          <li
-            key={label}
-            aria-current={i === step ? "step" : undefined}
-            className={cn(
-              "flex items-center gap-1.5",
-              i === step ? "font-medium" : "text-muted-foreground",
-            )}
-          >
-            <span
+    <PageLayout
+      title="Import CSV"
+      width="xl"
+      description="Bring people or organisations in from a spreadsheet. Nothing changes until the last step."
+      toolbar={
+        <ol className="flex flex-wrap gap-x-4 gap-y-1 text-sm" aria-label="Import steps">
+          {STEPS.map((label, i) => (
+            <li
+              key={label}
+              aria-current={i === step ? "step" : undefined}
               className={cn(
-                "flex size-5 items-center justify-center rounded-full border text-xs",
-                i < step && "border-primary bg-primary text-primary-foreground",
-                i === step && "border-primary",
+                "flex items-center gap-1.5",
+                i === step ? "font-medium" : "text-muted-foreground",
               )}
             >
-              {i + 1}
-            </span>
-            {label}
-          </li>
-        ))}
-      </ol>
-
+              <span
+                className={cn(
+                  "flex size-5 items-center justify-center rounded-full border text-xs",
+                  i < step && "border-primary bg-primary text-primary-foreground",
+                  i === step && "border-primary",
+                )}
+              >
+                {i + 1}
+              </span>
+              {label}
+            </li>
+          ))}
+        </ol>
+      }
+    >
       {error && (
         <div
           role="alert"
@@ -237,7 +238,7 @@ export function ImportWizard({ initialObject = "person" }: { initialObject?: Imp
         />
       )}
       {step === 3 && result && <ResultStep object={object} result={result} onRestart={restart} />}
-    </div>
+    </PageLayout>
   );
 }
 

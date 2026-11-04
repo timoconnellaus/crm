@@ -1,27 +1,40 @@
-// A list table over any object in the field registry, fed by a `<object>.list` operation:
-// server-driven sort and keyset (cursor) pagination, a column picker, multi-select rows with a
-// bulk-action slot, keyboard navigation (j/k to move, x to select, Enter to open), and loading,
-// error and empty states. Filtering is the caller's (pass `filter`); see FilterBuilder.
+// A list table over any object in the field registry, fed by a `<object>.list` operation.
+//
+// - Infinite scroll: pages come from the operation's keyset cursor (useInfiniteQuery); the next
+//   page is fetched when the rendered range nears the end, one request in flight at a time.
+// - Virtualised rows (TanStack Virtual): only the rows in view (plus overscan) are in the DOM, so
+//   6,000 people scroll smoothly with a bounded node count.
+// - The table is its own scroll region (both axes) filling the page body: the header row is
+//   sticky at the top, and the first column (with the select box) is sticky on the left when
+//   the table scrolls sideways at narrow widths.
+// - Server-driven sort, a column picker (the caller's), multi-select that persists while
+//   scrolling and can extend to every matching record (up to SELECT_ALL_CAP, for the batch
+//   operations), keyboard navigation (j/k move and scroll, x selects, Enter opens), scroll
+//   restoration per history entry, and skeleton, error and empty states.
 import type { FieldDefinition, Filter, ObjectDefinition, Sort } from "@crm/core/client";
 import { getField } from "@crm/core/client";
 import { Button } from "@crm/ui/components/button";
 import { Checkbox } from "@crm/ui/components/checkbox";
 import { Skeleton } from "@crm/ui/components/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@crm/ui/components/table";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { cn } from "@crm/ui/lib/utils";
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, SearchXIcon } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { toast } from "sonner";
 import { useHotkey } from "#/lib/hotkeys";
 import { errorMessage } from "#/lib/query";
+import { recallScroll, useScrollKey, useScrollMemory } from "#/lib/scroll-memory";
 import { PendingPopover, usePendingForRows } from "../approvals/pending-badge.tsx";
-import { EmptyState } from "../empty-state.tsx";
+import { EmptyState, ErrorState } from "../empty-state.tsx";
 import { DefaultCell } from "./cells.tsx";
 
 /** What the table asks a list operation for (a subset of `listInputSchema`). */
@@ -39,9 +52,69 @@ export interface ListPage<Row> {
 }
 
 export interface BulkActionContext<Row> {
+  /** Selected rows that are loaded. */
   selected: Row[];
+  /** Every selected id, loaded or not ("select all matching" selects rows not yet loaded). */
+  ids: string[];
   /** Clears the selection (call after the action finishes). */
   clear: () => void;
+}
+
+/** The most records "Select all matching" selects: ten calls of a batch operation. */
+export const SELECT_ALL_CAP = 1000;
+/** Estimated row height; rows are measured once rendered. */
+export const ROW_HEIGHT = 41;
+/** Fetch the next page when the rendered range is this close to the end. */
+const PREFETCH_ROWS = 25;
+/** The sticky header row: h-10 plus its bottom border. */
+const HEADER_HEIGHT = 41;
+const DEFAULT_PAGE_SIZE = 50;
+
+/** The fields a list fetches: the visible columns it can return plus `extraFields`. */
+export function listFields(
+  object: ObjectDefinition,
+  columns: readonly string[],
+  availableColumns: readonly string[],
+  extraFields: readonly string[] = [],
+): { visible: FieldDefinition[]; fields: string[] } {
+  const visible = columns
+    .map((name) => getField(object, name))
+    .filter((f): f is FieldDefinition => Boolean(f) && availableColumns.includes(f?.name ?? ""));
+  return { visible, fields: [...new Set([...visible.map((f) => f.name), ...extraFields])] };
+}
+
+/**
+ * The infinite query behind a DataTable, shared with route loaders that prefetch the first page
+ * on hover (intent preloading).
+ */
+export function listQueryOptions<Row>({
+  queryKey,
+  fetchPage,
+  filter,
+  sort,
+  fields,
+  pageSize = DEFAULT_PAGE_SIZE,
+}: {
+  queryKey: readonly unknown[];
+  fetchPage: (request: ListPageRequest) => Promise<ListPage<Row>>;
+  filter: Filter | undefined;
+  sort: Sort;
+  fields: string[];
+  pageSize?: number;
+}) {
+  return infiniteQueryOptions({
+    queryKey: [...queryKey, { filter: filter ?? null, sort, fields, limit: pageSize }],
+    queryFn: ({ pageParam }) =>
+      fetchPage({
+        ...(filter ? { filter } : {}),
+        sort,
+        limit: pageSize,
+        fields,
+        ...(pageParam ? { cursor: pageParam } : {}),
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last: ListPage<Row>) => last.nextCursor ?? undefined,
+  });
 }
 
 export interface DataTableProps<Row extends { id: string }> {
@@ -49,7 +122,7 @@ export interface DataTableProps<Row extends { id: string }> {
   object: ObjectDefinition;
   /** Accessible name of the table, e.g. "People". */
   label: string;
-  /** Cache key prefix for this list, e.g. `["op", "person.list"]`. */
+  /** Cache key prefix for this list, e.g. `["op", "person.list", "table"]`. */
   queryKey: readonly unknown[];
   /** Fetches one page, e.g. `(input) => callOp("person.list", input)`. */
   fetchPage: (request: ListPageRequest) => Promise<ListPage<Row>>;
@@ -63,6 +136,8 @@ export interface DataTableProps<Row extends { id: string }> {
   /** Called with an updater from the current sort (a `useState` setter fits). */
   onSortChange: (update: (current: Sort) => Sort) => void;
   filter?: Filter;
+  /** Matching records in all (record.count), for "select all matching" and screen readers. */
+  total?: { count: number; capped: boolean } | undefined;
   /** Custom cell renderers by field name; others use DefaultCell (by field type). */
   renderCell?: Partial<Record<string, (row: Row) => ReactNode>>;
   /** Opens a row (Enter on the active row). */
@@ -81,6 +156,27 @@ export interface DataTableProps<Row extends { id: string }> {
   pendingObject?: string;
 }
 
+/** Column widths: grid tracks by field type, so every (absolutely positioned) row lines up. */
+function track(field: FieldDefinition, first: boolean): { min: number; css: string } {
+  if (first) return { min: 240, css: "minmax(240px,2fr)" };
+  if (field.name === "tags" || field.related) return { min: 200, css: "minmax(200px,1.2fr)" };
+  switch (field.type) {
+    case "date":
+    case "datetime":
+      return { min: 150, css: "minmax(150px,0.8fr)" };
+    case "number":
+    case "boolean":
+      return { min: 110, css: "minmax(110px,0.6fr)" };
+    case "enum":
+    case "id":
+      return { min: 150, css: "minmax(150px,0.8fr)" };
+    default:
+      return { min: 200, css: "minmax(200px,1.2fr)" };
+  }
+}
+
+const SELECT_WIDTH = 44;
+
 export function DataTable<Row extends { id: string }>({
   object,
   label,
@@ -92,62 +188,83 @@ export function DataTable<Row extends { id: string }>({
   sort,
   onSortChange,
   filter,
+  total,
   renderCell = {},
   onOpen,
   bulkActions,
   empty,
-  pageSize = 50,
+  pageSize = DEFAULT_PAGE_SIZE,
   keyboard = true,
   pendingObject,
 }: DataTableProps<Row>) {
-  const visible = useMemo(
-    () =>
-      columns
-        .map((name) => getField(object, name))
-        .filter(
-          (f): f is FieldDefinition => Boolean(f) && availableColumns.includes(f?.name ?? ""),
-        ),
-    [columns, object, availableColumns],
-  );
-  const fields = useMemo(
-    () => [...new Set([...visible.map((f) => f.name), ...extraFields])],
-    [visible, extraFields],
+  const { visible, fields } = useMemo(
+    () => listFields(object, columns, availableColumns, extraFields),
+    [object, columns, availableColumns, extraFields],
   );
 
   const query = useInfiniteQuery({
-    queryKey: [...queryKey, { filter: filter ?? null, sort, fields, limit: pageSize }],
-    queryFn: ({ pageParam }) =>
-      fetchPage({
-        ...(filter ? { filter } : {}),
-        sort,
-        limit: pageSize,
-        fields,
-        ...(pageParam ? { cursor: pageParam } : {}),
-      }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    ...listQueryOptions({ queryKey, fetchPage, filter, sort, fields, pageSize }),
     placeholderData: (previous) => previous,
   });
   const rows = useMemo(() => query.data?.pages.flatMap((p) => p.items) ?? [], [query.data]);
   const pageRows = useMemo(() => query.data?.pages.map((p) => p.items) ?? [], [query.data]);
   const pending = usePendingForRows(pendingObject, pageRows);
+  const { hasNextPage, isFetching, fetchNextPage, isFetchNextPageError } = query;
 
-  // Selection and the keyboard cursor reset when the result set changes shape.
+  // Selection is a set of ids, so it survives scrolling and rows loading or unloading.
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [allMatching, setAllMatching] = useState(false);
+  const [selectingAll, setSelectingAll] = useState(false);
   const [active, setActive] = useState(-1);
-  const resetKey = JSON.stringify([filter ?? null, sort]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the query changes.
-  useEffect(() => {
+  const clearSelection = useCallback(() => {
     setSelected(new Set());
-    setActive(-1);
-  }, [resetKey]);
+    setAllMatching(false);
+  }, []);
 
-  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  // --- Scrolling and virtualisation -----------------------------------------------------------
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollKey = useScrollKey(`list:${label}`);
+  useScrollMemory(scrollRef, `list:${label}`, { ready: rows.length > 0 });
+  const loaderRow = hasNextPage ? 1 : 0;
+  const virtualizer = useVirtualizer({
+    count: rows.length + loaderRow,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10,
+    getItemKey: (index) => rows[index]?.id ?? `loader-${index}`,
+    initialOffset: () => recallScroll(scrollKey) ?? 0,
+    // The rows start below the sticky header row, inside the same scroller; scrolling to a row
+    // (j/k) keeps it clear of the header.
+    scrollMargin: HEADER_HEIGHT,
+    scrollPaddingStart: HEADER_HEIGHT,
+  });
+  const virtualRows = virtualizer.getVirtualItems();
+  const lastIndex = virtualRows.at(-1)?.index ?? -1;
+
+  // Infinite load: near the end of what is loaded, fetch the next page. `isFetching` covers both
+  // next-page and background refetches, so there is never more than one request in flight.
   useEffect(() => {
-    if (active < 0) return;
-    const row = bodyRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`);
-    row?.scrollIntoView({ block: "nearest" });
-  }, [active]);
+    // After a failed page, wait for "Try again" rather than retrying in a loop.
+    if (lastIndex < 0 || !hasNextPage || isFetching || isFetchNextPageError) return;
+    if (lastIndex >= rows.length - PREFETCH_ROWS) void fetchNextPage({ cancelRefetch: false });
+  }, [lastIndex, rows.length, hasNextPage, isFetching, isFetchNextPageError, fetchNextPage]);
+
+  // A new filter or sort is a new result set: clear the selection and cursor, back to the top.
+  // (Not on mount, which would undo scroll restoration.)
+  const resetKey = JSON.stringify([filter ?? null, sort]);
+  const lastReset = useRef(resetKey);
+  useEffect(() => {
+    if (lastReset.current === resetKey) return;
+    lastReset.current = resetKey;
+    clearSelection();
+    setActive(-1);
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [resetKey, clearSelection]);
+
+  // --- Keyboard ---------------------------------------------------------------------------------
+  useEffect(() => {
+    if (active >= 0) virtualizer.scrollToIndex(active, { align: "auto" });
+  }, [active, virtualizer]);
 
   const move = (delta: number) =>
     setActive((i) => Math.max(0, Math.min(rows.length - 1, (i < 0 ? -1 : i) + delta)));
@@ -171,6 +288,7 @@ export function DataTable<Row extends { id: string }>({
   );
 
   function toggle(id: string) {
+    setAllMatching(false);
     setSelected((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -179,11 +297,42 @@ export function DataTable<Row extends { id: string }>({
     });
   }
 
-  const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id));
-  const someSelected = !allSelected && rows.some((row) => selected.has(row.id));
-  const selectedRows = rows.filter((row) => selected.has(row.id));
+  /** Selects every matching record (up to SELECT_ALL_CAP) by paging ids from the operation. */
+  async function selectAllMatching() {
+    setSelectingAll(true);
+    try {
+      const ids: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await fetchPage({
+          ...(filter ? { filter } : {}),
+          sort,
+          limit: 200,
+          fields: [],
+          ...(cursor ? { cursor } : {}),
+        });
+        ids.push(...page.items.map((item) => item.id));
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor && ids.length < SELECT_ALL_CAP);
+      setSelected(new Set(ids.slice(0, SELECT_ALL_CAP)));
+      setAllMatching(true);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setSelectingAll(false);
+    }
+  }
+
+  const loadedSelected = useMemo(
+    () => rows.filter((row) => selected.has(row.id)),
+    [rows, selected],
+  );
+  const allLoadedSelected = rows.length > 0 && loadedSelected.length === rows.length;
+  const someSelected = selected.size > 0 && !allLoadedSelected;
   const selectable = Boolean(bulkActions);
-  const colSpan = visible.length + (selectable ? 1 : 0);
+  const matching = total?.count;
+  const canSelectMore =
+    allLoadedSelected && !allMatching && (hasNextPage || (matching ?? 0) > rows.length);
 
   function onHeaderClick(field: FieldDefinition) {
     if (!field.sortable) return;
@@ -196,181 +345,292 @@ export function DataTable<Row extends { id: string }>({
     );
   }
 
+  // --- Layout -----------------------------------------------------------------------------------
+  const tracks = visible.map((field, i) => track(field, i === 0));
+  const gridTemplateColumns = [
+    ...(selectable ? [`${SELECT_WIDTH}px`] : []),
+    ...tracks.map((t) => t.css),
+  ].join(" ");
+  const minWidth = tracks.reduce((sum, t) => sum + t.min, selectable ? SELECT_WIDTH : 0);
+  const rowStyle: CSSProperties = { gridTemplateColumns };
+  // Sticky cells need an opaque background that follows the row's state.
+  const stickyCell =
+    "sticky z-[1] bg-background group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted group-data-[active]/row:bg-accent";
+  const firstLeft = selectable ? SELECT_WIDTH : 0;
+
+  const showEmpty = query.isSuccess && rows.length === 0;
+  const selectedCount = selected.size;
+
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-2">
-      {selectable && selectedRows.length > 0 && (
+    <div className="flex min-h-0 flex-1 flex-col" data-testid="data-table-region">
+      {selectable && selectedCount > 0 && (
         <div
-          className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm"
+          className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-muted/60 px-4 py-2 text-sm sm:px-6"
           role="toolbar"
           aria-label="Bulk actions"
           data-testid="bulk-actions"
         >
-          <span className="font-medium">{selectedRows.length} selected</span>
+          <span className="font-medium" data-testid="selected-count">
+            {allMatching
+              ? `All ${selectedCount.toLocaleString()} matching selected`
+              : `${selectedCount.toLocaleString()} selected`}
+          </span>
+          {canSelectMore && (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-1"
+              onClick={() => void selectAllMatching()}
+              disabled={selectingAll}
+              data-testid="select-all-matching"
+            >
+              {selectingAll
+                ? "Selecting…"
+                : matching !== undefined && matching <= SELECT_ALL_CAP && !total?.capped
+                  ? `Select all ${matching.toLocaleString()} matching`
+                  : `Select the first ${SELECT_ALL_CAP.toLocaleString()} matching`}
+            </Button>
+          )}
           <div className="flex-1" />
-          {bulkActions?.({ selected: selectedRows, clear: () => setSelected(new Set()) })}
-          <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
+          {bulkActions?.({
+            selected: loadedSelected,
+            ids: [...selected],
+            clear: clearSelection,
+          })}
+          <Button variant="ghost" size="sm" onClick={clearSelection}>
             Clear
           </Button>
         </div>
       )}
-      <div className="rounded-md border">
-        <Table aria-label={label} aria-busy={query.isFetching} data-testid="data-table">
-          <TableHeader>
-            <TableRow>
+      <div
+        ref={scrollRef}
+        className="relative min-h-0 flex-1 overflow-auto overscroll-contain"
+        data-testid="data-table-scroll"
+      >
+        <table
+          aria-label={label}
+          aria-busy={query.isFetching}
+          aria-rowcount={matching !== undefined && !total?.capped ? matching + 1 : -1}
+          data-testid="data-table"
+          className={cn(
+            "grid w-full text-sm transition-opacity",
+            query.isPlaceholderData && "opacity-60",
+          )}
+          style={{ minWidth }}
+        >
+          <thead className="sticky top-0 z-20 grid bg-background">
+            <tr className="grid border-b" style={rowStyle} aria-rowindex={1}>
               {selectable && (
-                <TableHead className="w-10">
+                <th
+                  className="sticky left-0 z-[2] flex h-10 items-center bg-background pl-4"
+                  scope="col"
+                >
                   <Checkbox
-                    aria-label="Select all"
-                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                    onCheckedChange={(checked) =>
-                      setSelected(checked ? new Set(rows.map((row) => row.id)) : new Set())
-                    }
+                    aria-label="Select all loaded rows"
+                    checked={allLoadedSelected ? true : someSelected ? "indeterminate" : false}
+                    onCheckedChange={(checked) => {
+                      setAllMatching(false);
+                      setSelected(checked ? new Set(rows.map((row) => row.id)) : new Set());
+                    }}
                   />
-                </TableHead>
+                </th>
               )}
-              {visible.map((field) => {
+              {visible.map((field, column) => {
                 const sorted = sort.field === field.name ? sort.direction : null;
                 return (
-                  <TableHead
+                  <th
                     key={field.name}
+                    scope="col"
                     aria-sort={
                       sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined
                     }
+                    className={cn(
+                      "flex h-10 min-w-0 items-center px-3 text-left font-medium whitespace-nowrap text-muted-foreground",
+                      column === 0 && "sticky z-[2] bg-background shadow-[1px_0_0_var(--border)]",
+                      column === 0 && !selectable && "pl-4 sm:pl-6",
+                    )}
+                    style={column === 0 ? { left: firstLeft } : undefined}
                   >
                     {field.sortable ? (
                       <button
                         type="button"
-                        className="-mx-2 inline-flex items-center gap-1 rounded px-2 py-1 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        className="-mx-2 inline-flex min-w-0 items-center gap-1 rounded px-2 py-1 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         onClick={() => onHeaderClick(field)}
                       >
-                        {field.label}
+                        <span className="truncate">{field.label}</span>
                         {sorted === "asc" ? (
-                          <ArrowUpIcon className="size-3.5" aria-hidden />
+                          <ArrowUpIcon className="size-3.5 shrink-0" aria-hidden />
                         ) : sorted === "desc" ? (
-                          <ArrowDownIcon className="size-3.5" aria-hidden />
+                          <ArrowDownIcon className="size-3.5 shrink-0" aria-hidden />
                         ) : (
-                          <ArrowUpDownIcon className="size-3.5 opacity-40" aria-hidden />
+                          <ArrowUpDownIcon className="size-3.5 shrink-0 opacity-40" aria-hidden />
                         )}
                         <span className="sr-only">
                           {sorted ? `, sorted ${sorted}ending` : ", sortable"}
                         </span>
                       </button>
                     ) : (
-                      field.label
+                      <span className="truncate">{field.label}</span>
                     )}
-                  </TableHead>
+                  </th>
                 );
               })}
-            </TableRow>
-          </TableHeader>
-          <TableBody ref={bodyRef}>
-            {query.isPending &&
-              Array.from({ length: 5 }, (_, i) => (
+            </tr>
+          </thead>
+          {query.isPending ? (
+            <tbody className="grid">
+              {Array.from({ length: 12 }, (_, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton rows.
-                <TableRow key={i} data-testid="row-skeleton">
-                  {Array.from({ length: colSpan }, (_, j) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton cells.
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-full max-w-40" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            {query.isError && (
-              <TableRow>
-                <TableCell colSpan={colSpan} className="py-8 text-center">
-                  <p className="text-sm text-destructive" role="alert">
-                    {errorMessage(query.error)}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => query.refetch()}
-                  >
-                    Try again
-                  </Button>
-                </TableCell>
-              </TableRow>
-            )}
-            {query.isSuccess && rows.length === 0 && (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={colSpan} className="p-4">
-                  {filter ? (
-                    <EmptyState
-                      icon={SearchXIcon}
-                      title="No matches"
-                      description="Nothing matches this filter. Change or clear it."
-                    />
-                  ) : (
-                    (empty ?? <EmptyState title={`No ${label.toLowerCase()} yet`} />)
+                <tr key={i} className="grid border-b" style={rowStyle} data-testid="row-skeleton">
+                  {selectable && (
+                    <td className="flex h-10 items-center pl-4">
+                      <Skeleton className="size-4" />
+                    </td>
                   )}
-                </TableCell>
-              </TableRow>
-            )}
-            {rows.map((row, index) => (
-              <TableRow
-                key={row.id}
-                data-index={index}
-                data-active={index === active || undefined}
-                data-state={selected.has(row.id) ? "selected" : undefined}
-                aria-selected={selectable ? selected.has(row.id) : undefined}
-                className="data-[active]:bg-accent data-[active]:outline-2 data-[active]:-outline-offset-2 data-[active]:outline-ring/50"
-                onClick={() => setActive(index)}
-                onDoubleClick={() => onOpen?.(row)}
-              >
-                {selectable && (
-                  <TableCell>
-                    <Checkbox
-                      aria-label="Select row"
-                      checked={selected.has(row.id)}
-                      onCheckedChange={() => toggle(row.id)}
-                      onClick={(event) => event.stopPropagation()}
-                    />
-                  </TableCell>
-                )}
-                {visible.map((field, column) => {
-                  const content = renderCell[field.name]?.(row) ?? (
-                    <DefaultCell
-                      field={field}
-                      value={(row as Record<string, unknown>)[field.name]}
-                    />
-                  );
-                  const waiting = column === 0 ? pending.get(row.id) : undefined;
+                  {visible.map((field) => (
+                    <td key={field.name} className="flex h-10 items-center px-3">
+                      <Skeleton className="h-4 w-full max-w-40" />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          ) : (
+            <tbody
+              className="relative grid"
+              style={{ height: rows.length ? virtualizer.getTotalSize() : undefined }}
+            >
+              {virtualRows.map((item) => {
+                const row = rows[item.index];
+                const style: CSSProperties = {
+                  ...rowStyle,
+                  transform: `translateY(${item.start - HEADER_HEIGHT}px)`,
+                };
+                if (!row) {
                   return (
-                    <TableCell key={field.name} className="max-w-72 truncate">
-                      {waiting ? (
-                        <div className="flex min-w-0 items-center gap-2">
-                          <div className="min-w-0 truncate">{content}</div>
-                          <PendingPopover items={waiting} compact />
-                        </div>
-                      ) : (
-                        content
-                      )}
-                    </TableCell>
+                    <tr
+                      key={item.key}
+                      ref={virtualizer.measureElement}
+                      data-index={item.index}
+                      className="absolute inset-x-0 top-0 grid border-b"
+                      style={style}
+                      data-testid="row-loading"
+                      aria-hidden
+                    >
+                      {selectable && <td className="h-10" />}
+                      {visible.map((field) => (
+                        <td key={field.name} className="flex h-10 items-center px-3">
+                          <Skeleton className="h-4 w-full max-w-32" />
+                        </td>
+                      ))}
+                    </tr>
                   );
-                })}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                }
+                const isSelected = selected.has(row.id);
+                const isActive = item.index === active;
+                return (
+                  <tr
+                    key={item.key}
+                    ref={virtualizer.measureElement}
+                    data-index={item.index}
+                    data-active={isActive || undefined}
+                    data-state={isSelected ? "selected" : undefined}
+                    aria-selected={selectable ? isSelected : undefined}
+                    aria-rowindex={item.index + 2}
+                    className="group/row absolute inset-x-0 top-0 grid border-b hover:bg-muted data-[active]:bg-accent data-[active]:outline-2 data-[active]:-outline-offset-2 data-[active]:outline-ring/50 data-[state=selected]:bg-muted"
+                    style={style}
+                    onClick={() => setActive(item.index)}
+                    onDoubleClick={() => onOpen?.(row)}
+                  >
+                    {selectable && (
+                      <td className={cn("left-0 flex min-h-10 items-center pl-4", stickyCell)}>
+                        <Checkbox
+                          aria-label="Select row"
+                          checked={isSelected}
+                          onCheckedChange={() => toggle(row.id)}
+                          onClick={(event) => event.stopPropagation()}
+                        />
+                      </td>
+                    )}
+                    {visible.map((field, column) => {
+                      const content = renderCell[field.name]?.(row) ?? (
+                        <DefaultCell
+                          field={field}
+                          value={(row as Record<string, unknown>)[field.name]}
+                        />
+                      );
+                      const waiting = column === 0 ? pending.get(row.id) : undefined;
+                      return (
+                        <td
+                          key={field.name}
+                          className={cn(
+                            "flex min-h-10 min-w-0 items-center px-3 py-2",
+                            column === 0 && [stickyCell, "shadow-[1px_0_0_var(--border)]"],
+                            column === 0 && !selectable && "pl-4 sm:pl-6",
+                          )}
+                          style={column === 0 ? { left: firstLeft } : undefined}
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="min-w-0 truncate">{content}</div>
+                            {waiting && <PendingPopover items={waiting} compact />}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          )}
+        </table>
+        {query.isError && !rows.length && (
+          <div className="p-4 sm:p-6">
+            <ErrorState
+              title={`Could not load ${label.toLowerCase()}`}
+              error={query.error}
+              onRetry={() => void query.refetch()}
+            />
+          </div>
+        )}
+        {showEmpty && (
+          <div className="p-4 sm:p-6">
+            {filter ? (
+              <EmptyState
+                icon={SearchXIcon}
+                title="No matches"
+                description="Nothing matches this filter. Change or clear it."
+              />
+            ) : (
+              (empty ?? <EmptyState title={`No ${label.toLowerCase()} yet`} />)
+            )}
+          </div>
+        )}
       </div>
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span aria-live="polite">
-          {query.isSuccess &&
-            `${rows.length}${query.hasNextPage ? "+" : ""} ${rows.length === 1 ? "row" : "rows"}`}
-        </span>
-        {query.hasNextPage && (
+      {isFetchNextPageError && (
+        <div
+          className="flex shrink-0 items-center gap-2 border-t px-4 py-2 text-sm sm:px-6"
+          role="alert"
+        >
+          <span className="text-destructive">Could not load more: {errorMessage(query.error)}</span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => query.fetchNextPage()}
-            disabled={query.isFetchingNextPage}
+            className="ml-auto"
+            onClick={() => void fetchNextPage({ cancelRefetch: false })}
           >
-            {query.isFetchingNextPage ? "Loading…" : "Load more"}
+            Try again
           </Button>
-        )}
-      </div>
+        </div>
+      )}
+      <p className="sr-only" aria-live="polite" data-testid="data-table-status">
+        {query.isSuccess
+          ? `${rows.length.toLocaleString()} of ${
+              matching !== undefined
+                ? `${matching.toLocaleString()}${total?.capped ? "+" : ""}`
+                : `${rows.length}${hasNextPage ? "+" : ""}`
+            } ${label.toLowerCase()} loaded`
+          : ""}
+      </p>
     </div>
   );
 }

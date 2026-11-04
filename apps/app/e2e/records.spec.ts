@@ -172,6 +172,11 @@ test("add a task from the record page and complete it", async ({ page }) => {
   await page.getByRole("tab", { name: "All tasks" }).click();
   await page.getByLabel("Status").click();
   await page.getByRole("option", { name: "Done", exact: true }).click();
+  // Narrow to this task: on a seeded database it is pages into the infinite list.
+  const builder = page.getByRole("dialog", { name: "Filter builder" });
+  await pressUntil(page, "/", builder);
+  await page.keyboard.type(token);
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("checkbox", { name: `Done: Send proposal ${token}` })).toBeChecked();
 });
 
@@ -284,6 +289,8 @@ test("the audit log shows an entry with its field diffs", async ({ page }) => {
   const id = await createPerson(page, { given: "Evelyn", family: `Boyd${token}` });
 
   await open(page, "/settings/audit");
+  // The filters fold into the page header.
+  await page.getByRole("button", { name: "Filters" }).click();
   await page.getByLabel("Record id").fill(id);
   const entry = page.getByTestId("audit-entry").filter({ hasText: "person.create" });
   await expect(entry).toHaveCount(1);

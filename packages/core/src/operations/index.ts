@@ -6,6 +6,7 @@ import { affiliationOperations } from "./affiliation.ts";
 import { approvalOperations } from "./approval.ts";
 import { auditOperations } from "./audit.ts";
 import { connectedAppOperations } from "./connected-app.ts";
+import { countOperations } from "./count.ts";
 import { exportOperations } from "./export.ts";
 import { extensionOperations } from "./extension.ts";
 import { importOperations } from "./import.ts";
@@ -40,4 +41,5 @@ export const coreOperations = [
   ...extensionOperations,
   ...approvalOperations,
   ...connectedAppOperations,
+  ...countOperations,
 ] as const;

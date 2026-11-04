@@ -1,5 +1,6 @@
-// Trash: soft-deleted people, organisations, activities and tasks (trash.list), newest first,
-// each restorable with its object's restore operation until its restorable-until date.
+// Trash: soft-deleted people, organisations, activities and tasks (trash.list), newest first, in
+// a virtualised list that loads more as you scroll. Each is restorable with its object's restore
+// operation until its restorable-until date; restoring is optimistic and offers Undo.
 import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
 import {
@@ -23,9 +24,12 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { EmptyState } from "#/components/empty-state";
+import { EmptyState, ErrorState } from "#/components/empty-state";
+import { VirtualFeed } from "#/components/layout/infinite";
+import { PageCount, PageLayout } from "#/components/layout/page-layout";
 import { formatDate, formatDateTime } from "#/lib/format";
 import { callOp } from "#/lib/operations";
+import { updateCached } from "#/lib/optimistic";
 import { errorMessage, invalidateAfterWrite, opKey } from "#/lib/query";
 import { useUserLabel } from "#/lib/users-adapter";
 
@@ -41,6 +45,20 @@ const OBJECTS: Record<TrashObject, { label: string; icon: LucideIcon }> = {
 };
 
 const ALL = "all";
+
+/** Moves a restored item back to Trash (Undo). */
+function trashAgain(object: TrashObject, id: string) {
+  switch (object) {
+    case "person":
+      return callOp("person.delete", { id });
+    case "organisation":
+      return callOp("organisation.delete", { id });
+    case "activity":
+      return callOp("activity.delete", { id });
+    case "task":
+      return callOp("task.delete", { id });
+  }
+}
 
 /** Restores one item with its object's restore operation. */
 function restore(object: TrashObject, id: string) {
@@ -73,22 +91,54 @@ function TrashPage() {
 
   async function onRestore(item: (typeof items)[number]) {
     setRestoring(item.id);
+    // Optimistic: the item leaves the list at once and comes back if the restore fails.
+    const rollback = updateCached(client, ["trash.list"], (data) => {
+      const paged = data as { pages: { items: { id: string }[] }[] } | undefined;
+      if (!paged?.pages) return data;
+      return {
+        ...paged,
+        pages: paged.pages.map((page) => ({
+          ...page,
+          items: page.items.filter((i) => i.id !== item.id),
+        })),
+      };
+    });
     try {
       await restore(item.object, item.id);
-      await invalidateAfterWrite(client, `${item.object}.restore`, ["person.", "organisation."]);
-      toast.success(`Restored ${item.name}`);
+      toast.success(`Restored ${item.name}`, {
+        action: {
+          label: "Undo",
+          onClick: () =>
+            void trashAgain(item.object, item.id)
+              .then(() =>
+                invalidateAfterWrite(client, `${item.object}.delete`, ["person.", "organisation."]),
+              )
+              .catch((error: unknown) => toast.error(errorMessage(error))),
+        },
+      });
     } catch (error) {
+      rollback();
       toast.error(errorMessage(error));
     } finally {
       setRestoring(null);
+      await invalidateAfterWrite(client, `${item.object}.restore`, ["person.", "organisation."]);
     }
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Trash</h1>
-        <div className="flex-1" />
+    <PageLayout
+      title="Trash"
+      width="lg"
+      count={
+        <PageCount
+          value={trash.isSuccess ? items.length : undefined}
+          capped={trash.hasNextPage}
+          isPending={trash.isPending}
+          noun="items in Trash"
+        />
+      }
+      description="Deleted records stay restorable for 30 days, then the scheduled purge removes them."
+      actions={
         <Select value={object} onValueChange={(v) => setObject(v as TrashObject | typeof ALL)}>
           <SelectTrigger size="sm" className="w-40" aria-label="Show">
             <SelectValue />
@@ -101,29 +151,37 @@ function TrashPage() {
             <SelectItem value="task">Tasks</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Deleted records stay restorable for 30 days, then the scheduled purge removes them.
-      </p>
+      }
+    >
       {trash.isPending ? (
-        <div className="grid gap-2">
+        <div className="grid gap-2" aria-busy="true">
+          <Skeleton className="h-14" />
           <Skeleton className="h-14" />
           <Skeleton className="h-14" />
         </div>
-      ) : trash.isError ? (
-        <EmptyState title="Could not load Trash" description={errorMessage(trash.error)} />
+      ) : trash.isError && !items.length ? (
+        <ErrorState
+          title="Could not load Trash"
+          error={trash.error}
+          onRetry={() => void trash.refetch()}
+        />
       ) : !items.length ? (
         <EmptyState icon={Trash2Icon} title="Trash is empty" />
       ) : (
-        <ul className="grid divide-y rounded-md border" aria-label="Trash">
-          {items.map((item) => {
+        <VirtualFeed
+          as="ul"
+          label="Trash"
+          items={items}
+          getKey={(item) => `${item.object}:${item.id}`}
+          estimateSize={64}
+          source={trash}
+          className="rounded-md border"
+          itemClassName="border-b last:border-b-0"
+          itemTestId="trash-item"
+          renderItem={(item) => {
             const { icon: Icon, label } = OBJECTS[item.object];
             return (
-              <li
-                key={`${item.object}:${item.id}`}
-                className="flex flex-wrap items-center gap-3 px-3 py-3 text-sm"
-                data-testid="trash-item"
-              >
+              <div className="flex flex-wrap items-center gap-3 px-3 py-3 text-sm">
                 <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 <div className="grid min-w-0 flex-1 gap-0.5">
                   <span className="flex items-center gap-2">
@@ -157,22 +215,11 @@ function TrashPage() {
                   <RotateCcwIcon />
                   Restore
                 </Button>
-              </li>
+              </div>
             );
-          })}
-        </ul>
+          }}
+        />
       )}
-      {trash.hasNextPage && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="justify-self-center"
-          onClick={() => void trash.fetchNextPage()}
-          disabled={trash.isFetchingNextPage}
-        >
-          {trash.isFetchingNextPage ? "Loading…" : "Load more"}
-        </Button>
-      )}
-    </div>
+    </PageLayout>
   );
 }

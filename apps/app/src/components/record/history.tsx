@@ -1,12 +1,11 @@
 // History tab: field-level diffs from the audit log, newest first.
 import { getField, type ObjectDefinition } from "@crm/core/client";
 import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
 import { Skeleton } from "@crm/ui/components/skeleton";
 import { HistoryIcon } from "lucide-react";
 import { diffValue, formatDateTime } from "#/lib/format";
-import { errorMessage } from "#/lib/query";
-import { EmptyState } from "../empty-state.tsx";
+import { EmptyState, ErrorState } from "../empty-state.tsx";
+import { LoadMoreSentinel } from "../layout/infinite.tsx";
 import type { HistoryEntry } from "./adapters.ts";
 
 export interface HistoryListProps {
@@ -18,6 +17,7 @@ export interface HistoryListProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
+  loadMoreFailed?: boolean;
 }
 
 const ACTION_LABEL: Record<HistoryEntry["action"], string> = {
@@ -47,17 +47,17 @@ export function HistoryList({
   hasMore,
   onLoadMore,
   isLoadingMore,
+  loadMoreFailed,
 }: HistoryListProps) {
-  if (isPending) return <Skeleton className="h-24" />;
-  if (error) {
+  if (isPending) {
     return (
-      <EmptyState
-        icon={HistoryIcon}
-        title="Could not load history"
-        description={errorMessage(error)}
-      />
+      <div className="grid gap-4" aria-busy="true">
+        <Skeleton className="h-20" />
+        <Skeleton className="h-20" />
+      </div>
     );
   }
+  if (error) return <ErrorState title="Could not load history" error={error} />;
   if (!entries.length) return <EmptyState icon={HistoryIcon} title="No changes yet" />;
   return (
     <div className="grid gap-3">
@@ -97,15 +97,16 @@ export function HistoryList({
         })}
       </ol>
       {hasMore && onLoadMore && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="justify-self-center"
-          onClick={onLoadMore}
-          disabled={isLoadingMore}
-        >
-          {isLoadingMore ? "Loading…" : "Load more"}
-        </Button>
+        <LoadMoreSentinel
+          label="more history"
+          source={{
+            hasNextPage: true,
+            isFetching: Boolean(isLoadingMore),
+            isFetchingNextPage: Boolean(isLoadingMore),
+            isFetchNextPageError: Boolean(loadMoreFailed),
+            fetchNextPage: onLoadMore,
+          }}
+        />
       )}
     </div>
   );
