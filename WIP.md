@@ -1,53 +1,47 @@
 # WIP: Stage 6b integrations (branch stage-6b-integrations)
 
-Not compiled or tested yet beyond `tsc` on packages/sdk. Delete this file before the PR.
+Paused 2026-11-05 at the user's request (machine needed). Delete this file before the PR.
 
-## Done
-- SDK (`packages/sdk/src/automation.ts`): triggers `webhook { endpoint, events? }` and
-  `syncEvent { event, from? }` (`SYNC_EVENT_TYPES`, `meeting.scheduled` = alias of `meeting.created`),
-  `AutomationEvent.integration`, `connections: [{ id, gatekeeper, purpose }]` + zod schemas;
-  manifest normalisation carries `connections`; contract checks (`automation-check.ts`): syncEvent
-  record = activity (needs read), connection ids camelCase/unique, gatekeeper in permissions.modules.
-- Migrations 0170 (core_automation_binding, core_user.deactivated_at), 0171 (core_automation_outbox),
-  0172 (core_notification_preference, core_notification_delivery, settings notification_delivery /
-  notification_routes). `CORE_SCHEMA_VERSION = 172`; Kysely types in packages/db/src/schema.ts.
-- Outbox (`packages/core/src/automations/outbox.ts`): outboxEntries/outboxInserts/deliverOutbox/
-  emitDurably/retryOutbox. Wired in pipeline.ts (insert in the operation's batch, deliver after
-  commit) and approval.ts (reject: in-batch; approve: emitDecisions → emitDurably). ID prefixes
-  `obx`, `nrt` in ids.ts.
+## Done (on this branch; lint, typecheck and core/runner/app/sdk/slack-post tests passed at 545de1c, Node 24)
+- Fixed the approval.ts outbox imports. The expiry sweep emits through the outbox when given a CrmDb (purge.ts passes one).
+- Summary text and diagram nodes for `webhook` / `syncEvent`, with snapshot cases.
+- SDK contract-check tests for connections, webhook and syncEvent.
+- Run-as (ADR 0170):
+  - `core/automations/bindings.ts`.
+  - Ops in `operations/automation-binding.ts`: `automation.bindConnection` / `unbindConnection`, `user.deactivate` / `reactivate`.
+  - Automations with connections install paused "Waiting for connections".
+  - `automation.enable` refuses while a slot is unbound; dispatch drops candidates with unbound slots.
+  - `automation.get.connections`.
+  - Executor `RunHost#runAs` → `boundGatekeeperCall` (apps/runner/src/integrations/code.ts) calls as the connection owner. A pending outbound action triggers the review pause; test mode makes no call.
+  - Revocation (disconnect, host `credentialsChanged("expired")`, deactivation) pauses the automation and notifies the admins.
+  - Deactivated users are refused in `resolveActingUser`, the Better Auth session hook and MCP.
+- Integration trigger source (ADR 0173):
+  - `core/automations/integration-source.ts`, registered in dispatch.ts.
+  - Poller `apps/runner/src/automations/integration-events.ts`; private and missing activities are dropped.
+- Outbox retry in the minute cron (ADR 0171). `scheduled()` runs each step independently: schedules, outbox, integration events, notifications.
+- Notification delivery (ADR 0172), merged from branch `6b-notify` (76af67e):
+  - Preferences, admin delivery settings and routes ops (`operations/notification-delivery.ts`).
+  - Cron delivery, escalation, digest (with a composer seam for 7a summaries), org Slack routes from dispatch.
+  - `slack.dm.member` auto-approvable kind in slack-post.
+  - Fake Slack resource in fake.ts.
+- Tests:
+  - `apps/runner/test/run-as.test.ts` (12): bindings, consent, revocation x3, webhook and sync triggers end to end, outbox exactly once.
+  - `stage6b-rows-read.test.ts` (4).
+  - Notification tests: core 19, runner 3.
+- Docs: ADRs 0170–0173, amendments to 0110, 0114, 0130 and 0132, CONTEXT.md, architecture.md, integrations.md.
 
-## Partially built / still to fix
-- approval.ts imports: add `deliverOutbox, emitDurably, outboxEntries, outboxInserts` from
-  `../automations/outbox.ts`; drop `emitEvents` if unused (expirePendingActions still uses it →
-  switch to emitDurably with a CrmDb).
-- summary.ts: triggerPhrase/triggerNode need `webhook` / `syncEvent` cases + snapshot tests.
+## Half-done
+- UI + Playwright e2e are on the local branch **`6b-ui`** (last seen at cce7574, "bind connections on approval, run-as on the Permissions card, webhook runs"; the agent was told to commit a WIP on top). It is NOT merged here and not pushed.
+  - It was based on 7bdc343 and asked to merge 37c79a4 for the notification ops.
+  - Still to do: Settings → Notifications (preferences), admin delivery settings and routes (with a hint or toggle for auto-approving `email.internal` / `slack.dm.member`), and the e2e "notification preference honoured".
+  - Check how its e2e drives the cron (poll / notification delivery) in vite dev.
 
-## Decisions
-- Run-as: binding row per (automation, slot) = consent (bound_by/at, revoked_*). Bind op
-  `automation.bindConnection` (human only; personal conn → caller must own; org → admin);
-  `automation.unbindConnection`. Unbound declared slots → automation paused ("Waiting for
-  connections"). In runs, RunHost#gatekeeper maps slot → bound connection, calls as connection
-  owner (actor automation, origin.automationId/runId); outbound pending → RunOperation.pending so
-  the Workflow review-pause applies. Revocation (connection.disconnect, host credentialsChanged
-  expired, user.deactivate) → revoke bindings, pause automation, `automation.paused` to admins.
-- Trigger source `integration` (webhook: payload.endpointId + event type; syncEvent: type + person/
-  org ids, record = activity), idempotency key = event row id. Runner cron polls
-  core_integration_event via unconsumed index (100/batch, ≤5 batches/tick), dispatches, sets consumed_at.
-- Outbox: one row per event-producing op (chunked ≤900 KB), grace 60 s, cron in crm-runner retries
-  by PK order (≤50 rows), dispatches directly via dispatchAutomationMessages, backoff 1 min→1 h.
-- Notifications: runner minute cron reads core_notifications by created_at cursor (30 s lag),
-  routes per prefs, delivers via callIntegration on admin email-send/slack-post org connections;
-  delivery table keys for exactly-once; escalation of unread approval.pending after N min (never
-  escalate an escalation); daily digest (plain; 7a summaries not on main); org routes matched on
-  record messages in dispatch. Plan: add auto-approvable `slack.dm.member` kind to slack-post (ours)
-  and make the fake outbox auto-internal by domain; fake `slack` resource for tests.
+## Next steps
+1. Merge `6b-ui` (or push it first: `git push origin 6b-ui:stage-6b-ui-wip`), finish the notification UI and e2e (desktop + phone).
+2. `git merge origin/main` (merge commit), then run `pnpm lint typecheck test`, the build and the full e2e on Node 24.
+3. Delete WIP.md, push to stage-6b-integrations, and open the PR. The body covers: summary, the combined Stage 6 AC table, "Needs a human" (AC8, real Google and Microsoft accounts), test totals.
 
-## Next steps (in order)
-1. Fix approval.ts imports; typecheck core. 2. integration trigger source + poller + summary text.
-3. Bindings ops + executor run-as + revocation pause. 4. Outbox retry cron + tests (send failure →
-exactly once). 5. Notification prefs/settings ops, delivery cron, escalation, digest, routes.
-6. UI (bind on approve, Permissions card, Settings → Notifications, routes). 7. Tests, rows_read/
-EXPLAIN budgets, e2e, ADRs 0170–0172, CONTEXT/architecture/integrations docs, merge main, PR.
-
-## Known failing
-- Not run since changes; core likely fails typecheck until step 1.
+## Notes / deviations
+- A pending notification send is not re-marked sent after approval. A crash between claim and send leaves a key at `sending`, so it is sent at most once.
+- Every external send waits for approval under Balanced until an admin auto-approves `email.internal` / `slack.dm.member`.
+- A run's CRM writes and its outbound actions land in two change sets (the extension principal's and the connection owner's).
