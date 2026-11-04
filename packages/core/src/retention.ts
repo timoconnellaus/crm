@@ -15,7 +15,6 @@ import type { CoreDatabase, CrmDb } from "@crm/db";
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import type { GateFloor } from "./gate.ts";
-import { invoke } from "./invoke.ts";
 import { jsonList } from "./records/common.ts";
 import { SYSTEM_USER } from "./users.ts";
 
@@ -109,6 +108,9 @@ export async function runAuditPurge(
   const totals = { auditRows: 0, changeRows: 0, readCountRows: 0, rounds: 0, more: false };
   const now = (clock?.() ?? new Date()).toISOString();
   if (!(await auditPurgeDue(db.query, now))) return totals;
+  // Loaded lazily: invoke.ts imports every operation, and operations/retention.ts imports this
+  // module, so a static import is a cycle that breaks module evaluation order in dev (vite SSR).
+  const { invoke } = await import("./invoke.ts");
   let more = true;
   while (more && totals.rounds < maxRounds) {
     totals.rounds += 1;

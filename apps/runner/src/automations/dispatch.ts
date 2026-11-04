@@ -24,6 +24,7 @@ import {
   notifyStatements,
   type RateLimitBinding,
   type RunCandidate,
+  refreshSchemaRegistry,
   triggerSourceFor,
   WORKFLOW_BATCH_MAX,
   workflowInstanceId,
@@ -458,6 +459,9 @@ export async function dispatchAutomationMessages(
   const total = emptyResult();
   if (!messages.length) return total;
   const db = createCrmDb(env.DB).query;
+  // Trigger sources read extension objects from the field registry (a stage relation's status
+  // field for `{ stageType }`); a fresh isolate has only core objects until it is refreshed.
+  await refreshSchemaRegistry(db);
   const settings = await loadAutomationSettings(db);
   const cache = new Map<string, AutomationDefinition[]>();
   for (const message of messages) {
