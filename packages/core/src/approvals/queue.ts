@@ -220,8 +220,8 @@ function dependencies(
 }
 
 /** Finds or creates the change set new actions from this caller go into. */
-async function targetChangeSet(
-  req: QueueRequest,
+export async function targetChangeSet(
+  req: Pick<QueueRequest, "db" | "origin" | "user" | "actor" | "now">,
 ): Promise<{ id: string; statements: Compilable[]; created: boolean }> {
   // An automation run's actions share one change set per run (keyed like a session).
   const sessionId =

@@ -19,22 +19,22 @@ The authoring API that gatekeeper resource-configurator modules (`src/configurat
 - **Not vendored: the sandbox runtime and the frame build.** Upstream renders each configurator
   module in a sandboxed iframe with Kumo components on Preact and Tailwind, bundled by
   `build/` and `scripts/build-gatekeeper-configurator.ts` into `src/generated/*.txt` in each
-  gatekeeper. That pulls in React/Preact, Kumo, Tailwind, esbuild and a browser test suite, and it
-  is UI the CRM may well render its own way. Instead, each gatekeeper Worker commits
-  **placeholder frames** (see the shim below). The configurator modules are still type-checked
-  and unit-tested, so they stay ready to build.
+  gatekeeper. The CRM renders the configurator modules natively instead (stage 6): the app aliases
+  this package to its own React runtime built from `@crm/ui`'s shadcn components
+  (`apps/app/src/components/integrations/configurator/runtime.tsx`, wired up by `vite-plugin.ts`
+  there) and drives each gatekeeper's `ui` capability through the server. The modules themselves
+  stay unchanged; they are still type-checked and unit-tested in their own packages.
 - **Ours:** `package.json`, `tsconfig.json`, `vitest.config.ts` (Node, as upstream).
 
-## Shims that stand in for this package's build
+## Generated frames in place of this package's build
 
-| Shim | Stands in for |
-| --- | --- |
-| `packages/gatekeeper-mcp/src/generated/server-configurator-ui.txt` | the frame built from `src/configurator/server-configurator-ui.tsx` |
-| `packages/gatekeeper-google/src/generated/{bigquery,calendar,chat-account,chat-space,chat-thread,drive,gmail}-configurator-ui.txt` | the frames built from the matching `src/configurator/*-ui.tsx` |
-
-Each is the same inert HTML page with a `SHIM` comment. `startResourceConfigurator()` returns it, so
-the Workshop-side picker cannot work until stage 6 decides how the CRM picks resources (vendor the
-runtime, or render the configurator spec in our own React UI).
+The gatekeepers still import their frames (`src/generated/<name>-configurator-ui.txt`, which
+`startResourceConfigurator()` returns as `iframeHtml`). Those files are generated, not committed:
+`src/generated/` is git-ignored in every gatekeeper, and `scripts/gatekeeper-configurator-frames.mjs`
+writes a tiny document naming the spec for every frame the vendored sources import (16 across
+`gatekeeper-{mcp,google,microsoft,slack,email,zoominfo}`). Each gatekeeper's `typecheck`, `test` and
+`build` run it first, as does `scripts/dev-setup.mjs`. This package's `test` runs it with `--check`,
+which fails if git tracks a frame or would not ignore one. The CRM never shows these documents.
 
 ## Pulling upstream changes
 

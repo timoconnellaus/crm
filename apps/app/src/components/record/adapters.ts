@@ -82,6 +82,17 @@ export interface TimelineItem {
   payload: TimelinePayload;
   /** The records whose timelines show it (people, organisations, tasks), with titles. */
   links: { object: string; id: string; title: string | null }[];
+  /** The user who logged it; for synced mail and meetings, the mailbox's owner. */
+  authorUserId: string | null;
+  /** Synced from a connected mailbox or calendar (stage 6a). */
+  synced: boolean;
+  /** Marked private: only its owner sees it. */
+  private: boolean;
+  /** For synced items: what the sharing level disclosed. */
+  disclosure: "full" | "metadata" | null;
+  /** The full email body can be read with activity.getBody. */
+  hasFullBody: boolean;
+  threadKey: string | null;
 }
 
 export function toTimelineItem(activity: Partial<Activity> & { id: string }): TimelineItem {
@@ -99,6 +110,12 @@ export function toTimelineItem(activity: Partial<Activity> & { id: string }): Ti
       id: l.id,
       title: l.title ?? null,
     })),
+    authorUserId: activity.authorUserId ?? null,
+    synced: activity.synced === true,
+    private: activity.private === true,
+    disclosure: activity.disclosure ?? null,
+    hasFullBody: activity.hasFullBody === true,
+    threadKey: activity.threadKey ?? null,
   };
 }
 

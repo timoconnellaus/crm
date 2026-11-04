@@ -5,10 +5,18 @@ import type { CoreDatabase, PendingActionStatus } from "@crm/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ApprovalStateError, objectOfId } from "../approvals/queue.ts";
+import {
+  ForbiddenError,
+  NotFoundError,
+  OperationError,
+  toOperationError,
+  ValidationError,
+} from "../errors.ts";
 import { approvalDecidedMessages, emitEvents, eventOriginOf } from "../automations/events.ts";
 import type { ApprovalDecidedMessage, EventSink } from "../automations/types.ts";
-import { ForbiddenError, NotFoundError, toOperationError, ValidationError } from "../errors.ts";
 import { newId, replaceIds } from "../ids.ts";
+import { type OutboundInput, outboundAppliedAudit } from "../integrations/outbound.ts";
+import type { IntegrationRuntime } from "../integrations/runtime.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import {
   type ActingUser,
@@ -86,6 +94,29 @@ export const pendingActionSchema = z.object({
    */
   compactedAt: z.string().nullable(),
   summary: z.record(z.string(), z.unknown()).nullable(),
+  /**
+   * For risk `outbound` (ADR 0051): the gatekeeper action this item mirrors and the
+   * gatekeeper's own description of it (title, Markdown description, literal fields), which is
+   * what a reviewer approves. Approval calls the gatekeeper's applyAction, in order per facet.
+   */
+  outbound: z
+    .object({
+      vendor: z.string(),
+      connectionId: z.string(),
+      connectionTitle: z.string(),
+      facetKey: z.string(),
+      resourceTitle: z.string(),
+      action: z.number(),
+      title: z.string(),
+      description: z.string(),
+      fields: z.array(
+        z.object({ label: z.string(), value: z.string(), syntax: z.string().optional() }),
+      ),
+      actionKind: z.object({ tag: z.string(), label: z.string() }).nullable(),
+      autoApprovable: z.boolean(),
+      implementsRevert: z.boolean(),
+    })
+    .nullable(),
 });
 export type PendingActionView = z.infer<typeof pendingActionSchema>;
 
@@ -186,6 +217,25 @@ function toActionView(row: PendingRow, now: string): PendingActionView {
     truncated: simulated.truncated ?? null,
     compactedAt: row.compacted_at,
     summary: parse(row.summary, null),
+    outbound: row.connection_id !== null ? outboundView(row) : null,
+  };
+}
+
+function outboundView(row: PendingRow): PendingActionView["outbound"] {
+  const input = parse<Partial<OutboundInput>>(row.input, {});
+  return {
+    vendor: input.vendor ?? "",
+    connectionId: row.connection_id ?? "",
+    connectionTitle: input.connectionTitle ?? "",
+    facetKey: row.facet_key ?? "",
+    resourceTitle: input.resourceTitle ?? "",
+    action: row.gk_action ?? 0,
+    title: input.title ?? row.operation,
+    description: input.description ?? "",
+    fields: Array.isArray(input.fields) ? input.fields : [],
+    actionKind: input.actionKind ?? null,
+    autoApprovable: input.autoApprovable === true,
+    implementsRevert: input.implementsRevert === true,
   };
 }
 
@@ -705,11 +755,40 @@ export const approvalApprove = defineOperation({
         }
       }
     }
+    // Outbound items apply in action order per facet (the gatekeeper refuses anything else):
+    // an earlier action on the same facet must be decided, or approved together with this one.
+    const outbound = targets.filter((t) => t.connection_id !== null);
+    if (outbound.length && !ctx.integrations) {
+      throw new OperationError(
+        "config",
+        "Outbound actions can only be approved where the integration host is reachable",
+      );
+    }
+    for (const target of outbound) {
+      const earlier = await ctx.db
+        .selectFrom("core_pending_action")
+        .select(["id"])
+        .where("connection_id", "=", target.connection_id)
+        .where("facet_key", "=", target.facet_key)
+        .where("gk_action", "<", target.gk_action)
+        .where("status", "=", "pending")
+        .where("expires_at", ">", ctx.now)
+        .execute();
+      const blocking = earlier.find((e) => !targetIds.has(e.id));
+      if (blocking) {
+        throw new ApprovalStateError(
+          `Action ${target.id} comes after ${blocking.id} on the same gatekeeper, which is still ` +
+            "pending. Gatekeeper actions apply in order: decide it first, or approve both together.",
+          { actionId: target.id, after: blocking.id },
+        );
+      }
+    }
     closeSets(
       ctx,
       targets.map((t) => t.change_set_id),
     );
     const approver = ctx.user.id;
+    const integrations = ctx.integrations;
     return ctx.afterCommit(async () => {
       const crm = ctx.pipeline.crm;
       // Real ids for provisional ones, from dependencies applied earlier.
@@ -744,6 +823,50 @@ export const approvalApprove = defineOperation({
             status: "skipped",
             statusReason,
             error: null,
+            bindings: null,
+          });
+          continue;
+        }
+        if (action.connection_id !== null && integrations) {
+          // ADR 0051: the gatekeeper replays its own journal; nothing re-runs through the pipeline.
+          let outcome: { ok: true } | { ok: false; message: string };
+          try {
+            await integrations.applyOutbound({
+              connectionId: action.connection_id,
+              facetKey: action.facet_key ?? "",
+              action: action.gk_action ?? 0,
+            });
+            outcome = { ok: true };
+          } catch (error) {
+            // A gatekeeper error is the provider's reason (not an internal CRM error): keep it.
+            const message = error instanceof Error ? error.message : String(error);
+            outcome = { ok: false, message: message.slice(0, 1000) };
+          }
+          const status = outcome.ok ? "applied" : "failed";
+          const statusReason = outcome.ok ? null : `Failed: ${outcome.message}`;
+          if (!outcome.ok) failed.add(action.id);
+          await crm.batch([
+            ctx.db
+              .updateTable("core_pending_action")
+              .set({
+                status,
+                status_reason: statusReason,
+                error: outcome.ok
+                  ? null
+                  : JSON.stringify({ code: "outbound_failed", message: outcome.message }),
+                decided_by: approver,
+                decided_at: ctx.now,
+              })
+              .where("id", "=", action.id)
+              .where("status", "=", "pending"),
+            outboundAppliedAudit(crm, action, ctx.now, outcome),
+          ]);
+          results.push({
+            actionId: action.id,
+            operation: action.operation,
+            status,
+            statusReason,
+            error: outcome.ok ? null : { code: "outbound_failed", message: outcome.message },
             bindings: null,
           });
           continue;
@@ -826,6 +949,16 @@ export const approvalApprove = defineOperation({
             .where("status", "=", "pending"),
         ]);
       }
+      // Skipped outbound items will never apply: drop them on their facets so later actions on
+      // the same gatekeeper are not held behind them.
+      const skippedIds = new Set([
+        ...results.filter((r) => r.status === "skipped").map((r) => r.actionId),
+        ...stranded.map((s) => s.id),
+      ]);
+      await rejectOnFacets(
+        integrations,
+        [...targets, ...stranded].filter((r) => skippedIds.has(r.id)),
+      );
       const decided = new Map<string, Decision>(
         results.map((r) => [r.actionId, r.status === "applied" ? "approved" : "failed"]),
       );
@@ -835,6 +968,34 @@ export const approvalApprove = defineOperation({
     });
   },
 });
+
+/**
+ * Tells each outbound item's facet to drop its action (rejected, skipped or expired). Best
+ * effort: the CRM's decision is already committed; a facet that cannot be reached keeps the
+ * action journalled until its own expiry.
+ */
+export async function rejectOnFacets(
+  integrations: IntegrationRuntime | undefined,
+  rows: readonly {
+    connection_id: string | null;
+    facet_key: string | null;
+    gk_action: number | null;
+  }[],
+): Promise<void> {
+  if (!integrations) return;
+  for (const row of rows) {
+    if (row.connection_id === null) continue;
+    try {
+      await integrations.rejectOutbound({
+        connectionId: row.connection_id,
+        facetKey: row.facet_key ?? "",
+        action: row.gk_action ?? 0,
+      });
+    } catch (error) {
+      console.error("could not reject an outbound action on its facet", error);
+    }
+  }
+}
 
 export const approvalReject = defineOperation({
   name: "approval.reject",
@@ -890,9 +1051,12 @@ export const approvalReject = defineOperation({
       ctx,
       [...targets, ...cascaded].map((r) => r.change_set_id),
     );
+    const outbound = [...targets, ...cascaded].filter((r) => r.connection_id !== null);
     const output = { results, counts: counts(results) };
-    if (!ctx.events) return output;
+    if (!outbound.length && !ctx.events) return output;
+    const integrations = ctx.integrations;
     return ctx.afterCommit(async () => {
+      await rejectOnFacets(integrations, outbound);
       await emitDecisions(ctx, [...targets, ...cascaded], () => "rejected");
       return output;
     });
@@ -1025,8 +1189,19 @@ export const changesetCommit = defineOperation({
 export async function expirePendingActions(
   db: Kysely<CoreDatabase>,
   now: string = new Date().toISOString(),
+  integrations?: IntegrationRuntime,
   events?: EventSink,
 ): Promise<number> {
+  // Expired outbound items are dropped on their facets too (see rejectOnFacets).
+  const outbound = integrations
+    ? await db
+        .selectFrom("core_pending_action")
+        .select(["connection_id", "facet_key", "gk_action"])
+        .where("status", "=", "pending")
+        .where("expires_at", "<=", now)
+        .where("connection_id", "is not", null)
+        .execute()
+    : [];
   const rows = await db
     .updateTable("core_pending_action")
     .set({ status: "expired", status_reason: "Not approved before it expired" })
@@ -1034,6 +1209,7 @@ export async function expirePendingActions(
     .where("expires_at", "<=", now)
     .returning(["id", "change_set_id", "operation", "origin", "preview"])
     .execute();
+  await rejectOnFacets(integrations, outbound);
   if (events && rows.length) {
     await emitEvents(
       events,

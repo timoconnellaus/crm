@@ -23,7 +23,8 @@ import { createCrmDb } from "@crm/db";
 import type { ExtensionManifest } from "@crm/sdk";
 import { runModelRole } from "../extensions/ai.ts";
 import { CODE_MAX_CALLS } from "../extensions/code-mode.ts";
-import { HOST_METHODS, type HostModule, isHostModule } from "./worker-code.ts";
+import { gatekeeperCall } from "../integrations/code.ts";
+import { HOST_METHODS, type HostModule, isGatekeeperModule, isHostModule } from "./worker-code.ts";
 
 export const MAX_LOGS = 200;
 
@@ -129,6 +130,9 @@ export class RunHost extends RpcTarget {
         return json(
           await runModelRole(this.#env, method as "summarise" | "extract" | "classify", list),
         );
+      default:
+        if (isGatekeeperModule(module)) return this.#gatekeeper(module, method, list);
+        throw new Error(`Unknown host module ${module}`);
     }
   }
 
@@ -273,6 +277,23 @@ export class RunHost extends RpcTarget {
         return rows.map((r) => ({ key: r.key, value: JSON.parse(r.value) as unknown }));
       }
     }
+  }
+
+  /** `codemode:<gatekeeper>`: org connections for an extension, the user's too for Code Mode. */
+  async #gatekeeper(vendor: string, method: string, args: unknown[]): Promise<unknown> {
+    const run = this.#run;
+    const code = run.code;
+    return json(
+      await gatekeeperCall(this.#env as unknown as Env, {
+        vendor,
+        method,
+        args,
+        user: code ? code.caller.user : run.user,
+        actor: code ? code.caller.actor : "extension",
+        origin: code ? code.caller.origin : { surface: "extension", extensionId: run.extensionId },
+        reason: code?.caller.reason,
+      }),
+    );
   }
 
   #log(args: unknown[]): null {

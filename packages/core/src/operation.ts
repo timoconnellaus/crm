@@ -10,6 +10,7 @@ import type { WidgetCache } from "./dashboards/cache.ts";
 import type { FieldDiff } from "./diff.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
 import type { GateFloor } from "./gate.ts";
+import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
 import type { ModelRunner } from "./models.ts";
 import {
   ACTORS,
@@ -130,6 +131,10 @@ export interface HandlerContext {
   readonly extensionHost?: ExtensionHost;
   /** For actor `extension`: the calling extension. */
   readonly extension?: ExtensionCaller;
+  /** The integration host, when the adapter provides one (connection.*, integration.*). */
+  readonly integrations?: IntegrationRuntime;
+  /** Blob storage (R2) for email bodies, when the adapter provides it. */
+  readonly blobs?: BlobStore;
   /** Model roles (ADR 0009), when the adapter has an AI binding. Absent: AI is not configured. */
   readonly models?: ModelRunner;
   /** The dashboard widget result cache (ADR 0057). Absent: the Workers Cache API. */

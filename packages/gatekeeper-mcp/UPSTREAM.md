@@ -41,7 +41,7 @@ every other tool call is queued for approval.
 
 | File | Stands in for |
 | --- | --- |
-| `src/generated/server-configurator-ui.txt` | The configurator frame upstream builds from `src/configurator/server-configurator-ui.tsx` with the configurator-ui runtime. An inert placeholder page; see [`../gatekeeper-configurator-ui/UPSTREAM.md`](../gatekeeper-configurator-ui/UPSTREAM.md). |
+| `src/generated/server-configurator-ui.txt` | The configurator frame upstream builds from `src/configurator/server-configurator-ui.tsx` with the configurator-ui runtime. Generated, not committed: `src/generated/` is git-ignored, and `scripts/gatekeeper-configurator-frames.mjs` (run before this package's `typecheck`, `test` and `build`, and by `scripts/dev-setup.mjs`) writes a tiny document naming the spec. The CRM renders the spec itself natively in the app (`apps/app/src/components/integrations/configurator`) and uses only the `ui` capability `startResourceConfigurator()` returns. See [`../gatekeeper-configurator-ui/UPSTREAM.md`](../gatekeeper-configurator-ui/UPSTREAM.md). |
 
 ## Pulling upstream changes
 

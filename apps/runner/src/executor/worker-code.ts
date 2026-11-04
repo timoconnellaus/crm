@@ -8,7 +8,11 @@
 // globals (Date, Math.random, timers, fetch, console), so a warm isolate starts every run the same.
 //
 // scripts/bundle.mjs hashes this file into RUNTIME_HASH, so editing the entry changes every id.
-import { SUPPORTED_CONTRACT_VERSIONS } from "@crm/sdk";
+import {
+  GATEKEEPER_MODULES,
+  type GatekeeperModuleName,
+  SUPPORTED_CONTRACT_VERSIONS,
+} from "@crm/sdk";
 import { SDK_SPECIFIER } from "../extensions/build.ts";
 import {
   CHECKER_HASH,
@@ -41,12 +45,23 @@ function sdkImports(path: string, code: string): string {
 }
 
 /** The methods each host module exposes (the raw `codemode:*` shape the SDK's buildContext reads). */
+const GATEKEEPER_METHODS = ["connections", "call", "types"] as const;
+
 export const HOST_METHODS = {
   crm: ["call"],
   storage: ["get", "set", "del", "list"],
   log: ["write"],
   ai: ["summarise", "extract", "classify"],
+  // `codemode:<gatekeeper>` (stage 6a): one module per shipped gatekeeper.
+  ...(Object.fromEntries(GATEKEEPER_MODULES.map((m) => [m, GATEKEEPER_METHODS])) as Record<
+    GatekeeperModuleName,
+    typeof GATEKEEPER_METHODS
+  >),
 } as const;
+
+export function isGatekeeperModule(name: string): name is GatekeeperModuleName {
+  return (GATEKEEPER_MODULES as readonly string[]).includes(name);
+}
 export type HostModule = keyof typeof HOST_METHODS;
 
 export function isHostModule(name: string): name is HostModule {

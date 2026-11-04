@@ -24,6 +24,10 @@ export const ID_PREFIXES = {
   changeSet: "chs",
   pendingAction: "pac",
   connectedApp: "cap",
+  /** Integration connections (stage 6, ADR 0050). */
+  connection: "con",
+  integrationEvent: "iev",
+  jobChange: "jcs",
   /** Stage history rows (ADR 0100). */
   stageHistory: "sth",
   dashboard: "dsh",

@@ -24,6 +24,25 @@ for (const app of ["apps/app", "apps/runner"]) {
   console.log(`created ${app}/.dev.vars`);
 }
 
+// Stage 6a: an existing runner .dev.vars from before stage 6 still gets the fake provider, which
+// local development and the e2e suite connect to.
+const runnerVars = join(root, "apps/runner/.dev.vars");
+if (
+  existsSync(runnerVars) &&
+  !/^INTEGRATIONS_FAKE_PROVIDER=/m.test(readFileSync(runnerVars, "utf8"))
+) {
+  writeFileSync(
+    runnerVars,
+    `${readFileSync(runnerVars, "utf8").trimEnd()}\n# Stage 6a: the fake OAuth provider (local only).\nINTEGRATIONS_FAKE_PROVIDER=true\n`,
+  );
+  console.log("added INTEGRATIONS_FAKE_PROVIDER to apps/runner/.dev.vars");
+}
+
+// The vendored gatekeeper Workers import configurator frames that are generated, not committed.
+execFileSync("node", [join(root, "scripts/gatekeeper-configurator-frames.mjs")], {
+  stdio: "inherit",
+});
+
 // Local dev has no Workers AI binding: answer the build model role ("Describe a widget") with
 // the deterministic stand-in (stage 4a), in new and existing .dev.vars alike.
 const appVars = join(root, "apps/app/.dev.vars");

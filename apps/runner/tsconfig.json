@@ -1,6 +1,8 @@
 {
   "extends": "@crm/config/tsconfig.base.json",
   "compilerOptions": {
+    // ESNext: Symbol.dispose, which gatekeeper sessions use (explicit resource management).
+    "lib": ["ESNext"],
     "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-plugin/types"]
   },
   "include": ["src", "test", "worker-configuration.d.ts"]
