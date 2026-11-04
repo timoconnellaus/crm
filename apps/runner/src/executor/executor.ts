@@ -99,6 +99,8 @@ export const PERMANENT_AUTOMATION_ERRORS = new Set([
   "unknown_automation",
   "undeclared_step",
 ]);
+
+interface CodeEntrypoint {
   run(
     host: RunHost,
   ): Promise<RunResponse & { logs?: { level: string; message: string }[]; dropped?: boolean }>;

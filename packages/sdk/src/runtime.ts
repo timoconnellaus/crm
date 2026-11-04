@@ -14,7 +14,7 @@ import {
   type AutomationTestStep,
   type Duration,
   durationMs,
-  type Recipient,
+  notificationInput,
 } from "./automation.ts";
 import type {
   AiModule,
@@ -231,58 +231,30 @@ export class AutomationStepError extends Error {
   readonly code = "undeclared_step";
 }
 
-function toRecipientInput(recipient: Recipient, event: AutomationEvent): Record<string, unknown> {
-  const record = event.record ? { object: event.record.object, id: event.record.id } : null;
-  if (recipient === "admins") return { role: "admin" };
-  if (recipient === "actor") {
-    return event.manual?.userId ? { userId: event.manual.userId } : { role: "admin" };
-  }
-  if ("userId" in recipient) return { userId: recipient.userId };
-  if (!record) {
-    throw new Error("This automation has no trigger record to find the recipient's user field on");
-  }
-  if ("field" in recipient) return { field: recipient.field, record };
-  return { managerOf: recipient.managerOf, record };
-}
-
-/** The trigger record's title (the host adds it to `event.record`). */
-function recordTitle(event: AutomationEvent): string {
-  const record = event.record as (AutomationEvent["record"] & { title?: unknown }) | undefined;
-  if (!record) return "";
-  if (typeof record.title === "string" && record.title) return record.title;
-  const data = record.data ?? {};
-  for (const key of ["name", "title", "displayName", "subject"]) {
-    if (typeof data[key] === "string" && data[key]) return data[key] as string;
-  }
-  return record.id;
-}
-
-/** Builds the automation `ctx`: the extension context plus `notify`. */
+/**
+ * Builds the automation `ctx`: the extension context plus `notify`, which calls
+ * `notification.send` with `notificationInput`. Its dedupe key is `<step>:<n>` (the n-th notify
+ * of that step), so a step retried or replayed never notifies twice.
+ */
 export function buildAutomationContext(
   extension: { id: string; version: string },
   raw: RawHostModules,
   event: AutomationEvent,
   pending: Promise<unknown>[] = [],
+  currentStep: () => string | null = () => null,
 ): AutomationContext {
   const base = buildContext(extension, raw, pending);
+  const counts = new Map<string, number>();
   return {
     ...base,
     async notify(to, message) {
-      const list = Array.isArray(to) ? to : [to];
-      const title = message.title.replaceAll("{record}", recordTitle(event));
-      const link =
-        message.link === "run"
-          ? { kind: "automationRun", automationId: event.automation, runId: event.runId }
-          : event.record
-            ? { kind: "record", object: event.record.object, id: event.record.id }
-            : undefined;
-      const out = (await base.crm.call("notification.send" as never, {
-        to: list.map((r) => toRecipientInput(r, event)),
-        type: "automation.message",
-        title,
-        ...(message.body ? { body: message.body.replaceAll("{record}", recordTitle(event)) } : {}),
-        ...(link ? { link } : {}),
-      } as never)) as { sent?: number } | null;
+      const step = currentStep() ?? "run";
+      const n = (counts.get(step) ?? 0) + 1;
+      counts.set(step, n);
+      const input = notificationInput(event, to, message, `${step}:${n}`);
+      const out = (await base.crm.call("notification.send" as never, input as never)) as {
+        sent?: number;
+      } | null;
       return { sent: typeof out?.sent === "number" ? out.sent : 0 };
     },
   };
@@ -351,7 +323,7 @@ export async function runAutomation(
   const tagged: RawHostModules = crm
     ? { ...raw, crm: { call: (operation, input) => crm.call(operation, input, { step: current }) } }
     : raw;
-  const ctx = buildAutomationContext(extension, tagged, request.event, pending);
+  const ctx = buildAutomationContext(extension, tagged, request.event, pending, () => current);
   const step = {
     async do(name: string, a: unknown, b?: unknown): Promise<unknown> {
       const fn = (typeof a === "function" ? a : b) as () => unknown;
