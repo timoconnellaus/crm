@@ -1,0 +1,9 @@
+{
+  "extends": "@crm/config/tsconfig.react.json",
+  "compilerOptions": {
+    "paths": {
+      "@crm/ui/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}
