@@ -58,7 +58,19 @@ function mainRecords(operation: string, preview: readonly PreviewEntry[]): Previ
 }
 
 /** A reviewer's title: "Update 38 people", "Create person", "Log activity". */
-export function actionTitle(operation: string, preview: readonly PreviewEntry[]): string {
+export function actionTitle(
+  operation: string,
+  preview: readonly PreviewEntry[],
+  input?: unknown,
+): string {
+  const args = (input ?? {}) as { id?: unknown; version?: unknown; eject?: unknown };
+  if (operation === "extension.apply") {
+    const what = `extension ${String(args.id ?? "")} ${String(args.version ?? "")}`.trim();
+    return args.eject ? `Eject and install ${what}` : `Install ${what}`;
+  }
+  if (operation === "extension.dropHidden") {
+    return `Drop hidden data of extension ${String(args.id ?? "")}`;
+  }
   const object = operation.split(".")[0] ?? operation;
   const count = new Set(mainRecords(operation, preview).map((p) => p.id)).size;
   const verb = verbOf(operation);

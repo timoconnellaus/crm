@@ -96,3 +96,42 @@ describe("extension tools over MCP", () => {
     await setPreset("balanced");
   });
 });
+
+describe("authoring and Code Mode tools (stage 3b)", () => {
+  it("lists the code tool and the extension authoring tools; propose needs a reason", async () => {
+    const tokens = await connect(fetchApp, member);
+    const client = await mcpClient(fetchApp, tokens.access_token);
+    const { tools } = await client.listTools();
+    const names = tools.map((t) => t.name);
+    for (const name of [
+      "code",
+      "extension_list",
+      "extension_read",
+      "extension_write",
+      "extension_check",
+      "extension_propose",
+      "extension_eject",
+    ]) {
+      expect(names).toContain(name);
+    }
+    expect(names).not.toContain("code_run");
+    expect(names).not.toContain("extension_approve");
+    expect(names).not.toContain("extension_apply");
+    const propose = tools.find((t) => t.name === "extension_propose")?.inputSchema as {
+      required?: string[];
+    };
+    expect(propose.required).toContain("reason");
+    const code = tools.find((t) => t.name === "code");
+    expect(code?.description).toContain('import { crm } from "codemode:crm"');
+  });
+
+  it("refuses authoring without the admin scope", async () => {
+    const tokens = await connect(fetchApp, member);
+    const client = await mcpClient(fetchApp, tokens.access_token);
+    const result = await call(client, "extension_write", {
+      id: "nope",
+      files: { "index.ts": "x" },
+    });
+    expect(result.data).toMatchObject({ error: { code: "forbidden" } });
+  });
+});

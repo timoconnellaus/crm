@@ -87,14 +87,15 @@ function lineOps(a: string[], b: string[]): { ops: DiffLine[]; truncated: boolea
         i += 1;
         j += 1;
       } else if (
-        j < m &&
-        (i >= n || (lcs[i * width + j + 1] as number) >= (lcs[(i + 1) * width + j] as number))
+        i < n &&
+        (j >= m || (lcs[(i + 1) * width + j] as number) >= (lcs[i * width + j + 1] as number))
       ) {
-        ops.push({ op: "+", text: midB[j] as string });
-        j += 1;
-      } else {
+        // Removals before additions, as in `git diff`.
         ops.push({ op: "-", text: midA[i] as string });
         i += 1;
+      } else {
+        ops.push({ op: "+", text: midB[j] as string });
+        j += 1;
       }
     }
   }
