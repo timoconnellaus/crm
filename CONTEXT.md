@@ -84,6 +84,31 @@ Deploy-time (env `APPROVAL_FLOOR`) rules the per-org policy can never loosen.
 **Preset**
 The org's approval policy: Cautious, Balanced (default) or Autonomous. Changed by human admins only.
 
+**Pending action**
+One operation call the gate routed to review, recorded instead of applied: operation, input, the
+agent's reason, actor, user, origin, risk class, a diff preview, the simulated result and its
+dependencies. It is `pending` until a person approves it (`applied`, or `failed` if the record
+changed or vanished meanwhile) or rejects it (`rejected`), or until it is `skipped` because
+something it depends on did not apply, or `expired` (after 7 days by default).
+_Avoid_: draft, proposal, request
+
+**Change set**
+The pending actions a person reviews together. By default one per MCP session; Claude can open a
+titled one with `changeset.begin` and finish it with `changeset.commit`. It is approved or
+rejected whole or item by item in the Approvals inbox.
+_Avoid_: batch (that is a `*Many` operation), transaction
+
+**Provisional ID**
+The id a pending create gives its record (`per_pending_…`) so later pending actions in the same
+session can refer to it, e.g. log an activity on a person not yet approved. Approval binds it to
+the real id; it never reaches other sessions or the UI.
+
+**Connected app**
+An MCP client (Claude Desktop, claude.ai, Claude Code, …) a user authorized over OAuth, with the
+scopes they granted (`read`, `write`, `admin`). It is also the MCP session that pending actions
+belong to. Users revoke their own in Settings → Connected apps; admins can revoke anyone's.
+_Avoid_: integration (that is a gatekeeper), token, client (when you mean the authorization)
+
 **Adjudicator**
 The optional AI reviewer (model role `review`) that judges pending changes against the org's
 **written policy**.

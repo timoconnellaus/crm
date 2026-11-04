@@ -33,6 +33,14 @@ src/
   records/links.ts     activity/task links: LINK_TARGETS, assertLinkTargets, loadLinks; moving
                        links (merge); the activities/tasks an erase removes
   records/erase.ts     queueErase: hard delete + audit redaction markers (ADR 0019)
+  operations/approval.ts      approval.status/list/get/pendingForRecord/approve/reject,
+                       changeset.begin/commit, expirePendingActions (ADR 0022, 0032)
+  operations/connected-app.ts connectedApp.list/listAll/revoke/register, and the per-request
+                       helpers /mcp uses (loadConnection, consumeRateLimit, touchConnection)
+  approvals/queue.ts   prepareQueuedAction: dry run → diff preview, simulated records,
+                       provisional ids, dependencies, change set
+  approvals/simulation.ts the session overlay: SIMULATED_OBJECTS, overlayRead for get/list/
+                       search.global/activity.listForRecord
   purge.ts             runTrashPurge: the scheduled purge, as an automation through invoke()
   ids.ts               newId("person") → per_01J…
   errors.ts            typed errors (NotFoundError, ConflictError, ValidationError, …)
@@ -58,7 +66,9 @@ src/
      risk: "read",                             // read | write | bulk-write | destructive | …
      // actors: ["human"],                     // restrict actor types (policy changes)
      // bulkSize: (input) => input.ids.length, // required for *Many operations
-     // mcp: { idempotent: true },             // stage-2 hints
+     // mcp: { curated: true, idempotent: true }, // curated = its own MCP tool (ADR 0021)
+     // mcp: { expose: false },                // invisible and uncallable from MCP
+     // bookkeeping: true,                     // never queued for review (change sets, tokens)
      async handler(input, ctx) { … },
    });
    ```
@@ -113,6 +123,27 @@ src/
    incomplete or its schemas can't become JSON Schema. Storage is shared within a test file, so use
    `unique()` for emails, domains and names.
 
+## Approval queue and simulation
+
+When the gate says `review` (ADR 0022, 0032), the pipeline does not refuse: it runs the handler
+as a **dry run** (writes discarded, `ctx.simulation` set), records a pending action from the
+changes it recorded, and throws `PendingApprovalError` whose `pending` is the result MCP returns.
+What this asks of a handler:
+
+- Record every change with `ctx.recordChange` and full before/after snapshots in registry field
+  names. The diff preview, the simulated record and the "changed since queued" check on approval
+  all come from them.
+- Return the record (not `afterCommit`) when that is easy; otherwise the simulated output is
+  rebuilt from the snapshot (task and activity creates have builders in `approvals/queue.ts`).
+- Check link targets with `assertLinkTargets(ctx.db, links, ctx.simulation)` so links to records
+  the session created as pending (provisional ids, `per_pending_…`) are accepted.
+- A new object that should show up in a session's simulated reads needs an entry in
+  `SIMULATED_OBJECTS` (`approvals/simulation.ts`).
+
+On approval, `approval.approve` re-runs each action through the pipeline as its original actor
+(`ctx.pipeline.invoke` with `approval` set) and the pending action's status commits in the same
+batch as the change. Tests: `test/approvals.test.ts`.
+
 ## Patterns worth reusing
 
 - **Long id lists**: D1 allows 100 bound parameters per statement, so never spread a list into
@@ -144,5 +175,8 @@ src/
   that needs registry values (fields, filter ops, presets) imports `@crm/core/client`, the
   browser-safe entry without handlers or `@crm/db`; type-only imports from `@crm/core` are fine.
 - **Server code / tests**: `invoke(name, input, { actor, user, origin, db: createCrmDb(env.DB),
-  floor })`. Resolve `user` from a Principal with `resolveActingUser(db, principal)`.
+  floor })`. Add `grantedPermissions` (token scopes), `reason` and `approvalExpiryDays` for MCP
+  callers. A queued call rejects with `PendingApprovalError` (`code: "pending_approval"`).
+- **MCP**: `apps/app/src/server/mcp/tools.ts` (`callForMcp`) — actor `mcp`, origin
+  `{ surface: "mcp", clientId, clientName, sessionId }`. Resolve `user` from a Principal with `resolveActingUser(db, principal)`.
 - Errors are `OperationError`s with a stable `code`; adapters send `error.toJSON()`.

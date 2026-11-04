@@ -16,7 +16,7 @@ deploy.
 
 ## Configuration
 
-`IDENTITY_PROVIDER`, `AUTH_ALLOW_SIGNUP` and `APPROVAL_FLOOR` are plain vars in `apps/app/wrangler.jsonc`: change them
+`IDENTITY_PROVIDER`, `AUTH_ALLOW_SIGNUP`, `APPROVAL_FLOOR` and the approval and MCP settings below are plain vars in `apps/app/wrangler.jsonc`: change them
 there (in your fork) to switch adapter. Everything else is a **secret** on `crm-app`, set with
 `wrangler secret put <NAME> --name crm-app`, through the deploy script (below), or in the dashboard.
 `apps/app/.dev.vars.example` lists the same names for local development.
@@ -26,6 +26,11 @@ there (in your fork) to switch adapter. Everything else is a **secret** on `crm-
 | `IDENTITY_PROVIDER` | var | always | `better-auth` (default) or `cloudflare-access` |
 | `AUTH_ALLOW_SIGNUP` | var | Better Auth | `false` (default): only the first user can sign up. `true`: open sign-up |
 | `APPROVAL_FLOOR` | var | optional | Approval-policy floor the org's preset can never loosen (ADR 0011/0018). JSON keyed by actor (`human`, `assistant`, `mcp`, `automation` or `*`) then risk class (or `*`), with `auto`, `review`, `deny` or `{"autoUpTo": n, "above": "review"}`. Example: `{"*":{"destructive":"review"}}`. Empty: no floor. Malformed: every operation is refused |
+| `APPROVAL_EXPIRY_DAYS` | var | optional | Days before a pending action (an AI change waiting for approval) expires. Default `7` |
+| `MCP_RATE_LIMIT_REQUESTS` | var | optional | Requests per minute per connected app on `/mcp`. Default `120` |
+| `MCP_RATE_LIMIT_WRITES` | var | optional | Changes per minute per connected app. Default `30` |
+| `MCP_ACCESS_TOKEN_TTL` | var | optional | MCP access token lifetime in seconds. Default `3600`; refresh tokens last 30 days |
+| `MCP_RESOURCE` | var | optional | The public `/mcp` URL tokens are bound to, e.g. `https://crm.example.com/mcp`. Default: the request's origin + `/mcp`. Set it when the app answers on several hostnames |
 | `BETTER_AUTH_SECRET` | secret, **required** | always | Signs sessions. At least 32 random characters: `openssl rand -hex 32` |
 | `BETTER_AUTH_URL` | secret | Better Auth, recommended | Public origin, e.g. `https://crm.example.com`. Inferred from requests when unset |
 | `GOOGLE_CLIENT_ID` | secret | Google sign-in | OAuth client; redirect URI `<origin>/api/auth/callback/google` |
@@ -38,6 +43,10 @@ without it. Set it even with Cloudflare Access (any random value): it keeps the 
 
 The first user of a deployment (Better Auth sign-up, or the first Cloudflare Access user to load
 the app) becomes its admin; everyone after that is a member until an admin changes their role.
+
+`crm-app` also binds a KV namespace, `OAUTH_KV`, for MCP OAuth clients, grants and hashed
+tokens. Like the D1 database, wrangler provisions it by name on the first deploy. Connecting
+Claude is described in [`mcp.md`](mcp.md).
 
 `crm-runner` has no secrets. Its `DEV_ROUTES` var is `"false"`; only `.dev.vars` sets it to `true`
 locally.
@@ -84,6 +93,11 @@ Check the result: `curl https://crm-app.<subdomain>.workers.dev/api/health` shou
 1. Create a self-hosted Access application for the app's hostname and copy its AUD tag.
 2. Set `IDENTITY_PROVIDER` to `cloudflare-access` in `apps/app/wrangler.jsonc`.
 3. Set the `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` secrets, then deploy.
+
+For MCP clients, add a **bypass** policy (or a separate Access application with a bypass rule)
+for the paths that carry their own OAuth: `/mcp`, `/oauth/token`, `/oauth/register` and
+`/.well-known/*`. MCP clients cannot complete an Access login there; `/mcp` checks its own Bearer
+tokens. `/oauth/consent` stays behind Access, which is how the user signs in.
 
 Every request is then admitted only with a valid `Cf-Access-Jwt-Assertion` header (or
 `CF_Authorization` cookie) signed by your team, for your application. Protect every hostname the
