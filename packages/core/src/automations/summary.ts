@@ -288,8 +288,38 @@ function triggerPhrase(trigger: Trigger, labels: Labels): Text {
       else out.b(decision);
       return out;
     }
+    case "webhook": {
+      out.t("When the ").b(trigger.endpoint).t(" webhook receives ");
+      const events = trigger.events ?? [];
+      if (!events.length) return out.t("an event");
+      out.t(events.length === 1 ? "a " : "");
+      events.forEach((event, i) => {
+        if (i > 0) out.t(i === events.length - 1 ? " or " : ", ");
+        out.b(event);
+      });
+      return out.t(events.length === 1 ? " event" : " events");
+    }
+    case "syncEvent": {
+      const words = SYNC_EVENT_WORDS[trigger.event] ?? trigger.event;
+      out.t("When ").b(words);
+      const from = trigger.from ?? "either";
+      if (from === "person") out.t(" with a known ").b("Person");
+      else if (from === "organisation") out.t(" with a known ").b("Organisation");
+      return out;
+    }
   }
 }
+
+/** Sync event types in words, as the subject of a trigger sentence. */
+const SYNC_EVENT_WORDS: Record<string, string> = {
+  "email.received": "an email is received",
+  "email.sent": "an email is sent",
+  "email.deleted": "a synced email is deleted",
+  "meeting.scheduled": "a meeting is scheduled",
+  "meeting.created": "a meeting is scheduled",
+  "meeting.updated": "a meeting is updated",
+  "meeting.cancelled": "a meeting is cancelled",
+};
 
 /** One line for lists: "When a Deal's stage changes to a won stage". */
 export function triggerText(spec: AutomationManifest, ctx: SummaryContext): string {
@@ -635,6 +665,23 @@ function triggerNode(trigger: Trigger, labels: Labels): DiagramNode {
         code,
       });
     }
+    case "webhook":
+      return node({
+        ...base,
+        text: `Webhook · {code}${trigger.events?.length ? ` · ${trigger.events.map(() => "{code}").join(" or ")}` : ""}`,
+        code: [trigger.endpoint, ...(trigger.events ?? [])],
+        detail: "A verified delivery to the endpoint (signature checked)",
+      });
+    case "syncEvent":
+      return node({
+        ...base,
+        text: "Email and calendar sync · {code}",
+        code: [trigger.event],
+        detail:
+          trigger.from && trigger.from !== "either"
+            ? `Only with a known ${trigger.from}`
+            : "Linked to a known person or organisation",
+      });
   }
 }
 

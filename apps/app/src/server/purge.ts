@@ -48,7 +48,7 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   const db = createCrmDb(env.DB);
   const now = (clock?.() ?? new Date()).toISOString();
   const expired = await expirePendingActions(
-    db.query,
+    db,
     now,
     integrationRuntimeFor(env),
     env.AUTOMATION_EVENTS ? queueEventSink(env.AUTOMATION_EVENTS) : undefined,

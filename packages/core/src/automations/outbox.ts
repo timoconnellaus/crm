@@ -52,7 +52,11 @@ export function outboxEntries(messages: readonly AutomationQueueMessage[]): Outb
 }
 
 /** The inserts for `entries`, for the caller's own batch (committed with the change). */
-export function outboxInserts(db: CrmDb, entries: readonly OutboxEntry[], now: string): Compilable[] {
+export function outboxInserts(
+  db: CrmDb,
+  entries: readonly OutboxEntry[],
+  now: string,
+): Compilable[] {
   const nextAt = new Date(Date.parse(now) + OUTBOX_GRACE_MS).toISOString();
   return entries.map((entry) =>
     db.query.insertInto("core_automation_outbox").values({
