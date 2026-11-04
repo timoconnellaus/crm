@@ -253,6 +253,30 @@ describe("every trigger type", () => {
       "When a pending change is <b>approved</b> or <b>rejected</b>",
       "Approval · decided",
     ],
+    [
+      "webhook, one event",
+      { type: "webhook", endpoint: "stripe-billing", events: ["invoice.paid"] },
+      "When the <b>stripe-billing</b> webhook receives an <b>invoice.paid</b> event",
+      "Webhook · {code} · {code}",
+    ],
+    [
+      "webhook, any event",
+      { type: "webhook", endpoint: "github" },
+      "When the <b>github</b> webhook receives an event",
+      "Webhook · {code}",
+    ],
+    [
+      "syncEvent from a person",
+      { type: "syncEvent", event: "email.received", from: "person" },
+      "When <b>an email is received</b> with a known <b>Person</b>",
+      "Email and calendar sync · {code}",
+    ],
+    [
+      "syncEvent, meeting scheduled",
+      { type: "syncEvent", event: "meeting.scheduled" },
+      "When <b>a meeting is scheduled</b>",
+      "Email and calendar sync · {code}",
+    ],
   ];
 
   it.each(cases)("%s", (_name, trigger, summary, diagram) => {

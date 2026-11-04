@@ -292,7 +292,7 @@ function triggerPhrase(trigger: Trigger, labels: Labels): Text {
       out.t("When the ").b(trigger.endpoint).t(" webhook receives ");
       const events = trigger.events ?? [];
       if (!events.length) return out.t("an event");
-      out.t(events.length === 1 ? "a " : "");
+      if (events.length === 1) out.t(/^[aeiou]/i.test(events[0] ?? "") ? "an " : "a ");
       events.forEach((event, i) => {
         if (i > 0) out.t(i === events.length - 1 ? " or " : ", ");
         out.b(event);
