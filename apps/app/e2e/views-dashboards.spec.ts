@@ -106,7 +106,10 @@ test("calendar: dragging a task to another day changes its due date", async ({ p
 
 test("people as a gallery", async ({ page }) => {
   await createPerson(page, { given: "Grace", family: `Gallery${unique()}` });
-  await open(page, `/people?vt=gallery&layout=${q({ cardFields: ["jobTitle", "organisationName"] })}`);
+  await open(
+    page,
+    `/people?vt=gallery&layout=${q({ cardFields: ["jobTitle", "organisationName"] })}`,
+  );
   await expect(page.getByTestId("gallery")).toBeVisible();
   await expect(page.getByTestId("gallery-card").first()).toBeVisible();
   await expect(page.getByTestId("view-type-gallery")).toHaveAttribute("aria-checked", "true");

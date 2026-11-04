@@ -238,13 +238,14 @@ describe("extension settings", () => {
         context(member),
       ),
     ).rejects.toBeInstanceOf(ForbiddenError);
-    for (const values of [
+    const invalid: Record<string, string | number>[] = [
       { budgetCap: -1 },
       { budgetCap: "ten" },
       { defaultStatus: "archived" },
       { notify: "yes" },
       { unknown: 1 },
-    ]) {
+    ];
+    for (const values of invalid) {
       await expect(
         invoke("extensionSettings.update", { extension: id, values }, context(admin)),
         JSON.stringify(values),

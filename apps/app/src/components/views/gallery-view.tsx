@@ -79,10 +79,7 @@ export function GalleryView({ info, spec }: { info: ObjectInfo; spec: GallerySpe
           onRetry={() => void query.refetch()}
         />
       ) : !rows.length ? (
-        <EmptyState
-          icon={LayoutGridIcon}
-          title="Nothing to show here"
-        />
+        <EmptyState icon={LayoutGridIcon} title="Nothing to show here" />
       ) : (
         <VirtualFeed
           items={rows}
