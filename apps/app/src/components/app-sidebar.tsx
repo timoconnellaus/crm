@@ -9,6 +9,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
@@ -24,8 +25,9 @@ import {
 } from "lucide-react";
 import { MAIN_NAV, type NavItem, SETTINGS_NAV } from "#/lib/nav";
 import { useExtensionObjects } from "#/lib/schema";
+import { usePendingCount } from "./approvals/hooks.ts";
 
-function NavLink({ item }: { item: NavItem }) {
+function NavLink({ item, badge }: { item: NavItem; badge?: number | undefined }) {
   const { setOpenMobile } = useSidebar();
   return (
     <SidebarMenuItem>
@@ -40,6 +42,15 @@ function NavLink({ item }: { item: NavItem }) {
           <span>{item.label}</span>
         </Link>
       </SidebarMenuButton>
+      {badge ? (
+        <SidebarMenuBadge
+          className="rounded-full bg-primary text-primary-foreground peer-hover/menu-button:text-primary-foreground peer-data-[active=true]/menu-button:text-primary-foreground"
+          aria-label={`${badge} waiting for review`}
+          data-testid="approvals-count"
+        >
+          {badge > 99 ? "99+" : badge}
+        </SidebarMenuBadge>
+      ) : null}
     </SidebarMenuItem>
   );
 }
@@ -87,6 +98,7 @@ function ExtensionObjectsNav() {
 
 export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
+  const pendingCount = usePendingCount();
   return (
     <Sidebar aria-label="Main navigation">
       <SidebarHeader>
@@ -97,7 +109,11 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {MAIN_NAV.map((item) => (
-                <NavLink key={item.to} item={item} />
+                <NavLink
+                  key={item.to}
+                  item={item}
+                  badge={item.to === "/approvals" ? pendingCount : undefined}
+                />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -106,7 +122,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          {SETTINGS_NAV.filter((item) => !item.adminOnly).map((item) => (
+          {SETTINGS_NAV.filter((item) => item.to === "/settings").map((item) => (
             <NavLink key={item.to} item={item} />
           ))}
           <SidebarMenuItem>

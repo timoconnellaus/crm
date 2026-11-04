@@ -20,6 +20,7 @@ import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, SearchXIcon } from "lucide
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useHotkey } from "#/lib/hotkeys";
 import { errorMessage } from "#/lib/query";
+import { PendingPopover, usePendingForRows } from "../approvals/pending-badge.tsx";
 import { EmptyState } from "../empty-state.tsx";
 import { DefaultCell } from "./cells.tsx";
 
@@ -73,6 +74,11 @@ export interface DataTableProps<Row extends { id: string }> {
   pageSize?: number;
   /** Keyboard navigation on (default true). Turn off for a second table on the page. */
   keyboard?: boolean;
+  /**
+   * Show a "Pending" badge on rows with changes waiting for approval: the registry object name,
+   * looked up with approval.pendingForRecord once per page.
+   */
+  pendingObject?: string;
 }
 
 export function DataTable<Row extends { id: string }>({
@@ -92,6 +98,7 @@ export function DataTable<Row extends { id: string }>({
   empty,
   pageSize = 50,
   keyboard = true,
+  pendingObject,
 }: DataTableProps<Row>) {
   const visible = useMemo(
     () =>
@@ -122,6 +129,8 @@ export function DataTable<Row extends { id: string }>({
     placeholderData: (previous) => previous,
   });
   const rows = useMemo(() => query.data?.pages.flatMap((p) => p.items) ?? [], [query.data]);
+  const pageRows = useMemo(() => query.data?.pages.map((p) => p.items) ?? [], [query.data]);
+  const pending = usePendingForRows(pendingObject, pageRows);
 
   // Selection and the keyboard cursor reset when the result set changes shape.
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -320,16 +329,27 @@ export function DataTable<Row extends { id: string }>({
                     />
                   </TableCell>
                 )}
-                {visible.map((field) => (
-                  <TableCell key={field.name} className="max-w-72 truncate">
-                    {renderCell[field.name]?.(row) ?? (
-                      <DefaultCell
-                        field={field}
-                        value={(row as Record<string, unknown>)[field.name]}
-                      />
-                    )}
-                  </TableCell>
-                ))}
+                {visible.map((field, column) => {
+                  const content = renderCell[field.name]?.(row) ?? (
+                    <DefaultCell
+                      field={field}
+                      value={(row as Record<string, unknown>)[field.name]}
+                    />
+                  );
+                  const waiting = column === 0 ? pending.get(row.id) : undefined;
+                  return (
+                    <TableCell key={field.name} className="max-w-72 truncate">
+                      {waiting ? (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div className="min-w-0 truncate">{content}</div>
+                          <PendingPopover items={waiting} compact />
+                        </div>
+                      ) : (
+                        content
+                      )}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             ))}
           </TableBody>

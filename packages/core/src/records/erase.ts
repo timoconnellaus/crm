@@ -109,6 +109,11 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
       ),
   );
 
+  // 2b. Pending actions (the approval queue) that touch or mention the subject: their inputs,
+  // reasons, previews and simulated records are redacted, and any still waiting are rejected
+  // (they could no longer apply), with everything depending on them.
+  await queueRedactPending(ctx, object, recordIds, terms);
+
   // 3. Activities and tasks that are about only these records.
   const { activityIds, taskIds } = await findOwnedActivitiesAndTasks(ctx, object, recordIds);
   for (const ids of chunk(activityIds)) {
@@ -258,6 +263,145 @@ async function queueScrubShared(
         .set({ title, notes, updated_at: ctx.now })
         .where("id", "=", t.id),
     );
+  }
+}
+
+/**
+ * Queues the redaction of pending actions about the subject (ADR 0032, amended): those whose
+ * touched records include an erased one, or whose stored content mentions an erased id, email or
+ * phone number. Their `input` becomes `"[erased]"`, `reason` `[erased]`, the preview and simulated
+ * records empty, and `result`/`error` are blanked like audit rows. Still-pending ones are rejected,
+ * as are pending actions that depend on them. Change set titles lose exact mentions.
+ */
+async function queueRedactPending(
+  ctx: HandlerContext,
+  object: string,
+  recordIds: readonly string[],
+  terms: readonly string[],
+): Promise<void> {
+  const termsJson = JSON.stringify(terms);
+  const matched = await ctx.db
+    .selectFrom("core_pending_action as p")
+    .select(["p.id", "p.status", "p.expires_at", "p.error", "p.status_reason", "p.result"])
+    .where(
+      sql<SqlBool>`p.id IN (SELECT r.action_id FROM core_pending_action_records r
+          WHERE r.object_type = ${object} AND r.record_id IN ${jsonList(recordIds)})
+        OR EXISTS (SELECT 1 FROM json_each(${termsJson}) t
+          WHERE instr(lower(p.input || ' ' || p.reason || ' ' || p.preview || ' ' || p.simulated
+            || ' ' || coalesce(p.error, '') || ' ' || coalesce(p.status_reason, '')
+            || ' ' || coalesce(p.result, '')), t.value) > 0)`,
+    )
+    .execute();
+  // (An empty pattern would match everywhere: with no terms, leave free text alone.)
+  const scrub = (text: string | null) => (terms.length ? subjectMatcher(terms).text(text) : text);
+  const waiting = (row: { status: string; expires_at: string }) =>
+    row.status === "pending" && row.expires_at > ctx.now;
+  const matchedIds = new Set(matched.map((r) => r.id));
+  for (const row of matched) {
+    let error: string | null = null;
+    if (row.error !== null) {
+      const code = (() => {
+        try {
+          return (JSON.parse(row.error) as { code?: unknown }).code ?? "internal";
+        } catch {
+          return "internal";
+        }
+      })();
+      error = JSON.stringify({ code, message: ERASED });
+    }
+    const reject = waiting(row);
+    ctx.write(
+      ctx.db
+        .updateTable("core_pending_action")
+        .set({
+          input: JSON.stringify(ERASED),
+          reason: ERASED,
+          preview: "[]",
+          simulated: JSON.stringify({ output: null, records: [] }),
+          result: row.result === null ? null : JSON.stringify(ERASED),
+          error,
+          ...(reject
+            ? {
+                status: "rejected" as const,
+                status_reason: "Rejected: a record it mentions was erased",
+                decided_by: ctx.user.id,
+                decided_at: ctx.now,
+              }
+            : { status_reason: scrub(row.status_reason) }),
+        })
+        .where("id", "=", row.id),
+    );
+  }
+
+  // Pending actions that depend on a rejected one can never apply: reject them too.
+  const roots = new Set(matched.filter(waiting).map((r) => r.id));
+  if (roots.size) {
+    const pending = await ctx.db
+      .selectFrom("core_pending_action")
+      .select(["id", "depends_on"])
+      .where("status", "=", "pending")
+      .where("expires_at", ">", ctx.now)
+      .execute();
+    const cascaded: string[] = [];
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const row of pending) {
+        if (roots.has(row.id) || matchedIds.has(row.id)) continue;
+        let deps: string[] = [];
+        try {
+          deps = JSON.parse(row.depends_on) as string[];
+        } catch {}
+        if (deps.some((d) => roots.has(d))) {
+          roots.add(row.id);
+          cascaded.push(row.id);
+          grew = true;
+        }
+      }
+    }
+    for (const ids of chunk(cascaded)) {
+      ctx.write(
+        ctx.db
+          .updateTable("core_pending_action")
+          .set({
+            status: "rejected",
+            status_reason: "Rejected because an action it depends on was rejected",
+            decided_by: ctx.user.id,
+            decided_at: ctx.now,
+          })
+          .where("id", "in", ids)
+          .where("status", "=", "pending"),
+      );
+    }
+  }
+
+  // The erased records no longer exist: drop them from the pending-change index.
+  for (const ids of chunk(recordIds)) {
+    ctx.write(
+      ctx.db
+        .deleteFrom("core_pending_action_records")
+        .where("object_type", "=", object)
+        .where("record_id", "in", ids),
+    );
+  }
+
+  if (terms.length) {
+    const sets = await ctx.db
+      .selectFrom("core_change_set")
+      .select(["id", "title"])
+      .where(
+        sql<SqlBool>`title IS NOT NULL AND EXISTS (SELECT 1 FROM json_each(${termsJson}) t
+          WHERE instr(lower(title), t.value) > 0)`,
+      )
+      .execute();
+    for (const set of sets) {
+      ctx.write(
+        ctx.db
+          .updateTable("core_change_set")
+          .set({ title: scrub(set.title), updated_at: ctx.now })
+          .where("id", "=", set.id),
+      );
+    }
   }
 }
 
