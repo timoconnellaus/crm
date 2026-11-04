@@ -1,0 +1,2 @@
+# Copied to .dev.vars by `pnpm dev` when missing. Local development only.
+DEV_ROUTES=true

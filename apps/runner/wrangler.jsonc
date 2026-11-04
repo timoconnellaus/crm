@@ -1,0 +1,40 @@
+// crm-runner: runs extension code, automations and Workflows (ADR 0004). Reached by crm-app over a
+// service binding. Self-contained and account-agnostic: no account or resource IDs are committed
+// (ADR 0012); wrangler provisions the D1 database by name on first deploy.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crm-runner",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Internal only: crm-app reaches it through a service binding, never a public URL.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "crm",
+      "migrations_dir": "../../packages/db/migrations",
+      "migrations_table": "core_migrations"
+    }
+  ],
+  "workflows": [
+    {
+      "binding": "HELLO_WORKFLOW",
+      "name": "crm-hello",
+      "class_name": "HelloWorkflow"
+    }
+  ],
+  // Worker Loader: mints the Dynamic Workers that run extension code (ADR 0006).
+  "worker_loaders": [{ "binding": "LOADER" }],
+  "durable_objects": {
+    "bindings": [{ "name": "SPIKE_WORKSPACE", "class_name": "SpikeWorkspace" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SpikeWorkspace"] }],
+  "vars": {
+    // Dev-only routes (the stage 0 spike) are served only when this is "true". Set it in
+    // .dev.vars for local development; it is never set on a deployed Worker.
+    "DEV_ROUTES": "false"
+  }
+}
