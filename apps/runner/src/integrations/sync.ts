@@ -401,9 +401,152 @@ export const googleCalendarAdapter: SyncAdapter = {
   },
 };
 
+// --- Microsoft 365: Outlook mail and calendar (gatekeeper-microsoft outlook/calendar-types) ---
+
+async function shortHash(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)]
+    .slice(0, 12)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function drain<T>(cursor: { next(): Promise<T[] | null> }, max: number): Promise<T[]> {
+  const out: T[] = [];
+  while (out.length < max) {
+    const page = await cursor.next();
+    if (!page?.length) break;
+    out.push(...page);
+  }
+  return out.slice(0, max);
+}
+
+/**
+ * Outlook exposes no RFC Message-ID, and its message ids differ per mailbox. The dedupe key is a
+ * hash of sender, send time and subject, which is the same in every mailbox holding the message.
+ */
+export const outlookAdapter: SyncAdapter = {
+  kind: "mail",
+  async pull(session: Session, cursor, ctx) {
+    const w = windowOf(cursor, ctx);
+    const result: PullResult = {
+      items: [],
+      bodies: new Map(),
+      cursor: w.next,
+      more: w.more,
+      restricted: 0,
+    };
+    const list = (await drain(
+      await session.listMessages({ since: w.from.toISOString(), pageSize: 50 }),
+      ctx.limit * 4,
+    )) as {
+      id: string;
+      conversationId: string;
+      subject: string;
+      from?: { address: string; name?: string };
+      to: { address: string; name?: string }[];
+      cc: { address: string; name?: string }[];
+      receivedAt: string;
+      sentAt?: string;
+      isDraft: boolean;
+      protection?: string;
+    }[];
+    for (const info of list) {
+      const sent = info.sentAt ?? info.receivedAt;
+      if (info.isDraft || info.protection || sent >= w.to.toISOString()) continue;
+      ctx.tracker.reset();
+      const content = (await session.readMessage(info.id)) as { markdown: string };
+      if (ctx.tracker.restricted) {
+        result.restricted += 1;
+        continue;
+      }
+      const key = await shortHash(`${info.from?.address ?? ""}|${sent}|${info.subject}`);
+      const normalised = normaliseMail({
+        providerId: info.id,
+        messageId: `outlook.${key}`,
+        inReplyTo: null,
+        references: [],
+        from: info.from ? { email: info.from.address, name: info.from.name ?? "" } : null,
+        to: addresses(info.to),
+        cc: addresses(info.cc),
+        subject: info.subject,
+        text: content.markdown ?? "",
+        sentAt: new Date(sent).toISOString(),
+        headers: {},
+      });
+      if (!normalised || normalised.item.kind !== "email" || normalised.item.op !== "upsert")
+        continue;
+      // Outlook's conversation id is per mailbox: threads group within one mailbox only.
+      normalised.item.threadKey = `thread:outlook.${info.conversationId}`;
+      result.items.push(normalised.item);
+      result.bodies.set(`email:${normalised.item.messageId}`, normalised.body);
+    }
+    return result;
+  },
+  async subscribe(session: Session, hook) {
+    await session.subscribeNewMessages(hook);
+  },
+};
+
+export const outlookCalendarAdapter: SyncAdapter = {
+  kind: "calendar",
+  async pull(session: Session, cursor, ctx) {
+    const w = windowOf(cursor, ctx);
+    ctx.tracker.reset();
+    const events = (await drain(
+      await session.listEvents({
+        start: w.from.toISOString(),
+        end: w.to.toISOString(),
+        pageSize: 50,
+      }),
+      500,
+    )) as {
+      id: string;
+      start: string;
+      end: string;
+      subject?: string;
+      location?: string;
+      private?: true;
+      cancelled?: true;
+      organizer?: { address: string; name?: string };
+      attendees?: { address?: string; email?: string; name?: string }[];
+    }[];
+    if (ctx.tracker.restricted) {
+      return {
+        items: [],
+        bodies: new Map(),
+        cursor: w.next,
+        more: w.more,
+        restricted: events.length,
+      };
+    }
+    const items: SyncItem[] = [];
+    for (const e of events) {
+      // An event its owner marked private stays out of the CRM.
+      if (e.private) continue;
+      const uid = await shortHash(`${e.organizer?.address ?? ""}|${e.start}|${e.subject ?? ""}`);
+      items.push({
+        kind: "meeting",
+        op: "upsert",
+        providerId: e.id,
+        uid: `outlook.${uid}`,
+        title: e.subject ?? null,
+        startsAt: new Date(e.start).toISOString(),
+        endsAt: new Date(e.end).toISOString(),
+        location: e.location ?? null,
+        organizer: e.organizer ? (addresses([e.organizer])[0] ?? null) : null,
+        attendees: addresses(e.attendees ?? []),
+        cancelled: e.cancelled === true,
+      });
+    }
+    return { items, bodies: new Map(), cursor: w.next, more: w.more, restricted: 0 };
+  },
+};
+
 /** The adapter for a vendor's resource, if sync supports it. */
 export function adapterFor(vendor: string, kind: SyncKind): SyncAdapter | null {
   if (vendor === "fake") return kind === "mail" ? fakeMailAdapter : fakeCalendarAdapter;
   if (vendor === "google") return kind === "mail" ? gmailAdapter : googleCalendarAdapter;
+  if (vendor === "microsoft") return kind === "mail" ? outlookAdapter : outlookCalendarAdapter;
   return null;
 }

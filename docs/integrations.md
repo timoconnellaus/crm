@@ -70,6 +70,5 @@ each into `docs/stages/assets/stage-6-manual/`:
 5. Change the sharing level to *metadata*; new mail shows subject and participants only.
 6. Ask Claude over MCP to send an email through Gmail (`integration_call`, `send`); check it waits
    in Approvals with the gatekeeper's preview, approve it, and see it in Gmail's Sent folder.
-7. Repeat 2–3 with Microsoft 365 (Outlook mail sync is a follow-up: see ADR 0112; check the
-   connection, pickers and outbound `outlook.send` approval).
+7. Repeat 2–5 with Microsoft 365 (Outlook mail and calendar), and approve an `outlook.send`.
 8. Disconnect both; check the provider shows the grant revoked.

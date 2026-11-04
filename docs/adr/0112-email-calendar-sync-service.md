@@ -19,8 +19,11 @@ so late arrivals are not missed; ingest dedupes.
 **Adapters** (`apps/runner/src/integrations/sync.ts`) normalise a provider's mail and events into
 `sync.ingest` items: Message-ID, thread key (root of References / In-Reply-To), participants, a
 2,000-character snippet, the full body (kept aside for R2), signature block and bounce recipients.
-Shipped: Gmail, Google Calendar and the fake provider. Outlook and Microsoft calendar adapters are a
-follow-up (their gatekeeper pushes new mail only; updates and deletes need catch-up reads).
+Shipped: Gmail, Google Calendar, Outlook mail, Outlook Calendar and the fake provider. Outlook has no
+RFC Message-ID and per-mailbox ids, so its dedupe key is a hash of sender, send time and subject;
+drafts, encrypted mail and events marked private are not synced. Window-based adapters (Google,
+Microsoft) do not see deletes: their catch-up re-reads the recent window only, so a delete
+propagates from the fake provider's change feed today and from a periodic reconciliation later.
 
 **Restricted reads are dropped in the adapter.** Each content read goes through the session's queue;
 an observation flagged `containsRestrictedData` marks the tracker and the item is skipped before
