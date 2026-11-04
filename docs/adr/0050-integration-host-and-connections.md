@@ -9,3 +9,5 @@ Status: accepted, 2026-11-04 (stage 6 interview). Context: `docs/research/gateke
 - Resource pickers render the vendored configurator specs with our shadcn components.
 - Code reaches gatekeepers only via `codemode:<gatekeeper>` host modules.
 - Shipped gatekeepers: Google, Microsoft, Slack, MCP, email sending, ZoomInfo, web search, and a new inbound-webhook gatekeeper.
+
+> Amended 2026-11-04 (after vendoring, PR #16): upstream Slack is read-only and `gatekeeper-email` only receives mail, so we write our own `gatekeeper-email-send` (Cloudflare Email Service) and `gatekeeper-slack-post` on `gatekeeper-kit`. Vendored packages stay unmodified. Web search uses the auto-provisioned singleton path, which the integration host must support.

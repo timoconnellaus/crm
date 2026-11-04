@@ -26,13 +26,25 @@ reviewed in the same approvals inbox as CRM changes.
   - **Slack**: notifications and "share to channel".
   - **MCP**: already vendored. Connect any MCP server.
   - **Email sending**: `gatekeeper-email`, for notifications and digests.
-  - **ZoomInfo**: enrichment, including feeding `person.changeJob` when a job change is detected.
+  - **ZoomInfo**: manual enrichment only. "Enrich now" on a record is an approved, credit-spending
+    action, because ZoomInfo has no change feed.
   - **Web search**.
 - Built in this stage:
   - **Inbound webhook** gatekeeper: external systems post events. The gatekeeper verifies signatures
     and shapes payloads into typed events, which become automation triggers (`webhook`).
   - An **upstream sync check** script that diffs each vendored package against its recorded
     upstream commit and lists upstream changes since then.
+
+### Own outbound gatekeepers (decided after vendoring, PR #16)
+The vendored upstream Slack gatekeeper is read-only, and `gatekeeper-email` only receives mail. So we
+**write two small gatekeepers of our own** on the vendored `gatekeeper-kit`. The vendored packages stay
+identical to upstream.
+- **`gatekeeper-email-send`**: sends email via Cloudflare Email Service, with actionKind `email.send`
+  and rendered previews. It is used for notifications, digests and automations.
+- **`gatekeeper-slack-post`**: posts messages, DMs and channel posts, with actionKinds `slack.post` and
+  `slack.dm`. It shares the OAuth connection with the vendored read-only Slack gatekeeper.
+- Both get the same approvals, simulation and observation logging as everything else (ADR 0051). They
+  live in `packages/gatekeeper-*` without `UPSTREAM.md`, and are marked as ours in `UPSTREAMS.md`.
 
 ### Integration host (ADR 0050)
 - An **integration host Durable Object** in `crm-runner` implements the Workshop side of the
@@ -90,6 +102,11 @@ reviewed in the same approvals inbox as CRM changes.
   domain, are suggested for one-click add. Nothing is created automatically. The assistant can triage
   this inbox.
 - Sync events feed automations, e.g. "email received from a customer".
+- **Job-change signals from email:**
+  - bounces from a known person's address
+  - a new signature or a new domain for a known person
+  - The result is a *suggested* job change in the Suggested contacts inbox, applied with
+    `person.changeJob` on confirmation. There is no scheduled ZoomInfo polling.
 
 ### Notification delivery
 Completes ADR 0029:
