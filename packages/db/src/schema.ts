@@ -223,6 +223,16 @@ export interface CoreActivityTable extends RecordColumns {
   occurred_at: Timestamp;
   author_user_id: Defaulted<string | null>;
   author_actor: Defaulted<ActivityAuthorActor>;
+  /** Migration 0111: 'email:<Message-ID>' or 'ical:<UID>' for synced activities (unique). */
+  external_key: Defaulted<string | null>;
+  /** Migration 0111: 'thread:<root Message-ID>' for synced email. */
+  thread_key: Defaulted<string | null>;
+  /** Migration 0111: set when marked private; only this user sees it. */
+  private_to: Defaulted<string | null>;
+  /** Migration 0111: R2 key of the full email body. */
+  body_ref: Defaulted<string | null>;
+  /** Migration 0111: what a synced activity discloses. */
+  disclosure: Defaulted<"full" | "metadata" | null>;
 }
 
 export interface CoreActivityLinksTable {
@@ -622,6 +632,11 @@ export interface CorePendingActionTable {
   /** Migration 0063: set when input, preview and simulated were dropped for `summary`. */
   compacted_at: Defaulted<Timestamp | null>;
   summary: Defaulted<JsonText | null>;
+  /** Migration 0110: outbound items (ADR 0051): the connection, facet and gatekeeper action. */
+  connection_id: Defaulted<string | null>;
+  facet_key: Defaulted<string | null>;
+  gk_action: Defaulted<number | null>;
+  action_kind: Defaulted<string | null>;
 }
 
 export interface CorePendingActionRecordsTable {
@@ -678,6 +693,116 @@ export interface CoreStorageStatsTable {
   size_bytes: number | null;
   tables: JsonText;
   measured_at: Timestamp;
+}
+
+// --- Stage 6a: integrations (migrations 0110-0112) -----------------------------------------------
+
+export type ConnectionScope = "personal" | "org";
+export type SharingLevel = "full" | "metadata" | "none";
+export type ConnectionStatus = "connecting" | "active" | "expired" | "error" | "disconnected";
+
+/** Gatekeepers an admin enabled (migration 0110). */
+export interface CoreIntegrationVendorTable {
+  vendor: string;
+  enabled: Defaulted<number>;
+  mode: Defaulted<"off" | "optional" | "on" | null>;
+  updated_at: Timestamp;
+  updated_by: Defaulted<string | null>;
+}
+
+/** The UI's mirror of a connection; its integration host DO is the authority (migration 0110). */
+export interface CoreIntegrationConnectionTable {
+  id: string;
+  vendor: string;
+  scope: ConnectionScope;
+  owner_user_id: string;
+  title: string;
+  account_label: Defaulted<string | null>;
+  sharing_level: Defaulted<SharingLevel>;
+  status: Defaulted<ConnectionStatus>;
+  error: Defaulted<string | null>;
+  resources: Defaulted<JsonText>;
+  sync: Defaulted<JsonText>;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  connected_at: Defaulted<Timestamp | null>;
+  disconnected_at: Defaulted<Timestamp | null>;
+  last_sync_at: Defaulted<Timestamp | null>;
+}
+
+/** Outbound action kinds and their auto-approval (migration 0110, ADR 0051). */
+export interface CoreOutboundKindTable {
+  tag: string;
+  vendor: string;
+  label: string;
+  auto_approvable: Defaulted<number>;
+  auto_approve: Defaulted<number>;
+  first_seen_at: Timestamp;
+  updated_at: Timestamp;
+  updated_by: Defaulted<string | null>;
+}
+
+/** Inbound webhook and sync events for stage 5 (migration 0110). */
+export interface CoreIntegrationEventTable {
+  id: string;
+  source: "webhook" | "sync";
+  connection_id: Defaulted<string | null>;
+  type: string;
+  external_id: Defaulted<string | null>;
+  payload: JsonText;
+  occurred_at: Timestamp;
+  created_at: Timestamp;
+  consumed_at: Defaulted<Timestamp | null>;
+}
+
+/** A message or event seen in one mailbox or calendar (migration 0111). */
+export interface CoreSyncItemTable {
+  connection_id: string;
+  provider_id: string;
+  external_key: string;
+  kind: "email" | "meeting";
+  activity_id: Defaulted<string | null>;
+  /** Migration 0112: when the message was sent or the event starts (delete reconciliation). */
+  occurred_at: Defaulted<Timestamp | null>;
+  updated_at: Timestamp;
+}
+
+/** Suggested contacts (migration 0111, ADR 0052). */
+export interface CoreSuggestedContactTable {
+  email: string;
+  domain: string;
+  name: Defaulted<string | null>;
+  message_count: Defaulted<number>;
+  first_seen_at: Timestamp;
+  last_seen_at: Timestamp;
+  status: Defaulted<"open" | "added" | "dismissed">;
+  person_id: Defaulted<string | null>;
+  decided_by: Defaulted<string | null>;
+  decided_at: Defaulted<Timestamp | null>;
+}
+
+/** Job-change suggestions from mail signals (migration 0111). */
+export interface CoreJobChangeSuggestionTable {
+  id: string;
+  person_id: string;
+  signal: "bounce" | "signature" | "domain";
+  dedupe_key: string;
+  evidence: JsonText;
+  proposal: JsonText;
+  status: Defaulted<"open" | "applied" | "dismissed">;
+  created_at: Timestamp;
+  decided_by: Defaulted<string | null>;
+  decided_at: Defaulted<Timestamp | null>;
+}
+
+/** The last signature seen from a known person (migration 0111). */
+export interface CorePersonSignatureTable {
+  person_id: string;
+  email: string;
+  signature_hash: string;
+  company: Defaulted<string | null>;
+  title: Defaulted<string | null>;
+  seen_at: Timestamp;
 }
 
 /** One stage a record has been in (migration 0100, ADR 0100). `left_at` is null for the current one. */
@@ -742,6 +867,14 @@ export interface CoreDatabase {
   core_audit_read_counts: CoreAuditReadCountsTable;
   core_audit_purges: CoreAuditPurgesTable;
   core_storage_stats: CoreStorageStatsTable;
+  core_integration_vendor: CoreIntegrationVendorTable;
+  core_integration_connection: CoreIntegrationConnectionTable;
+  core_outbound_kind: CoreOutboundKindTable;
+  core_integration_event: CoreIntegrationEventTable;
+  core_sync_item: CoreSyncItemTable;
+  core_suggested_contact: CoreSuggestedContactTable;
+  core_job_change_suggestion: CoreJobChangeSuggestionTable;
+  core_person_signature: CorePersonSignatureTable;
   core_search_docs: CoreSearchDocsTable;
   core_search: CoreSearchTable;
   core_extensions: CoreExtensionsTable;

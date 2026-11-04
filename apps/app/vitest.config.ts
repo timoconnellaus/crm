@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import { readD1Migrations } from "@cloudflare/vitest-plugin";
 import { defineWorkersTestConfig } from "@crm/config/vitest";
 import { mergeConfig } from "vitest/config";
+import { configuratorSpecs } from "./src/components/integrations/configurator/vite-plugin.ts";
 
 const migrationsDir = fileURLToPath(new URL("../../packages/db/migrations", import.meta.url));
 
@@ -44,6 +45,8 @@ export default mergeConfig(
     setupFiles: ["./test/apply-migrations.ts"],
   }),
   {
+    // Gatekeeper resource pickers: the vendored configurator specs, rendered with our runtime.
+    plugins: [configuratorSpecs()],
     resolve: { alias: { "#": fileURLToPath(new URL("./src", import.meta.url)) } },
     define: {
       __APP_VERSION__: JSON.stringify("0.0.0-test"),

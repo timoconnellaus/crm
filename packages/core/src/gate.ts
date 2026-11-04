@@ -175,6 +175,12 @@ export interface GateRequest {
   risk: RiskClass;
   /** Records the call touches. Single-record operations are 1. */
   bulkSize?: number;
+  /**
+   * For risk `outbound` (ADR 0051): the gatekeeper action's kind. Under Balanced an outbound
+   * action is reviewed unless the gatekeeper marked it `autoApprovable` AND an admin enabled
+   * auto-approval for its kind. Cautious always reviews; the floor still applies.
+   */
+  outbound?: { autoApprovable: boolean; enabled: boolean };
 }
 
 export interface GateResult {
@@ -193,10 +199,19 @@ export function evaluateGate(
   floor: GateFloor = {},
 ): GateResult {
   const bulkSize = Math.max(1, request.bulkSize ?? 1);
-  const policyDecision = applyRule(
+  let policyDecision = applyRule(
     PRESET_MATRICES[policy.preset][request.actor][request.risk],
     bulkSize,
   );
+  if (
+    request.risk === "outbound" &&
+    policyDecision === "review" &&
+    policy.preset === "balanced" &&
+    request.outbound?.autoApprovable &&
+    request.outbound.enabled
+  ) {
+    policyDecision = "auto";
+  }
 
   const floorRules = [
     floor[request.actor]?.[request.risk],

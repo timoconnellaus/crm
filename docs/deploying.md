@@ -7,6 +7,8 @@ One deployment = one Cloudflare account (ADR 0001). It has two Workers and one D
 | Worker | `crm-app` | UI, server functions, `/api/*`. Public. |
 | Worker | `crm-runner` | Workflows, Worker Loader, extension runtime. No public URL (`workers_dev: false`); reached only through `crm-app`'s `RUNNER` service binding. |
 | D1 database | `crm` | Bound as `DB` to both Workers. Created by name on the first deploy. |
+| R2 bucket | `crm-blobs` | Bound as `BLOBS` to both Workers: full bodies of synced email (stage 6a, ADR 0112). Created by name on the first deploy. |
+| Gatekeeper Workers | `crm-gatekeeper-<name>` | Optional, one per integration you use; bound to `crm-runner` as `GATEKEEPER_<NAME>`. See [integrations.md](integrations.md). |
 
 Workers Paid is required (Durable Objects with SQLite, Workflows, Worker Loader).
 

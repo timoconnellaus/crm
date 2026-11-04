@@ -7,10 +7,10 @@
   "type": "module",
   "main": "./src/mcp.ts",
   "scripts": {
-    "build": "wrangler deploy --dry-run --outdir dist",
+    "build": "node ../../scripts/gatekeeper-configurator-frames.mjs && wrangler deploy --dry-run --outdir dist",
     "types": "node ../../scripts/gatekeeper-worker-types.mjs",
-    "typecheck": "node ../../scripts/gatekeeper-worker-types.mjs --check && tsc --noEmit",
-    "test": "vitest run && vitest run -c vitest.worker.config.ts"
+    "typecheck": "node ../../scripts/gatekeeper-configurator-frames.mjs && node ../../scripts/gatekeeper-worker-types.mjs --check && tsc --noEmit",
+    "test": "node ../../scripts/gatekeeper-configurator-frames.mjs && vitest run && vitest run -c vitest.worker.config.ts"
   },
   "dependencies": {
     "@crm/gatekeeper-configurator-ui": "workspace:*",

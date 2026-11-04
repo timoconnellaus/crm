@@ -14,6 +14,7 @@ export type OperationErrorCode =
   | "config"
   | "timeout"
   | "extension_error"
+  | "integration_error"
   | "internal";
 
 export class OperationError extends Error {

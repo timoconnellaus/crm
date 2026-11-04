@@ -4,7 +4,7 @@
 import type { CoreDatabase } from "@crm/db";
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
-import { NotFoundError, ValidationError } from "../errors.ts";
+import { ForbiddenError, NotFoundError, ValidationError } from "../errors.ts";
 import { activityObject } from "../fields/activity.ts";
 import { getObject } from "../fields/index.ts";
 import { newId } from "../ids.ts";
@@ -129,6 +129,16 @@ export const activitySchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   deletedAt: z.string().nullable(),
+  /** Synced from a mailbox or calendar (stage 6a, ADR 0112). */
+  synced: z.boolean().optional(),
+  /** Marked private: only its owner (the mailbox's owner) sees it. */
+  private: z.boolean().optional(),
+  /** For synced activities: what was disclosed (full content or metadata only). */
+  disclosure: z.enum(["full", "metadata"]).nullable().optional(),
+  /** The full email body is in blob storage: read it with activity.getBody. */
+  hasFullBody: z.boolean().optional(),
+  /** The email conversation it belongs to. */
+  threadKey: z.string().nullable().optional(),
 });
 export type Activity = z.infer<typeof activitySchema>;
 
@@ -147,7 +157,17 @@ type ActivityRow = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  external_key: string | null;
+  private_to: string | null;
+  body_ref: string | null;
+  disclosure: "full" | "metadata" | null;
+  thread_key: string | null;
 };
+
+/** Private activities are visible only to the user they were made private for. */
+export function visibleTo(userId: string) {
+  return sql<boolean>`(a.private_to IS NULL OR a.private_to = ${userId})`;
+}
 
 function activityQuery(db: Kysely<CoreDatabase>) {
   return db
@@ -166,6 +186,11 @@ function activityQuery(db: Kysely<CoreDatabase>) {
       "a.created_at",
       "a.updated_at",
       "a.deleted_at",
+      "a.external_key",
+      "a.private_to",
+      "a.body_ref",
+      "a.disclosure",
+      "a.thread_key",
     ]);
 }
 
@@ -189,6 +214,11 @@ async function toActivities(db: Kysely<CoreDatabase>, rows: ActivityRow[]): Prom
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
+    synced: row.external_key !== null,
+    private: row.private_to !== null,
+    disclosure: row.disclosure,
+    hasFullBody: row.body_ref !== null,
+    threadKey: row.thread_key,
   }));
 }
 
@@ -321,7 +351,13 @@ export const activityGet = defineOperation({
   risk: "read",
   mcp: { idempotent: true },
   async handler(input, ctx) {
-    return requireActivity(ctx.db, input.id, { includeDeleted: input.includeDeleted });
+    const activity = await requireActivity(ctx.db, input.id, {
+      includeDeleted: input.includeDeleted,
+    });
+    if (activity.private && activity.authorUserId !== ctx.user.id) {
+      throw new NotFoundError("activity", input.id);
+    }
+    return activity;
   },
 });
 
@@ -470,6 +506,7 @@ export const activityListForRecord = defineOperation({
   async handler(input, ctx) {
     let query = activityQuery(ctx.db)
       .where("a.deleted_at", "is", null)
+      .where(visibleTo(ctx.user.id))
       .where("a.id", "in", (eb) =>
         eb
           .selectFrom("core_activity_links")
@@ -541,7 +578,82 @@ export const activityList = defineOperation({
   },
 });
 
+export const activitySetPrivate = defineOperation({
+  name: "activity.setPrivate",
+  description:
+    "Mark a synced email or meeting private (only you see it: it leaves everyone else's " +
+    "timelines, search and SQL views) or shared again. Only the owner of the mailbox or " +
+    "calendar it was synced from can do this. People only.",
+  input: z.object({ id: activityId, private: z.boolean() }),
+  output: activitySchema,
+  permission: "records:write",
+  risk: "write",
+  actors: ["human"],
+  mcp: { expose: false },
+  async handler(input, ctx) {
+    const row = await ctx.db
+      .selectFrom("core_activity")
+      .select(["id", "external_key", "author_user_id", "private_to"])
+      .where("id", "=", input.id)
+      .where("deleted_at", "is", null)
+      .executeTakeFirst();
+    if (!row || (row.private_to !== null && row.private_to !== ctx.user.id)) {
+      throw new NotFoundError("activity", input.id);
+    }
+    if (row.external_key === null) {
+      throw new ValidationError("Only synced emails and meetings can be marked private");
+    }
+    if (row.author_user_id !== ctx.user.id) {
+      throw new ForbiddenError("Only the owner of the mailbox it came from can change this");
+    }
+    const privateTo = input.private ? ctx.user.id : null;
+    ctx.write(
+      ctx.db
+        .updateTable("core_activity")
+        .set({ private_to: privateTo, updated_at: ctx.now })
+        .where("id", "=", row.id),
+    );
+    ctx.recordChange({
+      object: "activity",
+      id: row.id,
+      action: "update",
+      before: { private: row.private_to !== null },
+      after: { private: input.private },
+    });
+    return ctx.afterCommit(() => requireActivity(ctx.db, row.id));
+  },
+});
+
+export const activityGetBody = defineOperation({
+  name: "activity.getBody",
+  description:
+    "The full body of a synced email whose mailbox shares full content (kept in blob " +
+    "storage; timelines show a snippet). Falls back to the stored snippet. Read-only.",
+  input: z.object({ id: activityId }),
+  output: z.object({ id: z.string(), body: z.string().nullable(), full: z.boolean() }),
+  permission: "records:read",
+  risk: "read",
+  mcp: { idempotent: true },
+  async handler(input, ctx) {
+    const row = await ctx.db
+      .selectFrom("core_activity as a")
+      .select(["a.id", "a.body", "a.body_ref"])
+      .where("a.id", "=", input.id)
+      .where("a.deleted_at", "is", null)
+      .where(visibleTo(ctx.user.id))
+      .executeTakeFirst();
+    if (!row) throw new NotFoundError("activity", input.id);
+    if (row.body_ref && ctx.blobs) {
+      const body = await ctx.blobs.get(row.body_ref);
+      if (body !== null) return { id: row.id, body, full: true };
+    }
+    return { id: row.id, body: row.body, full: false };
+  },
+});
+
 export const activityOperations = [
+  activitySetPrivate,
+  activityGetBody,
   activityLog,
   activityGet,
   activityUpdate,

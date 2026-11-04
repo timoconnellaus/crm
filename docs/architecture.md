@@ -193,6 +193,28 @@ a capability API per resource, journal actions and simulate pending ones. We ado
 gatekeeper interface and `gatekeeper-kit` rather than inventing our own. Extension code never reaches
 the network directly. `gatekeeper-mcp` lets an admin connect any MCP server at runtime.
 
+Stage 6a ([ADR 0110](adr/0110-integration-host-per-connection.md) to
+[ADR 0114](adr/0114-own-gatekeepers-pickers-and-host-modules.md)):
+
+- **Integration host**: one Durable Object per **connection** in `crm-runner`
+  (`INTEGRATION_HOST.getByName(connectionId)`). It holds the gatekeeper account, one facet per bound
+  resource (recreated from its stored class stub after a restart), hook controllers and sync state.
+  D1 (`core_integration_connection`) mirrors connections for the UI. Operations reach it through the
+  `IntegrationRuntime` port (`packages/core/src/integrations/runtime.ts`), over RPC from `crm-app`.
+- **Connect flow**: `connection.create` → provider popup → `/gatekeeper/<vendor>/*` (proxied by
+  `crm-app` to the gatekeeper through `crm-runner`) → `/connect/handoff#ticket` →
+  `connection.completeConnect`, which activates the account only for the user who started the flow
+  and the popup's nonce.
+- **Outbound actions**: a gatekeeper's `submitAction` is gated as risk `outbound` by action kind and
+  mirrored into the approval queue; approval calls `applyAction` on the facet, in order per facet.
+- **Sync**: hook-driven, alarm-chunked mail and calendar sync per connection (90 days by default),
+  written by `sync.ingest` with an indexed external key, bodies in R2 (`crm-blobs`), sharing level per
+  connection, private activities, suggested contacts and job-change suggestions.
+- **Code**: `integration.call` (MCP), and `codemode:<gatekeeper>` host modules for extension tools and
+  Code Mode.
+- **Gatekeepers we wrote**: `gatekeeper-email-send`, `gatekeeper-slack-post`, `gatekeeper-webhook`.
+  Inbound webhooks and sync events land in `core_integration_event` for stage 5.
+
 ### 6. Approval pipeline
 
 Configurable per org ([ADR 0011](adr/0011-approval-pipeline.md)):
@@ -304,8 +326,9 @@ packages/
   gatekeeper-kit/      gatekeeper building blocks (vendored)
   gatekeeper-observability/, gatekeeper-configurator-ui/, mcp-shared/
                        what the vendored gatekeepers depend on (vendored subsets)
-  gatekeeper-<name>/   gatekeeper Workers `crm-gatekeeper-<name>`: mcp and google so far (vendored,
-                       not yet bound to the runner; stage 6 wires them in)
+  gatekeeper-<name>/   gatekeeper Workers `crm-gatekeeper-<name>`: vendored (google, microsoft, slack, mcp,
+                       email, zoominfo, websearch) and ours (email-send, slack-post, webhook); bound to
+                       crm-runner as GATEKEEPER_<NAME> per deployment (docs/integrations.md)
 extensions/
   deals/               (stage 4) Deals: pipelines, stages, deals, participants (ADR 0026, 0100)
   deals/               (stage 4) first real shipped extension
