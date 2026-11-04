@@ -222,7 +222,8 @@ go through AI Gateway ([ADR 0009](adr/0009-model-roles.md)). Code asks for a rol
 Workers AI is the default provider for every role. So far the minimal mapping in
 `packages/core/src/models.ts` covers `summarise`, `extract`, `classify` (extension code) and
 `build` (the AI-written summary on an extension proposal); without an `ai` binding on crm-runner
-those features say no AI is available.
+those features say no AI is available. Stage 4a gives crm-app the same optional binding for
+"Describe a widget" (`ModelRunner`, passed to operations as `ctx.models`).
 
 ### 9. Dashboards and views
 
@@ -232,6 +233,25 @@ A view spec rendered by our own shadcn/chart components. Widgets query with read
 ([ADR 0020](adr/0020-query-sql-validator-and-csv-import.md); `validateReadOnlySql` in `@crm/core`,
 used by `query.sql`). Computed widgets are extension code. Extensions never ship UI
 ([ADR 0010](adr/0010-dashboards-sql-views.md)).
+
+How stage 4a built it:
+
+- **View types** ([ADR 0056](adr/0056-view-spec-union-and-shared-views.md)): the view spec is a
+  union (`table | board | calendar | gallery | dashboard`, `packages/core/src/views/spec.ts`).
+  Saved views (`view.*`) store any object view and can be shared. List pages switch type with
+  `vt`/`layout` search params; boards move cards through each object's update operation (stage
+  rules apply), with `record.groups` for column counts and sums.
+- **Dashboards** ([ADR 0057](adr/0057-dashboards-params-cache-and-click-through.md)):
+  `core_dashboards` plus the code-defined Overview, Home per user (`core_user_home`). Widget SQL
+  uses named params (`:date_from`, `:owner`, `:now`, …) rewritten to `?N` and run through
+  `runReadOnlySql`; results are cached 60 s in the Workers Cache API by a hash of SQL, params and
+  visibility scope; click-through templates resolve to list filters.
+- **Record tabs and panels, settings** ([ADR 0058](adr/0058-record-tabs-panels-and-extension-settings.md)):
+  extensions declare `recordTabs`, `recordPanels` and typed `settings`; `view.recordViews` and
+  `extensionSettings.*` serve them to the UI.
+- **Describe a widget** ([ADR 0059](adr/0059-describe-a-widget.md)): `widget.describe` asks the
+  `build` role (Workers AI through the optional `AI` binding on crm-app) for a widget, validates
+  and previews it; without AI it says so.
 
 ## Repository layout
 

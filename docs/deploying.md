@@ -55,6 +55,17 @@ and, optionally, set `AI_GATEWAY_ID` to route calls through AI Gateway. Without 
 calls fail with a "not configured" error and nothing else changes. Shipped extensions (`extensions/`)
 are installed through `extension.install` on the first request after a deploy.
 
+"Describe a widget" on dashboards (stage 4a) uses the `build` model role from `crm-app`: add
+`"ai": { "binding": "AI" }` to `apps/app/wrangler.jsonc` too, and optionally set its
+`AI_GATEWAY_ID`. Workers AI is the default provider; no third-party key is needed. Without the
+binding the box says AI is not configured and the manual widget editor still works.
+`AI_FAKE_MODEL` (a deterministic stand-in for local development and e2e tests, set in
+`.dev.vars` by `pnpm dev`) must stay empty in production.
+
+Dashboard widget results are cached for 60 seconds in the Workers Cache API (ADR 0057). The Cache
+API does nothing on `*.workers.dev` hostnames, so put crm-app on a custom domain to get the cache;
+without it every widget view runs its query.
+
 ## Option 1: Deploy to Cloudflare button
 
 The button in the README forks the repository into your GitHub account, creates the `crm` D1
