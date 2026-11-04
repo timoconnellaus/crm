@@ -5,6 +5,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BoxIcon, Trash2Icon } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
+import {
+  ManualAutomationButtons,
+  RecordAutomationsCard,
+} from "#/components/automations/record-automations";
 import { EmptyState } from "#/components/empty-state";
 import { FieldsCard } from "#/components/fields/fields-card";
 import { useRecordHistory, useTimeline } from "#/components/record/adapters";
@@ -104,10 +108,13 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
         </Link>
       }
       actions={
-        <Button variant="outline" onClick={onDelete} disabled={remove.isPending}>
-          <Trash2Icon />
-          Delete
-        </Button>
+        <>
+          <ManualAutomationButtons object={info.name} id={id} />
+          <Button variant="outline" onClick={onDelete} disabled={remove.isPending}>
+            <Trash2Icon />
+            Delete
+          </Button>
+        </>
       }
       tab={tab}
       onTabChange={(next) =>
@@ -177,6 +184,7 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
       side={
         <>
           {recordViews.panels}
+          <RecordAutomationsCard object={info.name} id={id} />
           <dl className="grid gap-1 rounded-lg border p-4 text-sm">
             <dt className="text-muted-foreground">Created</dt>
             <dd>{formatDateTime(data.createdAt)}</dd>

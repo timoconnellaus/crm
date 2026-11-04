@@ -34,6 +34,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useAppCommands } from "#/components/app-commands";
 import { PendingChangesBadge } from "#/components/approvals/pending-badge";
+import {
+  ManualAutomationButtons,
+  RecordAutomationsCard,
+} from "#/components/automations/record-automations";
 import { EmptyState } from "#/components/empty-state";
 import { ExtensionFieldsCards } from "#/components/fields/fields-card";
 import { useMergeAction } from "#/components/merge/merge-action";
@@ -222,6 +226,7 @@ function OrganisationRecord({
       actions={
         !deleted && (
           <>
+            <ManualAutomationButtons object="organisation" id={org.id} />
             {addTask && (
               <Button variant="outline" size="sm" onClick={addTask} aria-keyshortcuts="c">
                 <PlusIcon />
@@ -322,6 +327,7 @@ function OrganisationRecord({
         <>
           <OrganisationDetailsCard organisation={org} readOnly={deleted} />
           {recordViews.panels}
+          <RecordAutomationsCard object={"organisation"} id={org.id} />
           <ExtensionFieldsCards object="organisation" id={org.id} readOnly={deleted} />
           <OrganisationPeopleCard
             affiliations={people.data}
