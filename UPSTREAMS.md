@@ -68,6 +68,32 @@ Local changes, in summary:
 - **Lint:** Biome skips the vendored `src`, `__tests__` and `testing` directories so upstream diffs
   stay portable. Our own files in those packages are linted.
 
+## Our own gatekeepers (not vendored)
+
+Written for this CRM on the vendored `gatekeeper-kit` and `gatekeeper-interface` (stage 6a,
+ADR 0114). They have no `UPSTREAM.md`, are linted normally, and use no capnweb-validate decorators.
+
+| Package | Worker | What it does |
+| --- | --- | --- |
+| [`@crm/gatekeeper-email-send`](packages/gatekeeper-email-send/README.md) | `crm-gatekeeper-email-send` | Sends email with Cloudflare Email Service (`email.send`, `email.internal`) |
+| [`@crm/gatekeeper-slack-post`](packages/gatekeeper-slack-post/README.md) | `crm-gatekeeper-slack-post` | Posts to Slack and sends DMs as the bot of the same Slack app as the vendored read-only gatekeeper (`slack.post`, `slack.dm`) |
+| [`@crm/gatekeeper-webhook`](packages/gatekeeper-webhook/README.md) | `crm-gatekeeper-webhook` | Receives signed webhooks and delivers typed events (ADR 0113) |
+
+## Proposed upstream changes
+
+Found in the Cloudflare cost audit (`docs/research/cloudflare-cost-audit.md`, section 5). They can
+only be fixed inside vendored code, so we propose them upstream instead of patching locally:
+
+- **V1, Gmail watch label filter** (`gatekeeper-google/src/google-api.ts`, `watch()`): send
+  `labelIds: ["INBOX"]` with `labelFilterBehavior: "include"` in the `users.watch` body, so reads,
+  label changes and drafts stop triggering pushes (300–1,000 a mailbox a day today), and skip the
+  second `getProfile` when the history is empty. Our sync does not depend on it: catch-up and
+  ingest dedupe make extra pushes harmless, only wasteful.
+- **V2, token caching in hook drivers** (`gatekeeper-google/src/gmail-hooks.ts`, `chat-hooks.ts`):
+  wrap the drivers' access-token fetches in `AccessTokenCache`, as the facets already do, saving
+  about three DO requests a sync. Our own gatekeepers (`gatekeeper-slack-post`) cache tokens per
+  facet already.
+
 ## Local changes to vendored code
 
 - `packages/ui` shadcn components: the CLI resolved the `cn` helper to a bare `"cn"` package; imports

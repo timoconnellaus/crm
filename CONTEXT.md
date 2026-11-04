@@ -245,6 +245,42 @@ _Avoid_: connector, integration (when you mean the Worker)
 **Integration**
 The user-facing name for a connected gatekeeper ("Gmail integration").
 
+**Connection**
+One connected gatekeeper account: **personal** (a user's own; only that user's actors may use it)
+or **org** (set up by an admin, e.g. a shared inbox or the company Slack; everyone's actors use it).
+It has an owner, a sharing level, a status (connecting, active, expired, error, disconnected) and
+its bound **resources** (a mailbox, a calendar, a Drive folder, a Slack workspace, a webhook
+endpoint), each served by one gatekeeper facet. Settings → Integrations manages them.
+_Avoid_: connected app (that is an MCP client), account (the provider's side)
+
+**Integration host**
+The Durable Object in crm-runner, one per connection, that implements the Workshop side of the
+gatekeeper interface: it owns the connection's account, facets and hooks, runs the connect handoff,
+decides outbound actions and observations, and runs sync. D1 only mirrors its state for the UI.
+
+**Sharing level**
+How much a connection's synced mail and meetings disclose to the CRM, chosen by its owner: *full*
+(subject, participants, time and content), *metadata* (subject, participants and time) or *none*
+(don't sync). Writing into the shared CRM is the point of disclosure. A synced activity can also be
+marked **private** afterwards (only its owner sees it).
+
+**Outbound action**
+A side effect a gatekeeper submits (send an email, post to Slack, spend ZoomInfo credits). It is
+gated as risk `outbound` by its **action kind** (`email.send`, `slack.post`); under Balanced it
+waits in the Approvals inbox unless the gatekeeper marks the kind auto-approvable and an admin
+enabled it. Approving it makes the gatekeeper apply it, in order per resource.
+_Avoid_: operation (an outbound action is not in the registry)
+
+**Suggested contact**
+An external address the org has exchanged mail with at least twice that matches no person,
+shown grouped by domain in the Suggested contacts inbox for one-click add. Nothing is created
+automatically. The inbox also lists suggested **job changes** from mail (a bounce, a new signature,
+a new domain), applied with `person.changeJob` on confirmation.
+
+**Integration event**
+An inbound event for automations: a verified webhook delivery (typed, e.g. `invoice.paid`) or a sync
+event (`email.received`, `meeting.updated`). Kept 90 days; stage 5 turns them into triggers.
+
 **Principal**
 The authenticated caller of a request: `{ userId, email, name, roles }`, resolved by the identity
 adapter for every route and server function.
