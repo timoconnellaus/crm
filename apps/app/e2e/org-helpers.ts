@@ -37,7 +37,8 @@ export function rowsOf(page: Page, table: "People" | "Organisations") {
 export async function filterList(page: Page, text: string): Promise<void> {
   const builder = page.getByRole("dialog", { name: "Filter builder" });
   await pressUntil(page, "/", builder);
-  await page.keyboard.type(text);
+  await builder.getByLabel("Value").first().fill(text);
+  await expect(page).toHaveURL(/filter=/);
   await page.keyboard.press("Escape");
   await expect(builder).toBeHidden();
 }
