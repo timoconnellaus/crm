@@ -25,8 +25,11 @@ import { Route as AppPeopleIdRouteImport } from './routes/_app/people/$id'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsApprovalPolicyRouteImport } from './routes/_app/settings/approval-policy'
 import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
+import { Route as AppSettingsExtensionsRouteImport } from './routes/_app/settings/extensions'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppXObjectIndexRouteImport } from './routes/_app/x/$object/index'
+import { Route as AppXObjectIdRouteImport } from './routes/_app/x/$object/$id'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -108,6 +111,11 @@ const AppSettingsAuditRoute = AppSettingsAuditRouteImport.update({
   path: '/settings/audit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsExtensionsRoute = AppSettingsExtensionsRouteImport.update({
+  id: '/settings/extensions',
+  path: '/settings/extensions',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsUsersRoute = AppSettingsUsersRouteImport.update({
   id: '/settings/users',
   path: '/settings/users',
@@ -117,6 +125,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppXObjectIndexRoute = AppXObjectIndexRouteImport.update({
+  id: '/x/$object/',
+  path: '/x/$object/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppXObjectIdRoute = AppXObjectIdRouteImport.update({
+  id: '/x/$object/$id',
+  path: '/x/$object/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -132,11 +150,14 @@ export interface FileRoutesByFullPath {
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/settings/audit': typeof AppSettingsAuditRoute
+  '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/organisations/': typeof AppOrganisationsIndexRoute
   '/people/': typeof AppPeopleIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
+  '/x/$object/$id': typeof AppXObjectIdRoute
+  '/x/$object/': typeof AppXObjectIndexRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
@@ -151,11 +172,14 @@ export interface FileRoutesByTo {
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/settings/audit': typeof AppSettingsAuditRoute
+  '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/organisations': typeof AppOrganisationsIndexRoute
   '/people': typeof AppPeopleIndexRoute
   '/settings': typeof AppSettingsIndexRoute
+  '/x/$object/$id': typeof AppXObjectIdRoute
+  '/x/$object': typeof AppXObjectIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -172,11 +196,14 @@ export interface FileRoutesById {
   '/_app/people/$id': typeof AppPeopleIdRoute
   '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/_app/settings/audit': typeof AppSettingsAuditRoute
+  '/_app/settings/extensions': typeof AppSettingsExtensionsRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/organisations/': typeof AppOrganisationsIndexRoute
   '/_app/people/': typeof AppPeopleIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
+  '/_app/x/$object/$id': typeof AppXObjectIdRoute
+  '/_app/x/$object/': typeof AppXObjectIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -193,11 +220,14 @@ export interface FileRouteTypes {
     | '/people/$id'
     | '/settings/approval-policy'
     | '/settings/audit'
+    | '/settings/extensions'
     | '/settings/users'
     | '/api/auth/$'
     | '/organisations/'
     | '/people/'
     | '/settings/'
+    | '/x/$object/$id'
+    | '/x/$object/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/sign-in'
@@ -212,11 +242,14 @@ export interface FileRouteTypes {
     | '/people/$id'
     | '/settings/approval-policy'
     | '/settings/audit'
+    | '/settings/extensions'
     | '/settings/users'
     | '/api/auth/$'
     | '/organisations'
     | '/people'
     | '/settings'
+    | '/x/$object/$id'
+    | '/x/$object'
   id:
     | '__root__'
     | '/_app'
@@ -232,11 +265,14 @@ export interface FileRouteTypes {
     | '/_app/people/$id'
     | '/_app/settings/approval-policy'
     | '/_app/settings/audit'
+    | '/_app/settings/extensions'
     | '/_app/settings/users'
     | '/api/auth/$'
     | '/_app/organisations/'
     | '/_app/people/'
     | '/_app/settings/'
+    | '/_app/x/$object/$id'
+    | '/_app/x/$object/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -360,6 +396,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsAuditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/extensions': {
+      id: '/_app/settings/extensions'
+      path: '/settings/extensions'
+      fullPath: '/settings/extensions'
+      preLoaderRoute: typeof AppSettingsExtensionsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/users': {
       id: '/_app/settings/users'
       path: '/settings/users'
@@ -373,6 +416,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/x/$object/': {
+      id: '/_app/x/$object/'
+      path: '/x/$object'
+      fullPath: '/x/$object/'
+      preLoaderRoute: typeof AppXObjectIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/x/$object/$id': {
+      id: '/_app/x/$object/$id'
+      path: '/x/$object/$id'
+      fullPath: '/x/$object/$id'
+      preLoaderRoute: typeof AppXObjectIdRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
@@ -388,10 +445,13 @@ interface AppRouteChildren {
   AppPeopleIdRoute: typeof AppPeopleIdRoute
   AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
+  AppSettingsExtensionsRoute: typeof AppSettingsExtensionsRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
   AppOrganisationsIndexRoute: typeof AppOrganisationsIndexRoute
   AppPeopleIndexRoute: typeof AppPeopleIndexRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+  AppXObjectIdRoute: typeof AppXObjectIdRoute
+  AppXObjectIndexRoute: typeof AppXObjectIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -405,10 +465,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppPeopleIdRoute: AppPeopleIdRoute,
   AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
   AppSettingsAuditRoute: AppSettingsAuditRoute,
+  AppSettingsExtensionsRoute: AppSettingsExtensionsRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,
   AppOrganisationsIndexRoute: AppOrganisationsIndexRoute,
   AppPeopleIndexRoute: AppPeopleIndexRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
+  AppXObjectIdRoute: AppXObjectIdRoute,
+  AppXObjectIndexRoute: AppXObjectIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

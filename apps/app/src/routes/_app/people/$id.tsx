@@ -35,6 +35,7 @@ import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { useAppCommands } from "#/components/app-commands";
 import { EmptyState } from "#/components/empty-state";
+import { ExtensionFieldsCards } from "#/components/fields/fields-card";
 import { useMergeAction } from "#/components/merge/merge-action";
 import { PersonDetailsCard } from "#/components/people/person-details-card";
 import {
@@ -299,6 +300,7 @@ function PersonRecord({
         side={
           <>
             <PersonDetailsCard person={person} readOnly={deleted} />
+            <ExtensionFieldsCards object="person" id={person.id} readOnly={deleted} />
             <AffiliationsCard
               object="person"
               affiliations={affiliations.data}

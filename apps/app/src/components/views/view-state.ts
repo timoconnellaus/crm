@@ -79,6 +79,21 @@ export function parseViewSearch(
   return search;
 }
 
+/**
+ * `validateSearch` for a list whose object is only known after loading (extension objects):
+ * keeps well-formed params; sort and columns are checked against the object by
+ * `searchToViewState` once it has loaded.
+ */
+export function parseViewSearchLoose(raw: Record<string, unknown>): ViewSearch {
+  const search: ViewSearch = {};
+  const filter = parseFilter(raw.filter);
+  if (filter) search.filter = filter;
+  if (typeof raw.sort === "string" && raw.sort.length <= 100) search.sort = raw.sort;
+  if (typeof raw.cols === "string" && raw.cols.length <= 2000) search.cols = raw.cols;
+  if (typeof raw.view === "string" && raw.view.length <= 100) search.view = raw.view;
+  return search;
+}
+
 export function searchToViewState(
   object: ObjectDefinition,
   search: ViewSearch,

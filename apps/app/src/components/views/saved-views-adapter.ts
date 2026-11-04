@@ -4,7 +4,8 @@ import type { Filter, Sort } from "@crm/core/client";
 import { callOp } from "#/lib/operations";
 
 /** Objects a saved view can list. */
-export type SavedViewObject = "person" | "organisation" | "activity" | "task";
+/** Objects a saved view can list: core objects and extension objects (`<extension>.<object>`). */
+export type SavedViewObject = "person" | "organisation" | "activity" | "task" | (string & {});
 
 /**
  * A saved view: `{ object, filter, sort, columns }`, the stage-1 form of a stage-4 `table` view

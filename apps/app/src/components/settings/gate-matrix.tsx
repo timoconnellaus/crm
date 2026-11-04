@@ -22,6 +22,7 @@ export const ACTOR_LABELS: Record<Actor | "*", string> = {
   assistant: "In-app AI assistant",
   mcp: "External AI (MCP)",
   automation: "Automations",
+  extension: "Extensions (their own code)",
   "*": "Everyone",
 };
 

@@ -5,6 +5,7 @@
 // with a different actor and origin.
 import type { Principal } from "@crm/auth";
 import {
+  type ExtensionHost,
   type InvocationContext,
   invokeByName,
   parseFloor,
@@ -13,11 +14,44 @@ import {
   toOperationError,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
+import { runner } from "./runner.ts";
 
 export interface OperationsEnv {
   DB: D1Database;
   /** Deploy-time approval floor (ADR 0011), JSON. Empty means none. */
   APPROVAL_FLOOR?: string;
+  /** crm-runner: the extension host (ADR 0025). */
+  RUNNER?: Fetcher;
+}
+
+/**
+ * The extension runtime as seen from crm-app: crm-runner's RPC over the RUNNER service binding,
+ * which forwards to the extension workspace Durable Object.
+ */
+export function extensionHostFor(env: OperationsEnv): ExtensionHost | undefined {
+  return env.RUNNER ? (runner({ RUNNER: env.RUNNER }) as unknown as ExtensionHost) : undefined;
+}
+
+let shippedInstall: Promise<void> | null = null;
+
+/**
+ * Installs the shipped extensions bundled with this release once per isolate, through
+ * `extension.install` in crm-runner (ADR 0025). A failure is logged and retried on a later call;
+ * operations still run meanwhile.
+ */
+export function ensureShippedExtensions(env: OperationsEnv): Promise<void> {
+  if (!env.RUNNER) return Promise.resolve();
+  shippedInstall ??= runner({ RUNNER: env.RUNNER })
+    .installShipped()
+    .then((results) => {
+      const failed = results.filter((r) => r.outcome === "failed");
+      if (failed.length) console.error("shipped extensions failed to install", failed);
+    })
+    .catch((error: unknown) => {
+      console.error("could not install shipped extensions", error);
+      shippedInstall = null;
+    });
+  return shippedInstall;
 }
 
 /** Plain JSON: what operation outputs are once serialised. */
@@ -61,13 +95,16 @@ export async function runOperation(
     return { ok: false, error: { code: "forbidden", message: "Sign in to continue" } };
   }
   try {
+    await ensureShippedExtensions(env);
     const db = createCrmDb(env.DB);
+    const extensionHost = extensionHostFor(env);
     const ctx: InvocationContext = {
       actor: "human",
       user: await resolveActingUser(db, principal),
       origin: { surface: "ui" },
       db,
       floor: parseFloor(env.APPROVAL_FLOOR),
+      ...(extensionHost ? { extensionHost } : {}),
     };
     return toWire({ ok: true, data: await invokeByName(call.name, call.input, ctx) });
   } catch (error) {

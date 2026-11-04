@@ -1,7 +1,13 @@
 // Settings home: links to each settings section.
 import { Card, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRightIcon, ScrollTextIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  PuzzleIcon,
+  ScrollTextIcon,
+  ShieldCheckIcon,
+  UsersIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 export const Route = createFileRoute("/_app/settings/")({ component: SettingsPage });
@@ -15,7 +21,7 @@ function Section({
   icon: ReactNode;
   title: string;
   description: string;
-  to?: "/settings/approval-policy" | "/settings/users" | "/settings/audit";
+  to?: "/settings/approval-policy" | "/settings/users" | "/settings/audit" | "/settings/extensions";
 }) {
   const body = (
     <Card className="h-full transition-colors hover:bg-accent/50">
@@ -68,6 +74,12 @@ function SettingsPage() {
               : "See who can sign in and their roles."
           }
           to="/settings/users"
+        />
+        <Section
+          icon={<PuzzleIcon className="size-5" />}
+          title="Extensions"
+          description="Installed extensions, their permissions, runs and versions."
+          to="/settings/extensions"
         />
         {isAdmin && (
           <Section

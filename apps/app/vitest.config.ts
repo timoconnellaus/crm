@@ -11,6 +11,7 @@ const RUNNER_STUB = `
 import { WorkerEntrypoint } from "cloudflare:workers";
 export default class extends WorkerEntrypoint {
   async ping() { return { ok: true, worker: "crm-runner", time: new Date().toISOString() }; }
+  async installShipped() { return []; }
 }`;
 
 export default mergeConfig(
