@@ -281,8 +281,12 @@ function SourceStep({
       <CardHeader>
         <CardTitle className="text-base">What are you importing?</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-5">
-        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Import type">
+      <CardContent className="grid grid-cols-1 gap-5">
+        <div
+          className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+          role="radiogroup"
+          aria-label="Import type"
+        >
           {(Object.keys(OBJECTS) as ImportObject[]).map((key) => (
             // biome-ignore lint/a11y/useSemanticElements: a card-style radio.
             <button
@@ -306,7 +310,7 @@ function SourceStep({
           ))}
         </div>
 
-        <div className="grid gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2">
           <Label htmlFor="import-file">Upload a CSV file</Label>
           <label
             htmlFor="import-file"
@@ -326,7 +330,7 @@ function SourceStep({
           />
         </div>
 
-        <div className="grid gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2">
           <Label htmlFor="import-paste">Or paste CSV text</Label>
           <Textarea
             id="import-paste"
@@ -398,8 +402,8 @@ function MappingStep({
           Suggestions come from the column headers. Ignored columns are not imported.
         </p>
       </CardHeader>
-      <CardContent className="grid gap-4">
-        <ul className="grid gap-2" aria-label="Column mapping">
+      <CardContent className="grid grid-cols-1 gap-4">
+        <ul className="grid grid-cols-1 gap-2" aria-label="Column mapping">
           {plan.headers.map((column) => {
             const index = header.indexOf(column);
             const examples = sample
@@ -529,7 +533,7 @@ function ReviewStep({
       <CardHeader>
         <CardTitle className="text-base">Review {plan.counts.total} rows</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="grid grid-cols-1 gap-4">
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="import-counts">
           <Stat label="Create" value={counts.create} />
           <Stat label="Update" value={counts.update} />
@@ -757,7 +761,7 @@ function ResultStep({
           Import complete
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="grid grid-cols-1 gap-4">
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Stat label="Created" value={counts.create} />
           <Stat label="Updated" value={counts.update} />
