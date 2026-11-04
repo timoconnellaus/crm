@@ -16,7 +16,8 @@ import { callOp } from "#/lib/operations";
 import { opKey, useOp, useOpMutation } from "#/lib/query";
 
 /** The kinds of record these panels belong to. */
-export type RecordObject = "person" | "organisation";
+/** person, organisation, or an extension object (`<extension>.<object>`). */
+export type RecordObject = "person" | "organisation" | (string & {});
 
 /** A record the panels belong to. */
 export interface RecordRef {
@@ -286,7 +287,7 @@ export interface HistoryEntry {
   at: string;
   action: "create" | "update" | "delete" | "restore" | "erase" | "merge";
   operation: string;
-  actor: "human" | "assistant" | "mcp" | "automation";
+  actor: "human" | "assistant" | "mcp" | "automation" | "extension";
   userName: string | null;
   diff: FieldDiff;
 }

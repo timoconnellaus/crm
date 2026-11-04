@@ -34,6 +34,7 @@ const ACTOR_LABEL: Record<HistoryEntry["actor"], string> = {
   assistant: "AI assistant",
   mcp: "MCP client",
   automation: "Automation",
+  extension: "Extension",
 };
 
 /** One value of a diff as display text (lists of emails/phones show their main value). */

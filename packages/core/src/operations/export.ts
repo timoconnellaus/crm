@@ -8,12 +8,14 @@ import { compileFilter, filterSchema } from "../filter.ts";
 import { resolveSort, sortSchema } from "../list.ts";
 import { defineOperation } from "../operation.ts";
 import { toCsv } from "./import.ts";
+import { viewColumnOf } from "./record.ts";
 
 export const EXPORT_OBJECTS = ["person", "organisation", "task", "activity"] as const;
-type ExportObject = (typeof EXPORT_OBJECTS)[number];
+/** A core object above, or an extension object (`<extension>.<object>`). */
+type ExportObject = string;
 
 /** Multi-valued fields exported from a JSON-array column of the object's view. */
-const JSON_COLUMNS: Partial<Record<ExportObject, Record<string, string>>> = {
+const JSON_COLUMNS: Partial<Record<string, Record<string, string>>> = {
   person: { emails: "emails", tags: "tags" },
   organisation: { domains: "domains", tags: "tags" },
 };
@@ -27,7 +29,7 @@ export function exportableFields(
   const json = JSON_COLUMNS[object] ?? {};
   return definition.fields.flatMap((f): { name: string; column: string; multi: boolean }[] => {
     if (f.column && f.type !== "json") return [{ name: f.name, column: f.column, multi: false }];
-    const column = json[f.name];
+    const column = json[f.name] ?? (f.extension ? viewColumnOf(f) : null);
     return column ? [{ name: f.name, column, multi: true }] : [];
   });
 }
@@ -43,7 +45,11 @@ export const exportCsv = defineOperation({
     "Headers are field names, so people and organisation exports re-import with " +
     `import.csv.*. At most ${EXPORT_LIMITS.maxRows} rows. Returns the CSV text. Read-only.`,
   input: z.object({
-    object: z.enum(EXPORT_OBJECTS),
+    object: z
+      .string()
+      .min(1)
+      .max(80)
+      .describe("person, organisation, task, activity or an extension object"),
     filter: filterSchema.nullish(),
     sort: sortSchema.nullish(),
     columns: z.array(z.string().min(1).max(64)).min(1).max(100).optional(),

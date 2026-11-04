@@ -10,3 +10,8 @@ Status: accepted, 2026-11-04 (stage 3 interview).
 - After 3 consecutive failures an extension is **quarantined**: disabled, admins notified, and rollback to last-known-good offered.
 - **Approvals** show the git diff, a host-computed impact summary (schema, permissions, host modules, triggers), the `check` result, and an AI-written summary labelled as such.
 - **Code Mode MCP tool:** scripts run as the connected user's `mcp` actor, under the same gate and simulation.
+
+## Note, 2026-11-04 (stage 3a build)
+The principal (`core_user` kind `extension`), the `extension` actor and its gate row, the workspace
+DO, host-module wiring, run history, quarantine and the `installExtension` path that stage 3b's
+approve will call are described in [ADR 0040](0040-extension-runtime-build.md).

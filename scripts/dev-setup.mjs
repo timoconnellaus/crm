@@ -24,6 +24,10 @@ for (const app of ["apps/app", "apps/runner"]) {
   console.log(`created ${app}/.dev.vars`);
 }
 
+// crm-runner bundles the SDK and the shipped extensions as source at build time (ADR 0025); vite
+// dev loads it as an auxiliary Worker, so the bundle must exist first.
+execFileSync("node", [join(root, "apps/runner/scripts/bundle.mjs")], { stdio: "inherit" });
+
 // The app and the runner share one local D1 database (same database_name, same persist dir).
 execFileSync("pnpm", ["exec", "wrangler", "d1", "migrations", "apply", "DB", "--local"], {
   cwd: join(root, "apps/app"),

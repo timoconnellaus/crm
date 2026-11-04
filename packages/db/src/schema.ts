@@ -28,7 +28,11 @@ export interface CoreUserTable {
   updated_at: DateColumn;
   /** CRM role (migration 0002). Defaults to member; the first user becomes admin. */
   role: ColumnType<UserRole, UserRole | undefined, UserRole>;
+  /** `extension` rows are extension principals (migration 0020); they never sign in. */
+  kind: ColumnType<UserKind, UserKind | undefined, UserKind>;
 }
+
+export type UserKind = "human" | "extension";
 
 export interface CoreSessionTable {
   id: string;
@@ -72,7 +76,7 @@ export type UserRole = "admin" | "member" | "viewer";
 export type ActivityType = "note" | "email" | "call" | "meeting" | "system";
 export type ActivityAuthorActor = "human" | "assistant" | "mcp" | "automation" | "system";
 export type TaskStatus = "open" | "done";
-export type AuditActor = "human" | "assistant" | "mcp" | "automation";
+export type AuditActor = "human" | "assistant" | "mcp" | "automation" | "extension";
 export type AuditRisk =
   | "read"
   | "write"
@@ -427,6 +431,88 @@ export interface CrmRecordTagsView {
   tag: string;
 }
 
+export type ExtensionSource = "shipped" | "runtime";
+export type ExtensionStatus = "active" | "disabled" | "quarantined";
+
+/** Installed extensions (migration 0020). */
+export interface CoreExtensionsTable {
+  id: string;
+  source: ExtensionSource;
+  status: ExtensionStatus;
+  status_reason: string | null;
+  version: string;
+  commit_oid: string;
+  last_good_commit: string | null;
+  manifest: string;
+  failure_count: ColumnType<number, number | undefined, number>;
+  user_id: string;
+  installed_at: string;
+  installed_by: string | null;
+  updated_at: string;
+}
+
+export interface CoreExtensionVersionsTable {
+  extension_id: string;
+  commit_oid: string;
+  version: string;
+  manifest: string;
+  installed_at: string;
+  installed_by: string | null;
+}
+
+export interface CoreExtensionRunsTable {
+  id: string;
+  extension_id: string;
+  commit_oid: string | null;
+  kind: "tool" | "manifest" | "automation";
+  name: string | null;
+  actor: string | null;
+  user_id: string | null;
+  started_at: string;
+  duration_ms: number;
+  outcome: "ok" | "error" | "timeout";
+  error: string | null;
+  logs: ColumnType<string, string | undefined, string>;
+  operations: ColumnType<string, string | undefined, string>;
+}
+
+export interface CoreExtensionKvTable {
+  extension_id: string;
+  key: string;
+  value: string;
+  updated_at: string;
+}
+
+export type ExtensionSchemaStatus = "active" | "hidden";
+
+export interface CoreExtensionObjectsTable {
+  name: string;
+  extension_id: string;
+  local_name: string;
+  table_name: string;
+  status: ExtensionSchemaStatus;
+  hidden_at: string | null;
+  definition: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CoreExtensionFieldsTable {
+  id: Generated<number>;
+  extension_id: string;
+  object: string;
+  local_name: string;
+  name: string;
+  table_name: string;
+  column_name: string | null;
+  type: string;
+  definition: string;
+  status: ExtensionSchemaStatus;
+  hidden_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 /**
  * Every core table and crm_* view, keyed by name. Extension (`x_*`) tables are never listed here.
  */
@@ -550,6 +636,12 @@ export interface CoreDatabase {
   core_rate_limit: CoreRateLimitTable;
   core_search_docs: CoreSearchDocsTable;
   core_search: CoreSearchTable;
+  core_extensions: CoreExtensionsTable;
+  core_extension_versions: CoreExtensionVersionsTable;
+  core_extension_runs: CoreExtensionRunsTable;
+  core_extension_kv: CoreExtensionKvTable;
+  core_extension_objects: CoreExtensionObjectsTable;
+  core_extension_fields: CoreExtensionFieldsTable;
   crm_users: CrmUsersView;
   crm_people: CrmPeopleView;
   crm_organisations: CrmOrganisationsView;

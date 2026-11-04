@@ -42,6 +42,27 @@ export interface FieldDefinition {
   sortable: boolean;
   /** `timeline`: changes to this field post a `system` activity on the record. */
   track?: "timeline";
+  /** Extension fields: the extension that declared it (ADR 0023). */
+  extension?: string;
+  /** Extension fields: the SDK field type (text, currency, formula, …); see field-types.ts. */
+  fieldType?: string;
+  /** Extension fields: the type's settings (select choices, relation target, currency, …). */
+  options?: ExtensionFieldOptions;
+  /** Computed (formula) or system-maintained: never written by record operations. */
+  readOnly?: boolean;
+  required?: boolean;
+  description?: string;
+}
+
+/** Type-specific settings of an extension field, as validation and the UI need them. */
+export interface ExtensionFieldOptions {
+  choices?: readonly { value: string; label: string; color?: string }[];
+  to?: string;
+  many?: boolean;
+  currency?: string;
+  /** Formula source (shown in the UI tooltip) and its result type. */
+  expression?: string;
+  resultType?: string;
 }
 
 export interface ObjectDefinition {
@@ -53,6 +74,13 @@ export interface ObjectDefinition {
   fields: readonly FieldDefinition[];
   /** Default sort for list operations. */
   defaultSort: { field: string; direction: "asc" | "desc" };
+  /** Extension objects (ADR 0023): the declaring extension and display metadata. */
+  extension?: string;
+  plural?: string;
+  icon?: string;
+  /** Field shown as the record's title. */
+  titleField?: string;
+  description?: string;
 }
 
 export function defineObject<const O extends ObjectDefinition>(object: O): O {
