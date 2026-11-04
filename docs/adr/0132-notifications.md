@@ -67,11 +67,20 @@ while nobody is looking. This ADR records how it is built.
 - Rail auto-pauses send `automation.paused` to the admins, deduped per pause.
 
 ### Channels and preferences (stage 6b)
-- `NotificationChannel { id, deliver(record) }` and `routeNotification(type, preferences)` are the
-  routing seam. In-app is the row itself and is always on. Stage 6b registers `email` and `slack`
-  channels that deliver through gatekeepers after commit, and stores per-user
-  `NotificationPreferences` (type → channels); `routeNotification` already merges them with
-  in-app. Nothing in this stage delivers externally (ADR 0007).
+- `NotificationChannel { id, deliver(record, context) }` and `routeNotification(type,
+  preferences)` are the routing seam. In-app is the row itself and is always on. Stage 6b stores
+  per-user `NotificationPreferences` (type → channels); `routeNotification` already merges them
+  with in-app. Nothing in this stage delivers externally (ADR 0007).
+- The 6b delivery path (stage 6a built the gatekeepers, ADR 0110 and 0114): after the batch that
+  wrote the rows commits, the host routes each new row and, for every external channel chosen,
+  calls `channel.deliver(record, context)` off the request path (`ctx.waitUntil` or the
+  automation queue). `NotificationDeliveryContext` carries the recipient (user id, email, name),
+  the absolute link URL, and `callIntegration`, which runs `integration.call` as a **system
+  caller** on the org connection of the `email-send` gatekeeper (outbound kind `email.internal`)
+  or the `slack-post` gatekeeper (kind `slack.dm`). Each send is an outbound action in the
+  approval queue like any other (ADR 0111); an admin can auto-approve these fixed-template internal
+  notices with `outbound.setAutoApprove` (cost audit U8). A failed or pending external delivery
+  never affects the in-app row.
 
 ### Retention
 - Notifications are kept 90 days, read or not: `purgeNotifications(db, now)` deletes the oldest
