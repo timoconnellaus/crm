@@ -3,6 +3,7 @@
 // and the Activity page (the feed across records, with links shown).
 import { Button } from "@crm/ui/components/button";
 import { Card, CardContent } from "@crm/ui/components/card";
+import { Checkbox } from "@crm/ui/components/checkbox";
 import { Input } from "@crm/ui/components/input";
 import { Label } from "@crm/ui/components/label";
 import {
@@ -36,6 +37,7 @@ import {
   type ActivityType,
   type HumanActivityType,
   type NewActivity,
+  type RecordRef,
   type TimelineItem,
 } from "./adapters.ts";
 
@@ -329,9 +331,17 @@ export function TimelineFilter({ value, onChange, className }: TimelineFilterPro
 // --- Composer ---------------------------------------------------------------------------------
 
 export interface ActivityComposerProps {
-  /** Logs the activity; null disables the composer (e.g. read-only users). */
-  onSubmit: ((activity: NewActivity) => Promise<void>) | null;
+  /**
+   * Logs the activity, also linking it to `also` (the records the user kept ticked); null
+   * disables the composer (e.g. read-only users).
+   */
+  onSubmit: ((activity: NewActivity, also: RecordRef[]) => Promise<void>) | null;
   isPending?: boolean;
+  /**
+   * Another record the activity can go on as well, offered as a ticked checkbox: a person's
+   * current organisation, so a note about them shows on both timelines.
+   */
+  alsoOn?: (RecordRef & { title: string }) | null;
 }
 
 /** A `datetime-local` value to an ISO timestamp (undefined when empty or invalid). */
@@ -438,8 +448,9 @@ export function draftToActivity(
   }
 }
 
-export function ActivityComposer({ onSubmit, isPending }: ActivityComposerProps) {
+export function ActivityComposer({ onSubmit, isPending, alsoOn }: ActivityComposerProps) {
   const [type, setType] = useState<HumanActivityType>("note");
+  const [linkAlso, setLinkAlso] = useState(true);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
@@ -458,7 +469,10 @@ export function ActivityComposer({ onSubmit, isPending }: ActivityComposerProps)
       return;
     }
     try {
-      await onSubmit(activity);
+      await onSubmit(
+        activity,
+        alsoOn && linkAlso ? [{ object: alsoOn.object, id: alsoOn.id }] : [],
+      );
       setDraft(EMPTY_DRAFT);
       toast.success(`${ACTIVITY_TYPE_LABELS[type]} logged`);
     } catch (error) {
@@ -614,6 +628,16 @@ export function ActivityComposer({ onSubmit, isPending }: ActivityComposerProps)
                 />,
               )}
             </div>
+          )}
+          {alsoOn && (
+            <Label className="min-w-0 text-xs font-normal text-muted-foreground">
+              <Checkbox
+                checked={linkAlso}
+                onCheckedChange={(checked) => setLinkAlso(checked === true)}
+                disabled={disabled}
+              />
+              <span className="truncate">Also on {alsoOn.title}</span>
+            </Label>
           )}
           <div className="flex items-center gap-2">
             <Select

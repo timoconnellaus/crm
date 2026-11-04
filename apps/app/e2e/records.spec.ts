@@ -45,6 +45,55 @@ test("log a note and see it on the person's timeline", async ({ page }) => {
   await expectNoHorizontalScroll(page);
 });
 
+test("a note on a person shows on their organisation's timeline too", async ({ page }) => {
+  const token = unique("both");
+  await createPerson(page, { given: "Katherine", family: `Johnson${token}` });
+
+  // Affiliate them with a new organisation.
+  const card = page.getByTestId("affiliations-card");
+  await card.getByRole("button", { name: "Add organisation" }).click();
+  const add = page.getByRole("form", { name: "Add organisation" });
+  await add.getByLabel("Organisation").fill(`Flight Research${token}`);
+  await add.getByRole("button", { name: `Create “Flight Research${token}”` }).click();
+  await add.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(add).toBeHidden();
+
+  // The composer offers the current organisation, ticked.
+  const composer = page.getByRole("form", { name: "Add activity" });
+  const also = composer.getByRole("checkbox", { name: `Also on Flight Research${token}` });
+  await expect(also).toBeChecked();
+  await composer.getByLabel("Activity text").fill(`Trajectory review ${token}`);
+  await composer.getByRole("button", { name: "Add note" }).click();
+  await expect(timeline(page)).toContainText(`Trajectory review ${token}`);
+
+  // The organisation's Timeline tab shows it, linked back to the person.
+  await card.getByRole("link", { name: `Flight Research${token}` }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Flight Research${token}`);
+  await page.getByRole("tab", { name: "Timeline" }).click();
+  await expect(timeline(page)).toContainText(`Trajectory review ${token}`);
+
+  // Its Tasks tab adds and completes a task about the organisation.
+  await page.getByRole("tab", { name: /Tasks/ }).click();
+  await page.getByRole("button", { name: "Add task" }).first().click();
+  const dialog = page.getByRole("form", { name: "New task" });
+  await dialog.getByLabel("Title").fill(`Renew contract ${token}`);
+  await dialog.getByRole("button", { name: "Add task" }).click();
+  await expect(dialog).toBeHidden();
+  const tasks = page.getByRole("tabpanel");
+  const done = tasks.getByRole("checkbox", { name: `Done: Renew contract ${token}` });
+  await done.click();
+  await expect(done).toBeChecked();
+  await page.getByRole("tab", { name: "Timeline" }).click();
+  await expect(timeline(page)).toContainText(`Task completed: Renew contract ${token}`);
+
+  // Its History tab shows the create.
+  await page.getByRole("tab", { name: "History" }).click();
+  const history = page.getByRole("list", { name: "Change history" });
+  await expect(history.locator("li").filter({ hasText: "Created" })).toHaveCount(1);
+  await expect(history).toContainText(`Flight Research${token}`);
+  await expectNoHorizontalScroll(page);
+});
+
 test("change job and see it on the person's timeline", async ({ page }) => {
   const token = unique("job");
   await createPerson(page, { given: "Dorothy", family: `Vaughan${token}` });

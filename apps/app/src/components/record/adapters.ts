@@ -133,16 +133,22 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 /** What the composer submits: `activity.log`'s input without links (the record is the link). */
 export type NewActivity = DistributiveOmit<CoreInput<"activity.log">, "links">;
 
-/** Logs a note, email, call or meeting on the record's timeline (`activity.log`). */
+/**
+ * Logs a note, email, call or meeting on the record's timeline (`activity.log`), and on the
+ * timelines of any `also` records (e.g. the person's organisation).
+ */
 export function useLogActivity(
   object: RecordObject,
   id: string,
-): { log: (activity: NewActivity) => Promise<void>; isPending: boolean } {
+): { log: (activity: NewActivity, also?: RecordRef[]) => Promise<void>; isPending: boolean } {
   const mutation = useOpMutation("activity.log");
   const { mutateAsync } = mutation;
   const log = useCallback(
-    async (activity: NewActivity) => {
-      await mutateAsync({ ...activity, links: [{ object, id }] } as CoreInput<"activity.log">);
+    async (activity: NewActivity, also: RecordRef[] = []) => {
+      await mutateAsync({
+        ...activity,
+        links: [{ object, id }, ...also.filter((r) => r.id !== id)],
+      } as CoreInput<"activity.log">);
     },
     [mutateAsync, object, id],
   );

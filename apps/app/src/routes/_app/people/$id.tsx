@@ -150,10 +150,24 @@ function PersonRecord({
     : () =>
         create("task", { link: { object: "person", id: person.id, title: person.displayName } });
   const primary = affiliations.data.find((a) => a.primary) ?? null;
+  const currentOrg =
+    primary?.current && primary.organisationName
+      ? {
+          object: "organisation" as const,
+          id: primary.organisationId,
+          title: primary.organisationName,
+        }
+      : null;
   const toggle = deleted ? null : taskActions.setDone;
   const timelinePanel = (limit?: number) => (
     <>
-      {!deleted && <ActivityComposer onSubmit={composer.log} isPending={composer.isPending} />}
+      {!deleted && (
+        <ActivityComposer
+          onSubmit={composer.log}
+          isPending={composer.isPending}
+          alsoOn={currentOrg}
+        />
+      )}
       <TimelineFilter value={types} onChange={setTypes} />
       <Timeline
         items={timeline.data}

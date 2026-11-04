@@ -19,6 +19,12 @@ test("merge two people, keeping activities, with the loser in Trash", async ({ p
   await page.getByRole("option").nth(1).click();
   await form.getByRole("button", { name: "Save" }).click();
   await expect(form).toBeHidden();
+  // And a note, to find on the survivor's timeline after the merge.
+  const note = `Difference engine notes ${token}`;
+  const composer = page.getByRole("form", { name: "Add activity" });
+  await composer.getByLabel("Activity text").fill(note);
+  await composer.getByRole("button", { name: "Add note" }).click();
+  await expect(page.getByRole("list", { name: "Timeline" })).toContainText(note);
 
   const survivorId = await createPerson(page, {
     given: "Charlie",
@@ -41,7 +47,7 @@ test("merge two people, keeping activities, with the loser in Trash", async ({ p
     "true",
   );
   const preview = dialog.getByTestId("merge-preview");
-  await expect(preview).toContainText("1 activity");
+  await expect(preview).toContainText("2 activities");
   await expect(preview).toContainText(`charles-${token}@example.com`);
   await expectNoHorizontalScroll(page);
 
@@ -58,8 +64,14 @@ test("merge two people, keeping activities, with the loser in Trash", async ({ p
   await expect(details).toContainText(`cb-${token}@example.com`);
   await expect(details).toContainText("London");
 
-  // Activities were preserved: the survivor now carries the duplicate's activity plus the merge
-  // event (seen in the move preview of a merge started from it).
+  // The duplicate's note moved onto the survivor's Timeline tab, next to the merge event.
+  await page.getByRole("tab", { name: "Timeline" }).click();
+  await expect(page).toHaveURL(/tab=timeline/);
+  const survivorTimeline = page.getByRole("list", { name: "Timeline" });
+  await expect(survivorTimeline).toContainText(note);
+
+  // Activities were preserved: the survivor now carries the duplicate's two activities plus the
+  // merge event (seen in the move preview of a merge started from it).
   const third = await createPerson(page, { given: "Ada", family: `Byron${token}` });
   await open(page, `/people/${third}`);
   await page.getByRole("button", { name: "More actions" }).click();
@@ -68,7 +80,7 @@ test("merge two people, keeping activities, with the loser in Trash", async ({ p
     .getByRole("combobox", { name: "Search for the duplicate person" })
     .fill(`cb-${token}`);
   await dialog.getByRole("option", { name: new RegExp(`Charles Babbage${token}`) }).click();
-  await expect(dialog.getByTestId("merge-preview")).toContainText("2 activities");
+  await expect(dialog.getByTestId("merge-preview")).toContainText("3 activities");
   await dialog.getByRole("button", { name: "Cancel" }).click();
 
   // The loser is in Trash and can be restored.
