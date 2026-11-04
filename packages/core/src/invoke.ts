@@ -26,7 +26,10 @@ export function createInvoker<Ops extends readonly AnyOperation[]>(
   ): Promise<unknown> => {
     const op = registry.get(name);
     if (!op) throw new UnknownOperationError(name);
-    return invokeOperation(op, input, ctx);
+    return invokeOperation(op, input, {
+      resolveOperation: (other: string) => registry.get(other),
+      ...ctx,
+    });
   };
   const invoke = <N extends keyof Map & string>(
     name: N,

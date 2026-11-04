@@ -7,7 +7,8 @@ export type OperationErrorCode =
   | "invalid_output"
   | "forbidden"
   | "denied"
-  | "review_not_supported"
+  | "pending_approval"
+  | "rate_limited"
   | "not_found"
   | "conflict"
   | "config"
@@ -69,14 +70,41 @@ export class GateDeniedError extends OperationError {
   }
 }
 
+/** What a queued call returns instead of its output (ADR 0022). */
+export interface PendingApproval {
+  status: "pending_approval";
+  changeSetId: string;
+  actionId: string;
+  operation: string;
+  /** Provisional ids of records the action would create (`per_pending_…`). */
+  provisionalIds: string[];
+  /** Earlier pending actions this one depends on. */
+  dependsOn: string[];
+  expiresAt: string;
+  /** What the output would be once applied (ids are provisional), when it can be simulated. */
+  simulated: unknown;
+  message: string;
+}
+
 /**
- * The gate routed the call to review. Stage 1 has no approval queue, so it is refused with this
- * typed error; stage 2 replaces it with a pending, simulated result.
+ * The gate routed the call to review: it was recorded as a pending action in a change set and
+ * has NOT been applied. Adapters that can show a pending result (MCP) catch this and return
+ * `details` (a PendingApproval) as the call's result; typed callers see an error.
  */
-export class ReviewNotYetSupportedError extends OperationError {
-  override name = "ReviewNotYetSupportedError";
+export class PendingApprovalError extends OperationError {
+  override name = "PendingApprovalError";
+  readonly pending: PendingApproval;
+  constructor(pending: PendingApproval) {
+    super("pending_approval", pending.message, pending);
+    this.pending = pending;
+  }
+}
+
+/** Too many calls for this token in the current window. */
+export class RateLimitedError extends OperationError {
+  override name = "RateLimitedError";
   constructor(message: string, details?: unknown) {
-    super("review_not_supported", message, details);
+    super("rate_limited", message, details);
   }
 }
 

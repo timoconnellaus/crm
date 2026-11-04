@@ -451,6 +451,7 @@ export const organisationCreate = defineOperation({
   output: organisationSchema,
   permission: "records:write",
   risk: "write",
+  mcp: { curated: true },
   async handler(input, ctx) {
     const domains = normaliseDomains(input.domains ?? []);
     const addresses = normaliseAddresses(input.addresses ?? []);
@@ -522,7 +523,7 @@ export const organisationGet = defineOperation({
   output: organisationSchema,
   permission: "records:read",
   risk: "read",
-  mcp: { idempotent: true },
+  mcp: { curated: true, idempotent: true },
   async handler(input, ctx) {
     return requireOrganisation(ctx.db, input.id, { includeDeleted: input.includeDeleted });
   },
@@ -540,6 +541,7 @@ export const organisationUpdate = defineOperation({
   output: organisationSchema,
   permission: "records:write",
   risk: "write",
+  mcp: { curated: true },
   async handler(input, ctx) {
     const before = await requireOrganisation(ctx.db, input.id);
     const after: Organisation = { ...before, updatedAt: ctx.now };

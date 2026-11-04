@@ -9,7 +9,7 @@ import type { CoreDatabase } from "@crm/db";
 import { type Kysely, type SqlBool, sql } from "kysely";
 import { z } from "zod";
 import { ValidationError } from "../errors.ts";
-import type { HandlerContext, RecordRef } from "../operation.ts";
+import type { HandlerContext, RecordRef, SimulationView } from "../operation.ts";
 import { jsonList } from "./common.ts";
 
 interface LinkTarget {
@@ -44,10 +44,15 @@ export function uniqueRefs(refs: readonly RecordRef[]): RecordRef[] {
   return [...new Map(refs.map((r) => [`${r.object}:${r.id}`, r] as const)).values()];
 }
 
-/** Fails with ValidationError unless every ref names a known object and a live record. */
+/**
+ * Fails with ValidationError unless every ref names a known object and a live record. While a
+ * call is simulated for the approval queue (`simulation`), records the session's pending actions
+ * create (provisional ids) count as live and records they delete do not.
+ */
 export async function assertLinkTargets(
   db: Kysely<CoreDatabase>,
   refs: readonly RecordRef[],
+  simulation?: SimulationView,
 ): Promise<void> {
   const byObject = new Map<string, string[]>();
   for (const ref of refs) {
@@ -55,6 +60,15 @@ export async function assertLinkTargets(
       throw new ValidationError(`Cannot link to object type "${ref.object}"`, {
         field: "links",
         allowed: Object.keys(LINK_TARGETS),
+      });
+    }
+    const sim = simulation?.record(ref.object, ref.id);
+    if (sim) {
+      if (sim.state === "live") continue;
+      throw new ValidationError(`No live ${ref.object} with id ${ref.id} (pending deletion)`, {
+        field: "links",
+        object: ref.object,
+        missing: [ref.id],
       });
     }
     byObject.set(ref.object, [...(byObject.get(ref.object) ?? []), ref.id]);
