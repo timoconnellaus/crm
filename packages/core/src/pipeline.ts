@@ -50,6 +50,7 @@ import {
   type Permission,
   roleHasPermission,
 } from "./principals.ts";
+import { resolveInputFilter } from "./relative.ts";
 import { loadApprovalPolicy } from "./settings.ts";
 
 /** Everything an adapter supplies for one call. */
@@ -416,7 +417,8 @@ export async function invokeOperation<O extends AnyOperation>(
   if (!parsed.success) {
     throw new ValidationError(`Invalid input for ${op.name}`, { issues: parsed.error.issues });
   }
-  const input: unknown = parsed.data;
+  // Relative filter values ({ $relative: "me" }, "startOfMonth", …) resolve per call (ADR 0103).
+  const input: unknown = resolveInputFilter(op.name, parsed.data, ctx.user.id, now);
   // Extension objects and fields join the field registry (ADR 0023); cheap when unchanged.
   await refreshSchemaRegistry(ctx.db.query);
   const audited = isAudited(op, ctx.actor);

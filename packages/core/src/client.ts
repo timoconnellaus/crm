@@ -37,6 +37,7 @@ export {
   ROLES,
   type Role,
 } from "./principals.ts";
+export { RELATIVE_TOKENS, type RelativeToken, relativeValue, resolveRelative } from "./relative.ts";
 export {
   type BoardViewSpec,
   boardViewSpecSchema,

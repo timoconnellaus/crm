@@ -59,18 +59,69 @@ interface DashboardRow {
 
 const isAdmin = (ctx: Pick<HandlerContext, "user">) => ctx.user.role === "admin";
 
-function overview(homeId: string | null): Dashboard {
+/** A dashboard that ships in code: the CRM's Overview, or one an active extension declares. */
+interface ShippedDashboard {
+  id: string;
+  title: string;
+  description: string;
+  spec: DashboardSpec;
+  /** Declared `home: true` by its extension (ADR 0103). */
+  home: boolean;
+}
+
+/** The id of extension `ext`'s dashboard `name`. */
+export function extensionDashboardId(ext: string, name: string): string {
+  return `dsh_x_${ext}_${name}`;
+}
+
+/**
+ * Shipped dashboards: the Overview, then those active extensions declare (ADR 0103), in extension
+ * order. A declaration that no longer parses is left out.
+ */
+export async function shippedDashboards(db: Kysely<CoreDatabase>): Promise<ShippedDashboard[]> {
+  const rows = await db
+    .selectFrom("core_extensions")
+    .select(["id", "manifest"])
+    .where("status", "=", "active")
+    .orderBy("id")
+    .execute();
+  const out: ShippedDashboard[] = [{ ...OVERVIEW_DASHBOARD, home: false }];
+  for (const row of rows) {
+    const manifest = JSON.parse(row.manifest) as {
+      dashboards?: Record<string, { title: string; description?: string; home?: boolean }>;
+    };
+    for (const [name, declared] of Object.entries(manifest.dashboards ?? {})) {
+      const spec = dashboardSpecSchema.safeParse(declared);
+      if (!spec.success) continue;
+      out.push({
+        id: extensionDashboardId(row.id, name),
+        title: declared.title,
+        description: declared.description ?? "",
+        spec: spec.data,
+        home: declared.home === true,
+      });
+    }
+  }
+  return out;
+}
+
+/** Everyone's Home until they choose one: an extension's `home` dashboard, else the Overview. */
+function defaultHomeId(shipped: readonly ShippedDashboard[]): string {
+  return shipped.find((d) => d.home)?.id ?? OVERVIEW_DASHBOARD_ID;
+}
+
+function fromShipped(d: ShippedDashboard, homeId: string | null, fallback: string): Dashboard {
   return {
-    id: OVERVIEW_DASHBOARD.id,
-    title: OVERVIEW_DASHBOARD.title,
-    description: OVERVIEW_DASHBOARD.description,
+    id: d.id,
+    title: d.title,
+    description: d.description,
     shared: true,
     ownerId: null,
     builtIn: true,
     canEdit: false,
-    isHome: homeId === null || homeId === OVERVIEW_DASHBOARD_ID,
-    filters: OVERVIEW_DASHBOARD.spec.filters,
-    widgets: OVERVIEW_DASHBOARD.spec.widgets,
+    isHome: (homeId ?? fallback) === d.id,
+    filters: d.spec.filters,
+    widgets: d.spec.widgets,
     createdAt: null,
     updatedAt: null,
   };
@@ -114,7 +165,11 @@ async function findVisible(
   id: string,
   homeId: string | null,
 ): Promise<Dashboard | null> {
-  if (id === OVERVIEW_DASHBOARD_ID) return overview(homeId);
+  if (id === OVERVIEW_DASHBOARD_ID || id.startsWith("dsh_x_")) {
+    const shipped = await shippedDashboards(ctx.db);
+    const found = shipped.find((d) => d.id === id);
+    return found ? fromShipped(found, homeId, defaultHomeId(shipped)) : null;
+  }
   const row = await ctx.db
     .selectFrom("core_dashboards")
     .selectAll()
@@ -177,7 +232,8 @@ async function checkedSpec(ctx: HandlerContext, spec: DashboardSpec): Promise<Da
 export const dashboardList = defineOperation({
   name: "dashboard.list",
   description:
-    "List the dashboards you can open: the shipped Overview, every shared dashboard and your " +
+    "List the dashboards you can open: the shipped ones (the Overview and those installed " +
+    "extensions ship, e.g. Deals' Sales overview), every shared dashboard and your " +
     "own personal ones, with whether you can edit each and which is your Home. Read-only.",
   input: z.object({}),
   output: z.object({ items: z.array(dashboardSummarySchema), homeId: z.string() }),
@@ -194,8 +250,14 @@ export const dashboardList = defineOperation({
       .orderBy("id")
       .limit(500)
       .execute();
-    const all = [overview(homeId), ...rows.map((row) => fromRow(row, ctx, homeId))];
-    const home = all.find((d) => d.isHome) ?? (all[0] as Dashboard);
+    const shipped = await shippedDashboards(ctx.db);
+    const fallback = defaultHomeId(shipped);
+    const all = [
+      ...shipped.map((d) => fromShipped(d, homeId, fallback)),
+      ...rows.map((row) => fromRow(row, ctx, homeId)),
+    ];
+    const home =
+      all.find((d) => d.isHome) ?? all.find((d) => d.id === fallback) ?? (all[0] as Dashboard);
     return {
       items: all.map(({ filters: _f, widgets, ...rest }) => ({
         ...rest,
@@ -224,7 +286,8 @@ export const dashboardHome = defineOperation({
   name: "dashboard.home",
   description:
     "Get your Home dashboard (the one shown at /): the one you set with dashboard.setHome, or " +
-    "the shipped Overview. Read-only.",
+    "the default: an installed extension's home dashboard (Sales overview with Deals), else the " +
+    "shipped Overview. Read-only.",
   input: z.object({}),
   output: dashboardSchema,
   permission: "records:read",
@@ -232,11 +295,14 @@ export const dashboardHome = defineOperation({
   mcp: { idempotent: true },
   async handler(_input, ctx) {
     const homeId = await homeIdOf(ctx.db, ctx.user.id);
-    if (homeId && homeId !== OVERVIEW_DASHBOARD_ID) {
+    if (homeId) {
       const home = await findVisible(ctx, homeId, homeId);
       if (home) return home;
     }
-    return overview(null);
+    const shipped = await shippedDashboards(ctx.db);
+    const fallback = defaultHomeId(shipped);
+    const found = shipped.find((d) => d.id === fallback) as ShippedDashboard;
+    return fromShipped(found, null, fallback);
   },
 });
 
@@ -369,16 +435,16 @@ export const dashboardDelete = defineOperation({
 export const dashboardSetHome = defineOperation({
   name: "dashboard.setHome",
   description:
-    "Make a dashboard you can open your Home, shown at /. Pass null to go back to the shipped " +
-    "Overview. Only changes your own Home.",
+    "Make a dashboard you can open your Home, shown at /. Pass null to go back to the default " +
+    "(see dashboard.home). Only changes your own Home.",
   input: z.object({ id: dashboardId.nullable() }),
   output: z.object({ homeId: z.string() }),
   permission: "records:read",
   risk: "write",
   async handler(input, ctx) {
-    if (input.id === null || input.id === OVERVIEW_DASHBOARD_ID) {
+    if (input.id === null) {
       ctx.write(ctx.db.deleteFrom("core_user_home").where("user_id", "=", ctx.user.id));
-      return { homeId: OVERVIEW_DASHBOARD_ID };
+      return { homeId: defaultHomeId(await shippedDashboards(ctx.db)) };
     }
     await requireVisible(ctx, input.id);
     ctx.write(

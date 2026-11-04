@@ -142,6 +142,50 @@ async function firstStage(
   return row.rows[0]?.id ?? null;
 }
 
+/**
+ * The group named by the extension's `defaultGroupSetting` (its stored value, else its declared
+ * default), by id or title (case-insensitive), or null.
+ */
+async function defaultGroup(
+  ctx: Pick<HandlerContext, "db">,
+  object: ObjectDefinition,
+  stages: StagesDefinition,
+  group: string,
+): Promise<string | null> {
+  const setting = stages.defaultGroupSetting;
+  const ext = object.extension;
+  const to = object.fields.find((f) => f.name === group)?.options?.to;
+  const groupObject = to ? getObject(to) : undefined;
+  if (!setting || !ext || !groupObject?.titleField) return null;
+  const [stored, installed] = await Promise.all([
+    ctx.db
+      .selectFrom("core_extension_settings")
+      .select("value")
+      .where("extension_id", "=", ext)
+      .executeTakeFirst(),
+    ctx.db
+      .selectFrom("core_extensions")
+      .select("manifest")
+      .where("id", "=", ext)
+      .executeTakeFirst(),
+  ]);
+  const value =
+    (stored ? (JSON.parse(stored.value) as Record<string, unknown>)[setting] : undefined) ??
+    (installed
+      ? (JSON.parse(installed.manifest) as { settings?: Record<string, { default?: unknown }> })
+          .settings?.[setting]?.default
+      : undefined);
+  if (typeof value !== "string" || !value.trim()) return null;
+  const title = column(groupObject, groupObject.titleField);
+  if (!title) return null;
+  const row = await sql<{ id: string }>`
+    SELECT id FROM ${sql.table(groupObject.source)}
+    WHERE id = ${value.trim()} OR lower(${sql.ref(title)}) = ${value.trim().toLowerCase()}
+    ORDER BY id = ${value.trim()} DESC, id LIMIT 1
+  `.execute(ctx.db);
+  return row.rows[0]?.id ?? null;
+}
+
 function isEmpty(value: unknown): boolean {
   return (
     value === null ||
@@ -213,7 +257,11 @@ export async function applyStageBehaviour(
         stage: null,
       });
     }
-    const groupId = group ? ((after[group] as string | null | undefined) ?? null) : null;
+    let groupId = group ? ((after[group] as string | null | undefined) ?? null) : null;
+    if (group && !groupId && before === null && stages.defaultGroupSetting) {
+      groupId = await defaultGroup(ctx, object, stages, group);
+      if (groupId) set(group, groupId);
+    }
     if (!group || groupId) {
       stageId = await firstStage(ctx, stageObject, stages, groupId);
       if (stageId) set(stages.field, stageId);

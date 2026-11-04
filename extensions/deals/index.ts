@@ -5,7 +5,18 @@
 // deal and its organisation, for every actor. It runs through the same runtime as AI-written
 // extensions.
 import { defineExtension } from "@crm/sdk";
+import { pipelineHealth, salesOverview } from "./dashboards.ts";
 import { stageMetrics } from "./tools.ts";
+
+const DEAL_COLUMNS = [
+  "name",
+  "stage",
+  "value",
+  "probability",
+  "expectedClose",
+  "owner",
+  "organisation",
+];
 
 /** Deal fields a stage can require (the stage's `requiredFields` options). */
 const REQUIRABLE = [
@@ -133,7 +144,12 @@ export default defineExtension({
           label: "Value",
           description: "In the deployment's base currency (Settings → General).",
         },
-        pipeline: { type: "relation", label: "Pipeline", to: "deals.pipeline", required: true },
+        pipeline: {
+          type: "relation",
+          label: "Pipeline",
+          to: "deals.pipeline",
+          description: "Defaults to the Default pipeline setting (New business).",
+        },
         stage: {
           type: "relation",
           label: "Stage",
@@ -220,6 +236,7 @@ export default defineExtension({
         closedDate: "closedAt",
         status: "status",
         requiredByType: { lost: ["lostReason"] },
+        defaultGroupSetting: "defaultPipeline",
       },
       timelineLinks: ["organisation"],
       // Hot queries: board columns (stage), open pipeline (status, close month), an
@@ -260,14 +277,117 @@ export default defineExtension({
       indexes: [["deal"], ["person"]],
     },
   },
+  // Shipped saved views: shared and read-only in the Deals views menu. Relative values resolve
+  // for whoever opens them, when they do (ADR 0103).
   views: {
-    openDeals: {
-      label: "Open deals",
+    myOpenDeals: {
+      label: "My open deals",
       object: "deals.deal",
-      filter: { field: "status", op: "eq", value: "open" },
+      filter: {
+        and: [
+          { field: "status", op: "eq", value: "open" },
+          { field: "owner", op: "eq", value: { $relative: "me" } },
+        ],
+      },
       sort: { field: "expectedClose", direction: "asc" },
-      columns: ["name", "stage", "value", "probability", "expectedClose", "owner", "organisation"],
+      columns: DEAL_COLUMNS,
+    },
+    closingThisMonth: {
+      label: "Closing this month",
+      object: "deals.deal",
+      filter: {
+        and: [
+          { field: "status", op: "eq", value: "open" },
+          { field: "expectedClose", op: "gte", value: { $relative: "startOfMonth" } },
+          { field: "expectedClose", op: "lt", value: { $relative: "startOfNextMonth" } },
+        ],
+      },
+      sort: { field: "expectedClose", direction: "asc" },
+      columns: DEAL_COLUMNS,
+    },
+    wonThisQuarter: {
+      label: "Won this quarter",
+      object: "deals.deal",
+      filter: {
+        and: [
+          { field: "status", op: "eq", value: "won" },
+          { field: "closedAt", op: "gte", value: { $relative: "startOfQuarter" } },
+          { field: "closedAt", op: "lt", value: { $relative: "startOfNextQuarter" } },
+        ],
+      },
+      sort: { field: "closedAt", direction: "desc" },
+      columns: ["name", "value", "closedAt", "owner", "organisation", "pipeline"],
+    },
+    pipelineBoard: {
+      label: "Pipeline board",
+      type: "board",
+      object: "deals.deal",
+      groupBy: "stage",
+      sumField: "value",
+      cardFields: ["value", "organisation", "expectedClose", "owner"],
+      sort: { field: "expectedClose", direction: "asc" },
     },
   },
+  // A Deals tab on organisation and person pages, People on a deal, and an organisation's open
+  // deals in its side panel (ADR 0058).
+  recordTabs: {
+    organisationDeals: {
+      label: "Deals",
+      on: "organisation",
+      view: {
+        type: "table",
+        object: "deals.deal",
+        relation: "organisation",
+        columns: ["name", "stage", "value", "expectedClose", "owner", "status"],
+        sort: { field: "expectedClose", direction: "desc" },
+      },
+      order: 20,
+    },
+    personDeals: {
+      label: "Deals",
+      on: "person",
+      view: {
+        type: "table",
+        object: "deals.participant",
+        relation: "person",
+        columns: ["deal", "role", "note"],
+      },
+      order: 20,
+    },
+    dealPeople: {
+      label: "People",
+      on: "deals.deal",
+      view: {
+        type: "table",
+        object: "deals.participant",
+        relation: "deal",
+        columns: ["person", "role", "note"],
+      },
+      order: 10,
+    },
+  },
+  recordPanels: {
+    organisationOpenDeals: {
+      label: "Open deals",
+      on: "organisation",
+      view: {
+        type: "table",
+        object: "deals.deal",
+        relation: "organisation",
+        filter: { field: "status", op: "eq", value: "open" },
+        columns: ["name", "stage", "value"],
+        sort: { field: "expectedClose", direction: "asc" },
+      },
+    },
+  },
+  settings: {
+    defaultPipeline: {
+      type: "text",
+      label: "Default pipeline",
+      description: "The pipeline (by name or id) a new deal goes in when none is chosen.",
+      default: "New business",
+    },
+  },
+  dashboards: { salesOverview, pipelineHealth },
   tools: { stageMetrics },
 });

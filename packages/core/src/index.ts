@@ -79,6 +79,7 @@ export {
 export { type StageRuleDetails, StageRuleError } from "./records/stages.ts";
 export * from "./records/tags.ts";
 export * from "./registry.ts";
+export * from "./relative.ts";
 export * from "./retention.ts";
 export { BASE_CURRENCY_SETTING, loadApprovalPolicy, loadGeneralSettings } from "./settings.ts";
 export { type PrincipalLike, resolveActingUser, SYSTEM_USER } from "./users.ts";

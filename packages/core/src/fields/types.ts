@@ -110,6 +110,7 @@ export interface StagesDefinition {
   closedDate?: string | undefined;
   status?: string | undefined;
   requiredByType?: Partial<Record<"open" | "won" | "lost", readonly string[]>> | undefined;
+  defaultGroupSetting?: string | undefined;
 }
 
 export function defineObject<const O extends ObjectDefinition>(object: O): O {

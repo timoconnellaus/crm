@@ -33,10 +33,9 @@ import { FieldEditor } from "#/components/fields/field-widgets";
 import { callOp } from "#/lib/operations";
 import { errorMessage } from "#/lib/query";
 import type { FieldInfo, ObjectInfo } from "#/lib/schema";
+import { type BoardChoice, useBoardChoices } from "./board-choices.ts";
 import {
   andFilters,
-  choiceLabel,
-  choiceValues,
   fetchRecords,
   missingFieldOf,
   RecordCard,
@@ -91,6 +90,8 @@ export function BoardView({ info, spec }: { info: ObjectInfo; spec: BoardSpec })
   const [pending, setPending] = useState<PendingMove[]>([]);
   const [missing, setMissing] = useState<MissingField | null>(null);
 
+  const choices = useBoardChoices(info, group, spec.filter);
+  const labelOf = (value: string | null) => boardLabel(group, choices, value);
   const groups = useQuery({
     queryKey: viewKey(
       info.name,
@@ -111,7 +112,7 @@ export function BoardView({ info, spec }: { info: ObjectInfo; spec: BoardSpec })
 
   const columns = useMemo(() => {
     if (!group) return [];
-    const values = choiceValues(group);
+    const values = choices.map((c) => c.value);
     const order = spec.columnOrder ?? [];
     const ordered = [
       ...order.filter((v) => values.includes(v)),
@@ -119,7 +120,7 @@ export function BoardView({ info, spec }: { info: ObjectInfo; spec: BoardSpec })
     ];
     const hasNone = groups.data?.groups.some((g) => g.value === null && g.count > 0);
     return [...ordered, ...(hasNone ? [NONE] : [])];
-  }, [group, spec.columnOrder, groups.data]);
+  }, [group, choices, spec.columnOrder, groups.data]);
 
   if (!group) {
     return (
@@ -145,7 +146,7 @@ export function BoardView({ info, spec }: { info: ObjectInfo; spec: BoardSpec })
       await updateRecord(info, record.id, { [spec.groupBy]: to === NONE ? null : to, ...extra });
       await client.invalidateQueries({ queryKey: viewKey(info.name) });
       setPending((list) => list.filter((p) => p.record.id !== record.id));
-      toast.success(`Moved to ${choiceLabel(group as FieldInfo, to === NONE ? null : to)}`);
+      toast.success(`Moved to ${labelOf(to === NONE ? null : to)}`);
     } catch (error) {
       // Roll back the card, then ask for a field a rule needs.
       setPending((list) => list.filter((p) => p.record.id !== record.id));
@@ -166,14 +167,14 @@ export function BoardView({ info, spec }: { info: ObjectInfo; spec: BoardSpec })
           info={info}
           spec={spec}
           value={value}
-          label={choiceLabel(group, value === NONE ? null : value)}
+          label={labelOf(value === NONE ? null : value)}
           count={stats(value).count}
           sum={formatSum(sumField, stats(value).sum)}
           sumLabel={sumField?.label}
           countPending={groups.isPending}
           pending={pending}
           columns={columns}
-          groupField={group}
+          labelOf={labelOf}
           onMove={move}
         />
       ))}
@@ -181,7 +182,7 @@ export function BoardView({ info, spec }: { info: ObjectInfo; spec: BoardSpec })
         <MissingFieldDialog
           info={info}
           missing={missing}
-          targetLabel={choiceLabel(group, missing.move.to === NONE ? null : missing.move.to)}
+          targetLabel={labelOf(missing.move.to === NONE ? null : missing.move.to)}
           onCancel={() => setMissing(null)}
           onSubmit={async (value) => {
             const { move: m, field } = missing;
@@ -205,7 +206,7 @@ function BoardColumn({
   countPending,
   pending,
   columns,
-  groupField,
+  labelOf,
   onMove,
 }: {
   info: ObjectInfo;
@@ -218,7 +219,7 @@ function BoardColumn({
   countPending: boolean;
   pending: PendingMove[];
   columns: string[];
-  groupField: FieldInfo;
+  labelOf: (value: string | null) => string;
   onMove: (record: ViewRecord, from: string, to: string) => void;
 }) {
   const filter = andFilters(
@@ -371,7 +372,7 @@ function BoardColumn({
                             .filter((c) => c !== value)
                             .map((c) => (
                               <DropdownMenuItem key={c} onSelect={() => onMove(record, value, c)}>
-                                {choiceLabel(groupField, c === NONE ? null : c)}
+                                {labelOf(c === NONE ? null : c)}
                               </DropdownMenuItem>
                             ))}
                         </DropdownMenuContent>
@@ -389,6 +390,15 @@ function BoardColumn({
       </div>
     </section>
   );
+}
+
+function boardLabel(
+  group: FieldInfo | undefined,
+  choices: readonly BoardChoice[],
+  value: string | null,
+): string {
+  if (value === null) return `No ${(group?.label ?? "value").toLowerCase()}`;
+  return choices.find((c) => c.value === value)?.label ?? value;
 }
 
 /** Asks for the field a stage rule needs, then retries the move with it. */

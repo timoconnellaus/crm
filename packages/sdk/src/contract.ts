@@ -174,6 +174,11 @@ export interface StagesSpec {
   status?: string;
   /** Fields required in every stage of a type, on top of each stage's own required fields. */
   requiredByType?: Partial<Record<StageType, readonly string[]>>;
+  /**
+   * A text setting of this extension (`settings`) naming the group (by id or title) a record
+   * created without a group or stage goes in, e.g. the default pipeline.
+   */
+  defaultGroupSetting?: string;
 }
 
 export type FilterOp =
@@ -197,14 +202,29 @@ export type ViewFilter =
   | { and: ViewFilter[] }
   | { or: ViewFilter[] };
 
-/** A `table` saved-view spec shipped with the extension. */
+/**
+ * A saved view shipped with the extension: shared with everyone, read-only, listed in the
+ * object's views menu (ADR 0103). A table by default, or a board, calendar or gallery (ADR 0056).
+ * Filter values may be relative: `{ $relative: "me" | "today" | "startOfMonth" | … }`.
+ */
 export interface ViewSpec {
   label: string;
   /** Object the view lists: core or `<extension>.<object>`. */
   object: string;
+  type?: "table" | "board" | "calendar" | "gallery";
   filter?: ViewFilter;
   sort?: { field: string; direction?: "asc" | "desc" };
   columns?: string[];
+  /** board: the single-select or stage relation to group by, and a number field to sum. */
+  groupBy?: string;
+  sumField?: string;
+  /** calendar */
+  dateField?: string;
+  mode?: "month" | "week" | "agenda";
+  /** gallery */
+  imageField?: string;
+  /** board, calendar, gallery: fields on each card. */
+  cardFields?: string[];
 }
 
 /**
@@ -340,6 +360,34 @@ export interface PermissionsSpec {
   modules?: HostModuleName[];
 }
 
+/**
+ * A dashboard the extension ships (ADR 0103): the same filters and widgets as a dashboard spec
+ * (ADR 0057; SQL over crm_* views with named params, a chart mapping, a click-through). It is
+ * read-only, listed while the extension is active and copyable; `home: true` makes it everyone's
+ * default Home.
+ */
+export interface DashboardDeclaration {
+  title: string;
+  description?: string;
+  home?: boolean;
+  filters?: readonly Record<string, unknown>[];
+  widgets: readonly WidgetDeclaration[];
+}
+
+/** A widget of a shipped dashboard; see the host's dashboard spec for every option. */
+export interface WidgetDeclaration {
+  id: string;
+  type: "kpi" | "bar" | "line" | "donut" | "funnel" | "table" | "leaderboard" | "markdown";
+  title: string;
+  description?: string;
+  sql?: string;
+  markdown?: string;
+  mapping?: Record<string, unknown>;
+  options?: Record<string, unknown>;
+  clickThrough?: { object: string; objectColumn?: string; filter?: unknown };
+  layout?: { w?: number; h?: number };
+}
+
 export interface ExtensionSpec {
   /** Lowercase letters and digits, starting with a letter: `deals`, `example`. */
   id: string;
@@ -353,6 +401,8 @@ export interface ExtensionSpec {
   /** Fields added to other objects, keyed by target object (`organisation`, `other.object`). */
   fields?: Record<string, FieldSpecs>;
   views?: Record<string, ViewSpec>;
+  /** Dashboards shipped with the extension (ADR 0103). */
+  dashboards?: Record<string, DashboardDeclaration>;
   /** Tabs on other objects' record pages (ADR 0058). */
   recordTabs?: Record<string, RecordViewSpec>;
   /** Side panels on other objects' record pages (ADR 0058). */

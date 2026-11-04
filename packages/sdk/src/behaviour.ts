@@ -162,6 +162,17 @@ export function checkObjectBehaviour(
         );
       }
     }
+    if (stages.defaultGroupSetting !== undefined) {
+      const setting = m.settings?.[stages.defaultGroupSetting];
+      if (!stages.group) {
+        contract(`${sp}.defaultGroupSetting`, "defaultGroupSetting needs a group");
+      } else if (setting?.type !== "text" && setting?.type !== "select") {
+        contract(
+          `${sp}.defaultGroupSetting`,
+          `"${stages.defaultGroupSetting}" must be a text or select setting of this extension`,
+        );
+      }
+    }
     for (const [type, list] of Object.entries(stages.requiredByType ?? {})) {
       for (const local of list ?? []) {
         const field = fieldOf(local);
