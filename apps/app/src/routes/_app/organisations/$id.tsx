@@ -35,6 +35,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAppCommands } from "#/components/app-commands";
+import { PendingChangesBadge } from "#/components/approvals/pending-badge";
 import { EmptyState } from "#/components/empty-state";
 import { useMergeAction } from "#/components/merge/merge-action";
 import { faviconUrl } from "#/components/organisations/config";
@@ -216,6 +217,7 @@ function OrganisationRecord({
         Organisations
       </Link>
       <RecordLayout
+        badge={<PendingChangesBadge object="organisation" id={org.id} />}
         title={org.name}
         subtitle={org.industry || primaryDomain ? subtitle : undefined}
         avatarUrl={faviconUrl(primaryDomain)}

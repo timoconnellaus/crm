@@ -34,6 +34,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { useAppCommands } from "#/components/app-commands";
+import { PendingChangesBadge } from "#/components/approvals/pending-badge";
 import { EmptyState } from "#/components/empty-state";
 import { useMergeAction } from "#/components/merge/merge-action";
 import { PersonDetailsCard } from "#/components/people/person-details-card";
@@ -209,6 +210,7 @@ function PersonRecord({
         People
       </Link>
       <RecordLayout
+        badge={<PendingChangesBadge object="person" id={person.id} />}
         title={person.displayName}
         subtitle={subtitle || person.emails.find((e) => e.primary)?.email}
         actions={

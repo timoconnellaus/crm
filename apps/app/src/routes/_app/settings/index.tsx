@@ -1,7 +1,13 @@
 // Settings home: links to each settings section.
 import { Card, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRightIcon, ScrollTextIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  PlugIcon,
+  ScrollTextIcon,
+  ShieldCheckIcon,
+  UsersIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 export const Route = createFileRoute("/_app/settings/")({ component: SettingsPage });
@@ -15,7 +21,11 @@ function Section({
   icon: ReactNode;
   title: string;
   description: string;
-  to?: "/settings/approval-policy" | "/settings/users" | "/settings/audit";
+  to?:
+    | "/settings/approval-policy"
+    | "/settings/users"
+    | "/settings/audit"
+    | "/settings/connected-apps";
 }) {
   const body = (
     <Card className="h-full transition-colors hover:bg-accent/50">
@@ -68,6 +78,16 @@ function SettingsPage() {
               : "See who can sign in and their roles."
           }
           to="/settings/users"
+        />
+        <Section
+          icon={<PlugIcon className="size-5" />}
+          title="Connected apps"
+          description={
+            isAdmin
+              ? "AI apps connected over MCP, yours and everyone's, with revoke."
+              : "AI apps you connected over MCP, with revoke."
+          }
+          to="/settings/connected-apps"
         />
         {isAdmin && (
           <Section

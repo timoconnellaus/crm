@@ -83,6 +83,7 @@ function PeoplePage() {
         sort={view.state.sort}
         onSortChange={view.setSort}
         filter={view.state.filter}
+        pendingObject="person"
         onOpen={(row) => navigate({ to: "/people/$id", params: { id: row.id } })}
         renderCell={{
           displayName: (row) => (
