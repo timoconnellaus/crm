@@ -3,7 +3,7 @@
 // so pages and the palette share one "New person" dialog.
 import { createContext, type ReactNode, useContext, useMemo, useState } from "react";
 
-export type CreateKind = "person";
+export type CreateKind = "person" | "organisation";
 
 export interface AppCommands {
   openPalette: () => void;

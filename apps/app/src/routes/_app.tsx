@@ -14,6 +14,7 @@ import {
 } from "../components/app-commands.tsx";
 import { AppSidebar } from "../components/app-sidebar.tsx";
 import { CommandPalette } from "../components/command-palette.tsx";
+import { CreateOrganisationDialog } from "../components/organisations/create-organisation-dialog.tsx";
 import { CreatePersonDialog } from "../components/people/create-person-dialog.tsx";
 import { ShortcutSheet } from "../components/shortcut-sheet.tsx";
 import { UserMenu } from "../components/user-menu.tsx";
@@ -71,8 +72,8 @@ function AppHeader() {
   );
 }
 
-function createKindFor(_pathname: string): CreateKind {
-  return "person";
+function createKindFor(pathname: string): CreateKind {
+  return pathname.startsWith("/organisations") ? "organisation" : "person";
 }
 
 /** Dialogs controlled by AppCommands, plus the global shortcuts that open them. */
@@ -83,8 +84,7 @@ function AppOverlays() {
 
   useHotkey("mod+k", () => state.setPalette(!state.palette), { global: true });
   useHotkey("?", () => state.setShortcuts(true));
-  // `c` creates in context. A person is the only create so far; when organisations and tasks
-  // land, pick the kind from `pathname` (TODO(stage-1-wire)).
+  // `c` creates in context: an organisation on Organisations pages, otherwise a person.
   useHotkey("c", () => state.create(createKindFor(pathname)));
   // Marks the signed-in shell interactive; end-to-end tests wait for it before using shortcuts.
   useEffect(() => {
@@ -104,6 +104,10 @@ function AppOverlays() {
       <CreatePersonDialog
         open={state.creating === "person"}
         onOpenChange={(open) => state.setCreating(open ? "person" : null)}
+      />
+      <CreateOrganisationDialog
+        open={state.creating === "organisation"}
+        onOpenChange={(open) => state.setCreating(open ? "organisation" : null)}
       />
     </>
   );
