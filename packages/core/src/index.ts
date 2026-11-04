@@ -19,6 +19,7 @@ export * from "./operations/user.ts";
 export { type InvocationContext, invokeOperation, redactInput } from "./pipeline.ts";
 export * from "./principals.ts";
 export { runTrashPurge, type TrashPurgeOptions } from "./purge.ts";
+export { BATCH_MAX, purgeCutoff, restorableUntil } from "./records/common.ts";
 export * from "./records/tags.ts";
 export * from "./registry.ts";
 export { loadApprovalPolicy } from "./settings.ts";
