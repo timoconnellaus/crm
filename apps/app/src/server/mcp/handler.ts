@@ -27,7 +27,7 @@ import {
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
 import { createMcpHandler } from "agents/mcp/server";
-import type { OperationsEnv } from "../operations.ts";
+import { ensureShippedExtensions, extensionHostFor, type OperationsEnv } from "../operations.ts";
 import { CONSENT_PATH, handleConsent, type McpProps } from "./consent.ts";
 import { createCrmMcpServer, type McpCaller } from "./tools.ts";
 
@@ -117,6 +117,8 @@ export async function serveMcp(
   }
   ctx.waitUntil(touchConnection(db.query, connection.id, now).catch(() => {}));
 
+  await ensureShippedExtensions(env);
+  const extensionHost = extensionHostFor(env);
   const caller: McpCaller = {
     context: {
       actor: "mcp",
@@ -131,6 +133,7 @@ export async function serveMcp(
       floor: parseFloor(env.APPROVAL_FLOOR),
       grantedPermissions: scopePermissions(connection.scopes),
       approvalExpiryDays: int(env.APPROVAL_EXPIRY_DAYS, 7),
+      ...(extensionHost ? { extensionHost } : {}),
     },
     async consumeWrite() {
       const writes = await consumeRateLimit(

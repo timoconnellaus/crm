@@ -17,6 +17,10 @@ export const ID_PREFIXES = {
   phone: "phn",
   domain: "dom",
   address: "adr",
+  /** Records of extension objects (stage 3). */
+  record: "rec",
+  /** Extension run history rows. */
+  extensionRun: "xrn",
   changeSet: "chs",
   pendingAction: "pac",
   connectedApp: "cap",

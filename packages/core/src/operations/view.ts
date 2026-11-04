@@ -5,18 +5,24 @@ import type { CoreDatabase } from "@crm/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "../errors.ts";
-import { CORE_OBJECTS, getObject } from "../fields/index.ts";
+import { getObject } from "../fields/index.ts";
 import { compileFilter, filterSchema } from "../filter.ts";
 import { newId } from "../ids.ts";
 import { resolveSort, sortSchema } from "../list.ts";
 import { defineOperation } from "../operation.ts";
 
 const viewId = z.string().startsWith("vw_").max(64).describe("Saved view id (vw_…)");
-const objectName = z.enum(Object.keys(CORE_OBJECTS) as [keyof typeof CORE_OBJECTS]);
+const objectName = z
+  .string()
+  .min(1)
+  .max(80)
+  .regex(/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)?$/);
 
 export const tableViewSpecSchema = z.object({
   type: z.literal("table"),
-  object: objectName.describe("The object listed: person, organisation, activity or task"),
+  object: objectName.describe(
+    "The object listed: person, organisation, activity, task or an extension object",
+  ),
   filter: filterSchema.nullish().describe("Structured filter JSON, as list operations take"),
   sort: sortSchema.nullish(),
   columns: z

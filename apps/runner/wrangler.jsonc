@@ -28,13 +28,24 @@
   ],
   // Worker Loader: mints the Dynamic Workers that run extension code (ADR 0006).
   "worker_loaders": [{ "binding": "LOADER" }],
+  // The extension workspace (ADR 0025): extension source under git, and the sandbox host.
   "durable_objects": {
-    "bindings": [{ "name": "SPIKE_WORKSPACE", "class_name": "SpikeWorkspace" }]
+    "bindings": [{ "name": "EXTENSION_WORKSPACE", "class_name": "ExtensionWorkspace" }]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SpikeWorkspace"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["SpikeWorkspace"] },
+    // Stage 3 replaced the stage 0 spike with the real extension workspace.
+    {
+      "tag": "v2",
+      "deleted_classes": ["SpikeWorkspace"],
+      "new_sqlite_classes": ["ExtensionWorkspace"]
+    }
+  ],
   "vars": {
-    // Dev-only routes (the stage 0 spike) are served only when this is "true". Set it in
-    // .dev.vars for local development; it is never set on a deployed Worker.
-    "DEV_ROUTES": "false"
+    // Extension code calls operations here (codemode:crm), so the runner applies the same
+    // approval floor as crm-app. Keep the two in step. See docs/deploying.md.
+    "APPROVAL_FLOOR": "",
+    // Optional AI Gateway id for codemode:ai. Workers AI also needs an `ai` binding.
+    "AI_GATEWAY_ID": ""
   }
 }

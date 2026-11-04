@@ -26,7 +26,9 @@ describe("ids", () => {
   });
 
   it("encodes the timestamp", () => {
-    const at = Date.UTC(2026, 10, 4, 10, 0, 0);
+    // Far future: ulid() is monotonic, so a timestamp earlier than any id already
+    // generated in this isolate would be clamped to that later time.
+    const at = Date.UTC(2099, 0, 1, 10, 0, 0);
     expect(idTimestamp(newId("task", at))?.getTime()).toBe(at);
     expect(idTimestamp("nonsense")).toBeNull();
   });

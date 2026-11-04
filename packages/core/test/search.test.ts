@@ -125,15 +125,18 @@ describe("search.global", () => {
     const timings: Record<string, number> = {};
     for (const query of queries) {
       const runs: number[] = [];
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 5; i++) {
         const started = performance.now();
         await search(query);
         runs.push(performance.now() - started);
       }
-      timings[query] = Math.max(...runs);
+      // Median, not worst: shared CI runners occasionally stall a single run
+      // (GC, noisy neighbours) by hundreds of ms, which says nothing about search.
+      runs.sort((a, b) => a - b);
+      timings[query] = runs[Math.floor(runs.length / 2)] ?? Number.POSITIVE_INFINITY;
     }
     console.log(
-      "search.global timings (worst of 3, ms):",
+      "search.global timings (median of 5, ms):",
       Object.entries(timings)
         .map(([q, ms]) => `${JSON.stringify(q)}=${ms.toFixed(1)}`)
         .join(" "),

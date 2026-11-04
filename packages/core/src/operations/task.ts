@@ -3,6 +3,7 @@ import type { CoreDatabase } from "@crm/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "../errors.ts";
+import { getObject } from "../fields/index.ts";
 import { taskObject } from "../fields/task.ts";
 import { newId } from "../ids.ts";
 import { listInputSchema, pageSchema, runListQuery, selectFields } from "../list.ts";
@@ -483,7 +484,11 @@ export const taskList = defineOperation({
   risk: "read",
   mcp: { curated: true, idempotent: true },
   async handler(input, ctx) {
-    const page = await runListQuery(ctx.db.selectFrom("crm_tasks").selectAll(), taskObject, input);
+    const page = await runListQuery(
+      ctx.db.selectFrom("crm_tasks").selectAll(),
+      getObject("task") ?? taskObject,
+      input,
+    );
     const items = await toTasks(ctx.db, page.rows);
     return { items: selectFields(items, input.fields, TASK_FIELDS), nextCursor: page.nextCursor };
   },

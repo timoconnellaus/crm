@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - extensions/*
   - evals/*
 
 # Build scripts we allow to run on install.

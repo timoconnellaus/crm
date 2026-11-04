@@ -3,6 +3,7 @@
 import type { CoreDatabase } from "@crm/db";
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
+import { getObject, isCoreObject, listObjects } from "../fields/index.ts";
 import { defineOperation } from "../operation.ts";
 import { jsonList } from "../records/common.ts";
 
@@ -13,7 +14,7 @@ const segmentSchema = z.object({ text: z.string(), match: z.boolean() });
 export type HighlightSegment = z.infer<typeof segmentSchema>;
 
 export const searchHitSchema = z.object({
-  object: z.enum(SEARCH_OBJECTS),
+  object: z.string().describe("person, organisation, activity, task or <extension>.<object>"),
   id: z.string(),
   title: z.string(),
   subtitle: z.string().nullable(),
@@ -94,10 +95,28 @@ interface Display {
 /** Titles and subtitles from the crm_* views (live records only), keyed `object:id`. */
 async function loadDisplays(
   db: Kysely<CoreDatabase>,
-  ids: Map<SearchObject, string[]>,
+  ids: Map<string, string[]>,
 ): Promise<Map<string, Display>> {
   const out = new Map<string, Display>();
   const tasks: Promise<void>[] = [];
+  for (const [type, list] of ids) {
+    const object = getObject(type);
+    if (!object?.extension || !object.titleField || isCoreObject(type)) continue;
+    const title = object.fields.find((f) => f.name === object.titleField)?.column;
+    if (!title) continue;
+    tasks.push(
+      sql<{ id: string; title: string | null }>`
+        SELECT id, ${sql.ref(title)} AS title FROM ${sql.table(object.source)}
+        WHERE id IN ${jsonList(list)}
+      `
+        .execute(db)
+        .then((result) => {
+          for (const r of result.rows) {
+            out.set(`${type}:${r.id}`, { title: r.title ?? "(untitled)", subtitle: object.label });
+          }
+        }),
+    );
+  }
   const people = ids.get("person");
   if (people?.length) {
     tasks.push(
@@ -188,7 +207,12 @@ export const searchGlobal = defineOperation({
     "hits with title, subtitle and highlighted parts. Read-only.",
   input: z.object({
     query: z.string().max(200).describe("What the user typed"),
-    objects: z.array(z.enum(SEARCH_OBJECTS)).min(1).max(4).optional(),
+    objects: z
+      .array(z.string().min(1).max(80))
+      .min(1)
+      .max(50)
+      .optional()
+      .describe("Object types to search (default all, including extension objects)"),
     limit: z.number().int().min(1).max(50).default(20),
   }),
   output: z.object({ hits: z.array(searchHitSchema) }),
@@ -198,9 +222,9 @@ export const searchGlobal = defineOperation({
   async handler(input, ctx) {
     const terms = searchTerms(input.query);
     if (!terms.length) return { hits: [] };
-    const objects = input.objects ?? SEARCH_OBJECTS;
+    const objects = input.objects ?? listObjects().map((o) => o.name);
     const matches = await sql<{
-      object_type: SearchObject;
+      object_type: string;
       record_id: string;
       snip: string | null;
     }>`
@@ -214,7 +238,7 @@ export const searchGlobal = defineOperation({
       LIMIT ${input.limit}
     `.execute(ctx.db);
 
-    const ids = new Map<SearchObject, string[]>();
+    const ids = new Map<string, string[]>();
     for (const m of matches.rows)
       ids.set(m.object_type, [...(ids.get(m.object_type) ?? []), m.record_id]);
     const displays = await loadDisplays(ctx.db, ids);

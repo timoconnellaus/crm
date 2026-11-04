@@ -6,7 +6,8 @@ import { callOp } from "./operations.ts";
 export type { HighlightSegment };
 
 export interface SearchHit {
-  object: "person" | "organisation" | "activity" | "task";
+  /** person, organisation, activity, task or an extension object (`<extension>.<object>`). */
+  object: string;
   id: string;
   title: string;
   subtitle?: string | null;
@@ -33,6 +34,9 @@ function hrefFor(hit: { object: SearchHit["object"]; id: string }): string {
       return "/tasks";
     case "activity":
       return "/activity";
+    default:
+      // Extension objects have generic record pages.
+      return `/x/${hit.object}/${hit.id}`;
   }
 }
 

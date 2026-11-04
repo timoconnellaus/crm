@@ -8,7 +8,8 @@ export default defineWorkersTestConfig({
   workers: async () => ({
     wrangler: { configPath: "./wrangler.jsonc" },
     miniflare: {
-      bindings: { TEST_MIGRATIONS: await readD1Migrations(migrationsDir), DEV_ROUTES: "true" },
+      bindings: { TEST_MIGRATIONS: await readD1Migrations(migrationsDir) },
     },
   }),
+  setupFiles: ["./test/apply-migrations.ts"],
 });
