@@ -23,7 +23,9 @@ import {
   ValidationError,
 } from "./errors.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
+import type { WidgetCache } from "./dashboards/cache.ts";
 import { refreshSchemaRegistry } from "./extensions/schema.ts";
+import type { ModelRunner } from "./models.ts";
 import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { findProvisionalIds, newId } from "./ids.ts";
@@ -77,6 +79,10 @@ export interface InvocationContext {
   extensionHost?: ExtensionHost;
   /** Actor `extension` only: the calling extension and its declared permissions (ADR 0025). */
   extension?: ExtensionCaller;
+  /** Model roles (ADR 0009); absent when the deployment has no AI binding. */
+  models?: ModelRunner;
+  /** Widget result cache (ADR 0057); absent means the Workers Cache API. */
+  widgetCache?: WidgetCache;
 }
 
 /** The installed extension whose principal is `userId`, with its declared permissions. */
@@ -461,6 +467,8 @@ export async function invokeOperation<O extends AnyOperation>(
     afterCommit,
     ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
     ...(ctx.extension ? { extension: ctx.extension } : {}),
+    ...(ctx.models ? { models: ctx.models } : {}),
+    ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
     pipeline: {
       crm: ctx.db,
       invoke: (name, nestedInput, nested) => {
@@ -479,6 +487,8 @@ export async function invokeOperation<O extends AnyOperation>(
           approval: nested.approval,
           reason: nested.reason,
           ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
+          ...(ctx.models ? { models: ctx.models } : {}),
+          ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
         });
       },
     },

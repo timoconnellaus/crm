@@ -256,8 +256,38 @@ export interface CoreViewsTable {
   /** JSON `{ type: "table", object, filter, sort, columns }`. */
   spec: JsonText;
   position: Defaulted<number>;
+  /** 1: shared with the org (members view it; admins and the owner edit it). */
+  shared: Defaulted<number>;
   created_at: Timestamp;
   updated_at: Timestamp;
+}
+
+/** Dashboards (migration 0080, ADR 0056): a dashboard spec owned by a user, optionally shared. */
+export interface CoreDashboardsTable {
+  id: string;
+  owner_id: string;
+  title: string;
+  description: string | null;
+  shared: Defaulted<number>;
+  /** JSON dashboard spec: filters, widgets and their layout. */
+  spec: JsonText;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+/** Each user's Home dashboard (migration 0080). No row: the shipped Overview. */
+export interface CoreUserHomeTable {
+  user_id: string;
+  dashboard_id: string;
+  updated_at: Timestamp;
+}
+
+/** Typed extension settings (migration 0080, ADR 0058). */
+export interface CoreExtensionSettingsTable {
+  extension_id: string;
+  value: JsonText;
+  updated_at: Timestamp;
+  updated_by: string | null;
 }
 
 export interface CoreAuditTable {
@@ -644,6 +674,9 @@ export interface CoreDatabase {
   core_task: CoreTaskTable;
   core_task_links: CoreTaskLinksTable;
   core_views: CoreViewsTable;
+  core_dashboards: CoreDashboardsTable;
+  core_user_home: CoreUserHomeTable;
+  core_extension_settings: CoreExtensionSettingsTable;
   core_audit: CoreAuditTable;
   core_audit_changes: CoreAuditChangesTable;
   core_audit_redactions: CoreAuditRedactionsTable;

@@ -11,7 +11,8 @@
 //      prefix (sqlite_, pragma_, core_, x_, _cf_, d1_), and no dangerous functions;
 //   5. only `?` / `?NNN` parameters, bound by D1.
 // The checked SQL then runs wrapped as `SELECT * FROM (\n<sql>\n) LIMIT n+1` under a time limit.
-import { CompiledQuery, sql } from "kysely";
+import type { CoreDatabase } from "@crm/db";
+import { CompiledQuery, type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { OperationError, ValidationError } from "../errors.ts";
 import { defineOperation } from "../operation.ts";
@@ -448,51 +449,79 @@ export const querySql = defineOperation({
   risk: "read",
   mcp: { curated: true, idempotent: true },
   async handler(input, ctx) {
-    const schema = await sql<{ name: string }>`SELECT name FROM sqlite_master`.execute(ctx.db);
-    const checked = validateReadOnlySql(input.sql, new Set(schema.rows.map((r) => r.name)));
-    if (checked.parameterCount !== input.params.length) {
-      throw new ValidationError(
-        `The query has ${checked.parameterCount} parameter(s) but ${input.params.length} were given`,
-        { field: "params" },
-      );
-    }
-    const params = input.params.map((p) => (typeof p === "boolean" ? (p ? 1 : 0) : p));
-    // The newline before `)` ends a trailing `--` comment; parentheses are balanced (checked).
-    const wrapped = `SELECT * FROM (\n${checked.sql}\n) LIMIT ${input.maxRows + 1}`;
-
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new QueryTimeoutError(input.timeoutMs)), input.timeoutMs);
-    });
-    let rows: Record<string, unknown>[];
-    // The race returns as soon as the limit passes on a remote D1. Where the database runs in
-    // the same thread (local dev), the timer cannot fire mid-query, so a late result is refused
-    // too: no result is ever returned after the limit.
-    const started = Date.now();
-    try {
-      const result = await Promise.race([
-        ctx.db.executeQuery<Record<string, unknown>>(CompiledQuery.raw(wrapped, params)),
-        timeout,
-      ]);
-      if (Date.now() - started > input.timeoutMs) throw new QueryTimeoutError(input.timeoutMs);
-      rows = [...result.rows];
-    } catch (error) {
-      if (error instanceof OperationError) throw error;
-      const message = error instanceof Error ? error.message : String(error);
-      throw new ValidationError(`The query failed: ${message.replace(/^D1_ERROR:\s*/, "")}`);
-    } finally {
-      clearTimeout(timer);
-    }
-    const truncated = rows.length > input.maxRows;
-    const page = rows.slice(0, input.maxRows);
-    return {
-      columns: Object.keys(page[0] ?? {}),
-      rows: page,
-      rowCount: page.length,
-      truncated,
-      views: checked.views,
-    };
+    return runReadOnlySql(ctx.db, input.sql, input.params, input);
   },
 });
+
+/** Every name in sqlite_master, for validateReadOnlySql. */
+export async function schemaObjectNames(db: Kysely<CoreDatabase>): Promise<Set<string>> {
+  const schema = await sql<{ name: string }>`SELECT name FROM sqlite_master`.execute(db);
+  return new Set(schema.rows.map((r) => r.name));
+}
+
+export interface ReadOnlySqlResult {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+  truncated: boolean;
+  views: string[];
+}
+
+/**
+ * Validates and runs read-only SQL over the crm_* views (ADR 0020): the query.sql guards, bound
+ * positional params, at most `maxRows` rows (`truncated` when there were more) and a deadline.
+ * Dashboard widgets run through this too (ADR 0057).
+ */
+export async function runReadOnlySql(
+  db: Kysely<CoreDatabase>,
+  source: string,
+  rawParams: readonly (string | number | boolean | null)[],
+  limits: { maxRows: number; timeoutMs: number },
+  schemaObjects?: ReadonlySet<string>,
+): Promise<ReadOnlySqlResult> {
+  const checked = validateReadOnlySql(source, schemaObjects ?? (await schemaObjectNames(db)));
+  if (checked.parameterCount !== rawParams.length) {
+    throw new ValidationError(
+      `The query has ${checked.parameterCount} parameter(s) but ${rawParams.length} were given`,
+      { field: "params" },
+    );
+  }
+  const params = rawParams.map((p) => (typeof p === "boolean" ? (p ? 1 : 0) : p));
+  // The newline before `)` ends a trailing `--` comment; parentheses are balanced (checked).
+  const wrapped = `SELECT * FROM (\n${checked.sql}\n) LIMIT ${limits.maxRows + 1}`;
+
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new QueryTimeoutError(limits.timeoutMs)), limits.timeoutMs);
+  });
+  let rows: Record<string, unknown>[];
+  // The race returns as soon as the limit passes on a remote D1. Where the database runs in
+  // the same thread (local dev), the timer cannot fire mid-query, so a late result is refused
+  // too: no result is ever returned after the limit.
+  const started = Date.now();
+  try {
+    const result = await Promise.race([
+      db.executeQuery<Record<string, unknown>>(CompiledQuery.raw(wrapped, params)),
+      timeout,
+    ]);
+    if (Date.now() - started > limits.timeoutMs) throw new QueryTimeoutError(limits.timeoutMs);
+    rows = [...result.rows];
+  } catch (error) {
+    if (error instanceof OperationError) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    throw new ValidationError(`The query failed: ${message.replace(/^D1_ERROR:\s*/, "")}`);
+  } finally {
+    clearTimeout(timer);
+  }
+  const truncated = rows.length > limits.maxRows;
+  const page = rows.slice(0, limits.maxRows);
+  return {
+    columns: Object.keys(page[0] ?? {}),
+    rows: page,
+    rowCount: page.length,
+    truncated,
+    views: checked.views,
+  };
+}
 
 export const queryOperations = [querySql] as const;

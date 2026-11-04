@@ -56,7 +56,13 @@ export interface FieldDefinition {
 
 /** Type-specific settings of an extension field, as validation and the UI need them. */
 export interface ExtensionFieldOptions {
-  choices?: readonly { value: string; label: string; color?: string }[];
+  choices?: readonly {
+    value: string;
+    label: string;
+    color?: string;
+    /** Fields a record must have a value in to hold this choice (ADR 0058). */
+    requires?: string[];
+  }[];
   to?: string;
   many?: boolean;
   currency?: string;

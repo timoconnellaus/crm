@@ -2,6 +2,13 @@
 
 export { DEFAULT_APPROVAL_EXPIRY_DAYS } from "./approvals/queue.ts";
 export { isSimulatedRead } from "./approvals/simulation.ts";
+export * from "./dashboards/cache.ts";
+export * from "./dashboards/click-through.ts";
+export * from "./dashboards/describe.ts";
+export * from "./dashboards/overview.ts";
+export * from "./dashboards/params.ts";
+export * from "./dashboards/run.ts";
+export * from "./dashboards/spec.ts";
 export * from "./diff.ts";
 export * from "./errors.ts";
 export * from "./extensions/host.ts";
@@ -27,9 +34,12 @@ export * from "./operations/approval.ts";
 export * from "./operations/audit.ts";
 export * from "./operations/code.ts";
 export * from "./operations/connected-app.ts";
+export * from "./operations/count.ts";
+export * from "./operations/dashboard.ts";
 export * from "./operations/export.ts";
 export * from "./operations/extension.ts";
 export * from "./operations/extension-authoring.ts";
+export * from "./operations/extension-ui.ts";
 export * from "./operations/import.ts";
 export { coreOperations } from "./operations/index.ts";
 export * from "./operations/organisation.ts";
@@ -42,6 +52,7 @@ export * from "./operations/task.ts";
 export * from "./operations/trash.ts";
 export * from "./operations/user.ts";
 export * from "./operations/view.ts";
+export * from "./views/spec.ts";
 export {
   type InvocationContext,
   invokeOperation,

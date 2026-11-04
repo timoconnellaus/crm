@@ -12,6 +12,7 @@ import { ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
 import { compileFilter, filterSchema } from "../filter.ts";
 import { defineOperation } from "../operation.ts";
+import { isGroupable, isSummable } from "../views/spec.ts";
 
 /** The most rows one count reads. Above this the total is reported as "at least COUNT_CAP". */
 export const COUNT_CAP = 10_000;
@@ -60,4 +61,80 @@ export const recordCount = defineOperation({
   },
 });
 
-export const countOperations = [recordCount] as const;
+export const recordGroups = defineOperation({
+  name: "record.groups",
+  description:
+    "Count live records of an object per value of a single-select field (e.g. tasks per " +
+    "status, projects per stage), optionally summing a number or currency field per group, " +
+    "for records matching an optional filter. Board columns use it for their totals. Like " +
+    `record.count it reads at most ${COUNT_CAP} matching records and reports capped above ` +
+    "that. Read-only.",
+  input: z.object({
+    object: z
+      .string()
+      .min(1)
+      .max(80)
+      .regex(/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)?$/),
+    groupBy: z.string().min(1).max(80).describe("A single-select field"),
+    sumField: z.string().min(1).max(80).optional().describe("A number or currency field"),
+    filter: filterSchema.optional(),
+  }),
+  output: z.object({
+    groups: z.array(
+      z.object({
+        value: z.string().nullable().describe("The choice, or null for records without one"),
+        count: z.number().int(),
+        sum: z.number().nullable(),
+      }),
+    ),
+    capped: z.boolean(),
+  }),
+  permission: "records:read",
+  risk: "read",
+  mcp: { idempotent: true },
+  async handler(input, ctx) {
+    const object = getObject(input.object);
+    if (!object) throw new ValidationError(`Unknown object "${input.object}"`);
+    const group = object.fields.find((f) => f.name === input.groupBy);
+    if (!group || !isGroupable(group) || !group.column) {
+      throw new ValidationError(`${input.object}.${input.groupBy} is not a single-select field`, {
+        field: "groupBy",
+      });
+    }
+    const sum = input.sumField ? object.fields.find((f) => f.name === input.sumField) : undefined;
+    if (input.sumField && (!sum || !isSummable(sum) || !sum.column)) {
+      throw new ValidationError(`${input.object}.${input.sumField} is not a number field`, {
+        field: "sumField",
+      });
+    }
+    const alias = object.source;
+    // Registry columns are trusted identifiers (fields/types.ts).
+    let matching = (ctx.db as AnyDb)
+      .selectFrom(object.source)
+      .select([
+        sql.ref(`${alias}.${group.column}`).as("g"),
+        sum?.column ? sql.ref(`${alias}.${sum.column}`).as("s") : sql<null>`NULL`.as("s"),
+      ]);
+    if (input.filter) matching = matching.where(compileFilter(object, input.filter, alias));
+    const rows = (await (ctx.db as AnyDb)
+      .selectFrom(matching.limit(COUNT_CAP + 1).as("matching"))
+      .select([
+        "g",
+        (eb) => eb.fn.countAll<number>().as("n"),
+        sql<number | null>`SUM(s)`.as("total"),
+      ])
+      .groupBy("g")
+      .execute()) as { g: string | null; n: number; total: number | null }[];
+    const read = rows.reduce((total, row) => total + Number(row.n), 0);
+    return {
+      groups: rows.map((row) => ({
+        value: row.g === null ? null : String(row.g),
+        count: Number(row.n),
+        sum: sum ? (row.total === null ? 0 : Number(row.total)) : null,
+      })),
+      capped: read > COUNT_CAP,
+    };
+  },
+});
+
+export const countOperations = [recordCount, recordGroups] as const;
