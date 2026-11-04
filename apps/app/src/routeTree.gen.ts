@@ -21,6 +21,8 @@ import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ConnectHandoffRouteImport } from './routes/connect.handoff'
 import { Route as GatekeeperSplatRouteImport } from './routes/gatekeeper/$'
+import { Route as AppDashboardsIndexRouteImport } from './routes/_app/dashboards/index'
+import { Route as AppDashboardsIdRouteImport } from './routes/_app/dashboards/$id'
 import { Route as AppOrganisationsIndexRouteImport } from './routes/_app/organisations/index'
 import { Route as AppOrganisationsIdRouteImport } from './routes/_app/organisations/$id'
 import { Route as AppPeopleIndexRouteImport } from './routes/_app/people/index'
@@ -94,6 +96,16 @@ const GatekeeperSplatRoute = GatekeeperSplatRouteImport.update({
   id: '/gatekeeper/$',
   path: '/gatekeeper/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppDashboardsIndexRoute = AppDashboardsIndexRouteImport.update({
+  id: '/dashboards/',
+  path: '/dashboards/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardsIdRoute = AppDashboardsIdRouteImport.update({
+  id: '/dashboards/$id',
+  path: '/dashboards/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppOrganisationsIndexRoute = AppOrganisationsIndexRouteImport.update({
   id: '/organisations/',
@@ -180,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/connect/handoff': typeof ConnectHandoffRoute
   '/gatekeeper/$': typeof GatekeeperSplatRoute
+  '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
@@ -189,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboards/': typeof AppDashboardsIndexRoute
   '/organisations/': typeof AppOrganisationsIndexRoute
   '/people/': typeof AppPeopleIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
@@ -207,6 +221,7 @@ export interface FileRoutesByTo {
   '/connect/handoff': typeof ConnectHandoffRoute
   '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/': typeof AppIndexRoute
+  '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
@@ -216,6 +231,7 @@ export interface FileRoutesByTo {
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboards': typeof AppDashboardsIndexRoute
   '/organisations': typeof AppOrganisationsIndexRoute
   '/people': typeof AppPeopleIndexRoute
   '/settings': typeof AppSettingsIndexRoute
@@ -236,6 +252,7 @@ export interface FileRoutesById {
   '/connect/handoff': typeof ConnectHandoffRoute
   '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/dashboards/$id': typeof AppDashboardsIdRoute
   '/_app/organisations/$id': typeof AppOrganisationsIdRoute
   '/_app/people/$id': typeof AppPeopleIdRoute
   '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
@@ -245,6 +262,7 @@ export interface FileRoutesById {
   '/_app/settings/storage': typeof AppSettingsStorageRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/dashboards/': typeof AppDashboardsIndexRoute
   '/_app/organisations/': typeof AppOrganisationsIndexRoute
   '/_app/people/': typeof AppPeopleIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
@@ -265,6 +283,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/connect/handoff'
     | '/gatekeeper/$'
+    | '/dashboards/$id'
     | '/organisations/$id'
     | '/people/$id'
     | '/settings/approval-policy'
@@ -274,6 +293,7 @@ export interface FileRouteTypes {
     | '/settings/storage'
     | '/settings/users'
     | '/api/auth/$'
+    | '/dashboards/'
     | '/organisations/'
     | '/people/'
     | '/settings/'
@@ -292,6 +312,7 @@ export interface FileRouteTypes {
     | '/connect/handoff'
     | '/gatekeeper/$'
     | '/'
+    | '/dashboards/$id'
     | '/organisations/$id'
     | '/people/$id'
     | '/settings/approval-policy'
@@ -301,6 +322,7 @@ export interface FileRouteTypes {
     | '/settings/storage'
     | '/settings/users'
     | '/api/auth/$'
+    | '/dashboards'
     | '/organisations'
     | '/people'
     | '/settings'
@@ -320,6 +342,7 @@ export interface FileRouteTypes {
     | '/connect/handoff'
     | '/gatekeeper/$'
     | '/_app/'
+    | '/_app/dashboards/$id'
     | '/_app/organisations/$id'
     | '/_app/people/$id'
     | '/_app/settings/approval-policy'
@@ -329,6 +352,7 @@ export interface FileRouteTypes {
     | '/_app/settings/storage'
     | '/_app/settings/users'
     | '/api/auth/$'
+    | '/_app/dashboards/'
     | '/_app/organisations/'
     | '/_app/people/'
     | '/_app/settings/'
@@ -430,6 +454,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/gatekeeper/$'
       preLoaderRoute: typeof GatekeeperSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/dashboards/': {
+      id: '/_app/dashboards/'
+      path: '/dashboards'
+      fullPath: '/dashboards/'
+      preLoaderRoute: typeof AppDashboardsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboards/$id': {
+      id: '/_app/dashboards/$id'
+      path: '/dashboards/$id'
+      fullPath: '/dashboards/$id'
+      preLoaderRoute: typeof AppDashboardsIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/organisations/': {
       id: '/_app/organisations/'
@@ -540,6 +578,7 @@ interface AppRouteChildren {
   AppTasksRoute: typeof AppTasksRoute
   AppTrashRoute: typeof AppTrashRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppDashboardsIdRoute: typeof AppDashboardsIdRoute
   AppOrganisationsIdRoute: typeof AppOrganisationsIdRoute
   AppPeopleIdRoute: typeof AppPeopleIdRoute
   AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
@@ -548,6 +587,7 @@ interface AppRouteChildren {
   AppSettingsExtensionsRoute: typeof AppSettingsExtensionsRoute
   AppSettingsStorageRoute: typeof AppSettingsStorageRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
+  AppDashboardsIndexRoute: typeof AppDashboardsIndexRoute
   AppOrganisationsIndexRoute: typeof AppOrganisationsIndexRoute
   AppPeopleIndexRoute: typeof AppPeopleIndexRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
@@ -563,6 +603,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTasksRoute: AppTasksRoute,
   AppTrashRoute: AppTrashRoute,
   AppIndexRoute: AppIndexRoute,
+  AppDashboardsIdRoute: AppDashboardsIdRoute,
   AppOrganisationsIdRoute: AppOrganisationsIdRoute,
   AppPeopleIdRoute: AppPeopleIdRoute,
   AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
@@ -571,6 +612,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsExtensionsRoute: AppSettingsExtensionsRoute,
   AppSettingsStorageRoute: AppSettingsStorageRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,
+  AppDashboardsIndexRoute: AppDashboardsIndexRoute,
   AppOrganisationsIndexRoute: AppOrganisationsIndexRoute,
   AppPeopleIndexRoute: AppPeopleIndexRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,

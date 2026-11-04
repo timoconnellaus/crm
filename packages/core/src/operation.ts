@@ -5,10 +5,12 @@ import type { AuditChangeAction, CoreDatabase, CrmDb } from "@crm/db";
 import type { PermissionsManifest } from "@crm/sdk";
 import type { Compilable, CompiledQuery, Kysely } from "kysely";
 import type { z } from "zod";
+import type { WidgetCache } from "./dashboards/cache.ts";
 import type { FieldDiff } from "./diff.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
 import type { GateFloor } from "./gate.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
+import type { ModelRunner } from "./models.ts";
 import {
   ACTORS,
   type ActingUser,
@@ -122,6 +124,10 @@ export interface HandlerContext {
   readonly integrations?: IntegrationRuntime;
   /** Blob storage (R2) for email bodies, when the adapter provides it. */
   readonly blobs?: BlobStore;
+  /** Model roles (ADR 0009), when the adapter has an AI binding. Absent: AI is not configured. */
+  readonly models?: ModelRunner;
+  /** The dashboard widget result cache (ADR 0057). Absent: the Workers Cache API. */
+  readonly widgetCache?: WidgetCache;
 }
 
 /** The extension an `extension`-actor call runs for, and its approved permissions. */

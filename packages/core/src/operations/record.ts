@@ -196,6 +196,48 @@ async function prepareValues(
   return prepared;
 }
 
+/**
+ * Select choices may require other fields (ADR 0058): a record holding the choice must have a
+ * value in each. `values` is the record as it will be after the write. Refuses with the first
+ * missing field named in `details.field`, so a board drag can ask for it.
+ */
+export function assertChoiceRequirements(
+  object: ObjectDefinition,
+  prepared: readonly { field: FieldDefinition; value: unknown }[],
+  values: Record<string, unknown>,
+): void {
+  for (const p of prepared) {
+    const choice = p.field.options?.choices?.find((c) => c.value === p.value);
+    if (!choice?.requires?.length) continue;
+    const prefix = p.field.name.includes(".") ? `${p.field.name.split(".")[0]}.` : "";
+    const missing = choice.requires
+      .map((name) => object.fields.find((f) => f.name === name || f.name === `${prefix}${name}`))
+      .filter((f): f is FieldDefinition => Boolean(f))
+      .filter((f) => {
+        const value = values[f.name];
+        return (
+          value === null ||
+          value === undefined ||
+          value === "" ||
+          (Array.isArray(value) && value.length === 0)
+        );
+      });
+    const first = missing[0];
+    if (first) {
+      throw new ValidationError(
+        `${p.field.label} “${choice.label}” needs ${missing.map((f) => f.label).join(", ")}`,
+        {
+          field: first.name,
+          fields: missing.map((f) => f.name),
+          reason: "required_by_choice",
+          choiceField: p.field.name,
+          choice: choice.value,
+        },
+      );
+    }
+  }
+}
+
 /** Relation and user fields must point at live records and real users. */
 async function assertReferences(ctx: HandlerContext, prepared: PreparedValue[]) {
   for (const p of prepared) {
@@ -283,6 +325,11 @@ export const recordCreate = defineOperation({
   async handler(input, ctx) {
     const object = requireExtensionObject(input.object);
     const prepared = await prepareValues(ctx, object, input.values, "create");
+    assertChoiceRequirements(
+      object,
+      prepared,
+      Object.fromEntries(prepared.map((p) => [p.field.name, p.value])),
+    );
     const table = objectTableOf(object.name) as string;
     const id = newId("record");
     const own = prepared.filter((p) => p.own);
@@ -338,6 +385,10 @@ export const recordUpdate = defineOperation({
     if (!before) throw new NotFoundError(input.object, input.id);
     const prepared = await prepareValues(ctx, object, input.values, "update");
     if (!prepared.length) return before;
+    assertChoiceRequirements(object, prepared, {
+      ...before.values,
+      ...Object.fromEntries(prepared.map((p) => [p.field.name, p.value])),
+    });
     const own = prepared.filter((p) => p.own);
     if (own.length || !isCoreObject(object.name)) {
       const table = objectTableOf(object.name);
@@ -473,6 +524,14 @@ export const recordList = defineOperation({
         record.values = Object.fromEntries(
           Object.entries(record.values).filter(([key]) => input.fields?.includes(key)),
         );
+        // Core fields named in `fields` come back too (board, calendar and gallery views of
+        // core objects read them here), as their view columns' values.
+        for (const name of input.fields) {
+          const field = object.fields.find((f) => f.name === name);
+          if (field && !field.extension && field.column && !(name in record.values)) {
+            record.values[name] = (row as Record<string, unknown>)[field.column] ?? null;
+          }
+        }
       }
       return record;
     });

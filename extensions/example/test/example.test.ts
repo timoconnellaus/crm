@@ -10,6 +10,18 @@ describe("example extension (test host)", () => {
     const host = createTestHost(extension);
     expect(host.issues).toEqual([]);
     expect(Object.keys(host.manifest.tools)).toEqual(["summariseOrganisation", "setTier"]);
+    expect(Object.keys(host.manifest.recordTabs)).toEqual(["projects"]);
+    expect(host.manifest.recordTabs.projects).toMatchObject({
+      on: "organisation",
+      view: { type: "table", object: "example.project", relation: "organisation" },
+    });
+    expect(host.manifest.settings.defaultStatus).toMatchObject({
+      type: "select",
+      default: "planned",
+    });
+    expect(
+      host.manifest.objects.project?.fields.status?.options?.find((o) => o.value === "done"),
+    ).toMatchObject({ requires: ["spent"] });
     expect(host.manifest.tools.summariseOrganisation?.inputSchema).toMatchObject({
       type: "object",
       required: ["organisationId"],

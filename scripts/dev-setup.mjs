@@ -43,6 +43,16 @@ execFileSync("node", [join(root, "scripts/gatekeeper-configurator-frames.mjs")],
   stdio: "inherit",
 });
 
+// Local dev has no Workers AI binding: answer the build model role ("Describe a widget") with
+// the deterministic stand-in (stage 4a), in new and existing .dev.vars alike.
+const appVars = join(root, "apps/app/.dev.vars");
+if (existsSync(appVars) && !/^AI_FAKE_MODEL=/m.test(readFileSync(appVars, "utf8"))) {
+  writeFileSync(
+    appVars,
+    `${readFileSync(appVars, "utf8").trimEnd()}\n\n# Local only: a stand-in for the build model role (no AI binding locally).\nAI_FAKE_MODEL=true\n`,
+  );
+}
+
 // crm-runner bundles the SDK and the shipped extensions as source at build time (ADR 0025); vite
 // dev loads it as an auxiliary Worker, so the bundle must exist first.
 execFileSync("node", [join(root, "apps/runner/scripts/bundle.mjs")], { stdio: "inherit" });

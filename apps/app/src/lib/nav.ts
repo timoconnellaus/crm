@@ -5,6 +5,7 @@ import {
   CheckSquareIcon,
   HomeIcon,
   InboxIcon,
+  LayoutDashboardIcon,
   type LucideIcon,
   PlugIcon,
   PuzzleIcon,
@@ -19,6 +20,7 @@ import {
 export interface NavItem {
   to:
     | "/"
+    | "/dashboards"
     | "/people"
     | "/organisations"
     | "/tasks"
@@ -40,6 +42,12 @@ export interface NavItem {
 
 export const MAIN_NAV: NavItem[] = [
   { to: "/", label: "Home", icon: HomeIcon },
+  {
+    to: "/dashboards",
+    label: "Dashboards",
+    icon: LayoutDashboardIcon,
+    keywords: ["charts", "reports", "widgets", "overview"],
+  },
   { to: "/people", label: "People", icon: UsersIcon, keywords: ["contacts", "persons"] },
   { to: "/organisations", label: "Organisations", icon: Building2Icon, keywords: ["companies"] },
   { to: "/tasks", label: "Tasks", icon: CheckSquareIcon, keywords: ["todo"] },

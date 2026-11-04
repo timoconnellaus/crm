@@ -20,9 +20,9 @@ test("sign in, see the shell, health is green, run the hello Workflow", async ({
   await page.getByLabel("Password").fill(TEST_USER.password);
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  // The shell: sidebar, signed-in user menu and the empty home page.
+  // The shell: sidebar, signed-in user menu and Home (the shipped Overview dashboard).
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
   await expect(page.getByTestId("user-menu")).toContainText(TEST_USER.name);
   await expect(page.getByRole("link", { name: "System status" })).toBeVisible();
 

@@ -61,6 +61,13 @@
     "APPROVAL_EXPIRY_DAYS": "7",
     // MCP rate limits are the `ratelimits` bindings above (ADR 0056).
     // MCP access token lifetime in seconds; refresh tokens last 30 days.
-    "MCP_ACCESS_TOKEN_TTL": "3600"
+    "MCP_ACCESS_TOKEN_TTL": "3600",
+    // AI Gateway id for model roles (ADR 0009); empty calls Workers AI directly. Model roles need
+    // an `ai` binding ("ai": { "binding": "AI" }), which is optional: "Describe a widget" says
+    // AI is not configured without it. See docs/deploying.md.
+    "AI_GATEWAY_ID": "",
+    // Local dev and e2e only (.dev.vars sets it): "true" answers the build role with a
+    // deterministic stand-in when there is no `ai` binding. Never set it in production.
+    "AI_FAKE_MODEL": ""
   }
 }

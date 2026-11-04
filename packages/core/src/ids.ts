@@ -28,6 +28,7 @@ export const ID_PREFIXES = {
   connection: "con",
   integrationEvent: "iev",
   jobChange: "jcs",
+  dashboard: "dsh",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
