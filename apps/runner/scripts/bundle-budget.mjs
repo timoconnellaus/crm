@@ -10,7 +10,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const MAIN_BUDGET_KIB = 4_096;
+// Raised from 4,096 KiB in stage 7a: the AI SDK under the model role registry (ADR 0150) adds about
+// 1,100 KiB unminified (main module 3,368 KiB → about 4,460 KiB).
+const MAIN_BUDGET_KIB = 5_120;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");

@@ -105,5 +105,9 @@ eval harnesses take their default model from the registry (`@crm/core/ai-roles`,
 - The summarise default changed model, so summaries cached by stage 3 code paths (proposal
   summaries are keyed by commit, not model) are unaffected; the new summary cache hashes the model
   (ADR 0153).
+- The AI SDK costs bundle size: crm-runner's main module grew from 3,368 KiB to about 4,460 KiB
+  (unminified), so its budget in `apps/runner/scripts/bundle-budget.mjs` rose from 4,096 to
+  5,120 KiB. The TypeScript compiler still lives only in the checker's Text module. If cold
+  starts suffer, the runner could load the SDK lazily or call crm-app for model roles.
 - Deprecated Workers AI models are a recurring risk: the catalogue is data, and a role whose model
   disappears falls back once and shows the error in Settings → AI.
