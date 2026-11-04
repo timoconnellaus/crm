@@ -52,7 +52,9 @@ describe("better-auth adapter", () => {
     // Storage is shared across tests in a file, so make sure a first user exists either way.
     const closed = createIdentityProvider(authEnv());
     await signUp(closed, "first@example.com");
-    const users = await env.DB.prepare("SELECT COUNT(*) AS n FROM core_user").first<{ n: number }>();
+    const users = await env.DB.prepare("SELECT COUNT(*) AS n FROM core_user").first<{
+      n: number;
+    }>();
     expect(users?.n).toBeGreaterThan(0);
 
     expect((await signUp(closed, "second@example.com"))?.ok).toBe(false);
