@@ -70,6 +70,15 @@ _Avoid_: connector, integration (when you mean the Worker)
 **Integration**
 The user-facing name for a connected gatekeeper ("Gmail integration").
 
+**Principal**
+The authenticated caller of a request: `{ userId, email, name, roles }`, resolved by the identity
+adapter for every route and server function.
+_Avoid_: user (when you mean the caller of a request), session
+
+**Identity adapter**
+The deploy-time choice of how a Principal is resolved: `better-auth` (default) or
+`cloudflare-access`, selected by `IDENTITY_PROVIDER`. Implements `IdentityProvider`.
+
 **Model role**
 A named AI job (`build`, `assistant`, `summarise`, `extract`, `classify`, `embed`, `vision`, `review`)
 mapped to a provider + model in the model registry. Code asks for a role, never a model.

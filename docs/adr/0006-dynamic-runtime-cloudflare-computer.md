@@ -16,3 +16,8 @@ Frequently-changed logic that business users touch, such as marketing automation
 - Confirm Worker Loader limits on Workers Paid.
 - The library is young: pin versions and track it in `UPSTREAMS.md`. The container backend is out of scope.
 - Fallback if the hot path is too slow: keep the library for storage and git, and run hot automations through our own thin loader.
+
+## Note, 2026-11-04 (stage 0 spike)
+The spike ([`docs/spikes/0001-dynamic-runtime.md`](../spikes/0001-dynamic-runtime.md)) recommends
+proceeding as-is, measured on local workerd only. Production cold start, CPU-timeout behaviour and
+concurrency are to be re-measured on a deployed runner before automations go live.
