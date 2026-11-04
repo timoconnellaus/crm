@@ -17,7 +17,8 @@
     "test": "turbo run test",
     "test:e2e": "pnpm --filter @crm/app test:e2e",
     "deploy": "node scripts/deploy.mjs",
-    "types": "turbo run types"
+    "types": "turbo run types",
+    "db:seed": "pnpm --filter @crm/db seed"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.4",

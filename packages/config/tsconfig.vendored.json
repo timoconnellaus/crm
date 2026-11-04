@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  // For code vendored from upstream projects (see UPSTREAMS.md). Keeps `strict`, but switches off
+  // the extra checks of tsconfig.base.json that upstream does not use, so vendored files can stay
+  // identical to upstream and upstream diffs keep applying cleanly. The settings mirror the
+  // cloudflare-os root tsconfig.json.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext"],
+    "allowJs": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": false
+  }
+}

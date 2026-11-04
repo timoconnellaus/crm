@@ -11,3 +11,9 @@ Status: accepted, 2026-11-04 (stage 2 interview).
 
 ## Why
 This is the Cloudflare OS model. Agents finish whole tasks without stalling, and humans review one coherent change set later, in bulk. Being explicit about "pending" keeps Claude honest with the user.
+
+## Amendment, 2026-11-04 (stage 2 build)
+How sessions, simulation, dependencies and applying work is recorded in ADR 0032. In short: the
+MCP session is the connected app (the stateless transport has no protocol sessions), simulation
+is a dry run of the handler whose record changes are stored on the pending action, and approval
+re-runs each action through the pipeline as its original actor.

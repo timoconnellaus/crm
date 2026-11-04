@@ -27,7 +27,27 @@ A field flagged `track: "timeline"`, whose changes post a `system` Activity on t
 A user's stored list configuration (`object`, filter, sort, columns): the simplest kind of view spec.
 
 **Trash**
-Soft-deleted records, restorable for 30 days before they are purged.
+Soft-deleted records (people, organisations, activities and tasks), listed by `trash.list` and
+restorable for 30 days before they are purged.
+
+**Purge**
+The scheduled hard delete of records that have been in Trash for more than 30 days. It runs daily
+as an `automation` (`trash.purge`) and is audited like any operation. It removes deleted people,
+organisations, activities and tasks, with their links and search entries. Live activities and
+tasks linked to a purged record stay and lose only that link.
+
+**Merge**
+Folding a duplicate record into a **survivor**: chosen field values, combined emails/phones/domains
+and tags, and the duplicate's affiliations, activity and task links moved over. The merged-away
+record goes to Trash with a `merged_into_id` pointer and can be restored.
+_Avoid_: dedupe (that is finding duplicates), combine
+
+**Erase**
+An admin-only hard delete for GDPR requests (`person.erase`, `organisation.erase`). Unlike a purge
+it also **redacts** the audit log: content that mentions the record becomes `"[erased]"` (ADR 0019).
+Activities and tasks only about the record are deleted; shared ones are scrubbed of its emails,
+phone numbers and id, and the search index is purged of it.
+_Avoid_: purge (that is retention), delete (that is soft)
 
 **Activity**
 One entry on a record's timeline: a note, email, call, meeting or system event.
@@ -37,6 +57,14 @@ One thing a user or AI can do, defined once in the operations registry with zod 
 model-facing description, a permission and a risk class. It is exposed as a server function, an MCP
 tool and a host module.
 _Avoid_: endpoint, action (an "action" is a gatekeeper term, below)
+
+**Permission**
+What an operation requires of the caller's role: `records:read`, `records:write`, `records:erase`,
+`audit:read`, `users:manage`, `policy:manage`. Viewers have read; members read and write; admins all.
+
+**Field registry**
+Per-object field definitions (name, type, filterable, sortable, `track`). Filters, sorts and
+timeline tracking are validated against it.
 
 **Risk class**
 How dangerous an operation is: `read`, `write`, `bulk-write`, `destructive`, `schema`, `extension`,
@@ -51,7 +79,35 @@ Gate → adjudicator → human queue, configured per org. It decides whether an 
 automatically, is denied, or waits.
 
 **Floor**
-Deploy-time (env) rules the per-org policy can never loosen.
+Deploy-time (env `APPROVAL_FLOOR`) rules the per-org policy can never loosen.
+
+**Preset**
+The org's approval policy: Cautious, Balanced (default) or Autonomous. Changed by human admins only.
+
+**Pending action**
+One operation call the gate routed to review, recorded instead of applied: operation, input, the
+agent's reason, actor, user, origin, risk class, a diff preview, the simulated result and its
+dependencies. It is `pending` until a person approves it (`applied`, or `failed` if the record
+changed or vanished meanwhile) or rejects it (`rejected`), or until it is `skipped` because
+something it depends on did not apply, or `expired` (after 7 days by default).
+_Avoid_: draft, proposal, request
+
+**Change set**
+The pending actions a person reviews together. By default one per MCP session; Claude can open a
+titled one with `changeset.begin` and finish it with `changeset.commit`. It is approved or
+rejected whole or item by item in the Approvals inbox.
+_Avoid_: batch (that is a `*Many` operation), transaction
+
+**Provisional ID**
+The id a pending create gives its record (`per_pending_…`) so later pending actions in the same
+session can refer to it, e.g. log an activity on a person not yet approved. Approval binds it to
+the real id; it never reaches other sessions or the UI.
+
+**Connected app**
+An MCP client (Claude Desktop, claude.ai, Claude Code, …) a user authorized over OAuth, with the
+scopes they granted (`read`, `write`, `admin`). It is also the MCP session that pending actions
+belong to. Users revoke their own in Settings → Connected apps; admins can revoke anyone's.
+_Avoid_: integration (that is a gatekeeper), token, client (when you mean the authorization)
 
 **Adjudicator**
 The optional AI reviewer (model role `review`) that judges pending changes against the org's

@@ -15,7 +15,21 @@
       "!**/dist",
       "!**/playwright-report",
       "!**/test-results",
-      "!**/*.md"
+      "!**/*.md",
+      "!docs/stages/assets",
+      "!packages/gatekeeper-interface/src",
+      "!packages/gatekeeper-interface/testing",
+      "!packages/gatekeeper-observability/src",
+      "!packages/gatekeeper-observability/__tests__",
+      "!packages/gatekeeper-configurator-ui/src",
+      "!packages/gatekeeper-kit/src",
+      "!packages/gatekeeper-kit/__tests__",
+      "!packages/mcp-shared/src",
+      "!packages/mcp-shared/__tests__",
+      "!packages/gatekeeper-mcp/src",
+      "!packages/gatekeeper-mcp/__tests__",
+      "!packages/gatekeeper-google/src",
+      "!packages/gatekeeper-google/__tests__"
     ]
   },
   "overrides": [

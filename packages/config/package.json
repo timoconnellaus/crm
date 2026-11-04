@@ -6,6 +6,7 @@
   "exports": {
     "./tsconfig.base.json": "./tsconfig.base.json",
     "./tsconfig.react.json": "./tsconfig.react.json",
+    "./tsconfig.vendored.json": "./tsconfig.vendored.json",
     "./biome-preset.json": "./biome-preset.json",
     "./vitest": "./vitest.ts"
   },

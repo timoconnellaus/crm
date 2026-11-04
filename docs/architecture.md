@@ -59,7 +59,11 @@ definition:
 | MCP tool | Claude and other MCP clients |
 | host module (`codemode:crm`) | extension code in dynamic workers |
 
-Every call passes through the **approval pipeline** before it takes effect.
+Every call passes through the **approval pipeline** before it takes effect. In code that is
+`invoke()` in `packages/core` (ADR 0018): validate → gate → role check → handler → one D1 batch
+holding the handler's writes, timeline activities and the audit row with field diffs. Handlers
+read with Kysely and queue writes; list operations take filter JSON validated against the **field
+registry** and compiled to parameterised SQL. `packages/core/README.md` shows how to add one.
 
 ### 3. Data
 
@@ -67,12 +71,17 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
 
 - **Core schema** (`core_*` tables): our versioned migrations, applied on deploy or upgrade. It covers
   the minimal core objects (People, Organisations, Activities, Tasks), users, settings, the approval
-  queue and the audit log.
+  queue and the audit log. Deletes are soft (Trash); a daily cron trigger on `crm-app` purges
+  people, organisations, activities and tasks after 30 days through the operations pipeline
+  (`trash.purge`), and admin erase redacts the append-only audit log through a sanctioned path
+  ([ADR 0019](adr/0019-audit-redaction-for-erasure.md)).
 - **Extension schema** (`x_<extension>_*` tables): declared in extension code (`defineObject`) and
   reconciled into D1 by the host, additive-first. Core migrations never touch `x_` tables.
-- **`crm.*` views**: generated read views with friendly names. They are what dashboard SQL and AI
-  queries run against.
-- **R2** holds attachments and imports.
+- **`crm.*` views**: generated read views with friendly names, spelled `crm_people`,
+  `crm_organisations`, … because D1 has no schemas (ADR 0015 amendment). They are what list
+  operations, dashboard SQL and AI queries run against.
+- **R2** holds attachments (and, later, large imports: stage-1 CSV imports arrive inline,
+  [ADR 0020](adr/0020-query-sql-validator-and-csv-import.md)).
 
 Core migrations are plain SQL in `packages/db/migrations`. Both Workers point their `DB` binding's
 `migrations_dir` there, so `wrangler d1 migrations apply` and the in-code runner (`applyMigrations`,
@@ -113,6 +122,32 @@ Configurable per org ([ADR 0011](adr/0011-approval-pipeline.md)):
 
 Only human admins can change the policy. Every decision is audited.
 
+The human queue is built (stage 2, [ADR 0022](adr/0022-approval-queue-and-simulation.md),
+[ADR 0032](adr/0032-mcp-sessions-and-approval-mechanics.md)); the adjudicator comes in stage 7.
+A `review` decision dry-runs the operation and records a **pending action** (diff preview,
+simulated result, dependencies, the agent's reason) in a **change set**, then returns
+`pending_approval`. The originating MCP session's reads (`get`, `list`, `search.global`,
+`activity.listForRecord`) see its pending actions applied, with **provisional IDs** for creates;
+everyone else reads real data. A person approves or rejects (`approval.approve` / `reject`):
+approval re-runs each action through the pipeline as the original actor, binding provisional to
+real ids, and fails an action cleanly if its record changed or was deleted meanwhile. Rejection
+cascades to dependents; pending actions expire after `APPROVAL_EXPIRY_DAYS` (default 7).
+
+### MCP
+
+`/mcp` on `crm-app` ([ADR 0021](adr/0021-mcp-surface.md), ADR 0032): `workers-oauth-provider`
+wraps the Worker (OAuth 2.1, dynamic client registration, PKCE, one-hour access tokens and
+30-day refresh tokens in the `OAUTH_KV` namespace). `/oauth/consent` signs the user in through
+the identity adapter and grants scopes `read`, `write` and (admins only) `admin`; effective
+permission is role ∩ scopes. Each authorization is a **connected app** (`core_connected_app`),
+which is also the MCP session; revoking it stops its tokens at once. `/mcp` is the Agents SDK's
+stateless Streamable HTTP handler with an MCP SDK v2 server per request
+(`apps/app/src/server/mcp/`): curated tools (operations flagged `mcp: { curated: true }`),
+`describe_operations` / `call_operation` for every other MCP-exposed operation, the
+`crm://schema` resource and server instructions. Calls run as actor `mcp` with origin
+`{ surface: "mcp", clientId, clientName, sessionId }`, rate-limited per connected app. See
+[`docs/mcp.md`](mcp.md).
+
 ### 7. Identity
 
 A deploy-time **identity adapter** ([ADR 0008](adr/0008-identity-adapters.md)): Better Auth (the
@@ -122,7 +157,8 @@ login to the active adapter. Identity is never runtime-pluggable.
 In `crm-app`, one TanStack Start request middleware resolves the **Principal** for every page
 route, server route and server function call. Everything is private by default: only `/sign-in`,
 `/api/health`, the adapter's own routes (`/api/auth/*`) and server functions in `*.public.ts` files
-are reachable without one. A request without a Principal is redirected to sign-in (pages, Better
+are reachable without one. The OAuth routes (`/oauth/*`, `/.well-known/oauth-*`) and `/mcp`
+are handled before TanStack Start by the OAuth provider, which checks Bearer tokens itself. A request without a Principal is redirected to sign-in (pages, Better
 Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Access).
 
 ### 8. AI
@@ -134,8 +170,10 @@ go through AI Gateway ([ADR 0009](adr/0009-model-roles.md)). Code asks for a rol
 ### 9. Dashboards and views
 
 A view spec rendered by our own shadcn/chart components. Widgets query with read-only SQL over the
-`crm.*` views: the SQL is parsed and allowlisted, takes bound params, and runs with row and time
-limits. Computed widgets are extension code. Extensions never ship UI
+`crm.*` views: the SQL is checked by a SQLite-faithful tokenizer validator (one SELECT/WITH,
+`crm_*` views only), takes bound params, and runs with row and time limits
+([ADR 0020](adr/0020-query-sql-validator-and-csv-import.md); `validateReadOnlySql` in `@crm/core`,
+used by `query.sql`). Computed widgets are extension code. Extensions never ship UI
 ([ADR 0010](adr/0010-dashboards-sql-views.md)).
 
 ## Repository layout
@@ -151,8 +189,12 @@ packages/
   sdk/                 the extension contract: defineObject / defineDashboard / defineAutomation / defineTool
   ui/                  shared shadcn/ui components and the view-spec renderer
   config/              shared tsconfig, biome and vitest presets
-  gatekeeper-kit/      (stage 6) vendored from cloudflare-os
-  gatekeeper-<name>/   (stage 6) vendored or our own gatekeeper Workers
+  gatekeeper-interface/ the gatekeeper RPC interface (vendored from cloudflare-os, see UPSTREAMS.md)
+  gatekeeper-kit/      gatekeeper building blocks (vendored)
+  gatekeeper-observability/, gatekeeper-configurator-ui/, mcp-shared/
+                       what the vendored gatekeepers depend on (vendored subsets)
+  gatekeeper-<name>/   gatekeeper Workers `crm-gatekeeper-<name>`: mcp and google so far (vendored,
+                       not yet bound to the runner; stage 6 wires them in)
 extensions/
   deals/               (stage 4) first shipped extension
 docs/
@@ -165,6 +207,8 @@ docs/
 scripts/
   deploy.mjs           deploy both Workers and apply migrations (`pnpm run deploy`)
   dev-setup.mjs        local .dev.vars + local migrations (runs before `pnpm dev`)
+  vendor-gatekeepers.mjs  re-copy the vendored cloudflare-os packages from an upstream checkout
+  gatekeeper-worker-types.mjs  `wrangler types` for the gatekeeper Workers (`pnpm types`)
   release/             (later) bundle builder + manifest
 AGENTS.md              conventions every build session follows (CLAUDE.md points here)
 CONTEXT.md             glossary

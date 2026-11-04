@@ -1,0 +1,10 @@
+{
+  "extends": "@crm/config/tsconfig.vendored.json",
+  "compilerOptions": {
+    // Configurator modules (src/configurator/*.tsx) use the authoring API's `h`.
+    "jsx": "react",
+    "jsxFactory": "h",
+    "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-plugin/types"]
+  },
+  "include": ["src", "__tests__", "test"]
+}

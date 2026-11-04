@@ -1,0 +1,7 @@
+{
+  "extends": "@crm/config/tsconfig.vendored.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types/experimental"]
+  },
+  "include": ["src", "__tests__"]
+}
