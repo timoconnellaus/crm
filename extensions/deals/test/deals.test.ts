@@ -39,9 +39,7 @@ describe("deals extension (test host)", () => {
       "Pipeline board",
     ]);
     expect(host.manifest.views.pipelineBoard).toMatchObject({ type: "board", groupBy: "stage" });
-    expect(
-      Object.values(host.manifest.dashboards).map((d) => [d.title, d.home ?? false]),
-    ).toEqual([
+    expect(Object.values(host.manifest.dashboards).map((d) => [d.title, d.home ?? false])).toEqual([
       ["Sales overview", true],
       ["Pipeline health", false],
     ]);

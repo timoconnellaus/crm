@@ -104,7 +104,7 @@ export function FieldDisplay({ field, value }: { field: FieldInfo; value: unknow
       return typeof value === "number" ? (
         <CurrencyValue field={field} value={value} />
       ) : (
-        <>{String(value)}</>
+        <span>{String(value)}</span>
       );
     case "number":
     case "percent":
