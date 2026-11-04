@@ -108,3 +108,11 @@ linked to that record, in the same batch.
   are identical, so ADR 0019's redaction markers and guarded `UPDATE` triggers apply unchanged.
   `BATCH_MAX` stays at 100 for `*Many` operations: timeline posts and per-record writes still
   cost statements.
+
+## Amendment, 2026-11-04 (stage 1 final integration)
+- **The purge covers activities and tasks.** `trash.purge` hard-deletes activities and tasks
+  soft-deleted more than 30 days ago, as well as people and organisations, in the same rounds of
+  at most 100 (people, then organisations, tasks, activities; oldest first within each). Their
+  links, task tags and search entries go by cascade and trigger. A live activity or task linked
+  to a purged record is kept and loses only that link. Each purged record gets an `erase` change
+  row, as before.

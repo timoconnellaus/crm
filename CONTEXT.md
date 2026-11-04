@@ -32,8 +32,9 @@ restorable for 30 days before they are purged.
 
 **Purge**
 The scheduled hard delete of records that have been in Trash for more than 30 days. It runs daily
-as an `automation` (`trash.purge`) and is audited like any operation. It removes people and
-organisations; deleted activities and tasks are not purged yet.
+as an `automation` (`trash.purge`) and is audited like any operation. It removes deleted people,
+organisations, activities and tasks, with their links and search entries. Live activities and
+tasks linked to a purged record stay and lose only that link.
 
 **Merge**
 Folding a duplicate record into a **survivor**: chosen field values, combined emails/phones/domains

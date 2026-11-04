@@ -8,15 +8,16 @@ timeline, one D1 batch). Decisions: ADR 0003, 0011, 0016, 0017, 0018.
 src/
   operations/          one file per object; index.ts lists them all
     person.ts          the reference implementation — copy its shape (+ changeJob, merge, *Many, erase)
-    organisation.ts    mirrors person; affiliation.ts, trash.ts (list + purge), user.ts, policy.ts
+    organisation.ts    mirrors person; affiliation.ts, user.ts, policy.ts
+    trash.ts           trash.list, trash.purge (people, orgs, activities, tasks past 30 days)
     activity.ts        activity.log/get/update/delete/restore/listForRecord/list (typed payloads)
     task.ts            task.create/get/update/complete/reopen/delete/restore/list/listMine
     view.ts            view.create/update/delete/list (saved `table` view specs)
     audit.ts           audit.list (admin), audit.listForRecord (History tab)
     search.ts          search.global (FTS5 over core_search, prefix as-you-type)
     query.ts           query.sql + validateReadOnlySql (ADR 0020)
-    import.ts          import.csv.preview/commit (reuses organisation.ts snapshots and domain
-                       helpers), CSV parse/format helpers
+    import.ts          import.csv.preview/commit (reuses the person and organisation
+                       snapshots and domain helpers), CSV parse/format helpers
     export.ts          export.csv
     index.ts           coreOperations = [...personOperations, ...]
   fields/              field registry per object (person, organisation, activity, task)
@@ -127,9 +128,10 @@ src/
 - **Merge and erase**: `queueMoveLinks` re-points links onto a survivor; `queueErase`
   (`records/erase.ts`) hard-deletes, removes activities/tasks only the subject owns, and redacts
   audit content through markers (ADR 0019).
-- **Organisation snapshots from bulk writers**: build an `OrganisationSnapshotSource` and pass it
-  to `organisationSnapshot` (as `import.csv.commit` does), and normalise domains with
-  `normaliseDomains` / `tryNormaliseDomain`, so every writer records the same diff shape.
+- **Snapshots from bulk writers**: build a `PersonSnapshotSource` / `OrganisationSnapshotSource`
+  and pass it to `personSnapshot` / `organisationSnapshot` (as `import.csv.commit` does), and
+  normalise domains with `normaliseDomains` / `tryNormaliseDomain`, so every writer records the
+  same diff shape as the object's own operations.
 - **System activities** are posted by the pipeline (`ctx.postActivity`), never by `activity.log`.
 - **Timeline / audit cursors**: newest-first lists that are not registry lists encode
   `{ f, d, v, id }` with `encodeCursor` and check them with `decodeCursor`, like `runListQuery`.
