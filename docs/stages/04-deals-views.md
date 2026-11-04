@@ -86,7 +86,7 @@ extension), saved per user or shared:
   - **Click-through:** a chart segment, KPI or table row opens the matching records as a filtered
     list. Widgets declare a click-through filter template.
   - Results are cached for 60 s per query and params, with manual refresh.
-  - Each widget shows its SQL to admins, plus a copy-ready "Ask Claude to change this" prompt.
+  - Each widget shows its SQL to admins, plus a copy-ready "Ask the assistant" prompt.
   - Widget data can be exported to CSV.
 - **Charts** use shadcn chart components (Recharts) and are correct in light and dark mode.
 - **Operations:** `dashboard.create/update/delete/list/get/setHome` and `widget.preview` (run a widget
