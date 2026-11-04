@@ -1,0 +1,24 @@
+{
+  "name": "@crm/gatekeeper-observability",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The structured Worker logger the vendored gatekeepers log through (a subset of cloudflare-os packages/observability).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./logger": "./src/logger.ts",
+    "./observability-context": "./src/observability-context.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@cloudflare/workers-types": "5.20261104.1",
+    "@crm/config": "workspace:*",
+    "@crm/gatekeeper-interface": "workspace:*",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "extends": "@crm/config/tsconfig.vendored.json",
+  "compilerOptions": {
+    "types": [
+      "@cloudflare/workers-types/experimental",
+      "@cloudflare/vitest-plugin/types",
+      "./src/node-async-hooks.d.ts"
+    ]
+  },
+  "include": ["src", "__tests__"]
+}

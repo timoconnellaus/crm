@@ -186,8 +186,12 @@ packages/
   sdk/                 the extension contract (defineExtension, defineTool), formula language, test harness
   ui/                  shared shadcn/ui components and the view-spec renderer
   config/              shared tsconfig, biome and vitest presets
-  gatekeeper-kit/      (stage 6) vendored from cloudflare-os
-  gatekeeper-<name>/   (stage 6) vendored or our own gatekeeper Workers
+  gatekeeper-interface/ the gatekeeper RPC interface (vendored from cloudflare-os, see UPSTREAMS.md)
+  gatekeeper-kit/      gatekeeper building blocks (vendored)
+  gatekeeper-observability/, gatekeeper-configurator-ui/, mcp-shared/
+                       what the vendored gatekeepers depend on (vendored subsets)
+  gatekeeper-<name>/   gatekeeper Workers `crm-gatekeeper-<name>`: mcp and google so far (vendored,
+                       not yet bound to the runner; stage 6 wires them in)
 extensions/
   example/             (stage 3) the example shipped extension; stage 4 replaces it with deals/
   deals/               (stage 4) first real shipped extension
@@ -201,6 +205,8 @@ docs/
 scripts/
   deploy.mjs           deploy both Workers and apply migrations (`pnpm run deploy`)
   dev-setup.mjs        local .dev.vars + local migrations (runs before `pnpm dev`)
+  vendor-gatekeepers.mjs  re-copy the vendored cloudflare-os packages from an upstream checkout
+  gatekeeper-worker-types.mjs  `wrangler types` for the gatekeeper Workers (`pnpm types`)
   release/             (later) bundle builder + manifest
 AGENTS.md              conventions every build session follows (CLAUDE.md points here)
 CONTEXT.md             glossary
