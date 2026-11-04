@@ -13,7 +13,7 @@ import {
   ValidationError,
 } from "../src/index.ts";
 import { insertOrganisation } from "./fixtures.ts";
-import { auditRows, context, createUser, setPreset, unique } from "./helpers.ts";
+import { auditChanges, auditRows, context, createUser, setPreset, unique } from "./helpers.ts";
 
 const csvOf = (rows: string[][]) => toCsv(rows);
 
@@ -312,7 +312,7 @@ describe("import.csv: people", () => {
       action: "update",
       matchId: person.id,
       options: ["update", "skip"],
-      changes: ["location", "emails", "phones", "tags"],
+      changes: ["emails", "phones", "location", "tags"],
     });
     await expect(
       invoke(
@@ -363,6 +363,51 @@ describe("import.csv: people", () => {
         context(user),
       ),
     ).rejects.toThrow(/same single-valued field/);
+  });
+
+  it("records person diffs in the same shape as person.create and person.update", async () => {
+    const user = await createUser("member");
+    const imported = `${unique("snap")}@example.com`;
+    const created = await invoke(
+      "person.create",
+      {
+        givenName: "Snap",
+        familyName: "Shot",
+        emails: [{ email: `${unique("snap")}@example.com` }],
+      },
+      context(user),
+    );
+    const owned = await invoke(
+      "person.update",
+      {
+        id: created.id,
+        ownerId: user.id,
+        socialProfiles: [{ network: "site", url: "https://example.com/snap" }],
+      },
+      context(user),
+    );
+    const csv = csvOf([
+      ["Given name", "Family name", "Email", "Location"],
+      ["Snap", "Import", imported, ""],
+      ["Snap", "Shot", owned.emails[0]?.email ?? "", "Lisbon"],
+    ]);
+    const result = await invoke("import.csv.commit", { object: "person", csv }, context(user));
+    expect(result.counts).toMatchObject({ create: 1, update: 1 });
+
+    // A create diff covers every field person.create's does.
+    const createKeys = (rows: Awaited<ReturnType<typeof auditChanges>>) =>
+      Object.keys(rows.find((r) => r.action === "create")?.diff ?? {}).sort();
+    const importedId = result.rows.find((r) => r.action === "create")?.id ?? "";
+    expect(createKeys(await auditChanges(importedId))).toEqual(
+      createKeys(await auditChanges(created.id)),
+    );
+    // An update diff names only what the CSV changed; untouched fields (owner, social profiles)
+    // compare equal rather than showing as cleared.
+    const update = (await auditChanges(created.id)).filter(
+      (r) => r.operation === "import.csv.commit",
+    );
+    expect(update).toHaveLength(1);
+    expect(Object.keys(update[0]?.diff ?? {})).toEqual(["location"]);
   });
 
   it("is gated as a bulk write and refused to viewers", async () => {

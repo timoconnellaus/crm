@@ -1,6 +1,5 @@
 // trash.* operations: what is in Trash (soft-deleted people, organisations, activities and tasks)
-// and the scheduled purge that hard-deletes people and organisations once their 30-day restore
-// window has passed.
+// and the scheduled purge that hard-deletes them once their 30-day restore window has passed.
 import { type SqlBool, sql } from "kysely";
 import { z } from "zod";
 import { ValidationError } from "../errors.ts";
@@ -8,9 +7,10 @@ import { decodeCursor, encodeCursor } from "../list.ts";
 import { defineOperation } from "../operation.ts";
 import { chunk, purgeCutoff, restorableUntil, TRASH_RETENTION_DAYS } from "../records/common.ts";
 
-/** Records trash.purge hard-deletes after the retention window. */
-const TRASH_OBJECTS = ["person", "organisation"] as const;
-/** Everything trash.list shows and the UI can restore (people, orgs, activities, tasks). */
+/**
+ * Everything in Trash: what trash.list shows, the UI can restore, and trash.purge hard-deletes
+ * after the retention window (people, organisations, activities, tasks).
+ */
 const TRASH_LIST_OBJECTS = ["person", "organisation", "activity", "task"] as const;
 type TrashListObject = (typeof TRASH_LIST_OBJECTS)[number];
 
@@ -141,21 +141,31 @@ export const trashList = defineOperation({
 
 export const PURGE_MAX = 100;
 
+/** The table behind each kind of record trash.purge hard-deletes. */
+const PURGE_TABLES = {
+  person: "core_person",
+  organisation: "core_organisation",
+  task: "core_task",
+  activity: "core_activity",
+} as const satisfies Record<TrashListObject, string>;
+
 export const trashPurge = defineOperation({
   name: "trash.purge",
   description:
-    `Permanently delete people and organisations that have been in Trash for more than ` +
-    `${TRASH_RETENTION_DAYS} days (oldest first, at most limit per call), with their emails, ` +
-    "phones, domains, addresses, affiliations, tags and links. Activities and tasks are kept. " +
-    "Run by the scheduled purge as an automation; it never touches records still within " +
-    "their restore window. Returns what was purged and whether more is due.",
+    `Permanently delete everything that has been in Trash for more than ` +
+    `${TRASH_RETENTION_DAYS} days (oldest first, at most limit per call): people and ` +
+    "organisations with their emails, phones, domains, addresses, affiliations, tags and links, " +
+    "and deleted activities and tasks with their links and search entries. Live activities and " +
+    "tasks linked to a purged record are kept (they lose only that link). Run by the scheduled " +
+    "purge as an automation; it never touches records still within their restore window. " +
+    "Returns what was purged and whether more is due.",
   input: z.object({
     limit: z.number().int().min(1).max(PURGE_MAX).default(50),
   }),
   output: z.object({
     cutoff: z.string().describe("Records deleted before this were due"),
     purged: z.array(
-      z.object({ object: z.enum(TRASH_OBJECTS), id: z.string(), deletedAt: z.string() }),
+      z.object({ object: z.enum(TRASH_LIST_OBJECTS), id: z.string(), deletedAt: z.string() }),
     ),
     more: z.boolean().describe("True when more records are due; call again"),
   }),
@@ -173,67 +183,47 @@ export const trashPurge = defineOperation({
   async handler(input, ctx) {
     const cutoff = purgeCutoff(ctx.now);
     if (!(cutoff < ctx.now)) throw new ValidationError("Invalid clock");
-    const due = async (table: "core_person" | "core_organisation", limit: number) =>
+    const due = (object: TrashListObject, limit: number) =>
       limit <= 0
-        ? []
-        : table === "core_person"
-          ? ctx.db
-              .selectFrom("core_person")
-              .select(["id", "deleted_at"])
-              .where("deleted_at", "is not", null)
-              .where("deleted_at", "<", cutoff)
-              .orderBy("deleted_at")
-              .orderBy("id")
-              .limit(limit)
-              .execute()
-          : ctx.db
-              .selectFrom("core_organisation")
-              .select(["id", "deleted_at"])
-              .where("deleted_at", "is not", null)
-              .where("deleted_at", "<", cutoff)
-              .orderBy("deleted_at")
-              .orderBy("id")
-              .limit(limit)
-              .execute();
+        ? Promise.resolve([])
+        : ctx.db
+            .selectFrom(PURGE_TABLES[object])
+            .select(["id", "deleted_at"])
+            .where("deleted_at", "is not", null)
+            .where("deleted_at", "<", cutoff)
+            .orderBy("deleted_at")
+            .orderBy("id")
+            .limit(limit)
+            .execute();
 
-    // Ask for one more than the limit to learn whether another call is needed.
-    const people = await due("core_person", input.limit + 1);
-    const organisations = await due("core_organisation", input.limit + 1 - people.length);
-    const more = people.length + organisations.length > input.limit;
-    const takePeople = people.slice(0, input.limit);
-    const takeOrgs = organisations.slice(0, input.limit - takePeople.length);
+    // Ask for one more than the limit to learn whether another call is needed. People first:
+    // their affiliations cascade before the organisations go. Tasks before activities: deleting
+    // a task drops the activity links that point at it.
+    const purged: { object: TrashListObject; id: string; deletedAt: string }[] = [];
+    let more = false;
+    for (const object of ["person", "organisation", "task", "activity"] as const) {
+      const rows = await due(object, input.limit + 1 - purged.length);
+      const room = input.limit - purged.length;
+      if (rows.length > room) more = true;
+      for (const row of rows.slice(0, Math.max(room, 0))) {
+        purged.push({ object, id: row.id, deletedAt: row.deleted_at ?? "" });
+      }
+      if (more) break;
+    }
 
-    // People first: their affiliations cascade before the organisations go.
-    for (const part of chunk(takePeople.map((p) => p.id))) {
-      ctx.write(
-        ctx.db
-          .deleteFrom("core_person")
-          .where("id", "in", part)
-          .where("deleted_at", "is not", null)
-          .where("deleted_at", "<", cutoff),
-      );
+    // Links, tags and search entries go by cascade and trigger (migrations 0003, 0004, 0006).
+    for (const object of ["person", "organisation", "task", "activity"] as const) {
+      const ids = purged.filter((r) => r.object === object).map((r) => r.id);
+      for (const part of chunk(ids)) {
+        ctx.write(
+          ctx.db
+            .deleteFrom(PURGE_TABLES[object])
+            .where("id", "in", part)
+            .where("deleted_at", "is not", null)
+            .where("deleted_at", "<", cutoff),
+        );
+      }
     }
-    for (const part of chunk(takeOrgs.map((o) => o.id))) {
-      ctx.write(
-        ctx.db
-          .deleteFrom("core_organisation")
-          .where("id", "in", part)
-          .where("deleted_at", "is not", null)
-          .where("deleted_at", "<", cutoff),
-      );
-    }
-    const purged = [
-      ...takePeople.map((p) => ({
-        object: "person" as const,
-        id: p.id,
-        deletedAt: p.deleted_at ?? "",
-      })),
-      ...takeOrgs.map((o) => ({
-        object: "organisation" as const,
-        id: o.id,
-        deletedAt: o.deleted_at ?? "",
-      })),
-    ];
     for (const record of purged) {
       ctx.recordChange({
         object: record.object,

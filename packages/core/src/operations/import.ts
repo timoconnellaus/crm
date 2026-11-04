@@ -26,7 +26,7 @@ import {
   organisationSnapshot,
   tryNormaliseDomain,
 } from "./organisation.ts";
-import { normalisePhoneNumber } from "./person.ts";
+import { normalisePhoneNumber, type PersonSnapshotSource, personSnapshot } from "./person.ts";
 
 // --- CSV ---------------------------------------------------------------------------------------
 
@@ -726,7 +726,7 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
         object: "person",
         id,
         action: "create",
-        after: {
+        after: personSnapshot({
           displayName,
           givenName,
           familyName,
@@ -734,9 +734,12 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
           phones: phones.map(([, number], i) => ({ number, label: null, primary: i === 0 })),
           location: row.location,
           timezone: row.timezone,
+          socialProfiles: [],
+          avatarKey: null,
+          ownerId: null,
           description: row.description,
           tags: [...tags].sort(compareTagNames),
-        },
+        }),
       });
       continue;
     }
@@ -831,7 +834,12 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
       if (primary && primary.title !== title) affiliationTitles.push({ id: primary.id, title });
     }
 
-    const beforeSnap = {
+    const unchanged = {
+      socialProfiles: JSON.parse(before.social_profiles) as PersonSnapshotSource["socialProfiles"],
+      avatarKey: before.avatar_key,
+      ownerId: before.owner_id,
+    };
+    const beforeSnap = personSnapshot({
       displayName: before.display_name,
       givenName: before.given_name,
       familyName: before.family_name,
@@ -841,9 +849,11 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
       emails: beforeEmails,
       phones: beforePhones,
       tags: beforeTags,
-    };
-    const afterSnap = {
+      ...unchanged,
+    });
+    const afterSnap = personSnapshot({
       ...after,
+      ...unchanged,
       emails: [
         ...beforeEmails,
         ...addEmails.map((email, i) => ({
@@ -861,8 +871,8 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
         })),
       ],
       tags: afterTags,
-    };
-    r.changes = (Object.keys(afterSnap) as (keyof typeof afterSnap)[]).filter(
+    });
+    r.changes = Object.keys(afterSnap).filter(
       (k) => JSON.stringify(beforeSnap[k]) !== JSON.stringify(afterSnap[k]),
     );
     const scalarsChanged = r.changes.some((k) => !["emails", "phones", "tags"].includes(k));

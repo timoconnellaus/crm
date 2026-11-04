@@ -166,6 +166,116 @@ describe("scheduled purge", () => {
     expect((await runTrashPurge(db)).purged).toBe(0);
   });
 
+  it("hard-deletes activities and tasks deleted more than 30 days ago, with links and search entries", async () => {
+    const person = await invoke("person.create", { displayName: unique("PurgeAT") }, at(45));
+    const links = [{ object: "person", id: person.id }];
+    const word = unique("purgeword").toLowerCase();
+    const oldNote = await invoke(
+      "activity.log",
+      { type: "note", subject: `Old ${word}`, body: "Gone soon", links },
+      at(45),
+    );
+    const recentNote = await invoke(
+      "activity.log",
+      { type: "note", subject: `Recent ${word}`, body: "Still restorable", links },
+      at(45),
+    );
+    const liveNote = await invoke(
+      "activity.log",
+      { type: "note", subject: `Live ${word}`, body: "Never deleted", links },
+      at(45),
+    );
+    const oldTask = await invoke("task.create", { title: `Old task ${word}`, links }, at(45));
+    // A live note about the old task: it stays, and loses only its link to the task.
+    const aboutTask = await invoke(
+      "activity.log",
+      {
+        type: "note",
+        body: "About the old task",
+        links: [...links, { object: "task", id: oldTask.id }],
+      },
+      at(45),
+    );
+    const recentTask = await invoke("task.create", { title: `Recent task ${word}`, links }, at(45));
+    await invoke("activity.delete", { id: oldNote.id }, at(35));
+    await invoke("task.delete", { id: oldTask.id }, at(31));
+    await invoke("activity.delete", { id: recentNote.id }, at(29));
+    await invoke("task.delete", { id: recentTask.id }, at(10));
+
+    // The deleted rows' search entries are already gone; the live note's is there.
+    const before = await env.DB.prepare(
+      "SELECT record_id FROM core_search_docs WHERE record_id IN (?, ?)",
+    )
+      .bind(oldNote.id, liveNote.id)
+      .all();
+    expect(before.results.map((r) => r.record_id)).toEqual([liveNote.id]);
+
+    const result = await runTrashPurge(db);
+    expect(result.more).toBe(false);
+
+    const rowExists = async (table: string, id: string) =>
+      (await env.DB.prepare(`SELECT id FROM ${table} WHERE id = ?`).bind(id).first()) !== null;
+    expect(await rowExists("core_activity", oldNote.id)).toBe(false);
+    expect(await rowExists("core_task", oldTask.id)).toBe(false);
+    expect(await rowExists("core_activity", recentNote.id)).toBe(true);
+    expect(await rowExists("core_task", recentTask.id)).toBe(true);
+    expect(await rowExists("core_activity", liveNote.id)).toBe(true);
+    expect(await rowExists("core_activity", aboutTask.id)).toBe(true);
+    expect(await exists("core_person", person.id)).toBe(true);
+
+    const leftovers = await env.DB.prepare(
+      `SELECT
+        (SELECT COUNT(*) FROM core_activity_links WHERE activity_id = ?1) AS activityLinks,
+        (SELECT COUNT(*) FROM core_task_links WHERE task_id = ?2) AS taskLinks,
+        (SELECT COUNT(*) FROM core_activity_links WHERE object_type = 'task' AND record_id = ?2)
+          AS linksToTask,
+        (SELECT COUNT(*) FROM core_search_docs WHERE record_id IN (?1, ?2)) AS search`,
+    )
+      .bind(oldNote.id, oldTask.id)
+      .first();
+    expect(leftovers).toEqual({
+      activityLinks: 0,
+      taskLinks: 0,
+      linksToTask: 0,
+      search: 0,
+    });
+    // The live note about the task keeps its person link.
+    const kept = await env.DB.prepare(
+      "SELECT object_type, record_id FROM core_activity_links WHERE activity_id = ?",
+    )
+      .bind(aboutTask.id)
+      .all();
+    expect(kept.results).toEqual([{ object_type: "person", record_id: person.id }]);
+
+    // The purge is audited per record.
+    expect((await auditChanges(oldNote.id)).at(-1)).toMatchObject({
+      action: "erase",
+      operation: "trash.purge",
+    });
+    expect((await auditChanges(oldTask.id)).at(-1)).toMatchObject({
+      action: "erase",
+      operation: "trash.purge",
+    });
+
+    // Gone from Trash and from the person's timeline and tasks; the recent ones are still there.
+    const trash = await invoke("trash.list", { limit: 200 }, context(member));
+    const trashIds = trash.items.map((i) => i.id);
+    expect(trashIds).not.toContain(oldNote.id);
+    expect(trashIds).not.toContain(oldTask.id);
+    expect(trashIds).toContain(recentNote.id);
+    expect(trashIds).toContain(recentTask.id);
+    await invoke("activity.restore", { id: recentNote.id }, context(member));
+    const timeline = await invoke(
+      "activity.listForRecord",
+      { object: "person", recordId: person.id, limit: 50 },
+      context(member),
+    );
+    expect(timeline.items.map((i) => i.id)).toEqual(
+      expect.arrayContaining([recentNote.id, liveNote.id, aboutTask.id]),
+    );
+    expect(timeline.items.map((i) => i.id)).not.toContain(oldNote.id);
+  });
+
   it("works through a backlog in rounds of at most 100", async () => {
     const ids: string[] = [];
     const now = new Date(Date.now() - 60 * DAY).toISOString();

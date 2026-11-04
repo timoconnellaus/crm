@@ -222,8 +222,29 @@ async function requirePerson(
   return person;
 }
 
-/** The fields audit diffs and timeline tracking compare (field-registry names). */
-export function personSnapshot(person: Person): Record<string, unknown> {
+/** What a snapshot reads: a Person, or the same fields assembled by a bulk writer. */
+export type PersonSnapshotSource = Pick<
+  Person,
+  | "displayName"
+  | "givenName"
+  | "familyName"
+  | "emails"
+  | "phones"
+  | "location"
+  | "timezone"
+  | "socialProfiles"
+  | "avatarKey"
+  | "ownerId"
+  | "description"
+  | "tags"
+>;
+
+/**
+ * The fields audit diffs and timeline tracking compare (field-registry names). Every writer of
+ * people (person.*, import.csv.commit) records changes in this shape, so the History tab sees one
+ * format.
+ */
+export function personSnapshot(person: PersonSnapshotSource): Record<string, unknown> {
   return {
     displayName: person.displayName,
     givenName: person.givenName,
