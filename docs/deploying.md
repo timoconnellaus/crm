@@ -25,7 +25,7 @@ there (in your fork) to switch adapter. Everything else is a **secret** on `crm-
 | --- | --- | --- | --- |
 | `IDENTITY_PROVIDER` | var | always | `better-auth` (default) or `cloudflare-access` |
 | `AUTH_ALLOW_SIGNUP` | var | Better Auth | `false` (default): only the first user can sign up. `true`: open sign-up |
-| `APPROVAL_FLOOR` | var | optional | Approval-policy floor the org's preset can never loosen (ADR 0011/0018). JSON keyed by actor (`human`, `assistant`, `mcp`, `automation` or `*`) then risk class (or `*`), with `auto`, `review`, `deny` or `{"autoUpTo": n, "above": "review"}`. Example: `{"*":{"destructive":"review"}}`. Empty: no floor. Malformed: every operation is refused |
+| `APPROVAL_FLOOR` | var | optional | Approval-policy floor the org's preset can never loosen (ADR 0011/0018). JSON keyed by actor (`human`, `assistant`, `mcp`, `automation`, `extension` or `*`) then risk class (or `*`), with `auto`, `review`, `deny` or `{"autoUpTo": n, "above": "review"}`. Example: `{"*":{"destructive":"review"}}`. Empty: no floor. Malformed: every operation is refused |
 | `BETTER_AUTH_SECRET` | secret, **required** | always | Signs sessions. At least 32 random characters: `openssl rand -hex 32` |
 | `BETTER_AUTH_URL` | secret | Better Auth, recommended | Public origin, e.g. `https://crm.example.com`. Inferred from requests when unset |
 | `GOOGLE_CLIENT_ID` | secret | Google sign-in | OAuth client; redirect URI `<origin>/api/auth/callback/google` |
@@ -39,8 +39,12 @@ without it. Set it even with Cloudflare Access (any random value): it keeps the 
 The first user of a deployment (Better Auth sign-up, or the first Cloudflare Access user to load
 the app) becomes its admin; everyone after that is a member until an admin changes their role.
 
-`crm-runner` has no secrets. Its `DEV_ROUTES` var is `"false"`; only `.dev.vars` sets it to `true`
-locally.
+`crm-runner` has no secrets. It runs extension code, which calls operations there, so set its
+`APPROVAL_FLOOR` var (in `apps/runner/wrangler.jsonc`) to the same value as crm-app's. Extensions
+that use `codemode:ai` need Workers AI: add `"ai": { "binding": "AI" }` to `apps/runner/wrangler.jsonc`
+and, optionally, set `AI_GATEWAY_ID` to route calls through AI Gateway. Without the binding those
+calls fail with a "not configured" error and nothing else changes. Shipped extensions (`extensions/`)
+are installed through `extension.install` on the first request after a deploy.
 
 ## Option 1: Deploy to Cloudflare button
 

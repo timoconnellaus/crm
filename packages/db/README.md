@@ -30,9 +30,14 @@ Migrations:
 | `0006_search.sql` | `core_search_docs` + FTS5 `core_search`, sync triggers |
 | `0007_crm_views.sql` | `crm_*` read views (`crm.*` in the docs; D1 has no schemas) |
 | `0008_audit_redaction.sql` | `core_audit_redactions` + guarded audit triggers: the sanctioned "[erased]" redaction path (ADR 0019) |
+| `0020_extensions.sql` | Stage 3: `core_audit` rebuilt to accept actor `extension`; `core_user.kind` (extension principals); `core_base_*` views under the reconciler-owned `crm_people/organisations/activities/tasks`; `core_extensions`, `core_extension_versions`, `core_extension_runs`, `core_extension_kv`, `core_extension_objects`, `core_extension_fields` (ADR 0040) |
 
 `test/schema.test.ts` covers the constraints and triggers (live-unique emails/domains, primary
 flags, first admin, FTS sync, append-only audit and its redaction path, views).
 
 To add a migration: create `migrations/NNNN_name.sql`, end it by updating
-`core_meta.schema_version`, bump `CORE_SCHEMA_VERSION`, and update `src/schema.ts`.
+`core_meta.schema_version`, bump `CORE_SCHEMA_VERSION`, and update `src/schema.ts`. Numbers may skip
+(parallel stages reserve ranges); `CORE_SCHEMA_VERSION` is the highest. Change the person,
+organisation, activity and task read views through their `core_base_*` views, never the `crm_*`
+views themselves (the schema reconciler owns those).
+

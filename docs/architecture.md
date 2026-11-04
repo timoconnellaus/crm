@@ -79,7 +79,10 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
   reconciled into D1 by the host, additive-first. Core migrations never touch `x_` tables.
 - **`crm.*` views**: generated read views with friendly names, spelled `crm_people`,
   `crm_organisations`, … because D1 has no schemas (ADR 0015 amendment). They are what list
-  operations, dashboard SQL and AI queries run against.
+  operations, dashboard SQL and AI queries run against. Since migration 0020 the person,
+  organisation, activity and task views are owned by the schema reconciler: core migrations change
+  their `core_base_*` views, and the reconciler regenerates `crm_*` over them with extension side
+  tables and formulas joined in. Extension objects read through `crm_x_<ext>_<object>`.
 - **R2** holds attachments (and, later, large imports: stage-1 CSV imports arrive inline,
   [ADR 0020](adr/0020-query-sql-validator-and-csv-import.md)).
 
@@ -102,6 +105,27 @@ An **extension** is code against one contract (`packages/sdk`): `defineObject`, 
 Extension code runs in Worker Loader dynamic workers with **no network** (`globalOutbound: null`).
 It can reach only the host modules it is given: CRM operations, the AI model roles, and enabled
 gatekeepers.
+
+How stage 3a built it ([ADR 0040](adr/0040-extension-runtime-build.md)):
+
+- **Contract**: `defineExtension({ id, version, contractVersion, permissions, objects, fields,
+  views, tools, automations })` in `packages/sdk`, with every field type and a typed formula
+  language compiled to SQLite (`@crm/sdk/formula`). See `packages/sdk/README.md`.
+- **Reconciler** (`packages/core/src/extensions/reconciler.ts`): manifest → ordered DDL over
+  `x_<ext>_<object>` tables and 1:1 side tables `x_<ext>_<target>`, plus regenerated `crm_*` views,
+  dry-run by `extension.check` and applied atomically by `extension.install`.
+- **Registry**: extension objects and fields join the field registry (refreshed per invocation), so
+  `record.*` operations, filters, saved views, search, CSV export and history work for them. Tools
+  are operations `x.<ext>.<tool>`.
+- **Runtime** (`apps/runner/src/extensions/`): the `ExtensionWorkspace` DO holds each extension's
+  source in its own git repo, builds it (transpile + import check), and runs tools with the
+  declared `codemode:crm`, `codemode:storage`, `codemode:log` and `codemode:ai` host modules. Code
+  acts as principal `extension:<id>` (actor `extension`) within its declared permissions. Runs are
+  recorded; 3 consecutive failures quarantine an extension; rollback reinstalls an earlier commit.
+- **Shipped extensions** (`extensions/<id>/`, the example first) are bundled as source at build time
+  and installed through the same `extension.install` path at boot.
+- **UI**: generic list and record pages at `/x/<ext>.<object>`, field widgets for every type,
+  extension fields on core record pages, and Settings → Extensions.
 
 ### 5. Integrations
 
@@ -156,16 +180,17 @@ apps/
   app/                 TanStack Start + shadcn UI, server functions, /mcp       → Worker "crm-app"
   runner/              extension runtime, automations, Workflows, Queues         → Worker "crm-runner"
 packages/
-  core/                operations registry, risk classes, policy types, model-role registry (pure TS)
-  db/                  core D1 migrations, typed core schema, (later) schema reconciler + crm.* views
+  core/                operations registry, risk classes, policy types, model roles, schema reconciler
+  db/                  core D1 migrations (incl. core_base_* views), typed core schema
   auth/                IdentityProvider interface; better-auth and cloudflare-access adapters
-  sdk/                 the extension contract: defineObject / defineDashboard / defineAutomation / defineTool
+  sdk/                 the extension contract (defineExtension, defineTool), formula language, test harness
   ui/                  shared shadcn/ui components and the view-spec renderer
   config/              shared tsconfig, biome and vitest presets
   gatekeeper-kit/      (stage 6) vendored from cloudflare-os
   gatekeeper-<name>/   (stage 6) vendored or our own gatekeeper Workers
 extensions/
-  deals/               (stage 4) first shipped extension
+  example/             (stage 3) the example shipped extension; stage 4 replaces it with deals/
+  deals/               (stage 4) first real shipped extension
 docs/
   architecture.md      this file
   roadmap.md           stage order and status

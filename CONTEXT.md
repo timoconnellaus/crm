@@ -60,7 +60,7 @@ _Avoid_: endpoint, action (an "action" is a gatekeeper term, below)
 
 **Permission**
 What an operation requires of the caller's role: `records:read`, `records:write`, `records:erase`,
-`audit:read`, `users:manage`, `policy:manage`. Viewers have read; members read and write; admins all.
+`audit:read`, `users:manage`, `policy:manage`, `extensions:manage`. Viewers have read; members read and write; admins all.
 
 **Field registry**
 Per-object field definitions (name, type, filterable, sortable, `track`). Filters, sorts and
@@ -72,7 +72,7 @@ How dangerous an operation is: `read`, `write`, `bulk-write`, `destructive`, `sc
 
 **Actor**
 Who initiated an operation: `human`, `assistant` (in-app AI), `mcp` (an external MCP client),
-`automation`.
+`automation`, `extension` (extension code through `codemode:crm`).
 
 **Approval pipeline**
 Gate → adjudicator → human queue, configured per org. It decides whether an operation applies
@@ -101,6 +101,27 @@ source. A commit is a version, approval reviews a diff, and rollback is a revert
 **Extension object**
 A record type declared by an extension. It is stored in `x_<extension>_*` tables, which the host
 reconciles from the declaration.
+
+**Extension principal**
+The identity an extension's code acts as: `extension:<id>`, a `core_user` row of kind `extension`
+that never signs in. Its calls go through the gate as actor `extension`, limited to the extension's
+declared permissions (objects it may read or write, operations, host modules).
+
+**Extension tool**
+A function an extension declares with `defineTool`. It is an operation named `x.<extension>.<tool>`
+and runs in the sandbox.
+
+**Formula field**
+An extension field computed from other fields of the same record by a small typed expression
+(`coalesce(budget, 0) - coalesce(spent, 0)`). It is compiled to SQL in the `crm_*` view, so it can
+be filtered and sorted, and it is never written.
+
+**Quarantine**
+What happens to an extension after 3 consecutive failed runs: it is disabled, admins see it on
+Settings → Extensions, and its last-known-good version is offered for rollback.
+
+**Last-known-good**
+The most recent installed version (commit) of an extension that completed a run without failing.
 
 **Host module**
 A `codemode:*` import that extension code can call, backed by trusted host code. Examples:

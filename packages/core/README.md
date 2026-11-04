@@ -18,9 +18,20 @@ src/
     query.ts           query.sql + validateReadOnlySql (ADR 0020)
     import.ts          import.csv.preview/commit (reuses the person and organisation
                        snapshots and domain helpers), CSV parse/format helpers
-    export.ts          export.csv
+    export.ts          export.csv (core and extension objects)
+    record.ts          record.create/get/update/delete/restore/list + schema.objects (extension
+                       objects, and extension fields on core objects)
+    extension.ts       extension.list/get/check/install/rollback/disable/enable/dropHidden
     index.ts           coreOperations = [...personOperations, ...]
-  fields/              field registry per object (person, organisation, activity, task)
+  fields/              field registry per object (person, organisation, activity, task), and
+                       field-types.ts: storage, zod, filter type, CSV and widget per extension
+                       field type
+  extensions/          stage 3 (ADR 0040): naming (x_* tables, columns), schema.ts (state,
+                       registry refresh, crm_* view generation), reconciler.ts (plans, dry run,
+                       apply, hide/drop), install.ts (check + installExtension), tools.ts
+                       (x.<ext>.<tool> operations), host.ts (the ExtensionHost port the runner
+                       implements), shipped.ts (boot install of shipped extensions)
+  models.ts            model roles → Workers AI defaults (ADR 0009, minimal)
   operation.ts         defineOperation, HandlerContext, RecordChange
   pipeline.ts          invokeOperation (the pipeline)
   invoke.ts            coreRegistry, invoke(name, input, ctx), CoreInput/CoreOutput types
