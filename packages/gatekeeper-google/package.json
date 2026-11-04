@@ -1,0 +1,36 @@
+{
+  "name": "@crm/gatekeeper-google",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gatekeeper Worker for Google Workspace (Gmail, Calendar, Drive, Docs, Sheets, Slides, Chat, BigQuery). Vendored from cloudflare-os.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/google.ts",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "types": "node ../../scripts/gatekeeper-worker-types.mjs",
+    "typecheck": "node ../../scripts/gatekeeper-worker-types.mjs --check && tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run && vitest run -c vitest.worker.config.ts && vitest run -c vitest.docs-worker.config.ts && vitest run -c vitest.smoke.config.ts"
+  },
+  "dependencies": {
+    "@crm/gatekeeper-configurator-ui": "workspace:*",
+    "@crm/gatekeeper-interface": "workspace:*",
+    "@crm/gatekeeper-kit": "workspace:*",
+    "@crm/gatekeeper-observability": "workspace:*",
+    "capnweb": "0.12.0",
+    "capnweb-validate": "0.3.0",
+    "jose": "6.2.15",
+    "mimetext": "3.0.28",
+    "postal-mime": "4.0.11"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@crm/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "typescript6": "npm:typescript@6.0.3",
+    "vite": "7.3.6",
+    "vitest": "5.1.0",
+    "wrangler": "4.157.0"
+  }
+}

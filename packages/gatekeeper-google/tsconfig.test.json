@@ -1,0 +1,9 @@
+// Type-checks the tests separately so Worker-pool declarations stay out of the production source
+// check (as upstream).
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-plugin/types"]
+  },
+  "include": ["src", "__tests__", "test"]
+}

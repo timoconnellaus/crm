@@ -1,0 +1,8 @@
+{
+  "extends": "@crm/config/tsconfig.vendored.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "ES2024.Promise", "DOM", "DOM.Iterable"],
+    "types": []
+  },
+  "include": ["src"]
+}
