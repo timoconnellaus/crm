@@ -13,8 +13,10 @@ import { Fragment, useState } from "react";
 import { useStageMutation } from "#/lib/automation-ops";
 import { errorMessage } from "#/lib/query";
 import { useObjectInfo } from "#/lib/schema";
+import { ConnectionSlots } from "./connections.tsx";
+import { connectionSlots } from "./connections-model.ts";
 import { type AutomationDetailData, useRuns } from "./hooks.ts";
-import { compactRelative, diagramParts } from "./model.ts";
+import { compactRelative, diagramParts, runLabel } from "./model.ts";
 import { InfoCard, RunOutcome, TestReportView } from "./parts.tsx";
 
 type DiagramNode = AutomationDetailData["diagram"][number];
@@ -185,6 +187,7 @@ function TestCard({ report }: { report: AutomationTestReport | null }) {
 
 function PermissionsCard({ detail }: { detail: AutomationDetailData }) {
   const { permissions } = detail;
+  const slots = connectionSlots(detail.connections);
   const join = (items: readonly string[]) => items.join(", ") || "nothing";
   return (
     <InfoCard title="Permissions (approved)" name="permissions">
@@ -201,6 +204,12 @@ function PermissionsCard({ detail }: { detail: AutomationDetailData }) {
         <code className="rounded bg-muted px-1 font-mono text-xs">{permissions.principal}</code> ·
         actor <code className="rounded bg-muted px-1 font-mono text-xs">automation</code>
       </div>
+      {slots.length > 0 && (
+        <div className="mt-3 grid gap-1.5">
+          <h3 className="text-xs font-medium text-muted-foreground">Connections</h3>
+          <ConnectionSlots automation={{ id: detail.id, label: detail.label }} slots={slots} />
+        </div>
+      )}
     </InfoCard>
   );
 }
@@ -256,7 +265,9 @@ function RecentRunsCard({
         <table className="w-full text-sm" data-testid="recent-runs">
           <thead>
             <tr className="border-b text-left text-muted-foreground">
-              <th className="px-1 py-1.5 font-medium">{object?.label ?? "Record"}</th>
+              <th className="px-1 py-1.5 font-medium">
+                {detail.triggerObject ? (object?.label ?? "Record") : "Trigger"}
+              </th>
               <th className="px-1 py-1.5 font-medium">When</th>
               <th className="px-1 py-1.5 font-medium">Outcome</th>
             </tr>
@@ -270,7 +281,7 @@ function RecentRunsCard({
                     className="max-w-full truncate text-left hover:underline"
                     onClick={() => onOpenRuns(run.id)}
                   >
-                    {run.record?.title ?? (run.record ? run.record.id : "Scheduled")}
+                    {runLabel(run)}
                   </button>
                 </td>
                 <td className="px-1 py-1.5 whitespace-nowrap text-muted-foreground">
