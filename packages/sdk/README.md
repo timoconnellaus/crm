@@ -52,7 +52,7 @@ get them as `ctx`.
 An MCP client model with the `admin` scope authors runtime extensions with these tools (ADR 0041):
 
 1. `extension_list` shows what is installed, what is in the workspace and the shipped ids;
-   `extension_read { id: "example" }` shows a complete, working extension to copy from.
+   `extension_read { id: "deals" }` shows a complete, working extension to copy from.
 2. `extension_write { id, files: { "index.ts": "…" } }` writes the **working copy**. Nothing is live.
 3. `extension_check { id }` runs every check and returns `{ ok, issues, manifest, plan }`. Each
    issue has a `stage` (`typecheck`, `contract`, `formula`, `reconcile`), a `code`, a `path` (a
@@ -78,8 +78,8 @@ Rules worth knowing before the first check:
   as a widening.
 - **Formulas** see only the same record's fields, by name, and must type-check (see below):
   join text with `&`, move dates with `dateAdd`, compare with null via `isBlank`.
-- **Shipped extensions** (`example`) can be extended from your own extension (fields on
-  `example.project`, views over it, tools that write it with `permissions.write`), but not edited in
+- **Shipped extensions** (`deals`) can be extended from your own extension (fields on
+  `deals.deal`, views over it, tools that write it with `permissions.write`), but not edited in
   place unless an admin's `extension_eject` hands it over (it then stops receiving upstream
   updates).
 - Removing a field hides it (data kept 30 days); renaming needs `renamedFrom`.
@@ -90,13 +90,29 @@ Rules worth knowing before the first check:
 | --- | --- |
 | `objects` | New record types. Stored in `x_<ext>_<object>`, read through `crm_x_<ext>_<object>`. Registry name `<ext>.<object>`. They get list and record pages, timelines, history, search, saved views, CSV export and Trash. |
 | `fields` | Fields on other objects, keyed by target (`person`, `organisation`, `activity`, `task`, `<otherext>.<object>`). Stored in a 1:1 side table `x_<ext>_<target>`, joined into the target's `crm_*` view as `<ext>__<column>`. Registry name `<ext>.<field>`; write them with `record.update`. |
-| `views` | `table` saved-view specs (`object`, `filter`, `sort`, `columns`). |
+| `views` | Saved views shipped with the extension, shared and read-only (ADR 0103): `{ label, object, type?: "table" \| "board" \| "calendar" \| "gallery", filter?, sort?, columns?, groupBy?, sumField?, dateField?, mode?, imageField?, cardFields? }`. A board may group by a select or by a relation to one of your objects (a deal's stage). Filter values may be relative: `{ $relative: "me" \| "today" \| "startOfMonth" \| "startOfNextMonth" \| "startOfQuarter" \| "startOfNextQuarter" \| … }`. |
+| `dashboards` | Dashboards shipped with the extension (ADR 0103): `{ title, description?, home?, filters, widgets }` in the dashboard spec's shape (ADR 0057: widgets with read-only SQL over `crm_*` views, named params, a chart mapping and a click-through). Read-only, copyable; `home: true` makes it the default Home. |
 | `recordTabs` | Tabs on another object's record page (ADR 0058): `{ label, on, view, order? }`. `on` is the page's object; `view` is `{ type: "table" \| "board" \| "calendar" \| "gallery", object, relation, filter?, sort?, columns?, groupBy?, sumField?, dateField?, mode?, imageField?, cardFields? }`, listing `object` records whose `relation` field equals the shown record's id. The host renders it; extensions ship no UI. |
 | `recordPanels` | The same shape, shown as a card in the record page's side panel. |
 | `settings` | Typed settings, edited by admins in Settings → Extensions: `{ type: "text" \| "number" \| "boolean" \| "select", label, description?, required?, default?, min?, max?, options? }`. Read them with `extensionSettings.list`. |
 | `tools` | Operations named `x.<ext>.<tool>` (zod input/output, description, risk `read`/`write`/`bulk-write`/`destructive`). They run in the sandbox. |
 | `automations` | `{ description, trigger, handler }`: typed and validated now; triggers fire from stage 5. |
 | `permissions` | `read` / `write` (objects; write implies read), `operations` (exact names, e.g. `task.create`, `search.global`), `modules` (`crm`, `storage`, `log`, `ai`). Own objects are always allowed. `extension.*`, `policy.*`, `user.*` and `audit.*` can never be granted. Destructive operations must be listed in `operations`. |
+
+### Object behaviour (ADR 0100)
+
+On `objects.<name>`, next to `fields`:
+
+| Key | What |
+| --- | --- |
+| `stages` | A stage behaviour, enforced by the host in `record.create`, `record.update` and CSV import for every actor. `field` (a relation to your stage object), `stage: { type, order, requiredFields?, probability?, group? }` (fields of the stage object: a select with `open`/`won`/`lost`, a number, a multiSelect of this object's field names, a number/percent, a relation to the group object), and optionally `group`, `probability: { field, overridden }`, `closedDate` and `status` (read-only fields) and `requiredByType: { lost: ["lostReason"] }`. Entering a stage with a required field empty fails with `invalid_input` and `details: { rule, field, fields, labels, stage }`. Moves are kept in `crm_stage_history` and, with `track: "timeline"` on the stage field, posted as "Moved to <stage>". See `extensions/deals/index.ts`. |
+| `timelineLinks` | Relation fields whose records also get this object's timeline posts (`["organisation"]`). |
+| `indexes` | `[["stage"], ["owner", "status"]]`: indexes on own single-valued fields (or `createdAt`/`updatedAt`), live rows only. Declare one for each field your lists filter or sort by. |
+| `seed` | `{ key: { field: value } }`: records created once when the object is installed; `{ seed: "key" }` points a relation at another seed record. |
+| `navigation` | `main` (sidebar, default), `settings` (Settings → set-up) or `none`. |
+
+A field may be `readOnly: true`: set only by the host (a stage behaviour's status or closed date),
+refused by record operations.
 
 Names: objects `[a-z][a-z0-9]*` (not `person`, `organisation`, `activity`, `task`, …), fields and
 tools camelCase. `id`, `createdAt`, `updatedAt`, `createdBy`, `deletedAt`, `deletedBy` and `tags`

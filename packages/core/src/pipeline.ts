@@ -50,6 +50,7 @@ import {
   type Permission,
   roleHasPermission,
 } from "./principals.ts";
+import { resolveInputFilter } from "./relative.ts";
 import { loadApprovalPolicy } from "./settings.ts";
 
 /** Everything an adapter supplies for one call. */
@@ -335,8 +336,9 @@ function timelineActivity(
   const tracked = object.fields.filter((f) => f.track === "timeline" && f.name in diff);
   if (!tracked.length) return null;
   const labels = tracked.map((f) => f.label);
+  const display = change.timeline?.labels ?? {};
   return {
-    subject: `${labels.join(", ")} changed`,
+    subject: change.timeline?.subject ?? `${labels.join(", ")} changed`,
     payload: {
       kind: "field_change",
       operation,
@@ -347,9 +349,15 @@ function timelineActivity(
         label: f.label,
         before: diff[f.name]?.before ?? null,
         after: diff[f.name]?.after ?? null,
+        ...(display[f.name]
+          ? {
+              beforeLabel: display[f.name]?.before ?? null,
+              afterLabel: display[f.name]?.after ?? null,
+            }
+          : {}),
       })),
     },
-    links: [{ object: change.object, id: change.id }],
+    links: change.timeline?.links ?? [{ object: change.object, id: change.id }],
   };
 }
 
@@ -409,7 +417,8 @@ export async function invokeOperation<O extends AnyOperation>(
   if (!parsed.success) {
     throw new ValidationError(`Invalid input for ${op.name}`, { issues: parsed.error.issues });
   }
-  const input: unknown = parsed.data;
+  // Relative filter values ({ $relative: "me" }, "startOfMonth", …) resolve per call (ADR 0103).
+  const input: unknown = resolveInputFilter(op.name, parsed.data, ctx.user.id, now);
   // Extension objects and fields join the field registry (ADR 0023); cheap when unchanged.
   await refreshSchemaRegistry(ctx.db.query);
   const audited = isAudited(op, ctx.actor);

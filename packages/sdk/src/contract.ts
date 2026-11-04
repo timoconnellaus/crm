@@ -31,6 +31,11 @@ interface FieldBase {
   renamedFrom?: string;
   /** Refuse records without a value. */
   required?: boolean;
+  /**
+   * Maintained by the host (for example a stage behaviour's won/lost date), never written by
+   * record operations. Shown, filtered and sorted like any field.
+   */
+  readOnly?: boolean;
 }
 
 export type SelectOption =
@@ -97,6 +102,83 @@ export interface ObjectSpec {
   /** The object's previous name, when renaming. */
   renamedFrom?: string;
   fields: FieldSpecs;
+  /**
+   * Where the object is listed: `main` (the sidebar, default), `settings` (set-up records such as
+   * pipelines, listed under Settings → Extensions) or `none` (reached from other records only).
+   */
+  navigation?: "main" | "settings" | "none";
+  /**
+   * Indexes on the object's table, each a list of up to 4 own, single-valued, non-formula fields
+   * (or `createdAt` / `updatedAt`). They cover live rows only. Declare one for every field the
+   * object's hot lists filter or sort by.
+   */
+  indexes?: readonly (readonly string[])[];
+  /**
+   * Relation fields (one record each) whose records also get this object's timeline posts, e.g.
+   * `["organisation"]` posts a deal's stage moves on its organisation's timeline too.
+   */
+  timelineLinks?: readonly string[];
+  /** A pipeline-like stage behaviour (see StagesSpec). */
+  stages?: StagesSpec;
+  /**
+   * Records created once, when the object is first installed (default pipelines and stages).
+   * Keyed by a seed key (camelCase); a relation value `{ seed: "<key>" }` points at another seed
+   * record of the relation's target (one of this extension's objects). Later releases never
+   * re-apply seeds, so people can edit or delete seeded records.
+   */
+  seed?: Record<string, Record<string, unknown>>;
+}
+
+/** Stage types every stage object distinguishes. */
+export const STAGE_TYPES = ["open", "won", "lost"] as const;
+export type StageType = (typeof STAGE_TYPES)[number];
+
+/**
+ * A stage behaviour (ADR 0100): the object moves through ordered stages (records of another of the
+ * extension's objects), optionally grouped (pipelines). The host enforces it in the record
+ * operations, so it applies to every actor: people, MCP clients, Code Mode, extensions.
+ *
+ * - Entering a stage needs the stage's required fields and `requiredByType[type]` to have values;
+ *   otherwise the write is refused with a structured error naming the missing fields.
+ * - `group` must match the stage's group; a record given only a group starts in its first stage.
+ * - `probability.field` follows the stage's default probability unless it was set by hand
+ *   (`probability.overridden` is then true; clearing that flag resets it).
+ * - `closedDate` is set on entering a won or lost stage and cleared on reopening; `status` mirrors
+ *   the stage type.
+ * - Every stage change is recorded in stage history (entered and left times) and, when the field
+ *   is tracked, posted on the timeline as "Moved to <stage>".
+ */
+export interface StagesSpec {
+  /** This object's relation field (one) holding its stage. */
+  field: string;
+  /** Fields of the stage object (the relation's target). */
+  stage: {
+    /** A select whose option values include `open`, `won` and `lost`. */
+    type: string;
+    /** A number field ordering stages within their group. */
+    order: string;
+    /** A multiSelect whose option values are this object's field names. */
+    requiredFields?: string;
+    /** A number or percent field: the default probability of records in the stage. */
+    probability?: string;
+    /** A relation field to the group object (e.g. the stage's pipeline). */
+    group?: string;
+  };
+  /** This object's relation field to the group object (e.g. the deal's pipeline). */
+  group?: string;
+  /** This object's probability (number or percent) and the boolean flag set when it is overridden. */
+  probability?: { field: string; overridden: string };
+  /** This object's date field set on entering a won or lost stage, cleared on reopening. */
+  closedDate?: string;
+  /** This object's select field mirroring the stage type (options open, won, lost). */
+  status?: string;
+  /** Fields required in every stage of a type, on top of each stage's own required fields. */
+  requiredByType?: Partial<Record<StageType, readonly string[]>>;
+  /**
+   * A text setting of this extension (`settings`) naming the group (by id or title) a record
+   * created without a group or stage goes in, e.g. the default pipeline.
+   */
+  defaultGroupSetting?: string;
 }
 
 export type FilterOp =
@@ -120,14 +202,29 @@ export type ViewFilter =
   | { and: ViewFilter[] }
   | { or: ViewFilter[] };
 
-/** A `table` saved-view spec shipped with the extension. */
+/**
+ * A saved view shipped with the extension: shared with everyone, read-only, listed in the
+ * object's views menu (ADR 0103). A table by default, or a board, calendar or gallery (ADR 0056).
+ * Filter values may be relative: `{ $relative: "me" | "today" | "startOfMonth" | … }`.
+ */
 export interface ViewSpec {
   label: string;
   /** Object the view lists: core or `<extension>.<object>`. */
   object: string;
+  type?: "table" | "board" | "calendar" | "gallery";
   filter?: ViewFilter;
   sort?: { field: string; direction?: "asc" | "desc" };
   columns?: string[];
+  /** board: the single-select or stage relation to group by, and a number field to sum. */
+  groupBy?: string;
+  sumField?: string;
+  /** calendar */
+  dateField?: string;
+  mode?: "month" | "week" | "agenda";
+  /** gallery */
+  imageField?: string;
+  /** board, calendar, gallery: fields on each card. */
+  cardFields?: string[];
 }
 
 /**
@@ -263,6 +360,34 @@ export interface PermissionsSpec {
   modules?: HostModuleName[];
 }
 
+/**
+ * A dashboard the extension ships (ADR 0103): the same filters and widgets as a dashboard spec
+ * (ADR 0057; SQL over crm_* views with named params, a chart mapping, a click-through). It is
+ * read-only, listed while the extension is active and copyable; `home: true` makes it everyone's
+ * default Home.
+ */
+export interface DashboardDeclaration {
+  title: string;
+  description?: string;
+  home?: boolean;
+  filters?: readonly Record<string, unknown>[];
+  widgets: readonly WidgetDeclaration[];
+}
+
+/** A widget of a shipped dashboard; see the host's dashboard spec for every option. */
+export interface WidgetDeclaration {
+  id: string;
+  type: "kpi" | "bar" | "line" | "donut" | "funnel" | "table" | "leaderboard" | "markdown";
+  title: string;
+  description?: string;
+  sql?: string;
+  markdown?: string;
+  mapping?: Record<string, unknown>;
+  options?: Record<string, unknown>;
+  clickThrough?: { object: string; objectColumn?: string; filter?: unknown };
+  layout?: { w?: number; h?: number };
+}
+
 export interface ExtensionSpec {
   /** Lowercase letters and digits, starting with a letter: `deals`, `example`. */
   id: string;
@@ -276,6 +401,8 @@ export interface ExtensionSpec {
   /** Fields added to other objects, keyed by target object (`organisation`, `other.object`). */
   fields?: Record<string, FieldSpecs>;
   views?: Record<string, ViewSpec>;
+  /** Dashboards shipped with the extension (ADR 0103). */
+  dashboards?: Record<string, DashboardDeclaration>;
   /** Tabs on other objects' record pages (ADR 0058). */
   recordTabs?: Record<string, RecordViewSpec>;
   /** Side panels on other objects' record pages (ADR 0058). */

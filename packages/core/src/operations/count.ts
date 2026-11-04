@@ -64,8 +64,9 @@ export const recordCount = defineOperation({
 export const recordGroups = defineOperation({
   name: "record.groups",
   description:
-    "Count live records of an object per value of a single-select field (e.g. tasks per " +
-    "status, projects per stage), optionally summing a number or currency field per group, " +
+    "Count live records of an object per value of a single-select field or a single relation " +
+    "to an extension object (e.g. tasks per status, deals per stage), " +
+    "optionally summing a number or currency field per group, " +
     "for records matching an optional filter. Board columns use it for their totals. Like " +
     `record.count it reads at most ${COUNT_CAP} matching records and reports capped above ` +
     "that. Read-only.",
@@ -75,7 +76,7 @@ export const recordGroups = defineOperation({
       .min(1)
       .max(80)
       .regex(/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)?$/),
-    groupBy: z.string().min(1).max(80).describe("A single-select field"),
+    groupBy: z.string().min(1).max(80).describe("A single-select field, or a relation (one)"),
     sumField: z.string().min(1).max(80).optional().describe("A number or currency field"),
     filter: filterSchema.optional(),
   }),
@@ -97,9 +98,12 @@ export const recordGroups = defineOperation({
     if (!object) throw new ValidationError(`Unknown object "${input.object}"`);
     const group = object.fields.find((f) => f.name === input.groupBy);
     if (!group || !isGroupable(group) || !group.column) {
-      throw new ValidationError(`${input.object}.${input.groupBy} is not a single-select field`, {
-        field: "groupBy",
-      });
+      throw new ValidationError(
+        `${input.object}.${input.groupBy} is not a single-select field or a relation`,
+        {
+          field: "groupBy",
+        },
+      );
     }
     const sum = input.sumField ? object.fields.find((f) => f.name === input.sumField) : undefined;
     if (input.sumField && (!sum || !isSummable(sum) || !sum.column)) {

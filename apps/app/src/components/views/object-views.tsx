@@ -29,8 +29,17 @@ import { type CalendarMode, CalendarView } from "./calendar-view.tsx";
 import { GalleryView } from "./gallery-view.tsx";
 import type { LayoutConfig, ViewStateApi } from "./view-state.ts";
 
+/** Single-selects, and single relations to extension objects (a deal's stage), ADR 0103. */
 export const groupableFields = (info: ObjectInfo) =>
-  info.fields.filter((f) => f.type === "enum" && !f.multi && f.filterable);
+  info.fields.filter(
+    (f) =>
+      !f.multi &&
+      f.filterable &&
+      (f.type === "enum" ||
+        (f.fieldType === "relation" &&
+          f.options?.many !== true &&
+          String(f.options?.to ?? "").includes("."))),
+  );
 export const summableFields = (info: ObjectInfo) =>
   info.fields.filter((f) => f.type === "number" && !f.multi && f.sortable);
 export const dateFields = (info: ObjectInfo) =>

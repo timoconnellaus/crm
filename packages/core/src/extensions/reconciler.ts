@@ -36,6 +36,7 @@ import {
   type ObjectState,
   type SchemaState,
 } from "./schema.ts";
+import { seedStatements } from "./seed.ts";
 
 export const HIDDEN_RETENTION_DAYS = 30;
 
@@ -52,7 +53,10 @@ export type SchemaChangeKind =
   | "update_field"
   | "change_type"
   | "drop_field"
-  | "drop_object";
+  | "drop_object"
+  | "add_index"
+  | "drop_index"
+  | "seed_records";
 
 export interface SchemaChange {
   kind: SchemaChangeKind;
@@ -69,7 +73,8 @@ export interface ReconcileIssue {
     | "hidden_conflict"
     | "unknown_target"
     | "formula"
-    | "foreign_object";
+    | "foreign_object"
+    | "seed";
   path: string;
   message: string;
   suggestion?: string;
@@ -140,6 +145,7 @@ export function planFromState(
   const dataStatements: CompiledQuery[] = [];
   const changes: SchemaChange[] = [];
   const issues: ReconcileIssue[] = [];
+  const seedWrites: CompiledQuery[] = [];
   const knownTables = new Set([
     ...current.objects.map((o) => o.tableName),
     ...current.fields.map((f) => f.tableName),
@@ -157,6 +163,10 @@ export function planFromState(
       titleField: object.titleField,
       ...(object.description ? { description: object.description } : {}),
       fieldOrder: Object.keys(object.fields),
+      ...(object.navigation ? { navigation: object.navigation } : {}),
+      ...(object.indexes?.length ? { indexes: object.indexes } : {}),
+      ...(object.timelineLinks?.length ? { timelineLinks: object.timelineLinks } : {}),
+      ...(object.stages ? { stages: object.stages } : {}),
     };
     let existing = next.objects.find((o) => o.name === name);
     if (!existing && object.renamedFrom) {
@@ -235,6 +245,17 @@ export function planFromState(
       updatedAt: now,
     });
     changes.push({ kind: "create_object", object: name });
+    // Seed records are inserted once, with the table that holds them (ADR 0100).
+    if (object.seed && Object.keys(object.seed).length) {
+      const seeded = seedStatements(manifest, local, now);
+      for (const issue of seeded.issues) issues.push({ code: "seed", ...issue });
+      seedWrites.push(...seeded.statements);
+      changes.push({
+        kind: "seed_records",
+        object: name,
+        detail: `${Object.keys(object.seed).length} record(s)`,
+      });
+    }
     // Its fields are added below with columns already present.
     for (const [field, spec] of Object.entries(object.fields)) {
       next.fields.push({
@@ -438,7 +459,52 @@ export function planFromState(
     }
   }
 
-  return finishPlan(db, ext, current, next, tableDdl, dataStatements, changes, issues);
+  // Indexes (ADR 0100): the reconciler owns indexes named `<table>__<column>[__<column>…]` on
+  // the extension's own tables. Declared ones are created (live rows only), others dropped.
+  for (const object of next.objects) {
+    if (object.extensionId !== ext || object.status !== "active") continue;
+    const wanted = new Map<string, string>();
+    for (const fields of object.definition.indexes ?? []) {
+      const columns = fields.map((field) => {
+        if (field === "createdAt") return "created_at";
+        if (field === "updatedAt") return "updated_at";
+        const state = next.fields.find(
+          (f) => f.object === object.name && f.extensionId === ext && f.localName === field,
+        );
+        return state?.columnName ?? null;
+      });
+      if (columns.some((c) => c === null)) continue;
+      const name = ident(`${object.tableName}__${columns.join("__")}`);
+      wanted.set(
+        name,
+        `CREATE INDEX IF NOT EXISTS ${name} ON ${ident(object.tableName)} (${columns.join(", ")}) WHERE deleted_at IS NULL`,
+      );
+    }
+    const existing = (current.indexes ?? []).filter(
+      (index) => index.table === object.tableName && index.name.startsWith(`${object.tableName}__`),
+    );
+    for (const index of existing) {
+      if (wanted.has(index.name)) continue;
+      tableDdl.push(`DROP INDEX IF EXISTS ${ident(index.name)}`);
+      changes.push({ kind: "drop_index", object: object.name, detail: index.name });
+    }
+    for (const [name, ddl] of wanted) {
+      if (existing.some((index) => index.name === name)) continue;
+      tableDdl.push(ddl);
+      changes.push({ kind: "add_index", object: object.name, detail: name });
+    }
+  }
+
+  return finishPlan(
+    db,
+    ext,
+    current,
+    next,
+    tableDdl,
+    [...dataStatements, ...seedWrites],
+    changes,
+    issues,
+  );
 }
 
 function finishPlan(

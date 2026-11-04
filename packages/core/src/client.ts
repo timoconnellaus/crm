@@ -1,6 +1,7 @@
 // Browser-safe subset of @crm/core for UI code: the field registry, filter JSON, sort, and the
 // approval-policy presets. It never pulls in operation handlers or the database package, so the
 // UI bundle stays small and cannot reach D1. Import it as `@crm/core/client`.
+export { COMMON_CURRENCIES } from "./currencies.ts";
 export { type Row, resolveClickThrough } from "./dashboards/click-through.ts";
 export * from "./dashboards/spec.ts";
 export type { FieldDiff } from "./diff.ts";
@@ -36,6 +37,7 @@ export {
   ROLES,
   type Role,
 } from "./principals.ts";
+export { RELATIVE_TOKENS, type RelativeToken, relativeValue, resolveRelative } from "./relative.ts";
 export {
   type BoardViewSpec,
   boardViewSpecSchema,

@@ -16,8 +16,9 @@ import { dashboardSpecSchema } from "../dashboards/spec.ts";
 import { ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
 import type { FieldDefinition, ObjectDefinition } from "../fields/types.ts";
-import { compileFilter, filterSchema } from "../filter.ts";
+import { compileFilter, type Filter, filterSchema } from "../filter.ts";
 import { resolveSort, sortSchema } from "../list.ts";
+import { resolveRelative } from "../relative.ts";
 
 export const VIEW_TYPES = ["table", "board", "calendar", "gallery", "dashboard"] as const;
 export type ViewType = (typeof VIEW_TYPES)[number];
@@ -59,7 +60,9 @@ export const boardViewSpecSchema = z.object({
   type: z.literal("board"),
   ...base,
   sort: sortSchema.nullish().describe("Card order within a column"),
-  groupBy: fieldName.describe("A single-select field: one column per choice"),
+  groupBy: fieldName.describe(
+    "A single-select field (one column per choice) or a relation to an extension object, such as a deal's stage (one column per related record)",
+  ),
   columnOrder: z
     .array(z.string().max(100))
     .max(200)
@@ -147,9 +150,19 @@ function requireField(object: ObjectDefinition, name: string, role: string): Fie
   return field;
 }
 
-/** A single-valued select (enum) field a board can group by. */
+/**
+ * A field a board can group by: a single-valued select (enum), or a single relation to an
+ * extension object (stage-like grouping, e.g. deals by stage: one column per related record;
+ * ADR 0103).
+ */
 export function isGroupable(field: FieldDefinition): boolean {
-  return field.type === "enum" && !field.related && Boolean(field.column);
+  if (field.related || !field.column) return false;
+  if (field.type === "enum") return true;
+  return (
+    field.fieldType === "relation" &&
+    field.options?.many !== true &&
+    String(field.options?.to ?? "").includes(".")
+  );
 }
 
 /** A number field a board can sum (number, currency, percent). */
@@ -178,7 +191,13 @@ function checkCardFields(object: ObjectDefinition, names: readonly string[]) {
 export function validateViewSpec(spec: ObjectViewSpec): ObjectViewSpec {
   const object = getObject(spec.object);
   if (!object) throw new ValidationError(`Unknown object ${spec.object}`, { field: "object" });
-  if (spec.filter) compileFilter(object, spec.filter);
+  // Relative values ({ $relative }) are stored as they are; check them as a sample resolution.
+  if (spec.filter) {
+    compileFilter(
+      object,
+      resolveRelative(spec.filter, "usr_sample", new Date().toISOString()) as Filter,
+    );
+  }
   if ("sort" in spec && spec.sort) resolveSort(object, spec.sort);
   switch (spec.type) {
     case "table": {
@@ -204,7 +223,7 @@ export function validateViewSpec(spec: ObjectViewSpec): ObjectViewSpec {
       const group = requireField(object, spec.groupBy, "groupBy");
       if (!isGroupable(group)) {
         throw new ValidationError(
-          `groupBy: ${spec.object}.${spec.groupBy} is not a single-select field`,
+          `groupBy: ${spec.object}.${spec.groupBy} is not a single-select field or a relation`,
           { field: "groupBy" },
         );
       }

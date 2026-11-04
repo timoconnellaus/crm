@@ -87,6 +87,30 @@ export interface ObjectDefinition {
   /** Field shown as the record's title. */
   titleField?: string;
   description?: string;
+  /** Extension objects: where the UI lists it (ADR 0100). Default `main`. */
+  navigation?: "main" | "settings" | "none";
+  /** Extension objects: relation fields whose records also get this object's timeline posts. */
+  timelineLinks?: readonly string[];
+  /** Extension objects: the stage behaviour (ADR 0100), with registry (local) field names. */
+  stages?: StagesDefinition;
+}
+
+/** A stage behaviour as the host enforces it (the SDK's StagesSpec, validated). */
+export interface StagesDefinition {
+  field: string;
+  stage: {
+    type: string;
+    order: string;
+    requiredFields?: string | undefined;
+    probability?: string | undefined;
+    group?: string | undefined;
+  };
+  group?: string | undefined;
+  probability?: { field: string; overridden: string } | undefined;
+  closedDate?: string | undefined;
+  status?: string | undefined;
+  requiredByType?: Partial<Record<"open" | "won" | "lost", readonly string[]>> | undefined;
+  defaultGroupSetting?: string | undefined;
 }
 
 export function defineObject<const O extends ObjectDefinition>(object: O): O {

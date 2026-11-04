@@ -58,7 +58,14 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
 export interface TimelinePayload extends Record<string, unknown> {
   /** For system events: `field_change`, `job_change`, `task_completed`, `merge`. */
   kind?: string;
-  changes?: { field: string; label: string; before: unknown; after: unknown }[];
+  changes?: {
+    field: string;
+    label: string;
+    before: unknown;
+    after: unknown;
+    beforeLabel?: string | null;
+    afterLabel?: string | null;
+  }[];
 }
 
 export interface TimelineItem {

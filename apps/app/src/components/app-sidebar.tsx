@@ -64,7 +64,7 @@ const OBJECT_ICONS: Record<string, LucideIcon> = {
 /** Extension objects (from the field registry), each with a generic list page. */
 function ExtensionObjectsNav() {
   const { setOpenMobile } = useSidebar();
-  const objects = useExtensionObjects();
+  const objects = useExtensionObjects().filter((o) => o.navigation === "main");
   if (!objects.length) return null;
   return (
     <SidebarGroup>
