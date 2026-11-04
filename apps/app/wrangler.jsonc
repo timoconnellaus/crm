@@ -1,0 +1,31 @@
+// crm-app: TanStack Start UI and server functions (ADR 0004). Self-contained and account-agnostic:
+// no account or resource IDs are committed (ADR 0012); wrangler provisions the D1 database by name
+// on first deploy. Secrets are listed in .dev.vars.example and docs/deploying.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crm-app",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "upload_source_maps": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "crm",
+      "migrations_dir": "../../packages/db/migrations",
+      "migrations_table": "core_migrations"
+    }
+  ],
+  // Secrets are set with `wrangler secret put` and never committed. Optional ones (BETTER_AUTH_URL,
+  // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, CF_ACCESS_TEAM_DOMAIN, CF_ACCESS_AUD) are listed in
+  // .dev.vars.example and docs/deploying.md.
+  "secrets": { "required": ["BETTER_AUTH_SECRET"] },
+  "services": [{ "binding": "RUNNER", "service": "crm-runner" }],
+  "vars": {
+    // better-auth (default) or cloudflare-access. See docs/deploying.md.
+    "IDENTITY_PROVIDER": "better-auth",
+    // Only the first user may sign up unless this is "true".
+    "AUTH_ALLOW_SIGNUP": "false"
+  }
+}

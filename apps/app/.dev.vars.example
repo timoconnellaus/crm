@@ -1,0 +1,16 @@
+# crm-app secrets. The Deploy to Cloudflare button asks for these; `wrangler secret put` sets them
+# on a deployed Worker (docs/deploying.md). For local development `pnpm dev` copies this file to
+# .dev.vars when missing, generates BETTER_AUTH_SECRET and adds AUTH_ALLOW_SIGNUP=true.
+
+# Signs sessions: at least 32 random characters (openssl rand -hex 32). Required.
+BETTER_AUTH_SECRET=
+# Public origin of the app, e.g. https://crm.example.com. Empty: inferred from the request.
+BETTER_AUTH_URL=
+
+# Google sign-in (optional). OAuth redirect URI: <origin>/api/auth/callback/google
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Cloudflare Access (only with IDENTITY_PROVIDER=cloudflare-access in wrangler.jsonc).
+CF_ACCESS_TEAM_DOMAIN=
+CF_ACCESS_AUD=
