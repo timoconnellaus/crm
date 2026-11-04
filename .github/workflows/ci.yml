@@ -26,7 +26,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
+      # Cap parallel packages: the vendored gatekeepers add thousands of CPU-heavy tests, and running
+      # every package at once on a 4-vCPU runner makes timing- and startup-sensitive tests flake.
+      - run: pnpm test --concurrency=2
       # Wall-clock-sensitive vendored tests, run alone so CPU contention doesn't fail them.
       - run: pnpm --filter @crm/gatekeeper-microsoft test:timing
 
