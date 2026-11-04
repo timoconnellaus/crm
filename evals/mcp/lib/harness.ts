@@ -2,10 +2,11 @@
 // a fresh connection of its own (a new OAuth client, so its MCP session and any simulated pending
 // state are its own), then grading tool choice, the reply and the CRM's state afterwards.
 import type { AgentRun, ModelClient } from "./agent.ts";
-import { runAgent } from "./agent.ts";
-import { toAnthropicTools } from "./convert.ts";
+import { emptyRun, runAgent } from "./agent.ts";
+import { toOpenAiTools } from "./convert.ts";
 import { callLabel, gradeTools, type ToolRules } from "./grading.ts";
 import { isPending, type McpSession, parseResult } from "./mcp.ts";
+import type { ModelParams } from "./model.ts";
 import type { TaskResult } from "./report.ts";
 
 export type Fixture = Record<string, string>;
@@ -117,7 +118,8 @@ export interface HarnessDeps {
   openSession(clientName: string): Promise<McpSession>;
   model: ModelClient;
   modelId: string;
-  effort: "low" | "medium" | "high" | "xhigh" | "max";
+  /** Temperature, max tokens and so on, sent with every model request. */
+  params?: ModelParams;
   maxTurns: number;
   today?: string;
   suffix?: () => string;
@@ -140,14 +142,7 @@ export async function runTask(task: EvalTask, deps: HarnessDeps): Promise<TaskRe
   }
   const suffix = words[0] as string;
   const failures: string[] = [];
-  let run: AgentRun = {
-    calls: [],
-    replies: [],
-    finalText: "",
-    stopReason: null,
-    turns: 0,
-    usage: { inputTokens: 0, outputTokens: 0 },
-  };
+  let run: AgentRun = emptyRun();
   const sessions: McpSession[] = [];
   try {
     const admin = await deps.openSession(`MCP eval setup (${task.id})`);
@@ -159,14 +154,14 @@ export async function runTask(task: EvalTask, deps: HarnessDeps): Promise<TaskRe
       throw new Error(`setup failed: ${(error as Error).message}`);
     }
 
-    const agent = await deps.openSession(`Claude MCP eval (${task.id})`);
+    const agent = await deps.openSession(`Agent MCP eval (${task.id})`);
     sessions.push(agent);
-    const tools = toAnthropicTools(await agent.listTools());
+    const tools = toOpenAiTools(await agent.listTools());
     run = await runAgent({
+      ...deps.params,
       model: deps.model,
       executor: agent,
       modelId: deps.modelId,
-      effort: deps.effort,
       system: systemPrompt(agent.instructions, today),
       tools,
       prompts: task.prompts(fixture),

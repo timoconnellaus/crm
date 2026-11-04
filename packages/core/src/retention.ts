@@ -5,7 +5,8 @@
 //   purge path (migration 0061), by calling `audit.purge` as an automation, so each round is
 //   gated and leaves one summary audit row;
 // - purgeRunHistory: extension and automation runs after 30 days, failed ones after 90;
-// - compactPendingActions: decided or expired pending actions after 30 days keep a summary;
+// - compactPendingActions: decided or expired pending actions (and their extension proposals)
+//   after 30 days keep a summary;
 // - measureStorage: the storage gauge's cached size and row counts.
 //
 // Every delete and update here works in index-ordered chunks (EXPLAIN QUERY PLAN and rows-read
@@ -15,6 +16,7 @@ import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import type { GateFloor } from "./gate.ts";
 import { invoke } from "./invoke.ts";
+import { jsonList } from "./records/common.ts";
 import { SYSTEM_USER } from "./users.ts";
 
 export const AUDIT_RETENTION_SETTING = "audit_retention";
@@ -214,6 +216,35 @@ export async function compactPendingActions(
   const cutoff = daysBefore(now, PENDING_COMPACT_DAYS);
   const { deleted, more } = await deleteInChunks(
     async () => {
+      const due = await db
+        .selectFrom("core_pending_action")
+        .select("id")
+        // Literal, not bound, so the planner can match the partial index's WHERE.
+        .where(sql<boolean>`compacted_at IS NULL AND status <> 'pending'`)
+        .where(decidedKey, "<", cutoff)
+        .orderBy(decidedKey)
+        .limit(chunk)
+        .execute();
+      const ids = due.map((r) => r.id);
+      if (!ids.length) return 0;
+      // An extension proposal (stage 3b) keeps its files' paths, statuses and line counts, its
+      // impact and whether its check passed; hunks and check details go.
+      await db
+        .updateTable("core_extension_proposals")
+        .set({
+          diff: sql<string>`(SELECT coalesce(json_group_array(json_object(
+              'path', json_extract(f.value, '$.path'),
+              'status', json_extract(f.value, '$.status'),
+              'additions', json_extract(f.value, '$.additions'),
+              'deletions', json_extract(f.value, '$.deletions'),
+              'hunks', json('[]'),
+              'truncated', json('true'))), json('[]'))
+            FROM json_each(core_extension_proposals.diff) f)`,
+          check_result: sql<string>`json_object(
+            'ok', json(coalesce(check_result -> '$.ok', 'null')), 'compacted', json('true'))`,
+        })
+        .where("action_id", "in", jsonList(ids))
+        .execute();
       const r = await db
         .updateTable("core_pending_action")
         .set({
@@ -231,16 +262,8 @@ export async function compactPendingActions(
           simulated: JSON.stringify({ output: null, records: [] }),
           compacted_at: now,
         })
-        .where("id", "in", (eb) =>
-          eb
-            .selectFrom("core_pending_action")
-            .select("id")
-            // Literal, not bound, so the planner can match the partial index's WHERE.
-            .where(sql<boolean>`compacted_at IS NULL AND status <> 'pending'`)
-            .where(decidedKey, "<", cutoff)
-            .orderBy(decidedKey)
-            .limit(chunk),
-        )
+        .where("id", "in", jsonList(ids))
+        .where("compacted_at", "is", null)
         .executeTakeFirst();
       return Number(r.numUpdatedRows ?? 0);
     },
@@ -268,6 +291,7 @@ export const STORAGE_TABLES = [
   "core_audit_read_counts",
   "core_pending_action",
   "core_extension_runs",
+  "core_extension_proposals",
 ] as const;
 
 export interface StorageStats {

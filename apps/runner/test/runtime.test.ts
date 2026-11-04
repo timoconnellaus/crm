@@ -33,7 +33,7 @@ describe("sandbox", () => {
       id,
       source(
         id,
-        `tools: { ${tool("fetchIt", `return (await fetch("https://example.com")).status;`)} },`,
+        `tools: { ${tool("fetchIt", `return (await (globalThis as unknown as { fetch: (u: string) => Promise<{ status: number }> }).fetch("https://example.com")).status;`)} },`,
       ),
     );
     await expect(call(admin, `x.${id}.fetchIt`, {})).rejects.toMatchObject({
@@ -187,7 +187,7 @@ describe("versions and rollback", () => {
         id,
         `objects: { item: { label: "Item", plural: "Items", titleField: "name", fields: { name: { type: "text", label: "Name" } } } },
   permissions: { modules: ["crm"] },
-  tools: { ${tool("count", `return (await ctx.crm.call("record.list", { object: "${id}.item" })).items.length;`)} },`,
+  tools: { ${tool("count", `return (await ctx.crm.call<{ items: unknown[] }>("record.list", { object: "${id}.item" })).items.length;`)} },`,
       ),
     );
     const item = await call<{ id: string }>(admin, "record.create", {

@@ -36,6 +36,7 @@ const TABLE_LABELS: Record<string, string> = {
   core_audit_read_counts: "AI read counts (hourly)",
   core_pending_action: "Approval history",
   core_extension_runs: "Extension and automation runs",
+  core_extension_proposals: "Extension proposals",
 };
 
 const RETENTION_CHOICES = [

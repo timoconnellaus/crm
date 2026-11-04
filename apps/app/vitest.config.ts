@@ -12,6 +12,8 @@ import { WorkerEntrypoint } from "cloudflare:workers";
 export default class extends WorkerEntrypoint {
   async ping() { return { ok: true, worker: "crm-runner", time: new Date().toISOString() }; }
   async installShipped() { return []; }
+  async shipped() { return []; }
+  async listWorkspace() { return []; }
   // Echoes extension tool calls (the real runtime is tested in apps/runner).
   async runTool(input) { return { ok: true, value: { tool: input.tool, input: input.input, caller: input.caller.actor }, runId: "xrn_stub" }; }
 }`;

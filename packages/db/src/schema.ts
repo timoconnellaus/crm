@@ -483,6 +483,24 @@ export interface CoreExtensionKvTable {
   updated_at: string;
 }
 
+/** Migration 0030: what a reviewer sees for an extension proposal (ADR 0041). */
+export interface CoreExtensionProposalsTable {
+  action_id: string;
+  extension_id: string;
+  commit_oid: string;
+  base_commit: string | null;
+  source: "shipped" | "runtime";
+  version: string;
+  message: string;
+  diff: string;
+  impact: string;
+  check_result: string;
+  ai_summary: string | null;
+  ai_model: string | null;
+  created_by: string;
+  created_at: string;
+}
+
 export type ExtensionSchemaStatus = "active" | "hidden";
 
 export interface CoreExtensionObjectsTable {
@@ -670,6 +688,7 @@ export interface CoreDatabase {
   core_extension_versions: CoreExtensionVersionsTable;
   core_extension_runs: CoreExtensionRunsTable;
   core_extension_kv: CoreExtensionKvTable;
+  core_extension_proposals: CoreExtensionProposalsTable;
   core_extension_objects: CoreExtensionObjectsTable;
   core_extension_fields: CoreExtensionFieldsTable;
   crm_users: CrmUsersView;

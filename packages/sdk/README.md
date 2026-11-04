@@ -47,6 +47,43 @@ The entry file is `index.ts`; it may import its own files (`./tools.ts`) and `@c
 else (no `node:*`, other packages, `import()` or `require`). It never imports host modules: tools
 get them as `ctx`.
 
+## Writing one over MCP (stage 3b)
+
+An MCP client model with the `admin` scope authors runtime extensions with these tools (ADR 0041):
+
+1. `extension_list` shows what is installed, what is in the workspace and the shipped ids;
+   `extension_read { id: "example" }` shows a complete, working extension to copy from.
+2. `extension_write { id, files: { "index.ts": "…" } }` writes the **working copy**. Nothing is live.
+3. `extension_check { id }` runs every check and returns `{ ok, issues, manifest, plan }`. Each
+   issue has a `stage` (`typecheck`, `contract`, `formula`, `reconcile`), a `code`, a `path` (a
+   file for source issues, a manifest path such as `objects.project.titleField` otherwise), a
+   `message` and often a `suggestion`. Fix them all; check again until `ok` is true.
+4. `extension_propose { id, reason }` commits and queues it for a person to approve, with the
+   diff and the impact the CRM computes. It returns `pending_approval` (tell the user) or
+   `check_failed` with the issues. Bump `version` for every change you propose.
+
+Rules worth knowing before the first check:
+
+- **TypeScript is checked strictly** against this package's types (ES2022, no DOM). `ctx.crm.call`
+  returns `unknown` unless you type it: `ctx.crm.call<{ name: string }>("organisation.get", { id })`.
+  `catch (error)` binds `unknown`: narrow it (`const e = error as { code?: string }`). There is no
+  `fetch`, `Buffer` or Node API.
+- **Ids and names**: the extension id is 2–30 lowercase letters or digits (`projects`, not
+  `my-projects`); objects lowercase (`project`); fields, tools and views camelCase (`renewalDate`).
+- **Fields on people and organisations** go in `fields: { organisation: { renewalDate: { … } } }`,
+  not in `objects`. Their registry name is `<ext>.<field>` (`renewals.renewalDate`), which is what
+  `record.update`, filters and views use.
+- **Permissions**: declaring `read`, `write` or `operations` needs `"crm"` in `modules`. Your own
+  objects need no permission. Asking for more than the installed version is shown to the reviewer
+  as a widening.
+- **Formulas** see only the same record's fields, by name, and must type-check (see below):
+  join text with `&`, move dates with `dateAdd`, compare with null via `isBlank`.
+- **Shipped extensions** (`example`) can be extended from your own extension (fields on
+  `example.project`, views over it, tools that write it with `permissions.write`), but not edited in
+  place unless an admin's `extension_eject` hands it over (it then stops receiving upstream
+  updates).
+- Removing a field hides it (data kept 30 days); renaming needs `renamedFrom`.
+
 ## Contract
 
 | Key | What |

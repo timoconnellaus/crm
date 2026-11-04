@@ -5,6 +5,7 @@ import { env } from "cloudflare:workers";
 import { createCrmDb } from "@crm/db";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+  capFileDiffs,
   capPreview,
   capValue,
   isTruncatedValue,
@@ -521,6 +522,13 @@ describe("pending action caps", () => {
     expect(JSON.stringify(preview).length).toBeLessThanOrEqual(400_000);
     expect(preview.length + omitted).toBe(300);
     expect(omitted).toBeGreaterThan(0);
+    const files = Array.from({ length: 5 }, (_, i) => ({
+      path: `f${i}.ts`,
+      hunks: [{ lines: "q".repeat(300) }],
+    }));
+    const capped = capFileDiffs(files, 800);
+    expect(capped[0]?.hunks).toHaveLength(1);
+    expect(capped.at(-1)).toMatchObject({ path: "f4.ts", hunks: [], truncated: true });
     const marker = capValue({ big: "z".repeat(5_000) });
     expect(isTruncatedValue(marker)).toBe(true);
     expect(matchesPreviewValue({ big: "z".repeat(5_000) }, marker)).toBe(true);
@@ -551,6 +559,25 @@ describe("pending action compaction", () => {
     );
     await invoke("approval.reject", { actionIds: [old.actionId, recent.actionId] }, context(admin));
     await decideDaysAgo(old.actionId, 31);
+    // An extension proposal hangs off its pending action (stage 3b); it is compacted with it.
+    const fileDiff = [
+      {
+        path: "src/index.ts",
+        status: "modified",
+        additions: 1,
+        deletions: 1,
+        hunks: [
+          { oldStart: 1, oldLines: 1, newStart: 1, newLines: 1, lines: [{ op: "+", text: "x" }] },
+        ],
+      },
+    ];
+    await env.DB.prepare(
+      `INSERT INTO core_extension_proposals (action_id, extension_id, commit_oid, source, version,
+         message, diff, impact, check_result, created_by, created_at)
+       VALUES (?, 'example', 'abc', 'runtime', '1.0.0', 'm', ?, '{}', '{"ok":true,"issues":[],"plan":{}}', ?, ?)`,
+    )
+      .bind(old.actionId, JSON.stringify(fileDiff), member.id, new Date().toISOString())
+      .run();
     await decideDaysAgo(recent.actionId, 10);
 
     const { result, rows } = await measure(() =>
@@ -575,6 +602,22 @@ describe("pending action compaction", () => {
       expect(v.compactedAt).toBeNull();
       expect(v.preview).toHaveLength(1);
     }
+    const proposal = await env.DB.prepare(
+      "SELECT diff, check_result FROM core_extension_proposals WHERE action_id = ?",
+    )
+      .bind(old.actionId)
+      .first<{ diff: string; check_result: string }>();
+    expect(JSON.parse(proposal?.diff ?? "[]")).toEqual([
+      {
+        path: "src/index.ts",
+        status: "modified",
+        additions: 1,
+        deletions: 1,
+        hunks: [],
+        truncated: true,
+      },
+    ]);
+    expect(JSON.parse(proposal?.check_result ?? "{}")).toEqual({ ok: true, compacted: true });
     // Idempotent: compacted rows are not touched again.
     expect(await compactPendingActions(db.query, new Date().toISOString())).toEqual({
       compacted: 0,

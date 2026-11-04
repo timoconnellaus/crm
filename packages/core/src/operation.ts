@@ -87,6 +87,10 @@ export interface HandlerContext {
   readonly db: Kysely<CoreDatabase>;
   /** The deploy-time approval floor (APPROVAL_FLOOR) the gate applied, for display. */
   readonly floor: GateFloor;
+  /** What the caller's credential allows (MCP token scopes), when it is limited. */
+  readonly grantedPermissions?: readonly Permission[] | undefined;
+  /** The caller's reason for the change, when it gave one (MCP). */
+  readonly reason?: string | undefined;
   /** Queues statements (Kysely insert/update/delete builders) for the commit batch, in order. */
   write(...statements: (Compilable | CompiledQuery)[]): void;
   /**
@@ -154,6 +158,8 @@ export interface NestedInvocation {
   origin: Origin;
   grantedPermissions?: readonly Permission[] | undefined;
   approval?: ApplyingApproval;
+  /** Why the change is wanted; stored on the pending action if the nested call is queued. */
+  reason?: string | undefined;
 }
 
 /** Set when a call is the approved application of a pending action. */
@@ -183,6 +189,13 @@ export interface McpOptions {
   title?: string;
   /** MCP tool annotations; risk class supplies sensible defaults. */
   idempotent?: boolean;
+  /**
+   * Ask MCP callers for a `reason` even though the operation is bookkeeping (e.g.
+   * extension.propose, whose reason goes on the pending action it queues).
+   */
+  requireReason?: boolean;
+  /** The MCP tool name of a curated operation, when not `<object>_<verb>` (e.g. `code`). */
+  toolName?: string;
 }
 
 export interface OperationDefinition<
@@ -210,6 +223,13 @@ export interface OperationDefinition<
    * policy or floor still applies.
    */
   bookkeeping?: boolean;
+  /**
+   * Always queue for human review, whatever the actor, preset or floor says (a `deny` still
+   * applies). Used where a change must never auto-apply: extension.apply (an extension install
+   * or upgrade, including any widening of its permissions, ADR 0041). `true` for every actor,
+   * or the actors it applies to.
+   */
+  alwaysReview?: true | readonly Actor[];
   /** A small JSON summary of the result for the audit log. Default: touched records or id. */
   auditSummary?: (output: z.output<Out>, input: z.output<In>) => unknown;
   mcp?: McpOptions;

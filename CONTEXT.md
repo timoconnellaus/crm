@@ -149,7 +149,33 @@ reconciles from the declaration.
 **Extension principal**
 The identity an extension's code acts as: `extension:<id>`, a `core_user` row of kind `extension`
 that never signs in. Its calls go through the gate as actor `extension`, limited to the extension's
-declared permissions (objects it may read or write, operations, host modules).
+declared permissions (objects it may read or write, operations, host modules). Those permissions
+are approved like OAuth scopes: a version that asks for more (**widening**) is shown as such on its
+proposal and always waits for an admin.
+
+**Working copy**
+An extension's files in the extension workspace as they are now, including edits not yet
+committed. `extension.write` changes it; `extension.check` checks it; `extension.propose` commits
+it. Nothing in a working copy is live.
+_Avoid_: draft (in the approval sense), branch
+
+**Extension proposal**
+A committed version of an extension waiting for approval: one pending action (`extension.apply`)
+in the proposer's change set, with the diff from the installed version, the host-computed impact
+(schema changes, permissions requested or widened, host modules, tools, triggers), the check
+result and an AI-written summary. Approving it installs that commit.
+
+**Eject**
+Taking over a shipped extension as a runtime one: `extension.eject` copies its source into its
+working copy, and once a proposal for it is approved it is a runtime extension that new releases no
+longer update. Without ejecting, a shipped extension can only be **extended** (fields on its
+objects, views and tools from another extension), never modified.
+_Avoid_: fork
+
+**Code Mode**
+The MCP `code` tool: a short ES module the client model writes runs in a sandbox as the connected
+user (actor `mcp`), calling operations through `codemode:crm` under the same gate and simulation
+as the other tools.
 
 **Extension tool**
 A function an extension declares with `defineTool`. It is an operation named `x.<extension>.<tool>`
@@ -157,12 +183,15 @@ and runs in the sandbox.
 
 **Formula field**
 An extension field computed from other fields of the same record by a small typed expression
-(`coalesce(budget, 0) - coalesce(spent, 0)`). It is compiled to SQL in the `crm_*` view, so it can
-be filtered and sorted, and it is never written.
+(`coalesce(budget, 0) - coalesce(spent, 0)`). It is parsed and type-checked by `extension.check`,
+compiled to SQL in the `crm_*` view, so it can be filtered and sorted, and it is never written. No
+cross-record rollups.
 
 **Quarantine**
-What happens to an extension after 3 consecutive failed runs: it is disabled, admins see it on
-Settings → Extensions, and its last-known-good version is offered for rollback.
+What happens to an extension after 3 consecutive failed runs: it is disabled (status
+`quarantined`, with the reason), admins see it on Settings → Extensions, and its last-known-good
+version is offered for rollback. Enabling it again resets the failure counter. Failures that are
+the caller's (invalid input, unknown tool) do not count.
 
 **Last-known-good**
 The most recent installed version (commit) of an extension that completed a run without failing.

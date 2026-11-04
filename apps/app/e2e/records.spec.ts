@@ -310,3 +310,25 @@ test("the History tab shows a field diff", async ({ page }) => {
   await expect(update).toContainText(`Dahlgren ${token}`);
   await expect(history.locator("li").filter({ hasText: "Created" })).toHaveCount(1);
 });
+
+test("Settings → Storage shows the database size and sets audit retention", async ({ page }) => {
+  await open(page, "/settings/storage");
+  await expect(page.getByTestId("storage-size")).toContainText("of 10 GB");
+  await page.getByRole("button", { name: "Measure now" }).click();
+  await expect(page.getByText("Rows counted")).toBeVisible();
+  await expect(page.getByText("Audit log", { exact: true })).toBeVisible();
+  await expectNoHorizontalScroll(page);
+
+  const retention = page.getByRole("radiogroup", { name: "Keep audit history for" });
+  await expect(retention.getByText("Current")).toBeVisible();
+  await retention.getByText("7 years", { exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  // Shortening retention deletes history, so it asks first.
+  await page.getByRole("button", { name: "Delete older history" }).click();
+  await expect(page.getByText("Audit history is now kept 7 years")).toBeVisible();
+
+  // Back to forever: lengthening needs no confirmation.
+  await retention.getByText("Forever", { exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByText("Audit history is now kept forever")).toBeVisible();
+});

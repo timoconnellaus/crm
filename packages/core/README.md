@@ -22,6 +22,9 @@ src/
     record.ts          record.create/get/update/delete/restore/list + schema.objects (extension
                        objects, and extension fields on core objects)
     extension.ts       extension.list/get/check/install/rollback/disable/enable/dropHidden
+    extension-authoring.ts extension.read/write/eject/propose/apply/proposal/approve/reject
+                       (stage 3b, ADR 0041: working copy → proposal → approval installs)
+    code.ts            code.run, the MCP `code` tool (Code Mode, ADR 0042)
     index.ts           coreOperations = [...personOperations, ...]
   fields/              field registry per object (person, organisation, activity, task), and
                        field-types.ts: storage, zod, filter type, CSV and widget per extension
@@ -30,8 +33,10 @@ src/
                        registry refresh, crm_* view generation), reconciler.ts (plans, dry run,
                        apply, hide/drop), install.ts (check + installExtension), tools.ts
                        (x.<ext>.<tool> operations), host.ts (the ExtensionHost port the runner
-                       implements), shipped.ts (boot install of shipped extensions)
-  models.ts            model roles → Workers AI defaults (ADR 0009, minimal)
+                       implements), shipped.ts (boot install of shipped extensions),
+                       proposal.ts (per-file diff and host-computed impact of a proposal)
+  models.ts            model roles → Workers AI defaults (ADR 0009, minimal: summarise,
+                       extract, classify and build)
   operation.ts         defineOperation, HandlerContext, RecordChange
   pipeline.ts          invokeOperation (the pipeline)
   invoke.ts            coreRegistry, invoke(name, input, ctx), CoreInput/CoreOutput types
@@ -87,6 +92,7 @@ src/
      // mcp: { curated: true, idempotent: true }, // curated = its own MCP tool (ADR 0021)
      // mcp: { expose: false },                // invisible and uncallable from MCP
      // bookkeeping: true,                     // never queued for review (change sets, tokens)
+     // alwaysReview: true,                    // always queued, whatever the preset (ADR 0041)
      async handler(input, ctx) { … },
    });
    ```

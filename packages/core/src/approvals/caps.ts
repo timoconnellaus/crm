@@ -126,3 +126,27 @@ export function capSimulated<R>(
     outputOmitted,
   };
 }
+
+/** Budget for an extension proposal's stored file diff (JSON bytes). */
+export const PROPOSAL_DIFF_MAX_BYTES = 600_000;
+
+/**
+ * Keeps file diffs whole until the budget is spent; later files keep their path, status and
+ * line counts with their hunks dropped and `truncated: true`, as a too-large file already is.
+ */
+export function capFileDiffs<F extends { hunks: unknown[]; truncated?: boolean }>(
+  files: readonly F[],
+  maxBytes: number = PROPOSAL_DIFF_MAX_BYTES,
+): F[] {
+  let bytes = 2;
+  return files.map((file) => {
+    const size = JSON.stringify(file).length + 1;
+    if (bytes + size <= maxBytes) {
+      bytes += size;
+      return file;
+    }
+    const stub = { ...file, hunks: [], truncated: true };
+    bytes += JSON.stringify(stub).length + 1;
+    return stub;
+  });
+}

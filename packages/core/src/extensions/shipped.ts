@@ -11,7 +11,8 @@ import type { ExtensionHost } from "./host.ts";
 
 export interface ShippedInstallResult {
   id: string;
-  outcome: "installed" | "unchanged" | "failed";
+  /** `ejected`: an admin ejected it (it is a runtime extension now), so releases leave it alone. */
+  outcome: "installed" | "unchanged" | "ejected" | "failed";
   error?: string;
 }
 
@@ -23,6 +24,15 @@ export async function installShippedExtensions(options: {
   const results: ShippedInstallResult[] = [];
   for (const shipped of await options.host.shipped()) {
     try {
+      const installed = await options.db.query
+        .selectFrom("core_extensions")
+        .select(["source"])
+        .where("id", "=", shipped.id)
+        .executeTakeFirst();
+      if (installed?.source === "runtime") {
+        results.push({ id: shipped.id, outcome: "ejected" });
+        continue;
+      }
       const { commit } = await options.host.commitShipped(shipped.id);
       const row = await options.db.query
         .selectFrom("core_extensions")

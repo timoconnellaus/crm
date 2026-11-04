@@ -88,7 +88,7 @@ const listInput = z.object({
 export const connectedAppList = defineOperation({
   name: "connectedApp.list",
   description:
-    "Your connected apps: MCP clients (Claude Desktop, claude.ai, Claude Code, …) you authorized " +
+    "Your connected apps: the MCP clients you authorized " +
     "to use the CRM for you, with their scopes, when they were connected and last used. " +
     "Read-only.",
   input: listInput,

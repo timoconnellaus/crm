@@ -85,8 +85,10 @@ oldest first through a new `(outcome, started_at)` index (migration 0062).
   `compacted_at`. Operation, risk, actor, user, status, decider, decision time, result, error and
   the `core_pending_action_records` links stay. A partial index on
   `coalesce(decided_at, expires_at)` over uncompacted, decided rows keeps it off a table scan.
-- `core_extension_proposals` (stage 3b) is not on `main` yet. When it lands, its `diff`,
-  `impact` and `check_result` should be compacted the same way, keyed on its pending action.
+- Extension proposals (`core_extension_proposals`, stage 3b) are capped and compacted with their
+  pending action: the stored file diff is capped at 600 KB (later files keep path, status and
+  line counts, with `truncated: true`), and compaction drops hunks and check details, keeping
+  impact, file list and whether the check passed.
 
 ### 5. Storage gauge
 Settings → Storage (admins) shows the database size against 10 GB, warning from 6 GB and

@@ -32,9 +32,10 @@ export function createInvoker<Ops extends readonly AnyOperation[]>(
     if (!op) throw new UnknownOperationError(name);
     // Approvals re-run queued actions by name, synchronously; queued extension tools must
     // resolve too, so load them first.
-    const extensionOps = name.startsWith("approval.")
-      ? new Map((await loadExtensionOperations(ctx.db.query)).map((o) => [o.name, o]))
-      : null;
+    const extensionOps =
+      name.startsWith("approval.") || name === "extension.approve"
+        ? new Map((await loadExtensionOperations(ctx.db.query)).map((o) => [o.name, o]))
+        : null;
     return invokeOperation(op, input, {
       resolveOperation: (other: string) => registry.get(other) ?? extensionOps?.get(other),
       ...ctx,
