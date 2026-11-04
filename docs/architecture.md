@@ -74,6 +74,12 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
   queries run against.
 - **R2** holds attachments and imports.
 
+Core migrations are plain SQL in `packages/db/migrations`. Both Workers point their `DB` binding's
+`migrations_dir` there, so `wrangler d1 migrations apply` and the in-code runner (`applyMigrations`,
+used by tests and upgrades) share one bookkeeping table, `core_migrations`. Each migration also
+bumps `core_meta.schema_version`, which `/api/health` compares with the version the code expects.
+Typed access to core tables uses Kysely ([ADR 0014](adr/0014-kysely-for-core-schema.md)).
+
 ### 4. Extensions (the AI-built layer)
 
 An **extension** is code against one contract (`packages/sdk`): `defineObject`, `defineView` /
@@ -113,6 +119,12 @@ A deploy-time **identity adapter** ([ADR 0008](adr/0008-identity-adapters.md)): 
 default) or Cloudflare Access, selected by env var. The MCP OAuth 2.1 server sits on top and delegates
 login to the active adapter. Identity is never runtime-pluggable.
 
+In `crm-app`, one TanStack Start request middleware resolves the **Principal** for every page
+route, server route and server function call. Everything is private by default: only `/sign-in`,
+`/api/health`, the adapter's own routes (`/api/auth/*`) and server functions in `*.public.ts` files
+are reachable without one. A request without a Principal is redirected to sign-in (pages, Better
+Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Access).
+
 ### 8. AI
 
 **Model roles** (`build`, `assistant`, `summarise`, `extract`, `classify`, `embed`, `vision`,
@@ -148,7 +160,11 @@ docs/
   roadmap.md           stage order and status
   adr/                 one record per significant decision
   stages/              per-stage agreed spec + acceptance criteria
+  spikes/              time-boxed experiments and their findings
+  deploying.md         install, secrets, Deploy button, upgrades
 scripts/
+  deploy.mjs           deploy both Workers and apply migrations (`pnpm run deploy`)
+  dev-setup.mjs        local .dev.vars + local migrations (runs before `pnpm dev`)
   release/             (later) bundle builder + manifest
 AGENTS.md              conventions every build session follows (CLAUDE.md points here)
 CONTEXT.md             glossary

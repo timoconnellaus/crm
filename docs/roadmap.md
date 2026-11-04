@@ -6,7 +6,7 @@ risk for the next.
 
 | # | Stage | Scope | Status |
 | --- | --- | --- | --- |
-| 0 | Scaffold | Monorepo, `crm-app` + `crm-runner`, D1 + migrations, identity adapters, CI, Deploy button; spike of `@cloudflare/computer` + Worker Loader | spec agreed |
+| 0 | Scaffold | Monorepo, `crm-app` + `crm-runner`, D1 + migrations, identity adapters, CI, Deploy button; spike of `@cloudflare/computer` + Worker Loader | built (PR open) |
 | 1 | Core data | Core objects (People, Organisations, Activities, Tasks), operations registry with risk classes, deterministic gate + audit log, UI shell (lists, record pages, timeline), search | — |
 | 2 | MCP | `/mcp` with the OAuth 2.1 server on the identity adapter, tools generated from the registry, approval queue + simulation for MCP actors | — |
 | 3 | Extension runtime | SDK contract, extension workspace (`@cloudflare/computer`), host modules, schema reconciler + `crm.*` views, approve-as-diff, rollback | — |

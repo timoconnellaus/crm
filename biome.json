@@ -1,0 +1,36 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
+  "extends": ["./packages/config/biome-preset.json"],
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/worker-configuration.d.ts",
+      "!**/routeTree.gen.ts",
+      "!**/.wrangler",
+      "!**/dist",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!**/*.md"
+    ]
+  },
+  "overrides": [
+    {
+      "includes": ["packages/ui/src/components/**", "packages/ui/src/hooks/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noDocumentCookie": "off"
+          },
+          "correctness": {
+            "useExhaustiveDependencies": "off"
+          }
+        }
+      }
+    }
+  ]
+}
