@@ -10,13 +10,22 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
-import { call } from "../mcp.ts";
-import { connectAdminApp, extensionId, projectsSource, writeCheckPropose } from "../extension-authoring.ts";
+import {
+  connectAdminApp,
+  extensionId,
+  projectsSource,
+  writeCheckPropose,
+} from "../extension-authoring.ts";
 import { createPerson, open, unique } from "../helpers.ts";
+import { call } from "../mcp.ts";
 
 const PHASE = process.env.LIVE_PHASE ?? "install";
 const STATE = join(dirname(fileURLToPath(import.meta.url)), ".state.json");
-const ADMIN = { name: "Live Admin", email: "live-admin@example.com", password: `live-${process.env.GITHUB_RUN_ID ?? "local"}-password` };
+const ADMIN = {
+  name: "Live Admin",
+  email: "live-admin@example.com",
+  password: `live-${process.env.GITHUB_RUN_ID ?? "local"}-password`,
+};
 
 interface LiveState {
   person: string;
@@ -36,7 +45,14 @@ async function signIn(context: BrowserContext, baseURL: string, password: string
     response.headers.getSetCookie().map((header) => {
       const [pair = ""] = header.split(";");
       const [name = "", ...value] = pair.split("=");
-      return { name, value: value.join("="), domain: hostname, path: "/", secure: true, sameSite: "Lax" as const };
+      return {
+        name,
+        value: value.join("="),
+        domain: hostname,
+        path: "/",
+        secure: true,
+        sameSite: "Lax" as const,
+      };
     }),
   );
 }
@@ -76,7 +92,12 @@ test("live deployment", async ({ page, context, baseURL }) => {
     const found = await call(app.client, "search_global", { query: family });
     expect(JSON.stringify(found)).toContain(family);
     const id = extensionId("live");
-    const proposal = await writeCheckPropose(app, id, { "index.ts": projectsSource(id) }, "Live test extension");
+    const proposal = await writeCheckPropose(
+      app,
+      id,
+      { "index.ts": projectsSource(id) },
+      "Live test extension",
+    );
     await open(page, "/approvals");
     const set = page.locator(`[data-change-set="${proposal.changeSetId}"]`);
     await set.getByRole("button", { name: "Approve" }).click();
@@ -84,7 +105,10 @@ test("live deployment", async ({ page, context, baseURL }) => {
     await open(page, `/x/${id}.project`);
     await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
 
-    writeFileSync(STATE, JSON.stringify({ person: `Grace ${family}`, extension: id, password: ADMIN.password }));
+    writeFileSync(
+      STATE,
+      JSON.stringify({ person: `Grace ${family}`, extension: id, password: ADMIN.password }),
+    );
     await expectVersion(page, process.env.LIVE_EXPECT_VERSION);
     return;
   }

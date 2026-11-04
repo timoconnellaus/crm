@@ -3,6 +3,7 @@
 // update through the same procedure as `crm upgrade`.
 import { env } from "cloudflare:workers";
 import {
+  applyBundleMigrations,
   CloudflareClient,
   type DeploymentState,
   d1ApiMigrations,
@@ -11,10 +12,14 @@ import {
   openBundle,
   provisionResources,
   type RunRecord,
-  applyBundleMigrations,
   writeDeploymentState,
 } from "@crm/release";
-import { buildFixtureRelease, FakeCloudflare, FakeGitHub, type SqlEngine } from "@crm/release/testing";
+import {
+  buildFixtureRelease,
+  FakeCloudflare,
+  FakeGitHub,
+  type SqlEngine,
+} from "@crm/release/testing";
 import { describe, expect, it } from "vitest";
 import { updaterRuntimeFor } from "../src/server/updater.ts";
 
@@ -26,7 +31,13 @@ function d1Engine(db: D1Database): SqlEngine {
   const log: { sql: string; params: unknown[] }[] = [];
   const run = async (sql: string, params: unknown[]) => {
     const single = !sql.trim().replace(/;\s*$/, "").includes(";");
-    if (single) return (await db.prepare(sql).bind(...params).all()).results as Record<string, unknown>[];
+    if (single)
+      return (
+        await db
+          .prepare(sql)
+          .bind(...params)
+          .all()
+      ).results as Record<string, unknown>[];
     await db.exec(sql.replace(/\n/g, " ").replace(/;\s*/g, ";\n"));
     return [];
   };
@@ -42,7 +53,9 @@ function d1Engine(db: D1Database): SqlEngine {
     async restore(bookmark) {
       const at = Number(bookmark.slice(3));
       const tables = await db
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'")
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'",
+        )
         .all<{ name: string }>();
       for (const t of tables.results) await db.prepare(`DROP TABLE "${t.name}"`).run();
       const keep = log.splice(0, at);
@@ -56,12 +69,25 @@ function d1Engine(db: D1Database): SqlEngine {
 }
 
 async function world() {
-  const cf = new FakeCloudflare({ token: TOKEN, accountId: ACCOUNT, sql: () => d1Engine(env.UPDATER_FAKE_D1) });
+  const cf = new FakeCloudflare({
+    token: TOKEN,
+    accountId: ACCOUNT,
+    sql: () => d1Engine(env.UPDATER_FAKE_D1),
+  });
   const github = new FakeGitHub();
-  const api = new CloudflareClient({ token: TOKEN, apiBase: "https://cf.test/client/v4", fetch: cf.fetch });
+  const api = new CloudflareClient({
+    token: TOKEN,
+    apiBase: "https://cf.test/client/v4",
+    fetch: cf.fetch,
+  });
   const runtime = (version = "1.0.0") =>
     updaterRuntimeFor(
-      { DB: env.DB, CRM_RELEASE_VERSION: version, CRM_ACCOUNT_ID: ACCOUNT, CRM_UPDATE_TOKEN: TOKEN },
+      {
+        DB: env.DB,
+        CRM_RELEASE_VERSION: version,
+        CRM_ACCOUNT_ID: ACCOUNT,
+        CRM_UPDATE_TOKEN: TOKEN,
+      },
       {
         githubApi: github.api,
         githubFetch: github.fetch,
@@ -98,7 +124,8 @@ describe("self-updater runtime", () => {
   it("can update only with a token, an account and a release version", () => {
     expect(updaterRuntimeFor({ DB: env.DB, CRM_RELEASE_VERSION: "" }).canUpdate).toBe(false);
     expect(
-      updaterRuntimeFor({ DB: env.DB, CRM_RELEASE_VERSION: "1.0.0", CRM_ACCOUNT_ID: ACCOUNT }).canUpdate,
+      updaterRuntimeFor({ DB: env.DB, CRM_RELEASE_VERSION: "1.0.0", CRM_ACCOUNT_ID: ACCOUNT })
+        .canUpdate,
     ).toBe(false);
     expect(
       updaterRuntimeFor({
@@ -115,7 +142,10 @@ describe("self-updater runtime", () => {
     await github.publish(await buildFixtureRelease({ version: "1.0.0" }));
     await github.publish(await buildFixtureRelease({ version: "1.1.0-beta.1" }));
     expect((await runtime().listReleases("stable")).map((r) => r.version)).toEqual(["1.0.0"]);
-    expect((await runtime().listReleases("beta")).map((r) => r.version)).toEqual(["1.1.0-beta.1", "1.0.0"]);
+    expect((await runtime().listReleases("beta")).map((r) => r.version)).toEqual([
+      "1.1.0-beta.1",
+      "1.0.0",
+    ]);
   });
 
   it("refuses a tampered bundle and changes nothing", async () => {
@@ -166,7 +196,12 @@ describe("self-updater runtime", () => {
       resources,
     };
     await writeDeploymentState(api, databaseId, state);
-    await deployWorkers({ api, bundle, state, secrets: { "crm-app": { BETTER_AUTH_SECRET: "s".repeat(64) } } });
+    await deployWorkers({
+      api,
+      bundle,
+      state,
+      secrets: { "crm-app": { BETTER_AUTH_SECRET: "s".repeat(64) } },
+    });
 
     const steps: string[] = [];
     const outcome = await runtime().apply({

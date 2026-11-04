@@ -97,7 +97,10 @@ beforeAll(async () => {
     ["1.2.0-beta.1", { version: 1, supported: [1] }],
     ["2.0.0", { version: 2, supported: [2] }],
   ] as const) {
-    const { manifest } = await buildFixtureRelease({ version, contract });
+    const { manifest } = await buildFixtureRelease({
+      version,
+      contract: { version: contract.version, supported: [...contract.supported] },
+    });
     // This database's real migrations, so preflight sees nothing unknown.
     manifest.migrations = applied.results.map((m) => ({ name: m.name, sha256: "" }));
     manifests.set(version, manifest);

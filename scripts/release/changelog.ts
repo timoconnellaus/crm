@@ -22,7 +22,10 @@ export function prTitles(commits: Commit[]): { number: number; title: string }[]
   for (const commit of commits) {
     const merge = /^Merge pull request #(\d+)\b/.exec(commit.subject);
     if (merge) {
-      const title = commit.body.split("\n").find((line) => line.trim())?.trim();
+      const title = commit.body
+        .split("\n")
+        .find((line) => line.trim())
+        ?.trim();
       if (title) out.push({ number: Number(merge[1]), title });
       continue;
     }
@@ -73,9 +76,7 @@ function releaseTags(): string[] {
 /** The release before `tag`: the newest older tag (a stable release skips betas). */
 export function previousTag(tag: string, tags: string[]): string | null {
   const stable = !tag.includes("-");
-  const older = tags.filter(
-    (t) => compareVersions(t, tag) < 0 && (!stable || !t.includes("-")),
-  );
+  const older = tags.filter((t) => compareVersions(t, tag) < 0 && (!stable || !t.includes("-")));
   return older.at(-1) ?? null;
 }
 
@@ -99,10 +100,19 @@ function main() {
     : (process.env.GITHUB_REPOSITORY ?? DEFAULT_REPOSITORY);
   const tags = releaseTags();
   if (args.includes("--all")) {
-    const sections = ["# Changelog", "", "Generated from PR titles by scripts/release/changelog.ts.", ""];
+    const sections = [
+      "# Changelog",
+      "",
+      "Generated from PR titles by scripts/release/changelog.ts.",
+      "",
+    ];
     for (const tag of [...tags].reverse()) {
       const previous = previousTag(tag, tags);
-      sections.push(`# ${tag}`, "", releaseNotes({ tag, previous, prs: prTitles(commitsBetween(previous, tag)), repository }));
+      sections.push(
+        `# ${tag}`,
+        "",
+        releaseNotes({ tag, previous, prs: prTitles(commitsBetween(previous, tag)), repository }),
+      );
     }
     process.stdout.write(sections.join("\n"));
     return;

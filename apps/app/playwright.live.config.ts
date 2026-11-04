@@ -13,5 +13,9 @@ export default defineConfig({
   timeout: 10 * 60_000,
   expect: { timeout: 30_000 },
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
-  use: { ...(baseURL ? { baseURL } : {}), trace: "retain-on-failure", ...devices["Desktop Chrome"] },
+  use: {
+    ...(baseURL ? { baseURL } : {}),
+    trace: "retain-on-failure",
+    ...devices["Desktop Chrome"],
+  },
 });
