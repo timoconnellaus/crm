@@ -92,7 +92,13 @@ export interface AiEnv {
   VECTORIZE_DIMENSIONS?: string;
   /** "true": deterministic stand-ins for every role when there is no AI binding (dev / e2e). */
   AI_FAKE_MODEL?: string;
-  [secret: `AI_KEY_${string}`]: string | undefined;
+  /** Secrets: provider keys (ADR 0151), one per provider that needs one. */
+  AI_KEY_OPENAI?: string;
+  AI_KEY_GOOGLE?: string;
+  AI_KEY_OPENROUTER?: string;
+  AI_KEY_ANTHROPIC?: string;
+  AI_KEY_JEV?: string;
+  AI_KEY_CUSTOM?: string;
 }
 
 export interface ModelRunnerOptions {
@@ -109,6 +115,13 @@ export interface ModelRunnerOptions {
 export interface FakeModels {
   run(role: ModelRole, messages: readonly ModelMessage[]): Promise<string> | string;
   embed(texts: readonly string[]): number[][];
+}
+
+/** A provider key from the environment (a Workers secret), by secret name. */
+export function keyFromEnv(env: AiEnv, secretName: string | undefined): string | undefined {
+  if (!secretName) return undefined;
+  const value = (env as Record<string, unknown>)[secretName];
+  return typeof value === "string" && value ? value : undefined;
 }
 
 export function vectorDimensions(env: AiEnv): number | undefined {
@@ -162,7 +175,7 @@ export function providerStatus(
     if (!viaGateway) return { ready: false, reason: "BYOK needs AI_GATEWAY_ID and CLOUDFLARE_ACCOUNT_ID" };
     return { ready: true, keySource: "byok" };
   }
-  const secret = info.secretName ? env[info.secretName as `AI_KEY_${string}`] : undefined;
+  const secret = keyFromEnv(env, info.secretName);
   if (secret) return { ready: true, keySource: "secret" };
   return { ready: false, reason: `No key: add one in Settings → AI (secret ${info.secretName})` };
 }
@@ -193,7 +206,7 @@ function openAiCompatible(
       : ((providerConfig(env)[provider]?.baseURL ?? info.baseURL) as string);
   const key =
     status.keySource === "secret" && info.secretName
-      ? env[info.secretName as `AI_KEY_${string}`]
+      ? keyFromEnv(env, info.secretName)
       : undefined;
   return createOpenAICompatible({
     name: provider,
@@ -363,7 +376,10 @@ export function modelRunnerFromEnv(
   options: Omit<ModelRunnerOptions, "env"> = {},
 ): ModelRunner | undefined {
   const hasBinding = Boolean(env.AI && typeof (env.AI as WorkersAiBinding).run === "function");
-  const configured = hasBinding || Boolean(env.AI_MODEL_ROLES?.trim()) || Object.keys(env).some((k) => k.startsWith("AI_KEY_") && env[k as `AI_KEY_${string}`]);
+  const configured =
+    hasBinding ||
+    Boolean(env.AI_MODEL_ROLES?.trim()) ||
+    Object.values(PROVIDER_INFO).some((p) => keyFromEnv(env, p.secretName));
   if (hasBinding || (env.AI_FAKE_MODEL === "true" && options.fakes) || configured) {
     return createModelRunner({ env, ...options });
   }

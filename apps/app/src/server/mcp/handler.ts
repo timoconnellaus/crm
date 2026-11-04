@@ -28,6 +28,7 @@ import {
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
 import { createMcpHandler } from "agents/mcp/server";
+import { aiContextFor } from "../ai.ts";
 import { blobStoreFor, integrationRuntimeFor } from "../integrations.ts";
 import { ensureShippedExtensions, extensionHostFor, type OperationsEnv } from "../operations.ts";
 import { CONSENT_PATH, handleConsent, type McpProps } from "./consent.ts";
@@ -130,6 +131,7 @@ export async function serveMcp(
       grantedPermissions: scopePermissions(connection.scopes),
       approvalExpiryDays: int(env.APPROVAL_EXPIRY_DAYS, 7),
       ...(extensionHost ? { extensionHost } : {}),
+      ...aiContextFor(env, db),
     },
     async consumeWrite() {
       const writes = await rateLimit(env.MCP_WRITE_RATE_LIMIT, connection.id);
