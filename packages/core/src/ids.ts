@@ -24,6 +24,7 @@ export const ID_PREFIXES = {
   changeSet: "chs",
   pendingAction: "pac",
   connectedApp: "cap",
+  dashboard: "dsh",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

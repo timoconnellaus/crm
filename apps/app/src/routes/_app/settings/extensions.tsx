@@ -1,6 +1,7 @@
 // Settings → Extensions: installed extensions (shipped and runtime) with version, status, declared
 // permissions, run history and rollback (ADR 0025). A quarantined extension is announced at the
-// top of the page and offers its last-known-good version. Authoring and approvals arrive in 3b.
+// top of the page and offers its last-known-good version. Extensions that declare typed settings
+// (ADR 0058) show a settings form, editable by admins.
 
 import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
@@ -12,6 +13,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState } from "#/components/empty-state";
 import { PageLayout } from "#/components/layout/page-layout";
+import { ExtensionSettingsForm } from "#/components/settings/extension-settings";
 import { formatDateTime } from "#/lib/format";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
 
@@ -137,6 +139,7 @@ function ExtensionCard({ ext, isAdmin }: { ext: Summary; isAdmin: boolean }) {
         </div>
       </CardHeader>
       <CardContent className="grid gap-2 text-sm">
+        {ext.status === "active" && <ExtensionSettingsForm extension={ext.id} canEdit={isAdmin} />}
         <PermissionList label="Reads" values={ext.permissions.read} />
         <PermissionList label="Writes" values={ext.permissions.write} />
         <PermissionList label="Operations" values={ext.permissions.operations} />

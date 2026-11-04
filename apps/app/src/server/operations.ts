@@ -6,8 +6,10 @@
 import type { Principal } from "@crm/auth";
 import {
   type ExtensionHost,
+  fakeBuildModel,
   type InvocationContext,
   invokeByName,
+  modelRunnerFromEnv,
   parseFloor,
   type RateLimitBinding,
   resolveActingUser,
@@ -29,6 +31,12 @@ export interface OperationsEnv {
   OAUTH_KV?: KVNamespace;
   /** crm-runner: the extension host (ADR 0025). */
   RUNNER?: Fetcher;
+  /** Workers AI, for model roles (ADR 0009). Optional: without it AI features say so. */
+  AI?: unknown;
+  /** Route model calls through this AI Gateway when set. */
+  AI_GATEWAY_ID?: string;
+  /** "true": a deterministic stand-in for the build role when there is no AI binding (local/e2e). */
+  AI_FAKE_MODEL?: string;
   /** Code Mode runs per user (Workers Rate Limiting, ADR 0043). */
   CODE_MODE_RATE_LIMIT?: RateLimitBinding;
 }
@@ -130,6 +138,7 @@ export async function runOperation(
     await ensureShippedExtensions(env);
     const db = createCrmDb(env.DB);
     const extensionHost = extensionHostFor(env);
+    const models = modelRunnerFromEnv(env, fakeBuildModel);
     const ctx: InvocationContext = {
       actor: "human",
       user: await resolveActingUser(db, principal),
@@ -137,6 +146,7 @@ export async function runOperation(
       db,
       floor: parseFloor(env.APPROVAL_FLOOR),
       ...(extensionHost ? { extensionHost } : {}),
+      ...(models ? { models } : {}),
       approvalExpiryDays: Number.parseInt(env.APPROVAL_EXPIRY_DAYS ?? "", 10) || undefined,
     };
     const data = await invokeByName(call.name, call.input, ctx);

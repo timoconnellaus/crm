@@ -14,6 +14,7 @@ import { CreateRecordDialog } from "#/components/fields/create-record-dialog";
 import { FieldDisplay } from "#/components/fields/field-widgets";
 import { FilterBuilder } from "#/components/filter-builder/filter-builder";
 import { PageCount, PageLayout } from "#/components/layout/page-layout";
+import { ObjectViewBody, scrollFor, ViewTypeSwitcher } from "#/components/views/object-views";
 import { SavedViewsMenu } from "#/components/views/saved-views-menu";
 import {
   parseViewSearchLoose,
@@ -118,11 +119,12 @@ function ObjectList({ info }: { info: ObjectInfo }) {
 
   const plural = info.plural ?? info.label;
   const count = useRecordCount(info.name, view.state.filter);
+  const type = view.state.type;
   return (
     <PageLayout
       title={plural}
       width="fluid"
-      scroll="none"
+      scroll={scrollFor(type)}
       count={
         <PageCount
           value={count.data?.count}
@@ -148,46 +150,53 @@ function ObjectList({ info }: { info: ObjectInfo }) {
         <>
           <FilterBuilder object={definition} value={view.state.filter} onChange={view.setFilter} />
           <div className="flex-1" />
-          <ColumnPicker
-            object={definition}
-            available={available}
-            value={view.state.columns}
-            onChange={view.setColumns}
-            required={[titleField]}
-          />
+          <ViewTypeSwitcher info={info} view={view} />
+          {type === "table" && (
+            <ColumnPicker
+              object={definition}
+              available={available}
+              value={view.state.columns}
+              onChange={view.setColumns}
+              required={[titleField]}
+            />
+          )}
         </>
       }
     >
-      <DataTable<Row>
-        object={definition}
-        label={plural}
-        queryKey={["op", "record.list", info.name]}
-        fetchPage={fetchPage}
-        columns={view.state.columns}
-        availableColumns={available}
-        extraFields={[titleField]}
-        sort={view.state.sort}
-        onSortChange={view.setSort}
-        filter={view.state.filter}
-        total={count.data}
-        onOpen={(row) =>
-          navigate({ to: "/x/$object/$id", params: { object: info.name, id: row.id } })
-        }
-        renderCell={renderCell}
-        empty={
-          <EmptyState
-            icon={BoxIcon}
-            title={`No ${plural.toLowerCase()} yet`}
-            description={info.description ?? undefined}
-            action={
-              <Button onClick={() => setCreating(true)}>
-                <PlusIcon />
-                New {info.label.toLowerCase()}
-              </Button>
-            }
-          />
-        }
-      />
+      {type !== "table" ? (
+        <ObjectViewBody info={info} view={view} />
+      ) : (
+        <DataTable<Row>
+          object={definition}
+          label={plural}
+          queryKey={["op", "record.list", info.name]}
+          fetchPage={fetchPage}
+          columns={view.state.columns}
+          availableColumns={available}
+          extraFields={[titleField]}
+          sort={view.state.sort}
+          onSortChange={view.setSort}
+          filter={view.state.filter}
+          total={count.data}
+          onOpen={(row) =>
+            navigate({ to: "/x/$object/$id", params: { object: info.name, id: row.id } })
+          }
+          renderCell={renderCell}
+          empty={
+            <EmptyState
+              icon={BoxIcon}
+              title={`No ${plural.toLowerCase()} yet`}
+              description={info.description ?? undefined}
+              action={
+                <Button onClick={() => setCreating(true)}>
+                  <PlusIcon />
+                  New {info.label.toLowerCase()}
+                </Button>
+              }
+            />
+          }
+        />
+      )}
       <CreateRecordDialog
         object={info}
         open={creating}

@@ -24,7 +24,29 @@ _Avoid_: employment, membership
 A field flagged `track: "timeline"`, whose changes post a `system` Activity on the record.
 
 **Saved view**
-A user's stored list configuration (`object`, filter, sort, columns): the simplest kind of view spec.
+A stored view of one object's records: a name and an object view spec (table, board, calendar or
+gallery). Personal, or **shared** with the org (everyone sees it; its owner and admins change it).
+
+**Board**
+A view that groups records into columns by a single-select field, with a count and an optional
+sum per column. Moving a card runs the object's update operation.
+_Avoid_: kanban (in code and copy; fine as a synonym in prose)
+
+**Dashboard**
+A title, filters and widgets on a grid. Personal or shared; the shipped **Overview** lives in
+code. Any dashboard can be a user's **Home** (the page at `/`).
+
+**Widget**
+One tile on a dashboard: KPI, bar, line, donut, funnel, table, leaderboard or markdown. Data
+widgets run read-only SQL over `crm_*` views with named params bound from the dashboard's filters.
+
+**Click-through**
+A widget's filter template: clicking a segment, KPI or row opens the matching records as a
+filtered list, exactly the records the widget counted.
+
+**Record tab / record panel**
+A tab or side-panel card that an extension declares on another object's record page: a view spec
+filtered to the records related to the one shown.
 
 **Trash**
 Soft-deleted records (people, organisations, activities and tasks), listed by `trash.list` and
@@ -237,8 +259,9 @@ A named AI job (`build`, `assistant`, `summarise`, `extract`, `classify`, `embed
 mapped to a provider + model in the model registry. Code asks for a role, never a model.
 
 **View spec**
-The JSON a dashboard or view is made of: widgets, their read-only SQL over `crm.*` views, and a chart
-mapping. It is rendered by our components.
+The JSON a view is made of, rendered by our components: a discriminated union of `table`, `board`,
+`calendar`, `gallery` and `dashboard` (filters and widgets with read-only SQL over `crm_*` views
+and a chart mapping). See ADR 0056 and ADR 0057.
 
 **Release bundle**
 A versioned, prebuilt set of Workers + assets + manifest that the deploy service installs or upgrades
