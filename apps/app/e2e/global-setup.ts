@@ -53,8 +53,14 @@ export default async function globalSetup(config: FullConfig) {
     const page = await context.newPage();
     await page.goto("/setup");
     await page.locator("html[data-hydrated]").waitFor({ state: "attached", timeout: 60_000 });
+    // The wizard renders once setup.status loads, which on a cold `vite dev` can be well after
+    // hydration: wait for the button rather than checking once.
     const skip = page.getByTestId("setup-skip");
-    if (await skip.isVisible().catch(() => false)) {
+    const shown = await skip
+      .waitFor({ state: "visible", timeout: 60_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (shown) {
       await skip.click();
       await page.waitForURL((url) => url.pathname === "/", { timeout: 30_000 });
     }

@@ -398,8 +398,7 @@ function AiStep({
         </Label>
       </RadioGroup>
       <p className="text-sm text-muted-foreground">
-        Choosing other providers per role (and adding their keys) comes with Settings → AI; you can
-        change this later.
+        To choose other providers per role and add their keys, open Settings → AI after setup.
       </p>
     </StepCard>
   );

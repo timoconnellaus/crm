@@ -4,7 +4,8 @@ Status: accepted, 2026-11-05 (stage 8 build). Implements ADR 0054.
 
 ## Decision
 - **One procedure** (`runUpdate` in `packages/release`) for Settings → Updates and `crm upgrade`:
-  pause automations → D1 Time Travel bookmark → core migrations → switch all Workers (ADR 0163) →
+  pause automations → D1 Time Travel bookmark → core migrations → create resources the target adds
+  (a queue, an index; ADR 0160 amendment) and switch all Workers (ADR 0163) →
   smoke check → resume automations.
 - **Bookmark and restore** over the REST API: `GET …/time_travel/bookmark` before anything changes,
   `POST …/time_travel/restore?bookmark=` to roll back

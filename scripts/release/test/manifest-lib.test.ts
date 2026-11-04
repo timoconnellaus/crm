@@ -147,6 +147,64 @@ describe("release manifest", () => {
     );
   });
 
+  it("carries stage 7a's AI and Vectorize bindings from deploy-inputs.json, behind the ai feature", async () => {
+    const manifest = await fixtureManifest();
+    for (const name of ["crm-app", "crm-runner"]) {
+      const worker = manifest.workers.find((w) => w.name === name);
+      expect(worker?.bindings, name).toContainEqual({ type: "ai", name: "AI", feature: "ai" });
+      expect(worker?.bindings, name).toContainEqual({
+        type: "vectorize",
+        name: "VECTORIZE",
+        index_name: "$VECTORIZE_NAME(crm-records)",
+        feature: "ai",
+      });
+      // AI Gateway URLs and Settings → AI need the account id; it is never baked in.
+      expect(worker?.bindings, name).toContainEqual({
+        type: "plain_text",
+        name: "CLOUDFLARE_ACCOUNT_ID",
+        text: "$ACCOUNT_ID",
+      });
+    }
+    expect(manifest.resources.find((r) => r.name === "crm-records")).toMatchObject({
+      type: "vectorize",
+      feature: "ai",
+      optional: false,
+      usedBy: ["crm-app", "crm-runner"],
+      config: {
+        dimensions: 384,
+        metric: "cosine",
+        metadataIndexes: [{ propertyName: "object", indexType: "string" }],
+      },
+    });
+    expect(manifest.inputs.find((i) => i.name === "AI_GATEWAY_ID")?.workers).toEqual([
+      "crm-app",
+      "crm-runner",
+    ]);
+    const app = manifest.workers.find((w) => w.name === "crm-app");
+    expect(app?.secrets.map((s) => s.name)).toEqual(
+      expect.arrayContaining(["AI_GATEWAY_TOKEN", "CLOUDFLARE_API_TOKEN"]),
+    );
+  });
+
+  it("fails on a feature binding kind it does not understand", async () => {
+    const packages = readDeployablePackages(ROOT);
+    const app = packages.find((p) => p.role === "app");
+    if (!app) throw new Error("no app");
+    app.features = { ai: { ...app.features.ai, browser: { binding: "BROWSER" } } };
+    const builds: WorkerBuild[] = packages.map((pkg) => ({
+      pkg,
+      mainModule: "index.js",
+      modules: [{ name: "index.js", type: "esm", sha256: "0".repeat(64), size: 1 }],
+    }));
+    await expect(
+      generateManifest(
+        { root: ROOT, version: "1.0.0", commit: "c", repository: "r/r", wranglerVersion: "x" },
+        builds,
+        readMigrations(ROOT),
+      ),
+    ).rejects.toThrow(/feature ai has key\(s\).*browser/);
+  });
+
   it("fails on a wrangler key it does not understand", async () => {
     const packages = readDeployablePackages(ROOT);
     const app = packages.find((p) => p.role === "app");

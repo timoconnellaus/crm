@@ -5,7 +5,10 @@
 //   crons and Durable Object migrations come from those files, so a binding added there (a queue
 //   in stage 5, a Vectorize index in stage 7a) reaches the manifest with no change here.
 // - Secrets: `secrets.required` in wrangler.jsonc, the Deploy-button descriptions in
-//   package.json (`cloudflare.bindings`), and a gatekeeper's `deploy-inputs.json`.
+//   package.json (`cloudflare.bindings`), and `deploy-inputs.json` `secrets`.
+// - Feature bindings: `deploy-inputs.json` `features`, bindings that the committed wrangler.jsonc
+//   leaves out because they only work remotely (stage 7a's `ai` and `vectorize`, ADR 0156) and
+//   that an installer can turn off (`--ai off`). scripts/deploy.mjs reads the same file.
 // - Core migrations and CORE_SCHEMA_VERSION from packages/db; the extension contract from
 //   packages/sdk.
 //
@@ -17,6 +20,8 @@ import { join } from "node:path";
 import {
   channelOf,
   type DurableObjectMigration,
+  FEATURES,
+  type Feature,
   MANIFEST_VERSION,
   type ManifestBinding,
   type ManifestInput,
@@ -79,6 +84,12 @@ export interface DeployablePackage {
    * [{ "propertyName": "object", "indexType": "string" }] } }`.
    */
   vectorize: Record<string, Record<string, unknown>>;
+  /**
+   * deploy-inputs.json `features`: bindings added only when the feature is on, e.g.
+   * `{ "ai": { "ai": { "binding": "AI" }, "vectorize": [{ "binding": "VECTORIZE",
+   * "index_name": "crm-records" }] } }`.
+   */
+  features: Partial<Record<Feature, WranglerConfig>>;
 }
 
 /** Every wrangler.jsonc under apps/ and packages/, sorted by directory. */
@@ -97,12 +108,18 @@ export function readDeployablePackages(root: string): DeployablePackage[] {
       const pkg = JSON.parse(readFileSync(join(root, dir, "package.json"), "utf8"));
       let inputSecrets: DeployablePackage["inputSecrets"] = [];
       let vectorize: DeployablePackage["vectorize"] = {};
+      let features: DeployablePackage["features"] = {};
+      let inputsText: string | null = null;
       try {
-        const inputs = JSON.parse(readFileSync(join(root, dir, "deploy-inputs.json"), "utf8"));
+        inputsText = readFileSync(join(root, dir, "deploy-inputs.json"), "utf8");
+      } catch {
+        inputsText = null;
+      }
+      if (inputsText !== null) {
+        const inputs = JSON.parse(inputsText);
         inputSecrets = inputs.secrets ?? [];
         vectorize = inputs.vectorize ?? {};
-      } catch {
-        inputSecrets = [];
+        features = inputs.features ?? {};
       }
       out.push({
         dir,
@@ -111,6 +128,7 @@ export function readDeployablePackages(root: string): DeployablePackage[] {
         bindingDocs: pkg.cloudflare?.bindings ?? {},
         inputSecrets,
         vectorize,
+        features,
       });
     }
   }
@@ -125,6 +143,9 @@ function roleOf(dir: string): WorkerRole {
 }
 
 // Keys this generator understands. Anything else fails the release build.
+/** Binding kinds a feature may add (deploy-inputs.json `features`). */
+const FEATURE_KEYS = new Set(["ai", "vectorize"]);
+
 const HANDLED_KEYS = new Set([
   "$schema",
   "name",
@@ -165,6 +186,8 @@ const SECRET_SOURCES: Record<string, SecretSource> = {
   CRM_UPDATE_TOKEN: "installer",
   CF_ACCESS_TEAM_DOMAIN: "installer",
   CF_ACCESS_AUD: "installer",
+  // Settings → AI's token (deploy.mjs and create-crm read it from CRM_AI_ADMIN_TOKEN).
+  CLOUDFLARE_API_TOKEN: "installer",
 };
 
 /** Vars an installer asks about, when a Worker declares them. */
@@ -178,6 +201,9 @@ const INPUT_VARS: Record<string, { description: string; options?: string[] }> = 
     options: ["false", "true"],
   },
   APPROVAL_FLOOR: { description: "Approval-policy floor no preset can loosen (JSON, ADR 0011)" },
+  AI_GATEWAY_ID: {
+    description: "AI Gateway every model call goes through (usage and spend per role, BYOK)",
+  },
 };
 
 const kebab = (s: string) => s.toLowerCase().replace(/_/g, "-");
@@ -206,6 +232,8 @@ function addResource(
   if (existing) {
     if (!existing.usedBy.includes(worker)) existing.usedBy.push(worker);
     existing.optional = existing.optional && optional;
+    // Needed whatever the feature, once any Worker binds it unconditionally.
+    if (existing.feature !== resource.feature) delete existing.feature;
     return;
   }
   ctx.resources.set(key, { ...resource, usedBy: [worker], optional });
@@ -353,29 +381,47 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
         : {}),
     });
   }
-  for (const index of config.vectorize ?? []) {
-    const ref = placeholder("VECTORIZE_NAME", index.index_name);
-    bindings.push({ type: "vectorize", name: index.binding, index_name: ref });
-    addResource(
-      ctx,
-      {
-        type: "vectorize",
-        name: index.index_name,
-        placeholder: ref,
-        implicit: false,
-        // wrangler.jsonc does not say how an index was created; the default embedding model's
-        // preset (ADR 0160) unless the binding carries dimensions/metric.
-        config:
-          pkg.vectorize[index.index_name] ??
-          (index.dimensions && index.metric
-            ? { dimensions: index.dimensions, metric: index.metric }
-            : { preset: index.preset ?? "@cf/baai/bge-base-en-v1.5" }),
-      },
-      name,
-      optional,
-    );
+  // Vectorize and Workers AI, from wrangler.jsonc and from the package's feature bindings.
+  const sources: [WranglerConfig, Feature | undefined][] = [[config, undefined]];
+  for (const [feature, extra] of Object.entries(pkg.features)) {
+    if (!(FEATURES as readonly string[]).includes(feature)) {
+      throw new Error(`${pkg.dir}/deploy-inputs.json: unknown feature ${feature}`);
+    }
+    const bad = Object.keys(extra ?? {}).filter((key) => !FEATURE_KEYS.has(key));
+    if (bad.length) {
+      throw new Error(
+        `${pkg.dir}/deploy-inputs.json feature ${feature} has key(s) the release manifest does not handle: ${bad.join(", ")}`,
+      );
+    }
+    sources.push([extra as WranglerConfig, feature as Feature]);
   }
-  if (config.ai) bindings.push({ type: "ai", name: config.ai.binding });
+  for (const [source, feature] of sources) {
+    const tag = feature ? { feature } : {};
+    for (const index of source.vectorize ?? []) {
+      const ref = placeholder("VECTORIZE_NAME", index.index_name);
+      bindings.push({ type: "vectorize", name: index.binding, index_name: ref, ...tag });
+      addResource(
+        ctx,
+        {
+          type: "vectorize",
+          name: index.index_name,
+          placeholder: ref,
+          implicit: false,
+          // wrangler.jsonc does not say how an index was created: deploy-inputs.json `vectorize`
+          // does, else the binding's dimensions/metric, else the default embedding model's preset.
+          config:
+            pkg.vectorize[index.index_name] ??
+            (index.dimensions && index.metric
+              ? { dimensions: index.dimensions, metric: index.metric }
+              : { preset: index.preset ?? "@cf/baai/bge-small-en-v1.5" }),
+          ...tag,
+        },
+        name,
+        optional,
+      );
+    }
+    if (source.ai) bindings.push({ type: "ai", name: source.ai.binding, ...tag });
+  }
   for (const limit of config.ratelimits ?? []) {
     bindings.push({
       type: "ratelimit",
@@ -409,6 +455,8 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
     vars.CRM_RELEASE_VERSION = ctx.version;
     vars.CRM_ACCOUNT_ID = "$ACCOUNT_ID";
   }
+  // Stage 7a: AI Gateway URLs and Settings → AI's API calls need the account id.
+  if ("CLOUDFLARE_ACCOUNT_ID" in vars) vars.CLOUDFLARE_ACCOUNT_ID = "$ACCOUNT_ID";
   if (pkg.role === "runner" && "APP_ORIGIN" in vars) vars.APP_ORIGIN = "https://$HOSTNAME";
   if (pkg.role === "gatekeeper" && "BASE_URL" in vars) {
     vars.BASE_URL = `https://$HOSTNAME/gatekeeper/${shortName}`;

@@ -138,6 +138,36 @@ describe("create-crm install", () => {
     expect(output).not.toContain(app?.secrets.get("BETTER_AUTH_SECRET"));
   });
 
+  it("--ai off installs without Workers AI and Vectorize, and re-runs keep it off", async () => {
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    const first = await cli("--yes", "--ai", "off", "--ai-gateway", "crm-gw");
+    expect(first.code, first.output).toBe(0);
+    expect(first.output).toContain("In-app AI is off");
+    expect(world.cf.vectorize.size).toBe(0);
+    expect(world.cf.liveBinding("crm-runner", "AI")).toBeUndefined();
+    expect(world.cf.liveBinding("crm-runner", "VECTORIZE")).toBeUndefined();
+    const state = JSON.parse(String((await sql("SELECT value FROM core_install"))[0]?.value));
+    expect(state.ai).toBe(false);
+    expect(state.vars["crm-app"]).toMatchObject({ AI_GATEWAY_ID: "crm-gw" });
+
+    const again = await cli("--yes");
+    expect(again.code, again.output).toBe(0);
+    expect(world.cf.vectorize.size).toBe(0);
+    const status = await cli("status");
+    expect(status.output).toContain("AI: off");
+
+    // Turned back on: the index is created and both bindings come back.
+    world.env = { ...world.env, CRM_AI: "on", CRM_AI_ADMIN_TOKEN: "ai-admin-token-secret-1" };
+    const on = await cli("--yes");
+    expect(on.code, on.output).toBe(0);
+    expect(world.cf.vectorize.has("crm-records")).toBe(true);
+    expect(world.cf.liveBinding("crm-runner", "AI")).toEqual({ type: "ai", name: "AI" });
+    expect(world.cf.scripts.get("crm-app")?.secrets.get("CLOUDFLARE_API_TOKEN")).toBe(
+      "ai-admin-token-secret-1",
+    );
+    expect(on.output).not.toContain("ai-admin-token-secret-1");
+  });
+
   it("is idempotent: a re-run creates nothing new and keeps secrets", async () => {
     await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
     expect((await cli("--yes")).code).toBe(0);

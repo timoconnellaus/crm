@@ -29,7 +29,7 @@ Each branch has a `WIP.md` at the repo root describing its state:
 | Branch / PR | What | State |
 | --- | --- | --- |
 | `stage-7a-ai` / PR #32 | Model registry, Settings → AI, summaries, hybrid search | Built; was mid-merge of main (14 conflicts; decision: move embeddings onto stage 5's event pipeline). Finish the merge, go green, merge. |
-| `stage-8-distribution` / PR #31 | Release bundles, CLI, self-updater, setup wizard | Built; was merging main, provisioning stage 5 queues/Workflows, wiring the upgrade pause to the automation kill switch. Finish, go green, merge after #32 (or reconcile AI/Vectorize bindings if after). |
+| `stage-8-distribution` / PR #31 | Release bundles, CLI, self-updater, setup wizard | Built. Stage 5 and 7a merged in: queues, DLQ, Workflows, the kill-switch pause, and the optional AI and Vectorize bindings (`deploy-inputs.json` `features.ai`, `--ai off`). Waiting on CI and review. |
 | `stage-6b-integrations` (no PR yet) | Automation run-as bindings, webhook/sync triggers, email/Slack notification delivery, **outbox** for automation events | Partly built. See WIP.md. Finish per `docs/stages/06-integrations.md` AC4/AC6. |
 
 ## Next, in order

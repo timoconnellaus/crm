@@ -218,6 +218,69 @@ describe("Stage 5 and 7a resources", () => {
     expect(events?.consumers).toHaveLength(1);
     expect(cf.vectorizeMetadata.get("crm-records")).toHaveLength(1);
   });
+
+  it("binds Workers AI and Vectorize when AI is on, without the manifest's feature tag", async () => {
+    const { cf } = await setup();
+    expect(cf.liveBinding("crm-runner", "AI")).toEqual({ type: "ai", name: "AI" });
+    expect(cf.liveBinding("crm-runner", "VECTORIZE")).toEqual({
+      type: "vectorize",
+      name: "VECTORIZE",
+      index_name: "crm-records",
+    });
+  });
+
+  it("--ai off: no index and no AI bindings; turning it on later creates the index on update", async () => {
+    const cf = new FakeCloudflare({ token: "t", accountId: ACCOUNT, sql: nodeSqliteEngine });
+    const api = new CloudflareClient({
+      token: "t",
+      apiBase: "https://cf.test/client/v4",
+      fetch: cf.fetch,
+    });
+    const bundle = await openBundle((await buildFixtureRelease({ version: "1.0.0" })).bundle);
+    const needed = neededResources(bundle.manifest, [], { ai: false });
+    expect(needed.some((r) => r.type === "vectorize")).toBe(false);
+    const resources = await provisionResources(api, ACCOUNT, needed);
+    const databaseId = resources["D1_ID(crm)"] as string;
+    await applyBundleMigrations(bundle, d1ApiMigrations(api, ACCOUNT, databaseId));
+    const state: DeploymentState = {
+      version: "1.0.0",
+      accountId: ACCOUNT,
+      hostname: "crm-app.example.workers.dev",
+      hostnameMode: "workers.dev",
+      identityProvider: "better-auth",
+      channel: "stable",
+      gatekeepers: [],
+      ai: false,
+      workerNames: {},
+      vars: {},
+      resources,
+    };
+    await writeDeploymentState(api, databaseId, state);
+    await deployWorkers({ api, bundle, state, secrets: {} });
+    expect(cf.vectorize.size).toBe(0);
+    expect(cf.liveBinding("crm-runner", "AI")).toBeUndefined();
+    expect(cf.liveBinding("crm-runner", "VECTORIZE")).toBeUndefined();
+
+    // Re-installed with --ai on: the next update creates the index before switching.
+    const target = await openBundle((await buildFixtureRelease({ version: "1.1.0" })).bundle);
+    const outcome = await runUpdate({
+      api,
+      state: { ...state, ai: true },
+      databaseId,
+      target,
+      previous: async () => bundle,
+      migrations: d1ApiMigrations(api, ACCOUNT, databaseId),
+      smoke: async () => {},
+    });
+    expect(outcome.status).toBe("succeeded");
+    expect(cf.vectorize.get("crm-records")).toEqual({ dimensions: 384, metric: "cosine" });
+    expect(cf.liveBinding("crm-runner", "VECTORIZE")?.index_name).toBe("crm-records");
+    expect(
+      (await readDeploymentState(api, ACCOUNT, databaseId))?.resources[
+        "VECTORIZE_NAME(crm-records)"
+      ],
+    ).toBe("crm-records");
+  });
 });
 
 describe("pausing automations with the kill switch", () => {

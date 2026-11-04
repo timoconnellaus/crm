@@ -76,6 +76,12 @@ Options
   --zone <name>          the zone of a custom hostname (default: inferred from it)
   --identity <i>         better-auth (default) or cloudflare-access
   --gatekeepers <list>   optional gatekeeper Workers to install, e.g. google,email-send
+  --ai <on|off>          in-app AI: Workers AI and the crm-records Vectorize index (default on,
+                         or CRM_AI). Off: AI features say "AI is not configured". Upgrades keep
+                         the choice; re-run install with --ai to change it
+  --ai-gateway <id>      AI Gateway every model call goes through (sets AI_GATEWAY_ID)
+  --ai-admin-token <t>   Settings → AI's token (or CRM_AI_ADMIN_TOKEN), stored on crm-app as
+                         CLOUDFLARE_API_TOKEN; permissions in docs/deploying.md "In-app AI"
   --secret NAME=VALUE    a secret to set (repeatable); WORKER:NAME=VALUE for a gatekeeper's
   --update-token <t>     store a scoped token so Settings → Updates can update in place
   --store-update-token   store --token itself for one-click updates
@@ -142,6 +148,10 @@ export interface Env {
   CLOUDFLARE_API_TOKEN?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
   GITHUB_TOKEN?: string;
+  /** "off" installs without Workers AI and Vectorize (same as scripts/deploy.mjs). */
+  CRM_AI?: string;
+  /** Settings → AI's token, stored as crm-app's CLOUDFLARE_API_TOKEN secret. */
+  CRM_AI_ADMIN_TOKEN?: string;
 }
 
 export interface Deps {
@@ -277,6 +287,15 @@ function parseSecrets(flags: Flags, redactor: Redactor): Record<string, Record<s
   return out;
 }
 
+/** `--ai` / CRM_AI: true, false, or undefined when neither says. */
+function aiChoice(flags: Flags, env: Env): boolean | undefined {
+  const value = (str(flags, "ai") ?? env.CRM_AI)?.trim().toLowerCase();
+  if (value === undefined || value === "") return undefined;
+  if (value === "on" || value === "true") return true;
+  if (value === "off" || value === "false") return false;
+  throw new CliError("--ai is on or off");
+}
+
 function randomSecret(): string {
   return toHex(crypto.getRandomValues(new Uint8Array(32)));
 }
@@ -376,6 +395,9 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
   }
   const gatekeepers = [...new Set([...(previous?.gatekeepers ?? []), ...requested])].sort();
 
+  // In-app AI (Workers AI + Vectorize): on unless turned off, now or by an earlier install.
+  const ai = aiChoice(flags, deps.env) ?? previous?.ai ?? true;
+
   // Secrets: values only for what this run sets; stored ones are kept.
   const secrets = parseSecrets(flags, deps.redactor);
   secrets[app.name] ??= {};
@@ -395,6 +417,11 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
   if (updateToken) {
     deps.redactor.add(updateToken);
     appSecrets.CRM_UPDATE_TOKEN = updateToken;
+  }
+  const aiAdminToken = str(flags, "ai-admin-token") ?? deps.env.CRM_AI_ADMIN_TOKEN;
+  if (aiAdminToken) {
+    deps.redactor.add(aiAdminToken);
+    appSecrets.CLOUDFLARE_API_TOKEN = aiAdminToken;
   }
   if (identity === "cloudflare-access") {
     for (const name of ["CF_ACCESS_TEAM_DOMAIN", "CF_ACCESS_AUD"]) {
@@ -428,13 +455,22 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
   const vars: DeploymentState["vars"] = { ...(previous?.vars ?? {}) };
   if (identity !== "better-auth")
     vars[app.name] = { ...vars[app.name], IDENTITY_PROVIDER: identity };
+  const gateway = str(flags, "ai-gateway");
+  if (gateway !== undefined) {
+    const users = manifest.inputs.find((i) => i.name === "AI_GATEWAY_ID")?.workers ?? [app.name];
+    for (const worker of users) vars[worker] = { ...vars[worker], AI_GATEWAY_ID: gateway };
+  }
 
   io.out(`\nInstalling crm ${version} into account ${s.accountId} at https://${hostname}`);
+  if (!ai) io.out("In-app AI is off (--ai off): no Workers AI or Vectorize bindings.");
   io.out("Resources:");
   const resources = {
     ...(previous?.resources ?? {}),
-    ...(await provisionResources(s.api, s.accountId, neededResources(manifest, gatekeepers), (l) =>
-      io.out(l),
+    ...(await provisionResources(
+      s.api,
+      s.accountId,
+      neededResources(manifest, gatekeepers, { ai }),
+      (l) => io.out(l),
     )),
   };
   const state: DeploymentState = {
@@ -446,6 +482,7 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
     identityProvider: identity,
     channel,
     gatekeepers,
+    ai,
     workerNames: previous?.workerNames ?? {},
     vars,
     resources,
@@ -708,7 +745,7 @@ async function status(flags: Flags, deps: Deps): Promise<number> {
   }
   io.out(`crm ${state.version} (${state.channel} channel) at https://${state.hostname}`);
   io.out(
-    `  sign-in: ${state.identityProvider}; gatekeepers: ${state.gatekeepers.join(", ") || "none"}`,
+    `  sign-in: ${state.identityProvider}; gatekeepers: ${state.gatekeepers.join(", ") || "none"}; AI: ${state.ai === false ? "off" : "on"}`,
   );
   io.out(
     newer.length

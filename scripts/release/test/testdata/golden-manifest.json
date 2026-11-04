@@ -57,6 +57,16 @@
         "crm-app",
         "crm-runner"
       ]
+    },
+    {
+      "default": "",
+      "description": "AI Gateway every model call goes through (usage and spend per role, BYOK)",
+      "kind": "var",
+      "name": "AI_GATEWAY_ID",
+      "workers": [
+        "crm-app",
+        "crm-runner"
+      ]
     }
   ],
   "manifestVersion": 1,
@@ -172,6 +182,10 @@
     {
       "name": "0132_automation_runtime.sql",
       "sha256": "89c20a47db513f4c177055f102d3df663d825a39686d9420360ae2bc604c1aec"
+    },
+    {
+      "name": "0150_ai_summaries_embeddings.sql",
+      "sha256": "386fde740bfde6b76b578d3c2d1848f5224b28ea957ee332d9ce59091a7d742f"
     },
     {
       "name": "0160_releases.sql",
@@ -293,6 +307,28 @@
       ]
     },
     {
+      "config": {
+        "dimensions": 384,
+        "metadataIndexes": [
+          {
+            "indexType": "string",
+            "propertyName": "object"
+          }
+        ],
+        "metric": "cosine"
+      },
+      "feature": "ai",
+      "implicit": false,
+      "name": "crm-records",
+      "optional": false,
+      "placeholder": "$VECTORIZE_NAME(crm-records)",
+      "type": "vectorize",
+      "usedBy": [
+        "crm-app",
+        "crm-runner"
+      ]
+    },
+    {
       "implicit": true,
       "name": "crm-automation",
       "optional": false,
@@ -354,6 +390,17 @@
           "type": "queue"
         },
         {
+          "feature": "ai",
+          "index_name": "$VECTORIZE_NAME(crm-records)",
+          "name": "VECTORIZE",
+          "type": "vectorize"
+        },
+        {
+          "feature": "ai",
+          "name": "AI",
+          "type": "ai"
+        },
+        {
           "name": "MCP_RATE_LIMIT",
           "namespace_id": "4101",
           "simple": {
@@ -391,6 +438,21 @@
           "type": "plain_text"
         },
         {
+          "name": "AI_MODEL_ROLES",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "AI_PROVIDERS",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "AI_SECRET_SCRIPTS",
+          "text": "crm-app,crm-runner",
+          "type": "plain_text"
+        },
+        {
           "name": "APPROVAL_EXPIRY_DAYS",
           "text": "7",
           "type": "plain_text"
@@ -403,6 +465,11 @@
         {
           "name": "AUTH_ALLOW_SIGNUP",
           "text": "false",
+          "type": "plain_text"
+        },
+        {
+          "name": "CLOUDFLARE_ACCOUNT_ID",
+          "text": "$ACCOUNT_ID",
           "type": "plain_text"
         },
         {
@@ -431,6 +498,16 @@
           "type": "plain_text"
         },
         {
+          "name": "VECTORIZE_DIMENSIONS",
+          "text": "384",
+          "type": "plain_text"
+        },
+        {
+          "name": "AI_GATEWAY_TOKEN",
+          "text": "$SECRET(AI_GATEWAY_TOKEN)",
+          "type": "secret_text"
+        },
+        {
           "name": "BETTER_AUTH_SECRET",
           "text": "$SECRET(BETTER_AUTH_SECRET)",
           "type": "secret_text"
@@ -448,6 +525,11 @@
         {
           "name": "CF_ACCESS_TEAM_DOMAIN",
           "text": "$SECRET(CF_ACCESS_TEAM_DOMAIN)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CLOUDFLARE_API_TOKEN",
+          "text": "$SECRET(CLOUDFLARE_API_TOKEN)",
           "type": "secret_text"
         },
         {
@@ -471,7 +553,8 @@
         "nodejs_compat"
       ],
       "crons": [
-        "17 3 * * *"
+        "17 3 * * *",
+        "*/10 * * * *"
       ],
       "dependsOn": [
         "crm-runner"
@@ -497,6 +580,12 @@
       "role": "app",
       "secrets": [
         {
+          "description": "Optional. An authenticated AI Gateway's token, sent as cf-aig-authorization.",
+          "name": "AI_GATEWAY_TOKEN",
+          "required": false,
+          "source": "user"
+        },
+        {
           "description": "Signs sessions. At least 32 random characters, e.g. the output of `openssl rand -hex 32`.",
           "name": "BETTER_AUTH_SECRET",
           "required": true,
@@ -521,6 +610,12 @@
           "source": "installer"
         },
         {
+          "description": "Optional. Settings → AI's Cloudflare API token: provider keys as Workers secrets, AI Gateway usage (docs/deploying.md, In-app AI). Set from CRM_AI_ADMIN_TOKEN.",
+          "name": "CLOUDFLARE_API_TOKEN",
+          "required": false,
+          "source": "installer"
+        },
+        {
           "description": "Optional. A scoped Cloudflare API token that lets Settings → Updates update this deployment itself (docs/deploying.md). Without it, updates use the `crm upgrade` CLI.",
           "name": "CRM_UPDATE_TOKEN",
           "required": false,
@@ -539,7 +634,7 @@
           "source": "user"
         }
       ],
-      "sha256": "957a50c093a7a52ebffc6baf901c16e715e6f97ca65d5107b0bcd7392cbef137"
+      "sha256": "d279c25d5e0763d3ba5083d015b129382959ecf92020ff7e06cb5e638bd21514"
     },
     {
       "bindings": [
@@ -602,6 +697,17 @@
           "type": "queue"
         },
         {
+          "feature": "ai",
+          "index_name": "$VECTORIZE_NAME(crm-records)",
+          "name": "VECTORIZE",
+          "type": "vectorize"
+        },
+        {
+          "feature": "ai",
+          "name": "AI",
+          "type": "ai"
+        },
+        {
           "name": "AUTOMATION_RATE_LIMIT",
           "namespace_id": "4201",
           "simple": {
@@ -620,6 +726,16 @@
           "type": "plain_text"
         },
         {
+          "name": "AI_MODEL_ROLES",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "AI_PROVIDERS",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "APP_ORIGIN",
           "text": "https://$HOSTNAME",
           "type": "plain_text"
@@ -627,6 +743,11 @@
         {
           "name": "APPROVAL_FLOOR",
           "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "CLOUDFLARE_ACCOUNT_ID",
+          "text": "$ACCOUNT_ID",
           "type": "plain_text"
         },
         {
@@ -709,7 +830,7 @@
       ],
       "role": "runner",
       "secrets": [],
-      "sha256": "710a3b468b6f2fe3200ec1fd84665e1d7c4ed3accd2e7fd3601ea43b8bbff513"
+      "sha256": "61943936112f8583b3b6e19934c19a9afacff27340540bc0b827fa4cd56591fb"
     },
     {
       "bindings": [],

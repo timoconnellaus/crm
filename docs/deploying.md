@@ -140,7 +140,7 @@ It asks for, in order:
    | Workers R2 Storage: Edit | create the `crm-blobs` bucket |
    | Workers KV Storage: Edit | create the `crm-app-oauth-kv` namespace |
    | Queues: Edit | queues and consumers, once a release declares them |
-   | Vectorize: Edit | indexes, once a release declares them |
+   | Vectorize: Edit | the `crm-records` index for semantic search (not needed with `--ai off`) |
    | Account Settings: Read | list the account |
 
    For a **custom hostname** also add, on that zone, **Zone: Read** and **Workers Routes: Edit**. The
@@ -155,8 +155,8 @@ It asks for, in order:
 Then it downloads the newest release on the channel (`--version`, `--channel beta` to choose),
 **checks its sha256 against SHA256SUMS and its GitHub build attestation** (and runs
 `gh attestation verify` too when the GitHub CLI is installed; `--require-gh` insists), and refuses
-a bundle that fails. It creates or finds the D1 database, R2 bucket and KV namespace, runs the core
-migrations, uploads crm-runner then crm-app with their assets, generates `BETTER_AUTH_SECRET`, sets
+a bundle that fails. It creates or finds the D1 database, R2 bucket, KV namespace, queues and the
+`crm-records` Vectorize index (with its `object` metadata index), runs the core migrations, uploads crm-runner then crm-app with their assets, generates `BETTER_AUTH_SECRET`, sets
 `BETTER_AUTH_URL`, and prints the URL. Open `<url>/setup`: sign up (the first account is the admin)
 and the setup wizard takes it from there.
 
@@ -171,6 +171,12 @@ npx create-crm --yes --token "$CF_TOKEN" --account "$CF_ACCOUNT_ID" \
 
 Gatekeepers (integrations, ADR 0169) are optional: add them with `--gatekeepers` (now or on a later
 re-run) and enable them in Settings → Integrations.
+
+In-app AI is on by default: both Workers get the Workers AI and Vectorize bindings, as with
+`pnpm run deploy` (see [In-app AI](#in-app-ai)). `--ai off` (or `CRM_AI=off`) installs without
+them; upgrades keep the choice, and re-running the install with `--ai on` turns it on (the index is
+created then). `--ai-gateway <id>` sets `AI_GATEWAY_ID`, and `--ai-admin-token <t>` (or
+`CRM_AI_ADMIN_TOKEN`) stores Settings → AI's token as crm-app's `CLOUDFLARE_API_TOKEN`.
 
 ## Updates
 
@@ -229,7 +235,9 @@ Everything works without AI; each feature then says "AI is not configured".
 (`"vectorize": [{ "binding": "VECTORIZE", "index_name": "crm-records" }]`), both on crm-app and
 crm-runner (whose automation events consumer embeds changed records), are
 remote-only, so the committed `wrangler.jsonc` files leave them out (local development and tests
-use stand-ins, ADR 0156) and `pnpm run deploy` adds them. To do it by hand:
+use stand-ins, ADR 0156). `pnpm run deploy` and `create-crm` add them from
+`apps/app/deploy-inputs.json` and `apps/runner/deploy-inputs.json` (`features.ai`, and the
+index's settings under `vectorize`). To do it by hand:
 
 ```sh
 pnpm exec wrangler vectorize create crm-records --dimensions=384 --metric=cosine

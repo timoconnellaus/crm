@@ -15,6 +15,7 @@ import { toBase64 } from "./hash.ts";
 import {
   type DurableObjectMigration,
   deployOrder,
+  type Feature,
   gatekeeperBindingName,
   type ManifestBinding,
   type PlaceholderValues,
@@ -37,6 +38,11 @@ export interface DeploymentState {
   channel: Channel;
   /** Optional Workers (gatekeepers) installed, by manifest name. */
   gatekeepers: string[];
+  /**
+   * In-app AI (Workers AI and the Vectorize index, ADR 0156): false when installed with
+   * `--ai off`. Absent means on.
+   */
+  ai?: boolean;
   /** Deployed names, when they differ from the manifest's. */
   workerNames: Record<string, string>;
   /** Plain var overrides per Worker (e.g. IDENTITY_PROVIDER, APPROVAL_FLOOR). */
@@ -143,11 +149,25 @@ export async function writeDeploymentState(
 
 // ---- Resources ----------------------------------------------------------------------------------
 
-/** The resources this deployment needs: required ones plus those of installed optional Workers. */
-export function neededResources(manifest: ReleaseManifest, gatekeepers: string[]): ResourceEntry[] {
+/** Whether a feature is on in this deployment. Features are on unless turned off. */
+export function featureOn(state: Pick<DeploymentState, "ai">, feature: Feature): boolean {
+  return feature === "ai" ? state.ai !== false : true;
+}
+
+/**
+ * The resources this deployment needs: required ones plus those of installed optional Workers,
+ * minus those of features that are off.
+ */
+export function neededResources(
+  manifest: ReleaseManifest,
+  gatekeepers: string[],
+  features: Pick<DeploymentState, "ai"> = {},
+): ResourceEntry[] {
   const installed = new Set(gatekeepers);
   return manifest.resources.filter(
-    (r) => !r.optional || r.usedBy.some((worker) => installed.has(worker)),
+    (r) =>
+      (!r.optional || r.usedBy.some((worker) => installed.has(worker))) &&
+      (!r.feature || featureOn(features, r.feature)),
   );
 }
 
@@ -297,7 +317,10 @@ export function workerBindings(
 ): ManifestBinding[] {
   const values = placeholderValues(state, secrets);
   const overrides = state.vars[worker.name] ?? {};
-  const bindings = renderBindings(worker.bindings, values).map((binding) =>
+  const wanted = worker.bindings
+    .filter((b) => !b.feature || featureOn(state, b.feature))
+    .map(({ feature: _feature, ...binding }) => binding as ManifestBinding);
+  const bindings = renderBindings(wanted, values).map((binding) =>
     binding.type === "plain_text" && overrides[binding.name] !== undefined
       ? { ...binding, text: overrides[binding.name] }
       : binding,

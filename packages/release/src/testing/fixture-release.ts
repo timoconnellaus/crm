@@ -149,7 +149,8 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       { type: "d1", name: "DB", database_id: "$D1_ID(crm)" },
       { type: "durable_object_namespace", name: "WORKSPACE", class_name: "Workspace" },
       // Stage 5 shapes: a Workflow, the automation events queue (consumed with a DLQ) and a
-      // rate limit; stage 7a's shape: a Vectorize index.
+      // rate limit; stage 7a's shape: Workers AI and a Vectorize index, both behind the `ai`
+      // feature (`--ai off` leaves them out).
       {
         type: "workflow",
         name: "AUTOMATION_WORKFLOW",
@@ -167,7 +168,13 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
         namespace_id: "4201",
         simple: { limit: 60, period: 60 },
       },
-      { type: "vectorize", name: "VECTORS", index_name: "$VECTORIZE_NAME(crm-records)" },
+      {
+        type: "vectorize",
+        name: "VECTORIZE",
+        index_name: "$VECTORIZE_NAME(crm-records)",
+        feature: "ai",
+      },
+      { type: "ai", name: "AI", feature: "ai" },
       { type: "plain_text", name: "APP_ORIGIN", text: "https://$HOSTNAME" },
     ],
     secrets: [],
@@ -279,6 +286,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
         implicit: false,
         usedBy: ["crm-runner"],
         optional: false,
+        feature: "ai",
         config: {
           dimensions: 384,
           metric: "cosine",

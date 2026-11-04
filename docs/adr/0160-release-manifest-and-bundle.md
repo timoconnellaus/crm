@@ -59,3 +59,25 @@ source; no router or asset variants.
   reviewed: a deliberate pause to think about installed deployments.
 - KV namespaces, which wrangler provisions by binding, are named `<worker>-<binding>` in releases
   (`crm-app-oauth-kv`).
+
+## Amendment, 2026-11-05: stage 7a's optional AI bindings
+Stage 7a's `ai` and `vectorize` bindings are remote-only, so the committed `wrangler.jsonc` files
+leave them out and `scripts/deploy.mjs` adds them to a git-ignored `wrangler.deploy.jsonc`
+(ADR 0156). The generator does not read that file. Instead:
+
+- `apps/app/deploy-inputs.json` and `apps/runner/deploy-inputs.json` declare them under
+  `features.ai`, and `apps/app/deploy-inputs.json` `vectorize` says how `crm-records` is created
+  (384 dimensions, cosine, a string metadata index on `object`). `scripts/deploy.mjs` reads the
+  same files, so both deploy paths install the same thing.
+- In the manifest those bindings and the index carry `feature: "ai"`. The deploy engine uploads
+  them, and provisions the index, only when the deployment's `ai` state is not `false`. It strips
+  the tag before the upload. `create-crm --ai off` (or `CRM_AI=off`) records `ai: false` in
+  `core_install`, so upgrades and the self-updater keep the choice.
+- A feature may only add the binding kinds the generator lists (`ai`, `vectorize`). Any other key
+  fails the build, as unknown wrangler keys do.
+- `CLOUDFLARE_ACCOUNT_ID` (a stage 7a var) is templated to `$ACCOUNT_ID`. `AI_GATEWAY_ID` is an
+  installer input (`--ai-gateway`). Settings → AI's `CLOUDFLARE_API_TOKEN` and `AI_GATEWAY_TOKEN`
+  are optional secrets from `deploy-inputs.json`.
+- Updates now create any resource the target release needs that the deployment does not have yet,
+  before switching Workers (ADR 0164, step 4). That covers a release that adds a queue or an index,
+  and AI turned on by a re-install.

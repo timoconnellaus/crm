@@ -31,8 +31,22 @@ export interface ManifestModule {
   size: number;
 }
 
-/** A binding as the Workers script-upload API takes it, with placeholders for account values. */
-export type ManifestBinding = { type: string; name: string } & Record<string, unknown>;
+/**
+ * Optional parts of a deployment the operator turns on or off at install (ADR 0160, ADR 0156):
+ * `ai` is Workers AI and the Vectorize index for semantic search. They are on by default.
+ */
+export const FEATURES = ["ai"] as const;
+export type Feature = (typeof FEATURES)[number];
+
+/**
+ * A binding as the Workers script-upload API takes it, with placeholders for account values.
+ * `feature` marks a binding that is only uploaded when that feature is on; it is stripped before
+ * the upload.
+ */
+export type ManifestBinding = { type: string; name: string; feature?: Feature } & Record<
+  string,
+  unknown
+>;
 
 /** A Durable Object migration step, verbatim from wrangler.jsonc. */
 export interface DurableObjectMigration {
@@ -132,6 +146,8 @@ export interface ResourceEntry {
   optional: boolean;
   /** Creation settings, e.g. a Vectorize index's dimensions and metric. */
   config?: Record<string, unknown>;
+  /** Only needed when this feature is on (e.g. the `crm-records` index for `ai`). */
+  feature?: Feature;
 }
 
 /** A deployment-level answer the installer collects (not a per-Worker secret). */

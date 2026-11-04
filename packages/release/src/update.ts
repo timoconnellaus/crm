@@ -1,10 +1,10 @@
 // The upgrade and rollback procedures (ADR 0054, ADR 0164), shared by the self-updater and
 // `crm upgrade` so both do exactly the same thing:
 //
-//   1. pause automations          (AutomationControl; a no-op until stage 5 lands)
+//   1. pause automations          (AutomationControl: the automations kill switch)
 //   2. take a D1 Time Travel bookmark
 //   3. apply core migrations
-//   4. switch all Workers together
+//   4. create resources the new release adds, then switch all Workers together
 //   5. smoke check the new version
 //   6. resume automations
 //
@@ -22,6 +22,8 @@ import {
   deployWorkers,
   type Log,
   type MigrationRunner,
+  neededResources,
+  provisionResources,
   writeDeploymentState,
 } from "./deploy.ts";
 
@@ -172,14 +174,34 @@ export async function runUpdate(input: UpdateInput): Promise<UpdateOutcome> {
     phase = "migrated";
 
     await step("switch");
-    await deployWorkers({ api, bundle: target, state, secrets: input.secrets ?? {}, log });
+    // Resources the new release adds (a queue, an index) are created before its Workers bind
+    // them; existing ones are found by name.
+    const resources = {
+      ...state.resources,
+      ...(await provisionResources(
+        api,
+        state.accountId,
+        neededResources(target.manifest, state.gatekeepers, state).filter(
+          (r) => r.placeholder && !(r.placeholder.slice(1) in state.resources),
+        ),
+        log,
+      )),
+    };
+    const switched: DeploymentState = { ...state, resources };
+    await deployWorkers({
+      api,
+      bundle: target,
+      state: switched,
+      secrets: input.secrets ?? {},
+      log,
+    });
     phase = "switched";
 
     await step("smoke");
     await input.smoke(state.hostname, target.manifest.version);
 
     const next: DeploymentState = {
-      ...state,
+      ...switched,
       version: target.manifest.version,
       ...(input.targetDigest ? { bundleDigest: input.targetDigest } : {}),
       updatedAt: new Date().toISOString(),
