@@ -35,11 +35,18 @@ export const SERVER_INSTRUCTIONS = `This server is a CRM: people, organisations,
 - Some changes need approval. Depending on the org's approval policy, a write may come back as {"status": "pending_approval", ...} instead of applying. It is NOT done: it waits in a change set for a person to approve it in the CRM's Approvals inbox. Say so plainly to the user. Until it is decided, your own reads in this session show it as if applied, and a created record has a provisional id (per_pending_…) you can link activities and tasks to. Check progress with approval_status; once applied, its bindings give the real ids.
 - Group a task with changeset_begin (give it a title) and changeset_commit when done, so the reviewer sees one coherent change set.
 - Analysis: query_sql runs read-only SQL (one SELECT or WITH) over the crm_* views (crm_people, crm_organisations, crm_affiliations, crm_activities, crm_activity_links, crm_tasks, crm_task_links, crm_record_tags, crm_users). Read the crm://schema resource for objects, fields and operations.
+- Code Mode: the code tool runs a short ES module that calls operations through import { crm } from "codemode:crm", as you and under the same approval rules. Use it for work that needs many calls or some logic; for many records use one *Many operation (one reviewable change), not a loop.
+- Extensions reshape the CRM with code: new objects, fields on people and organisations, formula fields, views and tools. Write the files with extension_write (index.ts default-exports defineExtension({...}) from @crm/sdk; extension_read id "example" shows a complete one), run extension_check and fix every issue, then extension_propose. Nothing is installed until a person approves the proposal in the Approvals inbox. Authoring needs the admin scope.
 - The curated tools cover common work. For anything else, describe_operations lists every operation you may call with its input schema, and call_operation runs one by name.`;
 
 /** MCP tool names allow letters, digits, `_` and `-`: `person.create` → `person_create`. */
 export function toolName(operation: string): string {
   return operation.replace(/\./g, "_");
+}
+
+/** The MCP tool a curated operation is listed as (`code.run` is the `code` tool). */
+export function curatedToolName(op: AnyOperation): string {
+  return op.mcp?.toolName ?? toolName(op.name);
 }
 
 /** Core operations MCP can see at all (curated tools come from these). */
@@ -58,7 +65,7 @@ export async function mcpOperation(name: string, db: CrmDb): Promise<AnyOperatio
 }
 
 export function requiresReason(op: AnyOperation): boolean {
-  return op.risk !== "read" && !op.bookkeeping;
+  return op.risk !== "read" && (!op.bookkeeping || op.mcp?.requireReason === true);
 }
 
 const REASON_SCHEMA = {
@@ -227,7 +234,7 @@ export async function schemaDocument(context: InvocationContext) {
     })),
     operations: operations.map((op) => ({
       name: op.name,
-      tool: op.mcp?.curated ? toolName(op.name) : null,
+      tool: op.mcp?.curated ? curatedToolName(op) : null,
       risk: op.risk,
       permission: op.permission as Permission,
       requiresReason: requiresReason(op),
@@ -280,7 +287,7 @@ export function createCrmMcpServer(caller: McpCaller, version: string): McpServe
   for (const op of coreMcpOperations().filter((o) => o.mcp?.curated)) {
     const reviewable = requiresReason(op);
     server.registerTool(
-      toolName(op.name),
+      curatedToolName(op),
       {
         title: op.mcp?.title ?? op.name,
         description:
@@ -323,7 +330,7 @@ export function createCrmMcpServer(caller: McpCaller, version: string): McpServe
       return text({
         operations: ops.map((op) => ({
           name: op.name,
-          tool: op.mcp?.curated ? toolName(op.name) : null,
+          tool: op.mcp?.curated ? curatedToolName(op) : null,
           description: op.description,
           risk: op.risk,
           permission: op.permission,

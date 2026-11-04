@@ -13,23 +13,37 @@ import { WorkerJavaScriptBackend } from "@cloudflare/computer/backends/worker-ja
 import { createGitClient } from "@cloudflare/computer/git";
 import {
   type ActingUser,
+  type CodeCaller,
+  type CodeResult,
   type EvaluateResult,
   type ExtensionHost,
   type ExtensionVersion,
   invokeByName,
+  PendingApprovalError,
+  type Permission,
   parseFloor,
   type RunToolInput,
   type RunToolResult,
   type ShippedExtension,
   type SourceIssue,
   toOperationError,
+  type WorkingCopy,
+  type WorkspaceEntry,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
 import type { ExtensionManifest, HostModuleName, RunResponse } from "@crm/sdk";
 import { SDK_BUNDLE } from "../generated/sdk-bundle.ts";
 import { SHIPPED_EXTENSIONS } from "../generated/shipped.ts";
-import { runModelRole } from "./ai.ts";
+import { runBuildRole, runModelRole } from "./ai.ts";
 import { buildExtension, entrySource, SDK_SPECIFIER } from "./build.ts";
+import {
+  buildScript,
+  CODE_MAX_CALLS,
+  CODE_MAX_VALUE_BYTES,
+  CODE_TIMEOUT_MS,
+  CRM_WRAPPER,
+  codeEntry,
+} from "./code-mode.ts";
 import { recordRun } from "./runs.ts";
 
 /** Consecutive failed runs that quarantine an extension (ADR 0025). */
@@ -41,8 +55,16 @@ const IDENTITY = { name: "CRM extension workspace", email: "workspace@crm.invali
 /** Failures that are the caller's, not the extension's: they do not count towards quarantine. */
 const CALLER_ERRORS = new Set(["invalid_input", "unknown_tool"]);
 
+/** A Code Mode run (ADR 0042): the script acts as the connected user, not as an extension. */
+interface CodeRun {
+  caller: CodeCaller;
+  pending: unknown[];
+  calls: number;
+}
+
 interface RunContext {
   extensionId: string;
+  code?: CodeRun;
   modules: ReadonlySet<HostModuleName>;
   user: ActingUser;
   permissions: ExtensionManifest["permissions"];
@@ -55,6 +77,18 @@ type Envelope =
   | { ok: false; error: { code: string; message: string; details?: unknown } };
 
 const extensionDir = (id: string) => `/extensions/${id}`;
+const ejectedKey = (id: string) => `ejected:${id}`;
+const EXTENSION_ID = /^[a-z][a-z0-9]{1,29}$/;
+
+function assertPath(path: string): void {
+  if (
+    !path ||
+    path.startsWith("/") ||
+    path.split("/").some((part) => part === ".." || part === "." || part === "" || part === ".git")
+  ) {
+    throw new Error(`Invalid file path ${path}`);
+  }
+}
 const buildDir = (id: string, key: string) => `/build/${id}/${key}`;
 
 function json(value: unknown): WorkspaceRuntimeValue {
@@ -126,6 +160,7 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
 
   async #crmCall(args: readonly WorkspaceRuntimeValue[]): Promise<WorkspaceRuntimeValue> {
     const current = this.#context("crm");
+    if (current.code) return this.#codeCall(current, current.code, args);
     const [name, input] = args;
     const started = Date.now();
     const operation = String(name);
@@ -158,6 +193,82 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
       operation,
       ok: reply.ok,
       ...(reply.ok ? {} : { code: reply.error.code }),
+      ms: Date.now() - started,
+    });
+    return json(reply);
+  }
+
+  /** `codemode:crm` for a Code Mode script: the connected user's actor, through the gate. */
+  async #codeCall(
+    current: RunContext,
+    run: CodeRun,
+    args: readonly WorkspaceRuntimeValue[],
+  ): Promise<WorkspaceRuntimeValue> {
+    const [name, input] = args;
+    const operation = String(name);
+    const started = Date.now();
+    let reply: Envelope;
+    let pendingActionId: string | undefined;
+    run.calls += 1;
+    if (run.calls > CODE_MAX_CALLS) {
+      reply = {
+        ok: false,
+        error: {
+          code: "limit",
+          message: `A script may make at most ${CODE_MAX_CALLS} operation calls; use *Many operations for many records`,
+        },
+      };
+    } else if (
+      operation.startsWith("extension.") ||
+      operation.startsWith("x.") ||
+      operation === "code.run"
+    ) {
+      reply = {
+        ok: false,
+        error: {
+          code: "forbidden",
+          message: `${operation} cannot be called from a Code Mode script; call it as a tool`,
+        },
+      };
+    } else {
+      const { caller } = run;
+      try {
+        const value = await invokeByName(operation, input ?? {}, {
+          actor: caller.actor,
+          user: caller.user,
+          origin: caller.origin,
+          db: createCrmDb(this.env.DB),
+          floor: parseFloor(this.env.APPROVAL_FLOOR),
+          grantedPermissions: caller.grantedPermissions as Permission[] | undefined,
+          reason: caller.reason ?? "Code Mode script",
+          approvalExpiryDays: caller.approvalExpiryDays,
+        });
+        reply = { ok: true, value };
+      } catch (error) {
+        if (error instanceof PendingApprovalError) {
+          run.pending.push(error.pending);
+          pendingActionId = error.pending.actionId;
+          reply = { ok: true, value: error.pending };
+        } else {
+          const typed = toOperationError(error);
+          reply = {
+            ok: false,
+            error: {
+              code: typed.code,
+              message: typed.code === "internal" ? "Internal error" : typed.message,
+              ...(typed.code !== "internal" && typed.details !== undefined
+                ? { details: typed.details }
+                : {}),
+            },
+          };
+        }
+      }
+    }
+    current.operations.push({
+      operation,
+      ok: reply.ok,
+      ...(reply.ok ? {} : { code: reply.error.code }),
+      ...(pendingActionId ? { pendingActionId } : {}),
       ms: Date.now() - started,
     });
     return json(reply);
@@ -382,6 +493,9 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
   async commitShipped(id: string): Promise<{ commit: string; changed: boolean }> {
     const shipped = SHIPPED_EXTENSIONS.find((s) => s.id === id);
     if (!shipped) throw new Error(`No shipped extension ${id}`);
+    if (await this.ctx.storage.get(ejectedKey(id))) {
+      throw new Error(`${id} was ejected; releases no longer update it`);
+    }
     return this.commit({
       id,
       files: shipped.files,
@@ -542,7 +656,7 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
   async versions(id: string): Promise<ExtensionVersion[]> {
     const dir = extensionDir(id);
     if (!(await this.#exists(`${dir}/.git`))) return [];
-    const log = await this.workspace.git.log({ dir });
+    const log = await this.workspace.git.log({ dir }).catch(() => []);
     return log.map((c) => ({
       commit: c.oid,
       message: c.message.trim(),
@@ -552,5 +666,211 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
 
   async files(id: string, commit: string): Promise<Record<string, string>> {
     return this.#filesAt(id, commit);
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Authoring (ADR 0041): the working copy
+
+  /** Files under `/extensions/<id>/` as they are now (uncommitted edits included). */
+  async #workingFiles(id: string): Promise<Record<string, string>> {
+    const dir = extensionDir(id);
+    const files: Record<string, string> = {};
+    const walk = async (rel: string) => {
+      const entries = await this.workspace.fs.readdir(rel ? `${dir}/${rel}` : dir);
+      for (const entry of entries) {
+        if (!rel && entry.name === ".git") continue;
+        const path = rel ? `${rel}/${entry.name}` : entry.name;
+        if (entry.isDirectory) await walk(path);
+        else if (entry.isFile)
+          files[path] = await this.workspace.fs.readFile(`${dir}/${path}`, "utf8");
+      }
+    };
+    if (await this.#exists(dir)) await walk("");
+    return files;
+  }
+
+  async #workingCopy(id: string): Promise<WorkingCopy> {
+    if (!EXTENSION_ID.test(id)) throw new Error(`Invalid extension id ${id}`);
+    const dir = extensionDir(id);
+    const ejected = Boolean(await this.ctx.storage.get(ejectedKey(id)));
+    if (!(await this.#exists(`${dir}/.git`))) {
+      return { id, exists: false, head: null, files: {}, changed: [], ejected };
+    }
+    const files = await this.#workingFiles(id);
+    const head = (await this.workspace.git.log({ dir, depth: 1 }).catch(() => []))[0]?.oid ?? null;
+    const status = await this.workspace.git.status({ dir });
+    const changed = status
+      .filter((s) => s.index !== " " || s.worktree !== " ")
+      .map((s) => s.path)
+      .sort();
+    return { id, exists: true, head, files, changed, ejected };
+  }
+
+  async workingCopy(id: string): Promise<WorkingCopy> {
+    return this.#serialise(() => this.#workingCopy(id));
+  }
+
+  async listWorkspace(): Promise<WorkspaceEntry[]> {
+    return this.#serialise(async () => {
+      if (!(await this.#exists("/extensions"))) return [];
+      const out: WorkspaceEntry[] = [];
+      for (const entry of await this.workspace.fs.readdir("/extensions")) {
+        if (!entry.isDirectory || !EXTENSION_ID.test(entry.name)) continue;
+        const wc = await this.#workingCopy(entry.name);
+        if (!wc.exists) continue;
+        out.push({
+          id: wc.id,
+          head: wc.head,
+          files: Object.keys(wc.files).sort(),
+          changed: wc.changed.length > 0,
+          ejected: wc.ejected,
+        });
+      }
+      return out.sort((a, b) => a.id.localeCompare(b.id));
+    });
+  }
+
+  async #writeFiles(
+    id: string,
+    files: Record<string, string | null>,
+    replace: boolean,
+  ): Promise<WorkingCopy> {
+    if (!EXTENSION_ID.test(id)) throw new Error(`Invalid extension id ${id}`);
+    const dir = extensionDir(id);
+    const fs = this.workspace.fs;
+    if (!(await this.#exists(`${dir}/.git`))) {
+      await fs.mkdir(dir, { recursive: true });
+      await this.workspace.git.init({ dir });
+    }
+    for (const path of Object.keys(files)) assertPath(path);
+    if (replace) {
+      for (const path of Object.keys(await this.#workingFiles(id))) {
+        if (!Object.hasOwn(files, path)) await fs.rm(`${dir}/${path}`, { force: true });
+      }
+    }
+    for (const [path, text] of Object.entries(files)) {
+      const target = `${dir}/${path}`;
+      if (text === null) {
+        await fs.rm(target, { force: true });
+        continue;
+      }
+      await fs.mkdir(target.slice(0, target.lastIndexOf("/")), { recursive: true });
+      await fs.writeFile(target, text);
+    }
+    return this.#workingCopy(id);
+  }
+
+  async writeFiles(input: {
+    id: string;
+    files: Record<string, string | null>;
+    replace: boolean;
+  }): Promise<WorkingCopy> {
+    return this.#serialise(() => this.#writeFiles(input.id, input.files, input.replace));
+  }
+
+  async commitWorkingCopy(input: {
+    id: string;
+    message: string;
+    author: { name: string; email: string };
+  }): Promise<{ commit: string; changed: boolean }> {
+    return this.#serialise(async () => {
+      const files = await this.#workingFiles(input.id);
+      if (!Object.keys(files).length) throw new Error(`${input.id} has no files to commit`);
+      return this.#commit(input.id, files, input.message, input.author);
+    });
+  }
+
+  async eject(id: string): Promise<WorkingCopy> {
+    const shipped = SHIPPED_EXTENSIONS.find((s) => s.id === id);
+    if (!shipped) throw new Error(`No shipped extension ${id}`);
+    return this.#serialise(async () => {
+      await this.ctx.storage.put(ejectedKey(id), new Date().toISOString());
+      return this.#writeFiles(id, shipped.files, true);
+    });
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Code Mode (ADR 0042) and the build model role
+
+  async runCode(input: { code: string; caller: CodeCaller }): Promise<CodeResult> {
+    return this.#serialise(() => this.#runCode(input.code, input.caller));
+  }
+
+  async #runCode(code: string, caller: CodeCaller): Promise<CodeResult> {
+    const started = Date.now();
+    const built = buildScript(code);
+    if (!built.ok) {
+      return {
+        ok: false,
+        error: { code: "syntax", message: built.message },
+        logs: [],
+        operations: [],
+        pending: [],
+        durationMs: Date.now() - started,
+      };
+    }
+    const dir = `/code/${crypto.randomUUID()}`;
+    await this.workspace.fs.mkdir(dir, { recursive: true });
+    await this.workspace.fs.writeFile(`${dir}/script.js`, built.script);
+    await this.workspace.fs.writeFile(`${dir}/crm.js`, CRM_WRAPPER);
+    const run: CodeRun = { caller, pending: [], calls: 0 };
+    const context: RunContext = {
+      extensionId: "(code)",
+      code: run,
+      modules: new Set(["crm"]),
+      user: caller.user,
+      permissions: { read: [], write: [], operations: [], modules: ["crm"] },
+      logs: [],
+      operations: [],
+    };
+    this.#current = context;
+    let response: RunResponse & { logs?: { level: string; message: string }[]; dropped?: boolean };
+    try {
+      ({ response } = await this.#exec(codeEntry(dir), null, CODE_TIMEOUT_MS));
+    } finally {
+      this.#current = null;
+      await this.workspace.fs.rm(dir, { recursive: true, force: true });
+    }
+    const logs = (response.logs ?? []).map((l) => ({
+      level: (["log", "info", "warn", "error"].includes(l.level) ? l.level : "log") as
+        | "log"
+        | "info"
+        | "warn"
+        | "error",
+      message: String(l.message),
+    }));
+    let truncated = Boolean(response.dropped);
+    let value: unknown;
+    if (response.ok) {
+      value = response.value;
+      const size = JSON.stringify(value ?? null).length;
+      if (size > CODE_MAX_VALUE_BYTES) {
+        truncated = true;
+        value = {
+          truncated: true,
+          bytes: size,
+          preview: JSON.stringify(value).slice(0, 2_000),
+          message: `The result is larger than ${CODE_MAX_VALUE_BYTES} bytes; return less (e.g. counts or ids)`,
+        };
+      }
+    }
+    return {
+      ok: response.ok,
+      ...(response.ok ? { value: value ?? null } : { error: response.error }),
+      logs,
+      operations: context.operations,
+      pending: run.pending,
+      durationMs: Date.now() - started,
+      ...(truncated ? { truncated: true } : {}),
+    };
+  }
+
+  async describeChange(prompt: string): Promise<{ text: string; model: string } | null> {
+    try {
+      return await runBuildRole(this.env, prompt);
+    } catch (error) {
+      console.error("build role failed", error);
+      return null;
+    }
   }
 }

@@ -8,7 +8,13 @@ import { ApprovalStateError, objectOfId } from "../approvals/queue.ts";
 import { ForbiddenError, NotFoundError, toOperationError, ValidationError } from "../errors.ts";
 import { newId, replaceIds } from "../ids.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
-import { type ActingUser, type Origin, ROLES, type Role } from "../principals.ts";
+import {
+  type ActingUser,
+  type Origin,
+  ROLES,
+  type Role,
+  roleHasPermission,
+} from "../principals.ts";
 import { jsonList } from "../records/common.ts";
 
 // --- Schemas -----------------------------------------------------------------------------------
@@ -581,6 +587,15 @@ export const approvalApprove = defineOperation({
   auditSummary: (output) => ({ counts: output.counts }),
   async handler(input, ctx) {
     const targets = await decisionTargets(ctx, input);
+    // Installing or upgrading an extension, or changing schema, needs an admin's approval: the
+    // approver must hold the permission those operations need (ADR 0041).
+    const privileged = targets.find((t) => t.risk === "extension" || t.risk === "schema");
+    if (privileged && !roleHasPermission(ctx.user.role, "extensions:manage")) {
+      throw new ForbiddenError(
+        `Approving ${privileged.operation} needs an admin (extensions:manage)`,
+        { actionId: privileged.id, permission: "extensions:manage" },
+      );
+    }
     const targetIds = new Set(targets.map((t) => t.id));
     // Out-of-order approval is refused: dependencies must be applied or approved together.
     const depIds = [...new Set(targets.flatMap((t) => parse<string[]>(t.depends_on, [])))];

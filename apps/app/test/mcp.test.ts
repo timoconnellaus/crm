@@ -49,7 +49,7 @@ describe("tools from the registry (AC2)", () => {
     const names = tools.map((t) => t.name);
     const curated = coreRegistry.list().filter((op) => op.mcp?.curated);
     for (const op of curated) {
-      const tool = tools.find((t) => t.name === op.name.replace(/\./g, "_"));
+      const tool = tools.find((t) => t.name === (op.mcp?.toolName ?? op.name.replace(/\./g, "_")));
       expect(tool, op.name).toBeDefined();
       expect(tool?.description?.length ?? 0).toBeGreaterThan(60);
       const schema = (tool?.inputSchema ?? {}) as Record<string, unknown>;

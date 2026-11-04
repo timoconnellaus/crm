@@ -151,7 +151,13 @@ export function extensionPrincipalId(id: string): string {
  */
 export async function installExtension(
   ctx: HandlerContext,
-  input: { id: string; commit: string; source: "shipped" | "runtime" },
+  input: {
+    id: string;
+    commit: string;
+    source: "shipped" | "runtime";
+    /** Allow a shipped extension to become a runtime one (an approved eject, ADR 0041). */
+    eject?: boolean;
+  },
 ): Promise<InstallResult> {
   const host = requireHost(ctx);
   const existing = await ctx.db
@@ -159,7 +165,8 @@ export async function installExtension(
     .selectAll()
     .where("id", "=", input.id)
     .executeTakeFirst();
-  if (existing && existing.source !== input.source) {
+  const ejecting = input.eject && existing?.source === "shipped" && input.source === "runtime";
+  if (existing && existing.source !== input.source && !ejecting) {
     throw new ValidationError(
       `${input.id} is already installed as a ${existing.source} extension`,
       { id: input.id },
@@ -239,6 +246,7 @@ export async function installExtension(
       })
       .onConflict((oc) =>
         oc.column("id").doUpdateSet({
+          source: input.source,
           status: "active",
           status_reason: null,
           version: manifest.version,
