@@ -14,6 +14,7 @@ export * from "./operations/audit.ts";
 export { coreOperations } from "./operations/index.ts";
 export * from "./operations/person.ts";
 export * from "./operations/policy.ts";
+export * from "./operations/search.ts";
 export * from "./operations/task.ts";
 export * from "./operations/view.ts";
 export { type InvocationContext, invokeOperation, redactInput } from "./pipeline.ts";
