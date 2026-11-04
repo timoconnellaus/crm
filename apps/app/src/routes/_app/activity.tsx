@@ -1,12 +1,18 @@
 // Activity: the recent activity feed across all records (activity.list, newest first), with a
-// type filter and "only mine". Each item links to the records it is on.
+// type filter and "only mine" in the fixed header, a live count, and a virtualised feed that
+// loads more as you scroll. Each item links to the records it is on.
 import type { Filter } from "@crm/core/client";
 import { Button } from "@crm/ui/components/button";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { MessageSquareTextIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { EmptyState, ErrorState } from "#/components/empty-state";
+import { VirtualFeed } from "#/components/layout/infinite";
+import { PageCount, PageLayout } from "#/components/layout/page-layout";
 import { type ActivityType, toTimelineItem } from "#/components/record/adapters";
-import { Timeline, TimelineFilter } from "#/components/record/timeline";
+import { TimelineEntry, TimelineFilter, TimelineSkeleton } from "#/components/record/timeline";
+import { useRecordCount } from "#/lib/count";
 import { callOp } from "#/lib/operations";
 import { opKey } from "#/lib/query";
 
@@ -41,32 +47,66 @@ function ActivityPage() {
     () => feed.data?.pages.flatMap((p) => p.items.map(toTimelineItem)) ?? [],
     [feed.data],
   );
+  const count = useRecordCount("activity", filter);
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
-      <div className="flex flex-wrap items-center gap-2">
-        <TimelineFilter value={types} onChange={setTypes} />
-        <div className="flex-1" />
-        <Button
-          size="xs"
-          variant={mineOnly ? "secondary" : "ghost"}
-          aria-pressed={mineOnly}
-          onClick={() => setMineOnly((v) => !v)}
-        >
-          Only mine
-        </Button>
-      </div>
-      <Timeline
-        items={items}
-        isPending={feed.isPending}
-        error={feed.error}
-        showLinks
-        hasMore={feed.hasNextPage}
-        onLoadMore={() => void feed.fetchNextPage()}
-        isLoadingMore={feed.isFetchingNextPage}
-        emptyTitle={filter ? "No matching activity" : "No activity yet"}
-      />
-    </div>
+    <PageLayout
+      title="Activity"
+      width="md"
+      count={
+        <PageCount
+          value={count.data?.count}
+          capped={count.data?.capped}
+          isPending={count.isPending}
+          noun="activities"
+        />
+      }
+      toolbar={
+        <>
+          <TimelineFilter value={types} onChange={setTypes} />
+          <div className="flex-1" />
+          <Button
+            size="xs"
+            variant={mineOnly ? "secondary" : "ghost"}
+            aria-pressed={mineOnly}
+            onClick={() => setMineOnly((v) => !v)}
+          >
+            Only mine
+          </Button>
+        </>
+      }
+    >
+      {feed.isPending ? (
+        <TimelineSkeleton rows={6} />
+      ) : feed.isError && !items.length ? (
+        <ErrorState
+          title="Could not load activity"
+          error={feed.error}
+          onRetry={() => void feed.refetch()}
+        />
+      ) : !items.length ? (
+        <EmptyState
+          icon={MessageSquareTextIcon}
+          title={filter ? "No matching activity" : "No activity yet"}
+          description="Notes, emails, calls, meetings and changes show up here."
+        />
+      ) : (
+        <VirtualFeed
+          label="Timeline"
+          items={items}
+          getKey={(item) => item.id}
+          estimateSize={84}
+          source={feed}
+          itemTestId="activity-item"
+          renderItem={(item) => (
+            <div className="ml-3 border-l pb-4 pl-6" data-activity-type={item.type}>
+              <div className="relative">
+                <TimelineEntry item={item} showLinks />
+              </div>
+            </div>
+          )}
+        />
+      )}
+    </PageLayout>
   );
 }

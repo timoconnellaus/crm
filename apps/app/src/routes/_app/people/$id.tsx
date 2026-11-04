@@ -19,11 +19,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@crm/ui/components/dropdown-menu";
-import { Skeleton } from "@crm/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@crm/ui/components/tooltip";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
-  ChevronLeftIcon,
   EllipsisIcon,
   PlusIcon,
   RotateCcwIcon,
@@ -42,6 +40,7 @@ import { PersonDetailsCard } from "#/components/people/person-details-card";
 import {
   type ActivityType,
   type AffiliationItem,
+  timelineQueryOptions,
   useAffiliations,
   useLogActivity,
   useRecordHistory,
@@ -56,12 +55,12 @@ import {
 } from "#/components/record/affiliation-dialogs";
 import { AffiliationsCard } from "#/components/record/affiliations-card";
 import { HistoryList } from "#/components/record/history";
-import { RecordLayout } from "#/components/record/record-layout";
+import { RecordLayout, RecordLayoutSkeleton } from "#/components/record/record-layout";
 import { TaskList, TasksCard } from "#/components/record/tasks";
 import { ActivityComposer, Timeline, TimelineFilter } from "#/components/record/timeline";
 import { formatDate } from "#/lib/format";
-import { OperationCallError } from "#/lib/operations";
-import { errorMessage, useOp, useOpMutation } from "#/lib/query";
+import { callOp, OperationCallError } from "#/lib/operations";
+import { errorMessage, opKey, useOp, useOpMutation } from "#/lib/query";
 
 const TABS = ["overview", "timeline", "tasks", "history"] as const;
 type Tab = (typeof TABS)[number];
@@ -69,6 +68,16 @@ type Tab = (typeof TABS)[number];
 export const Route = createFileRoute("/_app/people/$id")({
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } =>
     TABS.includes(search.tab as Tab) && search.tab !== "overview" ? { tab: search.tab as Tab } : {},
+  // Intent preloading: hovering a link to this record warms the record and its timeline.
+  loader: ({ context, params }) => {
+    if (typeof window === "undefined") return;
+    const input = { id: params.id, includeDeleted: true };
+    void context.queryClient.ensureQueryData({
+      queryKey: opKey("person.get", input),
+      queryFn: () => callOp("person.get", input),
+    });
+    void context.queryClient.ensureInfiniteQueryData(timelineQueryOptions("person", params.id));
+  },
   component: PersonPage,
 });
 
@@ -78,21 +87,7 @@ function PersonPage() {
   const navigate = useNavigate({ from: "/people/$id" });
   const person = useOp("person.get", { id, includeDeleted: true });
 
-  if (person.isPending) {
-    return (
-      <div className="mx-auto grid w-full grid-cols-1 max-w-7xl gap-4" aria-busy="true">
-        <div className="flex items-center gap-4">
-          <Skeleton className="size-14 rounded-full" />
-          <div className="grid gap-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-        </div>
-        <Skeleton className="h-9 w-80" />
-        <Skeleton className="h-64" />
-      </div>
-    );
-  }
+  if (person.isPending) return <RecordLayoutSkeleton />;
   if (person.isError) {
     const notFound =
       person.error instanceof OperationCallError && person.error.code === "not_found";
@@ -108,7 +103,7 @@ function PersonPage() {
             <Link to="/people">Back to People</Link>
           </Button>
         }
-        className="mx-auto max-w-xl"
+        className="mx-4 my-6 sm:mx-auto sm:max-w-xl"
       />
     );
   }
@@ -178,6 +173,7 @@ function PersonRecord({
         hasMore={timeline.hasMore}
         onLoadMore={timeline.loadMore}
         isLoadingMore={timeline.isLoadingMore}
+        loadMoreFailed={timeline.loadMoreFailed}
         emptyTitle={types.length ? "No matching activity" : "No activity yet"}
         {...(limit ? { limit } : {})}
       />
@@ -202,15 +198,9 @@ function PersonRecord({
   const openTasks = tasks.data.filter((t) => t.status === "open").length;
 
   return (
-    <div className="grid grid-cols-1 gap-2">
-      <Link
-        to="/people"
-        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeftIcon className="size-4" />
-        People
-      </Link>
+    <>
       <RecordLayout
+        back={{ to: "/people", label: "People" }}
         badge={<PendingChangesBadge object="person" id={person.id} />}
         title={person.displayName}
         subtitle={subtitle || person.emails.find((e) => e.primary)?.email}
@@ -295,6 +285,7 @@ function PersonRecord({
                 hasMore={history.hasMore}
                 onLoadMore={history.loadMore}
                 isLoadingMore={history.isLoadingMore}
+                loadMoreFailed={history.loadMoreFailed}
               />
             ),
           },
@@ -339,7 +330,7 @@ function PersonRecord({
         affiliation={ending}
         onOpenChange={(open) => !open && setEnding(null)}
       />
-    </div>
+    </>
   );
 }
 

@@ -1,3 +1,22 @@
 @import "@crm/ui/globals.css";
 
 @source "./";
+
+/* Page changes cross-fade the page region only (router.tsx opts in where supported). The sidebar
+   and app header stay put. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-old(page),
+::view-transition-new(page) {
+  animation-duration: 140ms;
+  animation-timing-function: ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}

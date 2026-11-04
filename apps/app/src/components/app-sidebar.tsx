@@ -100,7 +100,10 @@ export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
   const pendingCount = usePendingCount();
   return (
-    <Sidebar aria-label="Main navigation">
+    <Sidebar
+      aria-label="Main navigation"
+      className="h-dvh pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+    >
       <SidebarHeader>
         <div className="px-2 py-1.5 text-lg font-semibold tracking-tight">CRM</div>
       </SidebarHeader>

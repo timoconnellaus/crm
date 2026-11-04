@@ -1,11 +1,13 @@
-// Signed-in layout: sidebar (a drawer on phones), header with search and the user menu, the
-// page, and the app-wide command palette, shortcut sheet and create dialogs.
+// Signed-in layout: a viewport-high (h-dvh) shell that never scrolls itself. A fixed sidebar (a
+// drawer on phones), a header with search and the user menu, and the page, which brings its own
+// fixed header and single scroll region (PageLayout). Plus the app-wide command palette, shortcut
+// sheet and create dialogs.
 import { Button } from "@crm/ui/components/button";
 import { Kbd } from "@crm/ui/components/kbd";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@crm/ui/components/sidebar";
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { SearchIcon } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   AppCommandsProvider,
   type CreateKind,
@@ -35,13 +37,24 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
+  useFocusOnNavigate();
   return (
     <AppCommandsProvider>
-      <SidebarProvider>
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      >
+        Skip to content
+      </a>
+      <SidebarProvider className="h-dvh overflow-hidden">
         <AppSidebar />
-        <SidebarInset className="min-w-0">
+        <SidebarInset className="min-h-0 min-w-0 overflow-hidden pr-[env(safe-area-inset-right)]">
           <AppHeader />
-          <div className="min-w-0 flex-1 px-4 py-4 sm:px-6 sm:py-6" id="main">
+          <div
+            className="min-h-0 min-w-0 flex-1 overflow-y-auto [view-transition-name:page]"
+            id="main"
+            tabIndex={-1}
+          >
             <Outlet />
           </div>
         </SidebarInset>
@@ -51,11 +64,31 @@ function AppLayout() {
   );
 }
 
+/**
+ * After a page change, moves focus to the new page's title when focus would otherwise be lost
+ * (the clicked link unmounted, or nothing had focus), so keyboard and screen-reader users land
+ * on the page they opened. Focus that is still somewhere sensible (a dialog, the palette) stays.
+ */
+function useFocusOnNavigate() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const previous = useRef(pathname);
+  useEffect(() => {
+    if (previous.current === pathname) return;
+    previous.current = pathname;
+    const frame = requestAnimationFrame(() => {
+      const current = document.activeElement;
+      if (current && current !== document.body && current.isConnected) return;
+      document.querySelector<HTMLElement>("[data-page-title]")?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pathname]);
+}
+
 function AppHeader() {
   const { principal, signOutUrl } = Route.useRouteContext();
   const { openPalette } = useAppCommands();
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur">
+    <header className="z-10 flex min-h-14 shrink-0 items-center gap-2 border-b bg-background px-4 pt-[env(safe-area-inset-top)]">
       <SidebarTrigger aria-label="Toggle navigation" />
       <Button
         variant="outline"

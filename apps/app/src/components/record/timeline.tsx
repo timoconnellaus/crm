@@ -30,7 +30,8 @@ import { type FormEvent, type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { formatDateTime, formatValue } from "#/lib/format";
 import { errorMessage } from "#/lib/query";
-import { EmptyState } from "../empty-state.tsx";
+import { EmptyState, ErrorState } from "../empty-state.tsx";
+import { LoadMoreSentinel } from "../layout/infinite.tsx";
 import { Markdown } from "../markdown.tsx";
 import {
   ACTIVITY_TYPE_LABELS,
@@ -166,12 +167,28 @@ export interface TimelineProps {
   limit?: number;
   /** Show the records each activity is linked to (the Activity feed). */
   showLinks?: boolean;
-  /** "Load more" for paged timelines. */
+  /** Infinite scroll for paged timelines: more pages load as the end scrolls into view. */
   hasMore?: boolean;
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
+  loadMoreFailed?: boolean;
   /** Empty state text (e.g. when a filter is on). */
   emptyTitle?: string;
+}
+
+/** Skeleton entries shaped like the timeline, so nothing shifts when it loads. */
+export function TimelineSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="grid gap-4 border-l pl-6" aria-busy="true" data-testid="timeline-skeleton">
+      {Array.from({ length: rows }, (_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton rows.
+        <div key={i} className="grid gap-1.5">
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-3 w-1/3" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function Timeline({
@@ -183,25 +200,11 @@ export function Timeline({
   hasMore,
   onLoadMore,
   isLoadingMore,
+  loadMoreFailed,
   emptyTitle = "No activity yet",
 }: TimelineProps) {
-  if (isPending) {
-    return (
-      <div className="grid gap-3">
-        <Skeleton className="h-16" />
-        <Skeleton className="h-16" />
-      </div>
-    );
-  }
-  if (error) {
-    return (
-      <EmptyState
-        icon={MessageSquareTextIcon}
-        title="Could not load activity"
-        description={errorMessage(error)}
-      />
-    );
-  }
+  if (isPending) return <TimelineSkeleton />;
+  if (error) return <ErrorState title="Could not load activity" error={error} />;
   if (!items.length) {
     return (
       <EmptyState
@@ -215,68 +218,76 @@ export function Timeline({
   return (
     <div className="grid gap-3">
       <ol className="relative grid gap-4 border-l pl-6" aria-label="Timeline">
-        {shown.map((item) => {
-          const Icon = TYPE_ICON[item.type] ?? SparklesIcon;
-          const summary = payloadSummary(item);
-          const links = showLinks ? item.links.filter((l) => LINK_ROUTE[l.object]) : [];
-          return (
-            <li key={item.id} className="relative" data-activity-type={item.type}>
-              <span className="absolute top-0.5 -left-[2.0625rem] flex size-6 items-center justify-center rounded-full border bg-background">
-                <Icon className="size-3.5 text-muted-foreground" aria-hidden />
-              </span>
-              <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
-                <span className="font-medium break-words">
-                  {item.subject ?? ACTIVITY_TYPE_LABELS[item.type]}
-                </span>
-                <time dateTime={item.occurredAt} className="text-xs text-muted-foreground">
-                  {formatDateTime(item.occurredAt)}
-                </time>
-                {item.authorName && item.type !== "system" && (
-                  <span className="text-xs text-muted-foreground">by {item.authorName}</span>
-                )}
-              </div>
-              {summary && <p className="mt-0.5 text-xs text-muted-foreground">{summary}</p>}
-              {item.payload.kind === "job_change" && <JobChange payload={item.payload} />}
-              {item.payload.changes?.length ? (
-                <ul className="mt-1 text-sm text-muted-foreground">
-                  {item.payload.changes.map((change) => (
-                    <li key={change.field}>
-                      {change.label}: {formatValue(change.before) || "empty"} →{" "}
-                      {formatValue(change.after) || "empty"}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {item.body && <Markdown className="mt-1">{item.body}</Markdown>}
-              {links.length > 0 && (
-                <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-                  On{" "}
-                  {links.map((link, i) => (
-                    <span key={`${link.object}:${link.id}`}>
-                      <RecordLink object={link.object} id={link.id}>
-                        {link.title ?? link.id}
-                      </RecordLink>
-                      {i < links.length - 1 ? "," : ""}
-                    </span>
-                  ))}
-                </p>
-              )}
-            </li>
-          );
-        })}
+        {shown.map((item) => (
+          <li key={item.id} className="relative" data-activity-type={item.type}>
+            <TimelineEntry item={item} showLinks={showLinks} />
+          </li>
+        ))}
       </ol>
       {!limit && hasMore && onLoadMore && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="justify-self-center"
-          onClick={onLoadMore}
-          disabled={isLoadingMore}
-        >
-          {isLoadingMore ? "Loading…" : "Load more"}
-        </Button>
+        <LoadMoreSentinel
+          label="more activity"
+          source={{
+            hasNextPage: true,
+            isFetching: Boolean(isLoadingMore),
+            isFetchingNextPage: Boolean(isLoadingMore),
+            isFetchNextPageError: Boolean(loadMoreFailed),
+            fetchNextPage: onLoadMore,
+          }}
+        />
       )}
     </div>
+  );
+}
+
+/** One activity: type icon (hung on the timeline's rule), subject, time, author and body. */
+export function TimelineEntry({ item, showLinks }: { item: TimelineItem; showLinks?: boolean }) {
+  const Icon = TYPE_ICON[item.type] ?? SparklesIcon;
+  const summary = payloadSummary(item);
+  const links = showLinks ? item.links.filter((l) => LINK_ROUTE[l.object]) : [];
+  return (
+    <>
+      <span className="absolute top-0.5 -left-[2.0625rem] flex size-6 items-center justify-center rounded-full border bg-background">
+        <Icon className="size-3.5 text-muted-foreground" aria-hidden />
+      </span>
+      <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
+        <span className="font-medium break-words">
+          {item.subject ?? ACTIVITY_TYPE_LABELS[item.type]}
+        </span>
+        <time dateTime={item.occurredAt} className="text-xs text-muted-foreground">
+          {formatDateTime(item.occurredAt)}
+        </time>
+        {item.authorName && item.type !== "system" && (
+          <span className="text-xs text-muted-foreground">by {item.authorName}</span>
+        )}
+      </div>
+      {summary && <p className="mt-0.5 text-xs text-muted-foreground">{summary}</p>}
+      {item.payload.kind === "job_change" && <JobChange payload={item.payload} />}
+      {item.payload.changes?.length ? (
+        <ul className="mt-1 text-sm text-muted-foreground">
+          {item.payload.changes.map((change) => (
+            <li key={change.field}>
+              {change.label}: {formatValue(change.before) || "empty"} →{" "}
+              {formatValue(change.after) || "empty"}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {item.body && <Markdown className="mt-1">{item.body}</Markdown>}
+      {links.length > 0 && (
+        <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+          On{" "}
+          {links.map((link, i) => (
+            <span key={`${link.object}:${link.id}`}>
+              <RecordLink object={link.object} id={link.id}>
+                {link.title ?? link.id}
+              </RecordLink>
+              {i < links.length - 1 ? "," : ""}
+            </span>
+          ))}
+        </p>
+      )}
+    </>
   );
 }
 

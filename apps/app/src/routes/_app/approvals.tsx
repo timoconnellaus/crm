@@ -10,6 +10,7 @@ import { CheckCheckIcon, HistoryIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ChangeSetCard } from "#/components/approvals/change-set-card";
 import { EmptyState } from "#/components/empty-state";
+import { PageLayout } from "#/components/layout/page-layout";
 import { errorMessage, useOp } from "#/lib/query";
 
 interface ApprovalsSearch {
@@ -32,30 +33,30 @@ function ApprovalsPage() {
   const navigate = useNavigate({ from: "/approvals" });
   const { isAdmin } = Route.useRouteContext();
   return (
-    <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-4">
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Approvals</h1>
-        <p className="text-sm text-muted-foreground">
-          Changes waiting for you. Agents kept working on top of these as if they'd been applied.
-        </p>
-      </div>
-      <Tabs
-        value={tab}
-        onValueChange={(next) =>
-          navigate({ search: next === "history" ? { tab: "history" } : {}, replace: true })
-        }
-      >
-        <TabsList>
-          <TabsTrigger value="awaiting">Awaiting review</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
-        </TabsList>
-      </Tabs>
+    <PageLayout
+      title="Approvals"
+      width="lg"
+      description="Changes waiting for you. Agents kept working on top of these as if they'd been applied."
+      tabs={
+        <Tabs
+          value={tab}
+          onValueChange={(next) =>
+            navigate({ search: next === "history" ? { tab: "history" } : {}, replace: true })
+          }
+        >
+          <TabsList>
+            <TabsTrigger value="awaiting">Awaiting review</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      }
+    >
       {tab === "history" ? (
         <HistoryTab highlight={set} isAdmin={isAdmin} />
       ) : (
         <AwaitingTab highlight={set} isAdmin={isAdmin} />
       )}
-    </div>
+    </PageLayout>
   );
 }
 

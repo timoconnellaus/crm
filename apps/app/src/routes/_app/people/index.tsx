@@ -1,5 +1,7 @@
-// People list: DataTable over person.list with the filter builder, column picker, saved views,
-// import/export, and bulk merge, tags/owner and delete. Filter, sort and columns live in the URL.
+// People list: a fixed header (title, live count, saved views, actions, filter builder, column
+// picker) over a virtualised, infinitely scrolling DataTable of person.list, with import/export
+// and bulk merge, tags/owner and delete. Filter, sort and columns live in the URL; hovering a link
+// here preloads the first page and the count.
 import { personObject } from "@crm/core/client";
 import { Avatar, AvatarFallback } from "@crm/ui/components/avatar";
 import { Button } from "@crm/ui/components/button";
@@ -9,20 +11,56 @@ import { UserPlusIcon, UsersIcon } from "lucide-react";
 import { useCallback } from "react";
 import { useAppCommands } from "#/components/app-commands";
 import { ColumnPicker } from "#/components/data-table/column-picker";
-import { DataTable, type ListPage, type ListPageRequest } from "#/components/data-table/data-table";
+import {
+  DataTable,
+  type ListPage,
+  type ListPageRequest,
+  listFields,
+  listQueryOptions,
+} from "#/components/data-table/data-table";
 import { EmptyState } from "#/components/empty-state";
 import { FilterBuilder } from "#/components/filter-builder/filter-builder";
+import { PageCount, PageLayout } from "#/components/layout/page-layout";
 import { BulkActions, ListActionsMenu } from "#/components/list/list-actions";
 import { PERSON_COLUMNS, PERSON_LIST_DEFAULTS, type PersonRow } from "#/components/people/config";
 import { SavedViewsMenu } from "#/components/views/saved-views-menu";
-import { parseViewSearch, useViewState, type ViewSearch } from "#/components/views/view-state";
+import {
+  parseViewSearch,
+  searchToViewState,
+  useViewState,
+  type ViewSearch,
+} from "#/components/views/view-state";
+import { countQueryOptions, useRecordCount } from "#/lib/count";
 import { initials } from "#/lib/format";
 import { callOp } from "#/lib/operations";
 import { useUserLabel } from "#/lib/users-adapter";
 
+const QUERY_KEY = ["op", "person.list", "table"] as const;
+const EXTRA_FIELDS = ["displayName"] as const;
+const fetchPeople = (input: ListPageRequest): Promise<ListPage<PersonRow>> =>
+  callOp("person.list", input);
+
 export const Route = createFileRoute("/_app/people/")({
   validateSearch: (search: Record<string, unknown>): ViewSearch =>
     parseViewSearch(personObject, search),
+  loaderDeps: ({ search }) => ({ search }),
+  // Intent preloading: warm the first page and the count (browser only; data is never fetched
+  // during the server render).
+  loader: ({ context, deps }) => {
+    if (typeof window === "undefined") return;
+    const state = searchToViewState(personObject, deps.search, PERSON_LIST_DEFAULTS);
+    const { fields } = listFields(personObject, state.columns, PERSON_COLUMNS, EXTRA_FIELDS);
+    void context.queryClient.ensureInfiniteQueryData(
+      listQueryOptions({
+        queryKey: QUERY_KEY,
+        fetchPage: fetchPeople,
+        filter: state.filter,
+        sort: state.sort,
+        fields,
+      }),
+    );
+    void context.queryClient.ensureQueryData(countQueryOptions("person", state.filter));
+  },
   component: PeoplePage,
 });
 
@@ -41,48 +79,63 @@ function PeoplePage() {
   });
   const { create } = useAppCommands();
   const userLabel = useUserLabel();
-
-  const fetchPage = useCallback(
-    (input: ListPageRequest): Promise<ListPage<PersonRow>> => callOp("person.list", input),
-    [],
-  );
+  const count = useRecordCount("person", view.state.filter);
 
   return (
-    <div className="mx-auto grid w-full grid-cols-1 max-w-7xl gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">People</h1>
-        <SavedViewsMenu object="person" defaultLabel="All people" view={view} />
-        <div className="flex-1" />
-        <ListActionsMenu object="person" definition={personObject} view={view.state} />
-        <Button onClick={() => create("person")} aria-keyshortcuts="c">
-          <UserPlusIcon />
-          New person
-          <Kbd className="ml-1 hidden bg-primary-foreground/20 text-primary-foreground sm:inline-flex">
-            C
-          </Kbd>
-        </Button>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterBuilder object={personObject} value={view.state.filter} onChange={view.setFilter} />
-        <div className="flex-1" />
-        <ColumnPicker
-          object={personObject}
-          available={PERSON_COLUMNS}
-          value={view.state.columns}
-          onChange={view.setColumns}
+    <PageLayout
+      title="People"
+      width="fluid"
+      scroll="none"
+      count={
+        <PageCount
+          value={count.data?.count}
+          capped={count.data?.capped}
+          isPending={count.isPending}
+          noun="people"
         />
-      </div>
+      }
+      titleAddon={<SavedViewsMenu object="person" defaultLabel="All people" view={view} />}
+      actions={
+        <>
+          <ListActionsMenu object="person" definition={personObject} view={view.state} />
+          <Button onClick={() => create("person")} aria-keyshortcuts="c">
+            <UserPlusIcon />
+            <span className="max-sm:sr-only">New person</span>
+            <Kbd className="ml-1 hidden bg-primary-foreground/20 text-primary-foreground sm:inline-flex">
+              C
+            </Kbd>
+          </Button>
+        </>
+      }
+      toolbar={
+        <>
+          <FilterBuilder
+            object={personObject}
+            value={view.state.filter}
+            onChange={view.setFilter}
+          />
+          <div className="flex-1" />
+          <ColumnPicker
+            object={personObject}
+            available={PERSON_COLUMNS}
+            value={view.state.columns}
+            onChange={view.setColumns}
+          />
+        </>
+      }
+    >
       <DataTable<PersonRow>
         object={personObject}
         label="People"
-        queryKey={["op", "person.list", "table"]}
-        fetchPage={fetchPage}
+        queryKey={QUERY_KEY}
+        fetchPage={fetchPeople}
         columns={view.state.columns}
         availableColumns={PERSON_COLUMNS}
-        extraFields={["displayName"]}
+        extraFields={EXTRA_FIELDS}
         sort={view.state.sort}
         onSortChange={view.setSort}
         filter={view.state.filter}
+        total={count.data}
         pendingObject="person"
         onOpen={(row) => navigate({ to: "/people/$id", params: { id: row.id } })}
         renderCell={{
@@ -90,21 +143,21 @@ function PeoplePage() {
             <Link
               to="/people/$id"
               params={{ id: row.id }}
-              className="inline-flex items-center gap-2 font-medium hover:underline"
+              className="inline-flex min-w-0 items-center gap-2 font-medium hover:underline"
             >
               <Avatar className="size-6">
                 <AvatarFallback className="text-[10px]">
                   {initials(row.displayName ?? "")}
                 </AvatarFallback>
               </Avatar>
-              {row.displayName}
+              <span className="truncate">{row.displayName}</span>
             </Link>
           ),
           ownerId: (row) =>
             userLabel(row.ownerId) || <span className="text-muted-foreground">—</span>,
         }}
-        bulkActions={({ selected, clear }) => (
-          <BulkActions object="person" selected={selected} onDone={clear} />
+        bulkActions={({ ids, clear }) => (
+          <BulkActions object="person" selected={ids.map((id) => ({ id }))} onDone={clear} />
         )}
         empty={
           <EmptyState
@@ -120,6 +173,6 @@ function PeoplePage() {
           />
         }
       />
-    </div>
+    </PageLayout>
   );
 }

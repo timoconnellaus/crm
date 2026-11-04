@@ -1,5 +1,6 @@
 // Settings → Audit log (admin): every write, refusal and non-human read (audit.list), newest
-// first, filtered by user, actor, operation, outcome, record and date. Each entry expands to its
+// first, in a virtualised list that loads more as you scroll, filtered by user, actor, operation,
+// outcome, record and date (the filters fold into the fixed header). Each entry expands to its
 // field diffs per record.
 import { getObject } from "@crm/core/client";
 import { Badge } from "@crm/ui/components/badge";
@@ -17,14 +18,15 @@ import { Skeleton } from "@crm/ui/components/skeleton";
 import { cn } from "@crm/ui/lib/utils";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRightIcon, LinkIcon, LockIcon, ScrollTextIcon } from "lucide-react";
+import { ChevronRightIcon, LinkIcon, ListFilterIcon, LockIcon, ScrollTextIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { EmptyState } from "#/components/empty-state";
+import { EmptyState, ErrorState } from "#/components/empty-state";
+import { VirtualFeed } from "#/components/layout/infinite";
+import { PageCount, PageLayout } from "#/components/layout/page-layout";
 import { diffValue } from "#/components/record/history";
-import { BackToSettings } from "#/components/settings/back-to-settings";
 import { formatDateTime } from "#/lib/format";
 import { callOp } from "#/lib/operations";
-import { errorMessage, opKey } from "#/lib/query";
+import { opKey } from "#/lib/query";
 import { useUsers } from "#/lib/users-adapter";
 
 export const Route = createFileRoute("/_app/settings/audit")({
@@ -87,11 +89,9 @@ function AuditPage() {
   const { isAdmin } = Route.useRouteContext();
   if (!isAdmin) {
     return (
-      <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4">
-        <BackToSettings />
-        <h1 className="text-2xl font-semibold tracking-tight">Audit log</h1>
+      <PageLayout title="Audit log" width="xl" back={{ to: "/settings", label: "Settings" }}>
         <EmptyState icon={LockIcon} title="Admins only" description="Ask an admin for access." />
-      </div>
+      </PageLayout>
     );
   }
   return <AuditLog />;
@@ -143,6 +143,11 @@ function AuditLog() {
   });
   const entries = useMemo(() => log.data?.pages.flatMap((p) => p.items) ?? [], [log.data]);
   const filtered = JSON.stringify(filters) !== JSON.stringify(EMPTY);
+  const activeFilters = (Object.keys(EMPTY) as (keyof Filters)[]).filter(
+    (k) => filters[k] !== EMPTY[k],
+  ).length;
+  // The filters fold into the header; open when following a link that filters.
+  const [showFilters, setShowFilters] = useState(filtered);
 
   const filter = (id: string, label: string, control: ReactNode) => (
     <div className="grid gap-1">
@@ -177,147 +182,173 @@ function AuditLog() {
     );
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4">
-      <BackToSettings />
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Audit log</h1>
-        <p className="text-sm text-muted-foreground">
-          Every change, refusal and AI or automation read: who, through which operation, and what
-          changed.
-        </p>
-      </div>
-      <fieldset
-        className="grid grid-cols-2 gap-3 rounded-md border p-3 sm:grid-cols-4"
-        aria-label="Audit filters"
-      >
-        {select(
-          "userId",
-          "User",
-          "Any user",
-          users.map((u) => ({ value: u.id, label: u.name })),
-        )}
-        {select(
-          "actor",
-          "Actor",
-          "Any actor",
-          ACTORS.map((a) => ({ value: a, label: a })),
-        )}
-        {filter(
-          "audit-operation",
-          "Operation",
-          <Input
-            id="audit-operation"
-            value={filters.operation}
-            onChange={(e) => set("operation", e.target.value)}
-            placeholder="person.* or task.complete"
-            className="h-8"
-            aria-invalid={!operationValid}
-          />,
-        )}
-        {select(
-          "outcome",
-          "Outcome",
-          "Any outcome",
-          OUTCOMES.map((o) => ({ value: o, label: o })),
-        )}
-        {select(
-          "object",
-          "Record type",
-          "Any type",
-          RECORD_OBJECTS.map((o) => ({ value: o, label: o })),
-        )}
-        {filter(
-          "audit-record",
-          "Record id",
-          <Input
-            id="audit-record"
-            value={filters.recordId}
-            onChange={(e) => set("recordId", e.target.value)}
-            placeholder="per_…"
-            className="h-8"
-          />,
-        )}
-        {filter(
-          "audit-pending",
-          "Pending action",
-          <Input
-            id="audit-pending"
-            value={filters.pendingActionId}
-            onChange={(e) => set("pendingActionId", e.target.value.trim())}
-            placeholder="pac_…"
-            className="h-8"
-          />,
-        )}
-        {filter(
-          "audit-from",
-          "From",
-          <Input
-            id="audit-from"
-            type="date"
-            value={filters.from}
-            onChange={(e) => set("from", e.target.value)}
-            className="h-8"
-          />,
-        )}
-        {filter(
-          "audit-to",
-          "To",
-          <Input
-            id="audit-to"
-            type="date"
-            value={filters.to}
-            onChange={(e) => set("to", e.target.value)}
-            className="h-8"
-          />,
-        )}
-        {filtered && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="col-span-2 justify-self-start sm:col-span-4"
-            onClick={() => {
-              setFilters(EMPTY);
-              if (pendingActionId) navigate({ search: {}, replace: true });
-            }}
+    <PageLayout
+      title="Audit log"
+      width="xl"
+      back={{ to: "/settings", label: "Settings" }}
+      count={
+        <PageCount
+          value={log.isSuccess ? entries.length : undefined}
+          capped={log.hasNextPage}
+          isPending={log.isPending}
+          noun="entries"
+        />
+      }
+      description="Every change, refusal and AI or automation read: who, through which operation, and what changed."
+      actions={
+        <Button
+          variant="outline"
+          size="sm"
+          aria-expanded={showFilters}
+          aria-controls="audit-filters"
+          onClick={() => setShowFilters((v) => !v)}
+        >
+          <ListFilterIcon />
+          Filters
+          {activeFilters > 0 && <Badge variant="secondary">{activeFilters}</Badge>}
+        </Button>
+      }
+      toolbar={
+        showFilters ? (
+          <fieldset
+            id="audit-filters"
+            className="grid max-h-[40dvh] w-full grid-cols-2 gap-3 overflow-y-auto rounded-md border p-3 sm:grid-cols-4"
+            aria-label="Audit filters"
           >
-            Clear filters
-          </Button>
-        )}
-      </fieldset>
+            {select(
+              "userId",
+              "User",
+              "Any user",
+              users.map((u) => ({ value: u.id, label: u.name })),
+            )}
+            {select(
+              "actor",
+              "Actor",
+              "Any actor",
+              ACTORS.map((a) => ({ value: a, label: a })),
+            )}
+            {filter(
+              "audit-operation",
+              "Operation",
+              <Input
+                id="audit-operation"
+                value={filters.operation}
+                onChange={(e) => set("operation", e.target.value)}
+                placeholder="person.* or task.complete"
+                className="h-8"
+                aria-invalid={!operationValid}
+              />,
+            )}
+            {select(
+              "outcome",
+              "Outcome",
+              "Any outcome",
+              OUTCOMES.map((o) => ({ value: o, label: o })),
+            )}
+            {select(
+              "object",
+              "Record type",
+              "Any type",
+              RECORD_OBJECTS.map((o) => ({ value: o, label: o })),
+            )}
+            {filter(
+              "audit-record",
+              "Record id",
+              <Input
+                id="audit-record"
+                value={filters.recordId}
+                onChange={(e) => set("recordId", e.target.value)}
+                placeholder="per_…"
+                className="h-8"
+              />,
+            )}
+            {filter(
+              "audit-pending",
+              "Pending action",
+              <Input
+                id="audit-pending"
+                value={filters.pendingActionId}
+                onChange={(e) => set("pendingActionId", e.target.value.trim())}
+                placeholder="pac_…"
+                className="h-8"
+              />,
+            )}
+            {filter(
+              "audit-from",
+              "From",
+              <Input
+                id="audit-from"
+                type="date"
+                value={filters.from}
+                onChange={(e) => set("from", e.target.value)}
+                className="h-8"
+              />,
+            )}
+            {filter(
+              "audit-to",
+              "To",
+              <Input
+                id="audit-to"
+                type="date"
+                value={filters.to}
+                onChange={(e) => set("to", e.target.value)}
+                className="h-8"
+              />,
+            )}
+            {filtered && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="col-span-2 justify-self-start sm:col-span-4"
+                onClick={() => {
+                  setFilters(EMPTY);
+                  if (pendingActionId) navigate({ search: {}, replace: true });
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </fieldset>
+        ) : undefined
+      }
+    >
       {log.isPending ? (
-        <Skeleton className="h-40" />
-      ) : log.isError ? (
-        <EmptyState title="Could not load the audit log" description={errorMessage(log.error)} />
+        <div className="grid gap-2" aria-busy="true">
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10" />
+          <Skeleton className="h-10" />
+        </div>
+      ) : log.isError && !entries.length ? (
+        <ErrorState
+          title="Could not load the audit log"
+          error={log.error}
+          onRetry={() => void log.refetch()}
+        />
       ) : !entries.length ? (
         <EmptyState
           icon={ScrollTextIcon}
           title={filtered ? "No matching entries" : "No entries yet"}
         />
       ) : (
-        <ol className="grid divide-y rounded-md border" aria-label="Audit entries">
-          {entries.map((entry) => (
+        <VirtualFeed
+          label="Audit entries"
+          items={entries}
+          getKey={(entry) => entry.id}
+          estimateSize={44}
+          source={log}
+          className="rounded-md border"
+          itemClassName="border-b last:border-b-0"
+          renderItem={(entry) => (
             <AuditRow
-              key={entry.id}
               entry={entry}
               onShowPending={showPending}
               showingPending={Boolean(filters.pendingActionId)}
             />
-          ))}
-        </ol>
+          )}
+        />
       )}
-      {log.hasNextPage && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="justify-self-center"
-          onClick={() => void log.fetchNextPage()}
-          disabled={log.isFetchingNextPage}
-        >
-          {log.isFetchingNextPage ? "Loading…" : "Load more"}
-        </Button>
-      )}
-    </div>
+    </PageLayout>
   );
 }
 
@@ -390,7 +421,7 @@ function AuditRow({
   const changed = entry.changes.filter((c) => Object.keys(c.diff).length > 0);
   const expandable = changed.length > 0;
   return (
-    <li className="grid gap-2 px-3 py-2 text-sm" data-testid="audit-entry">
+    <div className="grid gap-2 px-3 py-2 text-sm" data-testid="audit-entry">
       <button
         type="button"
         className={cn(
@@ -459,6 +490,6 @@ function AuditRow({
           })}
         </div>
       )}
-    </li>
+    </div>
   );
 }
