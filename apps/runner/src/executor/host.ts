@@ -25,6 +25,7 @@ import { createCrmDb } from "@crm/db";
 import type { ExtensionManifest } from "@crm/sdk";
 import { runModelRole } from "../extensions/ai.ts";
 import { CODE_MAX_CALLS } from "../extensions/code-mode.ts";
+import { embedsFromEvents } from "../extensions/embeddings.ts";
 import { boundGatekeeperCall, gatekeeperCall } from "../integrations/code.ts";
 import { HOST_METHODS, type HostModule, isGatekeeperModule, isHostModule } from "./worker-code.ts";
 
@@ -222,6 +223,7 @@ export class RunHost extends RpcTarget {
         extension: { id: run.extensionId, permissions: run.permissions },
         reason: `Automation ${automation.automationId}`,
         ...(automation.events ? { events: automation.events } : {}),
+        ...(automation.events && embedsFromEvents(this.#env) ? { embedViaEvents: true } : {}),
         ...(automation.simulate ? { simulate: automation.simulate } : {}),
       });
       reply = { ok: true, value };

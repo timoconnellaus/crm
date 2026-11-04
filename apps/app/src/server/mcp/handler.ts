@@ -28,6 +28,7 @@ import {
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
 import { createMcpHandler } from "agents/mcp/server";
+import { aiContextFor } from "../ai.ts";
 import { blobStoreFor, integrationRuntimeFor } from "../integrations.ts";
 import {
   automationWiring,
@@ -137,6 +138,7 @@ export async function serveMcp(
       approvalExpiryDays: int(env.APPROVAL_EXPIRY_DAYS, 7),
       ...(extensionHost ? { extensionHost } : {}),
       ...automationWiring(env),
+      ...aiContextFor(env, db),
     },
     async consumeWrite() {
       const writes = await rateLimit(env.MCP_WRITE_RATE_LIMIT, connection.id);

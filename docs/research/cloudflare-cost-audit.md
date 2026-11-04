@@ -232,6 +232,14 @@ Options:
 | U12 | Stage 8 self-updater, ADRs 0053/0054 | Unauthenticated GitHub API calls are limited to 60/hour per IP, and Workers share IPs. A Time Travel rollback discards mail synced during the update window. | Intermittent 403s, and data loss on rollback. | Check releases on the daily cron with ETags. Download from release-asset URLs. Pause sync and queue consumers during the update. Keep 2–3 bundles in R2 with a lifecycle rule. |
 | U13 | Stage 7 assistant transport | A non-hibernating socket per open tab keeps a DO awake. | About 1M GB-s a month for 10 users, about $8. | Use the WebSocket Hibernation API, and connect only while the panel is open. |
 
+> **U6 and U9 addressed, 2026-11-05 (stage 7a, ADRs 0150, 0152, 0154, 0155).** Explicit
+> per-role defaults on current Workers AI models (the llama-3.1-8b-fast default had been removed
+> from the catalogue), every call tagged with its role in AI Gateway for per-role spend. Embeddings
+> are queued in the write's own batch, embedded only when a SHA-256 of the text changes, in batches
+> of up to 100, with 384-dimension bge-small; Cmd-K embeds the query only on pause (and caches it);
+> similar records reuse stored vectors; erase deletes vectors. The assistant's own costs (prompt
+> caching, history compaction, per-user budgets) are stage 7b.
+
 > **U4 resolved, 2026-11-05 (stage 4a, ADR 0057).** The 60 s widget cache is the Workers Cache API,
 > keyed by a SHA-256 of the bound SQL, params, row limit and visibility scope, with manual refresh;
 > no D1 or KV writes. Overview widgets walk indexes (new live `created_at` indexes on people and

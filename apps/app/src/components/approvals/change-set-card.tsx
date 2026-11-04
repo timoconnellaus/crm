@@ -13,6 +13,7 @@ import { type Ref, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { formatDateTime, formatRelative } from "#/lib/format";
 import { errorMessage, useOp } from "#/lib/query";
+import { ChangeSetExplanation } from "../ai/summary.tsx";
 import { ChangePreview, RiskBadge, StatusBadge } from "./change-preview.tsx";
 import { actionTitle, groupPreview, outboundTitle, summariseDecision } from "./describe.ts";
 import { ExtensionProposal } from "./extension-proposal.tsx";
@@ -277,6 +278,7 @@ function ChangeSetView({
           )}
         </div>
       )}
+      {open && set.counts.total > 0 && <ChangeSetExplanation changeSetId={set.id} />}
       {open && actions === NO_ACTIONS && set.counts.total > 0 && (
         <div className="p-3.5">
           <Skeleton className="h-16" />

@@ -15,6 +15,7 @@
 import type { CoreDatabase } from "@crm/db";
 import { type Compilable, type Kysely, sql } from "kysely";
 import { z } from "zod";
+import { enqueueEmbeddings } from "../ai/embedding.ts";
 import { NotFoundError, ValidationError } from "../errors.ts";
 import { newId } from "../ids.ts";
 import { eventInsert, type IntegrationEventInput } from "../integrations/events.ts";
@@ -896,6 +897,14 @@ export const syncIngest = defineOperation({
       ...ing.statements,
       ...ing.events.map((e) => eventInsert(ctx.pipeline.crm, e, ctx.now)),
     );
+    // Synced activities queue for embedding like any other change (ADR 0154); the drain applies
+    // the disclosure rules (metadata-only and private activities are never embedded).
+    const touched = ing.events
+      .map((e) => (e.payload as { activityId?: unknown }).activityId)
+      .filter((id): id is string => typeof id === "string")
+      .map((id) => ({ object: "activity", id }));
+    const enqueue = enqueueEmbeddings(ctx.db, touched, ctx.now);
+    if (enqueue) ctx.write(enqueue);
     ctx.write(
       ctx.db
         .updateTable("core_integration_connection")

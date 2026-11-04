@@ -8,6 +8,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MessageSquareTextIcon, XIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useActivityLines } from "#/components/ai/timeline-ai";
 import { EmptyState, ErrorState } from "#/components/empty-state";
 import { VirtualFeed } from "#/components/layout/infinite";
 import { PageCount, PageLayout } from "#/components/layout/page-layout";
@@ -70,6 +71,7 @@ function ActivityPage() {
     [feed.data],
   );
   const count = useRecordCount("activity", filter);
+  const lines = useActivityLines(items);
 
   return (
     <PageLayout
@@ -134,7 +136,7 @@ function ActivityPage() {
           renderItem={(item) => (
             <div className="ml-3 border-l pb-4 pl-6" data-activity-type={item.type}>
               <div className="relative">
-                <TimelineEntry item={item} showLinks />
+                <TimelineEntry item={item} showLinks aiLine={lines.get(item.id)} />
               </div>
             </div>
           )}

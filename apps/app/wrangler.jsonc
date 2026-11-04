@@ -6,8 +6,9 @@
   "name": "crm-app",
   // TanStack Start's entry plus a `scheduled` handler (src/server.ts).
   "main": "./src/server.ts",
-  // Daily Trash purge: hard-deletes records soft-deleted more than 30 days ago (ADR 0018).
-  "triggers": { "crons": ["17 3 * * *"] },
+  // Daily maintenance: Trash purge (ADR 0018), approvals, storage retention (ADR 0090). Every 10
+  // minutes: the embedding catch-up for semantic search (ADR 0154; does nothing without AI).
+  "triggers": { "crons": ["17 3 * * *", "*/10 * * * *"] },
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
@@ -67,10 +68,22 @@
     // MCP rate limits are the `ratelimits` bindings above (ADR 0056).
     // MCP access token lifetime in seconds; refresh tokens last 30 days.
     "MCP_ACCESS_TOKEN_TTL": "3600",
-    // AI Gateway id for model roles (ADR 0009); empty calls Workers AI directly. Model roles need
-    // an `ai` binding ("ai": { "binding": "AI" }), which is optional: "Describe a widget" says
-    // AI is not configured without it. See docs/deploying.md.
+    // In-app AI (ADRs 0009, 0150-0155). Model roles need an `ai` binding and semantic search a
+    // `vectorize` binding; both are optional and added by `pnpm run deploy` (CRM_AI, see
+    // docs/deploying.md). Without them AI features say AI is not configured.
+    // AI Gateway id: every model call goes through it when set (usage and spend per role).
     "AI_GATEWAY_ID": "",
+    // The Cloudflare account id: AI Gateway URLs for non-Workers-AI providers, and Settings → AI
+    // (keys as Workers secrets, usage) together with the CLOUDFLARE_API_TOKEN secret.
+    "CLOUDFLARE_ACCOUNT_ID": "",
+    // Deploy-config layer of the model registry: JSON role → { provider, model, params, fallback }.
+    "AI_MODEL_ROLES": "",
+    // Base URLs for the `jev` and `openai-compatible` providers: JSON { "<provider>": { "baseURL" } }.
+    "AI_PROVIDERS": "",
+    // Size of the Vectorize index (`crm-records`); the embed role must produce this many dims.
+    "VECTORIZE_DIMENSIONS": "384",
+    // Worker scripts Settings → AI stores provider keys on (as Workers secrets).
+    "AI_SECRET_SCRIPTS": "crm-app,crm-runner",
     // Local dev and e2e only (.dev.vars sets it): "true" answers the build role with a
     // deterministic stand-in when there is no `ai` binding. Never set it in production.
     "AI_FAKE_MODEL": ""

@@ -11,6 +11,7 @@ import {
   PuzzleIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   UsersIcon,
   WorkflowIcon,
 } from "lucide-react";
@@ -37,6 +38,7 @@ function Section({
     | "/settings/extensions"
     | "/settings/integrations"
     | "/settings/storage"
+    | "/settings/ai"
     | "/settings/general"
     | "/settings/automations";
 }) {
@@ -171,6 +173,14 @@ function SettingsPage() {
               title="Audit log"
               description="Every change, who made it and how."
               to="/settings/audit"
+            />
+          )}
+          {isAdmin && (
+            <Section
+              icon={<SparklesIcon className="size-5" />}
+              title="AI"
+              description="Which model each AI feature uses, provider keys, usage and semantic search."
+              to="/settings/ai"
             />
           )}
           {isAdmin && (

@@ -4,8 +4,14 @@
 //
 // Only the slice of the chat-completions wire format the agent loop uses is typed here.
 
-/** The default model: a Workers AI model with multi-turn function calling and a long context. */
-export const DEFAULT_MODEL = "@cf/moonshotai/kimi-k2.6";
+import { shippedModel } from "@crm/core/ai-roles";
+
+/**
+ * The default model: the model role registry's shipped `assistant` model (ADR 0150), a Workers AI
+ * model with multi-turn function calling and a long context. Evals stand in for an agent, so they
+ * use the role an agent uses; --model or EVAL_MODEL overrides it.
+ */
+export const DEFAULT_MODEL = shippedModel("assistant");
 
 export interface ChatToolCall {
   id: string;

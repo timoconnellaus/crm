@@ -31,6 +31,7 @@ import { automationHost } from "./automations/host.ts";
 import { pollIntegrationEvents } from "./automations/integration-events.ts";
 import { runAutomationCron } from "./automations/schedule.ts";
 import { Executor, type ExecutorOptions } from "./executor/executor.ts";
+import { embedFromEvents } from "./extensions/embeddings.ts";
 import type { HelloOutput } from "./hello-workflow.ts";
 import { fakeProviderFetch } from "./integrations/fake.ts";
 import { availableVendors, integrationRuntime } from "./integrations/runtime.ts";
@@ -224,10 +225,10 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
    */
   override async queue(batch: MessageBatch<AutomationQueueMessage>): Promise<void> {
     try {
-      await dispatchAutomationMessages(
-        this.env,
-        batch.messages.map((m) => m.body),
-      );
+      const messages = batch.messages.map((m) => m.body);
+      await dispatchAutomationMessages(this.env, messages);
+      // Semantic search: embed the records this batch changed (ADR 0154). Never throws.
+      await embedFromEvents(this.env, messages);
       batch.ackAll();
     } catch (error) {
       console.error("automation events: batch failed, retrying", error);
@@ -258,6 +259,8 @@ export async function minuteTick(env: Env, at: Date) {
       createCrmDb(env.DB),
       async (messages) => {
         await dispatchAutomationMessages(env, messages, { now: at });
+        // As the queue consumer does: retried record events also re-embed (ADR 0154).
+        await embedFromEvents(env, messages);
       },
       { now: at },
     ),
