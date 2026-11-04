@@ -172,6 +172,9 @@ test("add a task from the record page and complete it", async ({ page }) => {
   await page.getByRole("tab", { name: "All tasks" }).click();
   await page.getByLabel("Status").click();
   await page.getByRole("option", { name: "Done", exact: true }).click();
+  // Narrow to my tasks: on a seeded database the rest are pages into the infinite list.
+  await page.getByLabel("Assignee").click();
+  await page.getByRole("option", { name: "Me", exact: true }).click();
   await expect(page.getByRole("checkbox", { name: `Done: Send proposal ${token}` })).toBeChecked();
 });
 
@@ -183,6 +186,7 @@ test("a saved view persists after reload", async ({ page }) => {
 
   const builder = page.getByRole("dialog", { name: "Filter builder" });
   await pressUntil(page, "/", builder);
+  await expect(builder.getByLabel("Value")).toBeFocused();
   await page.keyboard.type(token);
   await expect(tableRows(page)).toHaveCount(1);
   await page.keyboard.press("Escape");
@@ -246,6 +250,7 @@ test("restore a person from Trash", async ({ page }) => {
   await open(page, "/people");
   const builder = page.getByRole("dialog", { name: "Filter builder" });
   await pressUntil(page, "/", builder);
+  await expect(builder.getByLabel("Value")).toBeFocused();
   await page.keyboard.type(token);
   await expect(tableRows(page)).toHaveCount(1);
 });
@@ -284,6 +289,8 @@ test("the audit log shows an entry with its field diffs", async ({ page }) => {
   const id = await createPerson(page, { given: "Evelyn", family: `Boyd${token}` });
 
   await open(page, "/settings/audit");
+  // The filters fold into the page header.
+  await page.getByRole("button", { name: "Filters" }).click();
   await page.getByLabel("Record id").fill(id);
   const entry = page.getByTestId("audit-entry").filter({ hasText: "person.create" });
   await expect(entry).toHaveCount(1);

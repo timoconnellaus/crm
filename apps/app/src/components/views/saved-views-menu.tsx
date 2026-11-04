@@ -63,31 +63,83 @@ export function SavedViewsMenu({
     columns: view.state.columns,
   });
 
+  // Optimistic: the menu shows a created, updated or deleted view at once and rolls back if the
+  // write fails. Deleting offers Undo (the view is saved again).
+  type Snapshot = { previous: SavedView[] | undefined };
+  const snapshot = async (): Promise<Snapshot> => {
+    await client.cancelQueries({ queryKey: key });
+    return { previous: client.getQueryData<SavedView[]>(key) };
+  };
+  const rollback = (_error: unknown, _input: unknown, context: Snapshot | undefined) => {
+    if (context) client.setQueryData(key, context.previous);
+  };
+  const settle = () => client.invalidateQueries({ queryKey: key });
+
   const create = useMutation({
     mutationFn: (name: string) => adapter.create({ object, name, spec: spec() }),
-    onSuccess: async (created) => {
-      await client.invalidateQueries({ queryKey: key });
-      view.apply(view.state, created.id);
+    onMutate: async (name): Promise<Snapshot> => {
+      const context = await snapshot();
+      const draft: SavedView = { id: `pending:${name}`, name, object, spec: spec() };
+      client.setQueryData<SavedView[]>(key, (views = []) => [...views, draft]);
       setSaving(false);
+      return context;
+    },
+    onSuccess: (created) => {
+      client.setQueryData<SavedView[]>(key, (views = []) =>
+        views.map((v) => (v.id === `pending:${created.name}` ? created : v)),
+      );
+      view.apply(view.state, created.id);
       toast.success(`Saved view “${created.name}”`);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error, name, context) => {
+      rollback(error, name, context);
+      toast.error(errorMessage(error));
+    },
+    onSettled: settle,
   });
   const update = useMutation({
     mutationFn: (target: SavedView) => adapter.update(target.id, { spec: spec() }),
-    onSuccess: async (updated) => {
-      await client.invalidateQueries({ queryKey: key });
-      toast.success(`Updated view “${updated.name}”`);
+    onMutate: async (target): Promise<Snapshot> => {
+      const context = await snapshot();
+      const next = spec();
+      client.setQueryData<SavedView[]>(key, (views = []) =>
+        views.map((v) => (v.id === target.id ? { ...v, spec: next } : v)),
+      );
+      return context;
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onSuccess: (updated) => toast.success(`Updated view “${updated.name}”`),
+    onError: (error, target, context) => {
+      rollback(error, target, context);
+      toast.error(errorMessage(error));
+    },
+    onSettled: settle,
   });
   const remove = useMutation({
     mutationFn: (target: SavedView) => adapter.remove(target.id),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: key });
+    onMutate: async (target): Promise<Snapshot> => {
+      const context = await snapshot();
+      client.setQueryData<SavedView[]>(key, (views = []) =>
+        views.filter((v) => v.id !== target.id),
+      );
       view.reset();
+      return context;
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onSuccess: (_result, target) =>
+      toast.success(`Deleted view “${target.name}”`, {
+        action: {
+          label: "Undo",
+          onClick: () =>
+            void adapter
+              .create({ object, name: target.name, spec: target.spec })
+              .then(() => settle())
+              .catch((error: unknown) => toast.error(errorMessage(error))),
+        },
+      }),
+    onError: (error, target, context) => {
+      rollback(error, target, context);
+      toast.error(errorMessage(error));
+    },
+    onSettled: settle,
   });
 
   function onSave(event: FormEvent<HTMLFormElement>) {

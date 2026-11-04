@@ -20,7 +20,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { LockIcon, RefreshCwIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { BackToSettings } from "#/components/settings/back-to-settings";
+import { PageLayout, SaveBar } from "#/components/layout/page-layout";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
 
 export const Route = createFileRoute("/_app/settings/storage")({ component: StoragePage });
@@ -72,19 +72,35 @@ const LEVEL: Record<string, { label: string; variant: "secondary" | "destructive
 
 function StoragePage() {
   const { isAdmin } = Route.useRouteContext();
+  const form = useRetentionForm(isAdmin);
   return (
-    <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-6">
-      <div className="grid gap-1">
-        <BackToSettings />
-        <h1 className="text-2xl font-semibold tracking-tight">Storage</h1>
-        <p className="text-muted-foreground">
-          How full the database is, and how long history is kept.
-        </p>
-      </div>
+    <PageLayout
+      title="Storage"
+      width="md"
+      back={{ to: "/settings", label: "Settings" }}
+      description="How full the database is, and how long history is kept."
+      footer={
+        isAdmin ? (
+          <SaveBar
+            dirty={form.changed || form.update.isPending}
+            message={
+              form.choice ? `Keep audit history ${form.choice.title.toLowerCase()}?` : undefined
+            }
+          >
+            <Button variant="ghost" onClick={form.reset}>
+              Cancel
+            </Button>
+            <Button onClick={form.onSave} disabled={!form.changed || form.update.isPending}>
+              {form.update.isPending ? "Saving…" : "Save"}
+            </Button>
+          </SaveBar>
+        ) : undefined
+      }
+    >
       {isAdmin ? (
         <>
           <SizeCard />
-          <RetentionCard />
+          <RetentionCard form={form} />
         </>
       ) : (
         <p
@@ -95,7 +111,7 @@ function StoragePage() {
           Only admins can see storage.
         </p>
       )}
-    </div>
+    </PageLayout>
   );
 }
 
@@ -199,8 +215,8 @@ function SizeCard() {
   );
 }
 
-function RetentionCard() {
-  const retention = useOp("audit.retention", {});
+function useRetentionForm(enabled: boolean) {
+  const retention = useOp("audit.retention", {}, { enabled });
   const update = useOpMutation("audit.setRetention");
   const current = retention.data
     ? retention.data.years === null
@@ -231,6 +247,25 @@ function RetentionCard() {
     }
   }
 
+  return {
+    retention,
+    update,
+    current,
+    selected,
+    setSelected,
+    confirming,
+    setConfirming,
+    choice,
+    changed,
+    save,
+    reset: () => setSelected(current),
+    onSave: () => (shortens ? setConfirming(true) : void save()),
+  };
+}
+
+function RetentionCard({ form }: { form: ReturnType<typeof useRetentionForm> }) {
+  const { retention, update, current, selected, setSelected, confirming, setConfirming, choice } =
+    form;
   return (
     <Card>
       <CardHeader>
@@ -269,19 +304,6 @@ function RetentionCard() {
             ))}
           </RadioGroup>
         )}
-        <div className="flex items-center justify-end gap-2">
-          {changed && (
-            <Button variant="ghost" onClick={() => setSelected(current)}>
-              Cancel
-            </Button>
-          )}
-          <Button
-            onClick={() => (shortens ? setConfirming(true) : void save())}
-            disabled={!changed || update.isPending}
-          >
-            {update.isPending ? "Saving…" : "Save"}
-          </Button>
-        </div>
         <p className="text-sm text-muted-foreground">
           Also kept short automatically: reads by AI and automations are counted per hour rather
           than logged one by one; extension and automation runs are kept 30 days (failures 90);
@@ -300,7 +322,9 @@ function RetentionCard() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void save()}>Delete older history</AlertDialogAction>
+            <AlertDialogAction onClick={() => void form.save()}>
+              Delete older history
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

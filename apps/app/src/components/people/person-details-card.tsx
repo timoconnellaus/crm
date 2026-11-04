@@ -14,10 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@crm/ui/components/select";
+import { useQueryClient } from "@tanstack/react-query";
 import { PencilIcon } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useHotkey } from "#/lib/hotkeys";
+import { patchRecord, plainPatch } from "#/lib/optimistic";
 import { errorMessage, useOpMutation } from "#/lib/query";
 import { useUserLabel, useUsers } from "#/lib/users-adapter";
 import { RowList, TagInput } from "../fields.tsx";
@@ -53,6 +55,8 @@ function localTime(timezone: string | null): string | null {
 
 export function PersonDetailsCard({ person, readOnly }: PersonDetailsCardProps) {
   const [editing, setEditing] = useState(false);
+  // A save that failed after the form closed optimistically reopens it with the draft and error.
+  const [failed, setFailed] = useState<{ draft: PersonDraft; error: string } | null>(null);
   useHotkey("e", () => setEditing(true), { enabled: !editing && !readOnly });
   useEffect(() => {
     if (readOnly) setEditing(false);
@@ -79,7 +83,18 @@ export function PersonDetailsCard({ person, readOnly }: PersonDetailsCardProps) 
       </CardHeader>
       <CardContent className="px-4">
         {editing ? (
-          <DetailsForm person={person} onDone={() => setEditing(false)} />
+          <DetailsForm
+            person={person}
+            retry={failed}
+            onDone={() => {
+              setEditing(false);
+              setFailed(null);
+            }}
+            onFailed={(draft, error) => {
+              setFailed({ draft, error });
+              setEditing(true);
+            }}
+          />
         ) : (
           <DetailsView person={person} />
         )}
@@ -195,9 +210,20 @@ function DetailsView({ person }: { person: Person }) {
   );
 }
 
-function DetailsForm({ person, onDone }: { person: Person; onDone: () => void }) {
-  const [draft, setDraft] = useState<PersonDraft>(() => toDraft(person));
-  const [error, setError] = useState<string | null>(null);
+function DetailsForm({
+  person,
+  retry,
+  onDone,
+  onFailed,
+}: {
+  person: Person;
+  retry: { draft: PersonDraft; error: string } | null;
+  onDone: () => void;
+  onFailed: (draft: PersonDraft, error: string) => void;
+}) {
+  const [draft, setDraft] = useState<PersonDraft>(() => retry?.draft ?? toDraft(person));
+  const [error, setError] = useState<string | null>(retry?.error ?? null);
+  const client = useQueryClient();
   const update = useOpMutation("person.update");
   const users = useUsers();
   const zones = useMemo(timezones, []);
@@ -222,12 +248,16 @@ function DetailsForm({ person, onDone }: { person: Person; onDone: () => void })
       onDone();
       return;
     }
+    // Optimistic: the details show the new values and the form closes at once. A failed save
+    // rolls the details back and reopens the form with the draft and the error.
+    const rollback = await patchRecord(client, ["person."], person.id, plainPatch(input));
+    onDone();
     try {
       await update.mutateAsync(input);
       toast.success("Saved");
-      onDone();
     } catch (caught) {
-      setError(errorMessage(caught));
+      rollback();
+      onFailed(draft, errorMessage(caught));
     }
   }
 
@@ -442,7 +472,7 @@ function DetailsForm({ person, onDone }: { person: Person; onDone: () => void })
           {error}
         </p>
       )}
-      <div className="flex justify-end gap-2">
+      <div className="sticky bottom-0 flex justify-end gap-2 bg-card py-2">
         <Button type="button" variant="outline" onClick={onDone}>
           Cancel
         </Button>

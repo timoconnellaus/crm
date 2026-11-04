@@ -10,9 +10,11 @@
 //   const history = useRecordHistory("organisation", org.id);
 //   const affiliations = useAffiliations("organisation", org.id);
 import type { Activity, CoreInput, FieldDiff, Task } from "@crm/core";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
+import { toast } from "sonner";
 import { callOp } from "#/lib/operations";
+import { patchRecord } from "#/lib/optimistic";
 import { opKey, useOp, useOpMutation } from "#/lib/query";
 
 /** The kinds of record these panels belong to. */
@@ -34,8 +36,11 @@ export interface AdapterResult<T> {
 /** An adapter over a paged, newest-first list. */
 export interface PagedResult<T> extends AdapterResult<T> {
   hasMore: boolean;
+  /** Fetches the next page (never alongside another request for this list). */
   loadMore: () => void;
   isLoadingMore: boolean;
+  /** The last next-page request failed (infinite scroll waits for a retry). */
+  loadMoreFailed: boolean;
 }
 
 // --- Timeline -------------------------------------------------------------------------------
@@ -96,25 +101,34 @@ export interface TimelineOptions {
   pageSize?: number;
 }
 
-/** A record's timeline (`activity.listForRecord`), newest first, page by page. */
-export function useTimeline(
+/** The infinite query behind a record's timeline (shared with route loaders that preload it). */
+export function timelineQueryOptions(
   object: RecordObject,
   id: string,
   { types, pageSize = 25 }: TimelineOptions = {},
-): PagedResult<TimelineItem[]> {
+) {
   const input = {
     object,
     recordId: id,
     limit: pageSize,
     ...(types?.length ? { types } : {}),
   };
-  const query = useInfiniteQuery({
+  return infiniteQueryOptions({
     queryKey: opKey("activity.listForRecord", input),
     queryFn: ({ pageParam }) =>
       callOp("activity.listForRecord", { ...input, ...(pageParam ? { cursor: pageParam } : {}) }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
+}
+
+/** A record's timeline (`activity.listForRecord`), newest first, page by page. */
+export function useTimeline(
+  object: RecordObject,
+  id: string,
+  options: TimelineOptions = {},
+): PagedResult<TimelineItem[]> {
+  const query = useInfiniteQuery(timelineQueryOptions(object, id, options));
   const data = useMemo(
     () => query.data?.pages.flatMap((page) => page.items.map(toTimelineItem)) ?? [],
     [query.data],
@@ -124,8 +138,9 @@ export function useTimeline(
     isPending: query.isPending,
     error: query.error,
     hasMore: query.hasNextPage,
-    loadMore: () => void query.fetchNextPage(),
-    isLoadingMore: query.isFetchingNextPage,
+    loadMore: () => void query.fetchNextPage({ cancelRefetch: false }),
+    isLoadingMore: query.isFetching,
+    loadMoreFailed: query.isFetchNextPageError,
   };
 }
 
@@ -206,6 +221,10 @@ export interface NewTask {
 /**
  * Task writes for a record: create (linked to the record), complete/reopen and delete. Usable
  * with `object`/`id` null for tasks not about any record (the Tasks page).
+ *
+ * Completing or reopening is optimistic: every cached task read shows the new status at once and
+ * rolls back if the write fails (the error is rethrown for the caller to report). Success shows a
+ * toast with Undo.
  */
 export function useTaskActions(
   object: RecordObject | null,
@@ -220,6 +239,29 @@ export function useTaskActions(
   const complete = useOpMutation("task.complete");
   const reopen = useOpMutation("task.reopen");
   const remove = useOpMutation("task.delete");
+  const client = useQueryClient();
+  const setDone = async (taskId: string, done: boolean, undoable = true): Promise<void> => {
+    const rollback = await patchRecord(client, ["task."], taskId, {
+      status: done ? "done" : "open",
+    });
+    try {
+      await (done ? complete : reopen).mutateAsync({ id: taskId });
+    } catch (error) {
+      rollback();
+      throw error;
+    }
+    if (undoable) {
+      toast.success(done ? "Task completed" : "Task reopened", {
+        action: {
+          label: "Undo",
+          onClick: () =>
+            void setDone(taskId, !done, false).catch((error: unknown) =>
+              toast.error(error instanceof Error ? error.message : "Could not undo"),
+            ),
+        },
+      });
+    }
+  };
   return {
     create: async (task) => {
       await create.mutateAsync({
@@ -227,9 +269,7 @@ export function useTaskActions(
         ...(object && id ? { links: [{ object, id }] } : {}),
       });
     },
-    setDone: async (taskId, done) => {
-      await (done ? complete : reopen).mutateAsync({ id: taskId });
-    },
+    setDone: (taskId, done) => setDone(taskId, done),
     remove: async (taskId) => {
       await remove.mutateAsync({ id: taskId });
     },
@@ -329,7 +369,8 @@ export function useRecordHistory(
     isPending: query.isPending,
     error: query.error,
     hasMore: query.hasNextPage,
-    loadMore: () => void query.fetchNextPage(),
-    isLoadingMore: query.isFetchingNextPage,
+    loadMore: () => void query.fetchNextPage({ cancelRefetch: false }),
+    isLoadingMore: query.isFetching,
+    loadMoreFailed: query.isFetchNextPageError,
   };
 }

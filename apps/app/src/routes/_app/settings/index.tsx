@@ -11,6 +11,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { PageLayout } from "#/components/layout/page-layout";
 
 export const Route = createFileRoute("/_app/settings/")({ component: SettingsPage });
 
@@ -60,8 +61,7 @@ function Section({
 function SettingsPage() {
   const { isAdmin } = Route.useRouteContext();
   return (
-    <div className="mx-auto grid w-full grid-cols-1 max-w-3xl gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+    <PageLayout title="Settings" width="md">
       <div className="grid gap-3 sm:grid-cols-2">
         <Section
           icon={<ShieldCheckIcon className="size-5" />}
@@ -116,6 +116,6 @@ function SettingsPage() {
           />
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 }

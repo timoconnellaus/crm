@@ -21,11 +21,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@crm/ui/components/dropdown-menu";
-import { Skeleton } from "@crm/ui/components/skeleton";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Building2Icon,
-  ChevronLeftIcon,
   EllipsisIcon,
   ExternalLinkIcon,
   PlusIcon,
@@ -52,6 +50,7 @@ import {
 } from "#/components/organisations/record-adapters";
 import {
   type ActivityType,
+  timelineQueryOptions,
   useLogActivity,
   useRecordHistory,
   useRecordTasks,
@@ -59,12 +58,12 @@ import {
   useTimeline,
 } from "#/components/record/adapters";
 import { HistoryList } from "#/components/record/history";
-import { RecordLayout } from "#/components/record/record-layout";
+import { RecordLayout, RecordLayoutSkeleton } from "#/components/record/record-layout";
 import { TaskList, TasksCard } from "#/components/record/tasks";
 import { ActivityComposer, Timeline, TimelineFilter } from "#/components/record/timeline";
 import { formatDate } from "#/lib/format";
-import { OperationCallError } from "#/lib/operations";
-import { errorMessage, useOp, useOpMutation } from "#/lib/query";
+import { callOp, OperationCallError } from "#/lib/operations";
+import { errorMessage, opKey, useOp, useOpMutation } from "#/lib/query";
 
 const TABS = ["overview", "timeline", "people", "tasks", "history"] as const;
 type Tab = (typeof TABS)[number];
@@ -72,6 +71,18 @@ type Tab = (typeof TABS)[number];
 export const Route = createFileRoute("/_app/organisations/$id")({
   validateSearch: (search: Record<string, unknown>): { tab?: Tab } =>
     TABS.includes(search.tab as Tab) && search.tab !== "overview" ? { tab: search.tab as Tab } : {},
+  // Intent preloading: hovering a link to this record warms the record and its timeline.
+  loader: ({ context, params }) => {
+    if (typeof window === "undefined") return;
+    const input = { id: params.id, includeDeleted: true };
+    void context.queryClient.ensureQueryData({
+      queryKey: opKey("organisation.get", input),
+      queryFn: () => callOp("organisation.get", input),
+    });
+    void context.queryClient.ensureInfiniteQueryData(
+      timelineQueryOptions("organisation", params.id),
+    );
+  },
   component: OrganisationPage,
 });
 
@@ -81,21 +92,7 @@ function OrganisationPage() {
   const navigate = useNavigate({ from: "/organisations/$id" });
   const organisation = useOp("organisation.get", { id, includeDeleted: true });
 
-  if (organisation.isPending) {
-    return (
-      <div className="mx-auto grid w-full grid-cols-1 max-w-7xl gap-4" aria-busy="true">
-        <div className="flex items-center gap-4">
-          <Skeleton className="size-14 rounded-full" />
-          <div className="grid gap-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-        </div>
-        <Skeleton className="h-9 w-80" />
-        <Skeleton className="h-64" />
-      </div>
-    );
-  }
+  if (organisation.isPending) return <RecordLayoutSkeleton />;
   if (organisation.isError) {
     const notFound =
       organisation.error instanceof OperationCallError && organisation.error.code === "not_found";
@@ -111,7 +108,7 @@ function OrganisationPage() {
             <Link to="/organisations">Back to Organisations</Link>
           </Button>
         }
-        className="mx-auto max-w-xl"
+        className="mx-4 my-6 sm:mx-auto sm:max-w-xl"
       />
     );
   }
@@ -202,6 +199,7 @@ function OrganisationRecord({
         hasMore={timeline.hasMore}
         onLoadMore={timeline.loadMore}
         isLoadingMore={timeline.isLoadingMore}
+        loadMoreFailed={timeline.loadMoreFailed}
         emptyTitle={types.length ? "No matching activity" : "No activity yet"}
         {...(limit ? { limit } : {})}
       />
@@ -209,143 +207,137 @@ function OrganisationRecord({
   );
 
   return (
-    <div className="grid grid-cols-1 gap-2">
-      <Link
-        to="/organisations"
-        className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeftIcon className="size-4" />
-        Organisations
-      </Link>
-      <RecordLayout
-        badge={<PendingChangesBadge object="organisation" id={org.id} />}
-        title={org.name}
-        subtitle={org.industry || primaryDomain ? subtitle : undefined}
-        avatarUrl={faviconUrl(primaryDomain)}
-        actions={
-          !deleted && (
+    <RecordLayout
+      back={{ to: "/organisations", label: "Organisations" }}
+      squareAvatar
+      badge={<PendingChangesBadge object="organisation" id={org.id} />}
+      title={org.name}
+      subtitle={org.industry || primaryDomain ? subtitle : undefined}
+      avatarUrl={faviconUrl(primaryDomain)}
+      actions={
+        !deleted && (
+          <>
+            {addTask && (
+              <Button variant="outline" size="sm" onClick={addTask} aria-keyshortcuts="c">
+                <PlusIcon />
+                Task
+              </Button>
+            )}
+            <OrganisationActions id={org.id} name={org.name} />
+          </>
+        )
+      }
+      banner={
+        deleted && (
+          <div
+            className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm"
+            role="status"
+            data-testid="trash-banner"
+          >
+            <Trash2Icon className="size-4 text-destructive" aria-hidden />
+            <span className="flex-1">
+              {org.mergedIntoId ? (
+                <>
+                  Merged into{" "}
+                  <Link
+                    to="/organisations/$id"
+                    params={{ id: org.mergedIntoId }}
+                    className="font-medium underline"
+                  >
+                    {mergedInto.data?.name ?? "another organisation"}
+                  </Link>{" "}
+                  on {formatDate(org.deletedAt)}, and in Trash.
+                </>
+              ) : (
+                <>In Trash since {formatDate(org.deletedAt)}.</>
+              )}{" "}
+              Restore within 30 days to keep it.
+            </span>
+            <Button size="sm" variant="outline" onClick={onRestore} disabled={restore.isPending}>
+              <RotateCcwIcon />
+              Restore
+            </Button>
+          </div>
+        )
+      }
+      tab={tab}
+      onTabChange={onTabChange}
+      tabs={[
+        { value: "overview", label: "Overview", content: timelineContent(10) },
+        { value: "timeline", label: "Timeline", content: timelineContent() },
+        {
+          value: "people",
+          label: "People",
+          count: currentPeople,
+          content: (
+            <OrganisationPeopleList affiliations={people.data} isPending={people.isPending} />
+          ),
+        },
+        {
+          value: "tasks",
+          label: "Tasks",
+          count: openTasks,
+          content: (
             <>
               {addTask && (
-                <Button variant="outline" size="sm" onClick={addTask} aria-keyshortcuts="c">
+                <Button variant="outline" size="sm" className="w-fit" onClick={addTask}>
                   <PlusIcon />
-                  Task
+                  Add task
                 </Button>
               )}
-              <OrganisationActions id={org.id} name={org.name} />
-            </>
-          )
-        }
-        banner={
-          deleted && (
-            <div
-              className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm"
-              role="status"
-              data-testid="trash-banner"
-            >
-              <Trash2Icon className="size-4 text-destructive" aria-hidden />
-              <span className="flex-1">
-                {org.mergedIntoId ? (
-                  <>
-                    Merged into{" "}
-                    <Link
-                      to="/organisations/$id"
-                      params={{ id: org.mergedIntoId }}
-                      className="font-medium underline"
-                    >
-                      {mergedInto.data?.name ?? "another organisation"}
-                    </Link>{" "}
-                    on {formatDate(org.deletedAt)}, and in Trash.
-                  </>
-                ) : (
-                  <>In Trash since {formatDate(org.deletedAt)}.</>
-                )}{" "}
-                Restore within 30 days to keep it.
-              </span>
-              <Button size="sm" variant="outline" onClick={onRestore} disabled={restore.isPending}>
-                <RotateCcwIcon />
-                Restore
-              </Button>
-            </div>
-          )
-        }
-        tab={tab}
-        onTabChange={onTabChange}
-        tabs={[
-          { value: "overview", label: "Overview", content: timelineContent(10) },
-          { value: "timeline", label: "Timeline", content: timelineContent() },
-          {
-            value: "people",
-            label: "People",
-            count: currentPeople,
-            content: (
-              <OrganisationPeopleList affiliations={people.data} isPending={people.isPending} />
-            ),
-          },
-          {
-            value: "tasks",
-            label: "Tasks",
-            count: openTasks,
-            content: (
-              <>
-                {addTask && (
-                  <Button variant="outline" size="sm" className="w-fit" onClick={addTask}>
-                    <PlusIcon />
-                    Add task
-                  </Button>
-                )}
-                <TaskList
-                  tasks={tasks.data}
-                  isPending={tasks.isPending}
-                  error={tasks.error}
-                  onToggle={toggleTask}
-                  emptyTitle="No tasks"
-                />
-              </>
-            ),
-          },
-          {
-            value: "history",
-            label: "History",
-            content: (
-              <HistoryList
-                object={organisationObject}
-                entries={history.data}
-                isPending={history.isPending}
-                error={history.error}
-                hasMore={history.hasMore}
-                onLoadMore={history.loadMore}
-                isLoadingMore={history.isLoadingMore}
+              <TaskList
+                tasks={tasks.data}
+                isPending={tasks.isPending}
+                error={tasks.error}
+                onToggle={toggleTask}
+                emptyTitle="No tasks"
               />
-            ),
-          },
-        ]}
-        side={
-          <>
-            <OrganisationDetailsCard organisation={org} readOnly={deleted} />
-            <ExtensionFieldsCards object="organisation" id={org.id} readOnly={deleted} />
-            <OrganisationPeopleCard
-              affiliations={people.data}
-              isPending={people.isPending}
-              onShowAll={() => onTabChange("people")}
+            </>
+          ),
+        },
+        {
+          value: "history",
+          label: "History",
+          content: (
+            <HistoryList
+              object={organisationObject}
+              entries={history.data}
+              isPending={history.isPending}
+              error={history.error}
+              hasMore={history.hasMore}
+              onLoadMore={history.loadMore}
+              isLoadingMore={history.isLoadingMore}
+              loadMoreFailed={history.loadMoreFailed}
             />
-            <OrganisationFamilyCard
-              parent={
-                org.parentId ? { id: org.parentId, name: org.parentName ?? org.parentId } : null
-              }
-              childOrganisations={children.data}
-              isPending={children.isPending}
-            />
-            <TasksCard
-              tasks={tasks.data}
-              isPending={tasks.isPending}
-              error={tasks.error}
-              onToggle={toggleTask}
-              onAdd={addTask}
-            />
-          </>
-        }
-      />
-    </div>
+          ),
+        },
+      ]}
+      side={
+        <>
+          <OrganisationDetailsCard organisation={org} readOnly={deleted} />
+          <ExtensionFieldsCards object="organisation" id={org.id} readOnly={deleted} />
+          <OrganisationPeopleCard
+            affiliations={people.data}
+            isPending={people.isPending}
+            onShowAll={() => onTabChange("people")}
+          />
+          <OrganisationFamilyCard
+            parent={
+              org.parentId ? { id: org.parentId, name: org.parentName ?? org.parentId } : null
+            }
+            childOrganisations={children.data}
+            isPending={children.isPending}
+          />
+          <TasksCard
+            tasks={tasks.data}
+            isPending={tasks.isPending}
+            error={tasks.error}
+            onToggle={toggleTask}
+            onAdd={addTask}
+          />
+        </>
+      }
+    />
   );
 }
 
