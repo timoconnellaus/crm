@@ -37,6 +37,15 @@ export function formatValue(value: unknown): string {
 
 /** One value of a diff as display text (lists of emails/phones show their main value). */
 export function diffValue(value: unknown): string {
+  // A long value a pending action's stored preview cut short (ADR 0055).
+  if (
+    value &&
+    typeof value === "object" &&
+    (value as { $truncated?: unknown }).$truncated === true
+  ) {
+    const { head, length } = value as { head?: unknown; length?: unknown };
+    return `${String(head ?? "")} [truncated, ${Number(length ?? 0).toLocaleString()} characters]`;
+  }
   if (Array.isArray(value)) {
     return (
       value

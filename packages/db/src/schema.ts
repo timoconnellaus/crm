@@ -571,6 +571,9 @@ export interface CorePendingActionTable {
   decided_at: Defaulted<Timestamp | null>;
   created_at: Timestamp;
   expires_at: Timestamp;
+  /** Migration 0063: set when input, preview and simulated were dropped for `summary`. */
+  compacted_at: Defaulted<Timestamp | null>;
+  summary: Defaulted<JsonText | null>;
 }
 
 export interface CorePendingActionRecordsTable {
@@ -598,10 +601,35 @@ export interface CoreConnectedAppTable {
   revoke_reason: Defaulted<string | null>;
 }
 
-export interface CoreRateLimitTable {
-  key: string;
-  window_start: string;
+/** Hourly counts of successful non-human reads (migration 0060, ADR 0055). */
+export interface CoreAuditReadCountsTable {
+  hour: string;
+  actor: AuditActor;
+  user_id: string;
+  caller: Defaulted<string>;
+  operation: string;
   count: Defaulted<number>;
+  simulated: Defaulted<number>;
+  first_at: Timestamp;
+  last_at: Timestamp;
+}
+
+/** Append-only markers that authorise an audit retention purge (migration 0061, ADR 0055). */
+export interface CoreAuditPurgesTable {
+  id: Generated<number>;
+  cutoff: Timestamp;
+  retention_years: number;
+  audit_id: string | null;
+  user_id: string | null;
+  at: Timestamp;
+}
+
+/** The storage gauge's cached measurement, one row (migration 0065). */
+export interface CoreStorageStatsTable {
+  id: number;
+  size_bytes: number | null;
+  tables: JsonText;
+  measured_at: Timestamp;
 }
 
 export interface CoreDatabase {
@@ -633,7 +661,9 @@ export interface CoreDatabase {
   core_pending_action: CorePendingActionTable;
   core_pending_action_records: CorePendingActionRecordsTable;
   core_connected_app: CoreConnectedAppTable;
-  core_rate_limit: CoreRateLimitTable;
+  core_audit_read_counts: CoreAuditReadCountsTable;
+  core_audit_purges: CoreAuditPurgesTable;
+  core_storage_stats: CoreStorageStatsTable;
   core_search_docs: CoreSearchDocsTable;
   core_search: CoreSearchTable;
   core_extensions: CoreExtensionsTable;

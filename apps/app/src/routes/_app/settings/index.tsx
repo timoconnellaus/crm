@@ -3,6 +3,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@crm/ui/components
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronRightIcon,
+  DatabaseIcon,
   PlugIcon,
   PuzzleIcon,
   ScrollTextIcon,
@@ -27,7 +28,8 @@ function Section({
     | "/settings/users"
     | "/settings/audit"
     | "/settings/connected-apps"
-    | "/settings/extensions";
+    | "/settings/extensions"
+    | "/settings/storage";
 }) {
   const body = (
     <Card className="h-full transition-colors hover:bg-accent/50">
@@ -103,6 +105,14 @@ function SettingsPage() {
             title="Audit log"
             description="Every change, who made it and how."
             to="/settings/audit"
+          />
+        )}
+        {isAdmin && (
+          <Section
+            icon={<DatabaseIcon className="size-5" />}
+            title="Storage"
+            description="Database size against its 10 GB limit, and how long history is kept."
+            to="/settings/storage"
           />
         )}
       </div>

@@ -16,6 +16,7 @@ import {
 } from "../ids.ts";
 import type { AnyOperation, RecordChange, SimulatedRecord } from "../operation.ts";
 import type { Origin, Permission } from "../principals.ts";
+import { capPreview, capSimulated, INPUT_MAX_BYTES } from "./caps.ts";
 import { type Overlay, SIMULATED_OBJECTS, titlesFor } from "./simulation.ts";
 
 export const DEFAULT_APPROVAL_EXPIRY_DAYS = 7;
@@ -264,6 +265,15 @@ export function addDays(iso: string, days: number): string {
  * and commits everything in one batch, then throws PendingApprovalError with `pending`.
  */
 export async function prepareQueuedAction(req: QueueRequest): Promise<QueuedAction> {
+  const inputJson = JSON.stringify(req.rawInput ?? {});
+  if (inputJson.length > INPUT_MAX_BYTES) {
+    throw new ValidationError(
+      `${req.op.name} needs approval, but its input (${inputJson.length} bytes) is too large to ` +
+        `queue for review (limit ${INPUT_MAX_BYTES} bytes). Split it into smaller calls, or ask ` +
+        "a person to run it in the app.",
+      { field: "input", bytes: inputJson.length, limit: INPUT_MAX_BYTES },
+    );
+  }
   const referenced = findProvisionalIds(req.rawInput);
   for (const id of referenced) {
     const object = objectOfId(id);
@@ -351,6 +361,20 @@ export async function prepareQueuedAction(req: QueueRequest): Promise<QueuedActi
     }
   }
 
+  // Stored copies are capped so the row stays far below D1's 2 MB limit (ADR 0055).
+  const stored = capPreview(preview);
+  const storedSim = capSimulated(simulatedOutput ?? null, records);
+  const truncated =
+    stored.omitted || storedSim.omitted || storedSim.outputOmitted
+      ? {
+          truncated: {
+            previewOmitted: stored.omitted,
+            recordsOmitted: storedSim.omitted,
+            outputOmitted: storedSim.outputOmitted,
+          },
+        }
+      : {};
+
   const statements: Compilable[] = [
     ...changeSet.statements,
     req.db.query.insertInto("core_pending_action").values({
@@ -358,15 +382,19 @@ export async function prepareQueuedAction(req: QueueRequest): Promise<QueuedActi
       change_set_id: changeSet.id,
       operation: req.op.name,
       risk: req.op.risk,
-      input: JSON.stringify(req.rawInput ?? {}),
+      input: inputJson,
       reason,
       actor: req.actor as never,
       user_id: req.user.id,
       origin: JSON.stringify(req.origin),
       granted_permissions: req.grantedPermissions ? JSON.stringify(req.grantedPermissions) : null,
       bulk_size: req.bulkSize,
-      preview: JSON.stringify(preview),
-      simulated: JSON.stringify({ output: simulatedOutput ?? null, records }),
+      preview: JSON.stringify(stored.preview),
+      simulated: JSON.stringify({
+        output: storedSim.output,
+        records: storedSim.records,
+        ...truncated,
+      }),
       provisional: JSON.stringify(provisional),
       depends_on: JSON.stringify(dependsOn),
       status: "pending",

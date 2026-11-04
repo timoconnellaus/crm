@@ -13,6 +13,11 @@ export interface CrmDb {
    * effects of earlier ones in the same batch.
    */
   batch(statements: readonly (Compilable | CompiledQuery)[]): Promise<void>;
+  /**
+   * The database's size in bytes, from D1's `meta.size_after` on a statement that reads no rows,
+   * or null where the runtime does not report it.
+   */
+  size?(): Promise<number | null>;
 }
 
 function compile(statement: Compilable | CompiledQuery): CompiledQuery {
@@ -30,6 +35,11 @@ export function createCrmDb(d1: D1Database): CrmDb {
           return d1.prepare(sql).bind(...parameters);
         }),
       );
+    },
+    async size() {
+      const result = await d1.prepare("SELECT 1").all();
+      const size = (result.meta as { size_after?: unknown }).size_after;
+      return typeof size === "number" && size > 0 ? size : null;
     },
   };
 }

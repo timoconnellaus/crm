@@ -34,6 +34,7 @@ export * from "./operations/person.ts";
 export * from "./operations/policy.ts";
 export * from "./operations/query.ts";
 export * from "./operations/record.ts";
+export * from "./operations/retention.ts";
 export * from "./operations/search.ts";
 export * from "./operations/task.ts";
 export * from "./operations/trash.ts";
@@ -62,5 +63,6 @@ export {
 } from "./records/links.ts";
 export * from "./records/tags.ts";
 export * from "./registry.ts";
+export * from "./retention.ts";
 export { loadApprovalPolicy } from "./settings.ts";
 export { type PrincipalLike, resolveActingUser, SYSTEM_USER } from "./users.ts";
