@@ -20,11 +20,13 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Building2Icon,
   KeyboardIcon,
   type LucideIcon,
   MonitorIcon,
   MoonIcon,
   SunIcon,
+  UploadIcon,
   UserIcon,
   UserPlusIcon,
 } from "lucide-react";
@@ -114,6 +116,20 @@ export function CommandPalette({
       keywords: ["create", "add", "contact"],
       shortcut: "C",
       run: () => onCreate("person"),
+    },
+    {
+      id: "create:organisation",
+      label: "New organisation",
+      icon: Building2Icon,
+      keywords: ["create", "add", "company"],
+      run: () => onCreate("organisation"),
+    },
+    {
+      id: "import:csv",
+      label: "Import CSV",
+      icon: UploadIcon,
+      keywords: ["import", "upload", "spreadsheet"],
+      run: close(() => navigate({ to: "/import" })),
     },
   ];
   const nav = [...MAIN_NAV, ...SETTINGS_NAV.filter((item) => isAdmin || !item.adminOnly)].map(go);
