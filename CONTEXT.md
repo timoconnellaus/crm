@@ -325,8 +325,23 @@ _Avoid_: emergency stop, pause all
 **Notification**
 A typed message to one user in the in-app notification centre (the bell and inbox), with a link
 to a record, approval, automation or run, read or unread. Sent with `notification.send` by
-automations, approvals and the system. Its type lets stage 6b route it to email or Slack.
+automations, approvals and the system. Its type routes it to email or Slack per the recipient's
+preferences (crm-runner's minute cron delivers them, ADR 0172).
 _Avoid_: alert, message (when you mean the stored notification)
+
+**Notification preference**
+A person's choice, per notification type, of whether a notice also reaches them by email or Slack
+DM (in-app is always on), and whether they get a daily email digest of unread notices and pending
+approvals.
+
+**Channel route**
+An admin rule that posts a short message with a link to a Slack channel when a record of an object
+is created, updated, deleted or has a field change (e.g. deal won → #sales); activities are never
+routed.
+
+**Escalation**
+An unread "Approvals waiting" notice sent again by email or Slack after the admin's delay; an
+escalation is never escalated.
 
 **Host module**
 A `codemode:*` import that extension code can call, backed by trusted host code. Examples:

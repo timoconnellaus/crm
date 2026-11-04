@@ -255,6 +255,13 @@ Stage 6a ([ADR 0110](adr/0110-integration-host-per-connection.md) to
 - **Gatekeepers we wrote**: `gatekeeper-email-send`, `gatekeeper-slack-post`, `gatekeeper-webhook`.
   Inbound webhooks and sync events land in `core_integration_event`; crm-runner's cron turns them
   into `webhook` and `syncEvent` automation triggers (ADR 0173), dropping private activities.
+- **Notification delivery** ([ADR 0172](adr/0172-notification-delivery.md)): crm-runner's minute
+  cron reads new `core_notifications` rows behind a 30 s lag through a keyset cursor and sends each
+  to the email/Slack channels its recipient chose, escalates unread approval notices and sends the
+  daily digest. Every send is claimed in `core_notification_delivery` first and goes through the
+  integration host as a system outbound action on the admin-chosen org email-send / Slack
+  connection, gated like any outbound action. The automation consumer also posts admin channel
+  routes for record events, once per event, route and record.
 
 ### 6. Approval pipeline
 
