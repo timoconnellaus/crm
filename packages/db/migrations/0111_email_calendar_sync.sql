@@ -76,15 +76,10 @@ CREATE TABLE core_sync_item (
   external_key TEXT NOT NULL,
   kind TEXT NOT NULL CHECK (kind IN ('email', 'meeting')),
   activity_id TEXT,
-  -- When the message was sent or the event starts: delete reconciliation lists a time window
-  -- from the provider and compares it with these rows (ADR 0112).
-  occurred_at TEXT,
   updated_at TEXT NOT NULL,
   PRIMARY KEY (connection_id, provider_id)
 );
 CREATE INDEX core_sync_item_key_idx ON core_sync_item (external_key);
-CREATE INDEX core_sync_item_window_idx ON core_sync_item (connection_id, kind, occurred_at)
-  WHERE activity_id IS NOT NULL;
 
 -- Suggested contacts (ADR 0052): external addresses the org has exchanged mail with that match
 -- no person. Counted once per distinct message. Shown from `message_count >= 2`, grouped by

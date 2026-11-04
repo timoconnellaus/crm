@@ -695,7 +695,7 @@ export interface CoreStorageStatsTable {
   measured_at: Timestamp;
 }
 
-// --- Stage 6a: integrations (migrations 0110, 0111) ----------------------------------------------
+// --- Stage 6a: integrations (migrations 0110-0112) -----------------------------------------------
 
 export type ConnectionScope = "personal" | "org";
 export type SharingLevel = "full" | "metadata" | "none";
@@ -762,6 +762,7 @@ export interface CoreSyncItemTable {
   external_key: string;
   kind: "email" | "meeting";
   activity_id: Defaulted<string | null>;
+  /** Migration 0112: when the message was sent or the event starts (delete reconciliation). */
   occurred_at: Defaulted<Timestamp | null>;
   updated_at: Timestamp;
 }
