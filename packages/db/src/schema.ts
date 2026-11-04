@@ -282,6 +282,21 @@ export interface CoreAuditChangesTable {
   at: Timestamp;
 }
 
+/**
+ * A sanctioned redaction of one audit row or field-change row (migration 0008, ADR 0019).
+ * Append-only. Inserting one applies the canonical "[erased]" redaction to its target by trigger.
+ */
+export interface CoreAuditRedactionsTable {
+  id: Generated<number>;
+  audit_id: string | null;
+  change_id: number | null;
+  object_type: string;
+  record_id: string;
+  operation: string;
+  user_id: string | null;
+  at: Timestamp;
+}
+
 export interface CoreSearchDocsTable {
   id: Generated<number>;
   object_type: string;
@@ -437,6 +452,7 @@ export interface CoreDatabase {
   core_views: CoreViewsTable;
   core_audit: CoreAuditTable;
   core_audit_changes: CoreAuditChangesTable;
+  core_audit_redactions: CoreAuditRedactionsTable;
   core_search_docs: CoreSearchDocsTable;
   core_search: CoreSearchTable;
   crm_users: CrmUsersView;
