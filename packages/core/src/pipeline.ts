@@ -40,11 +40,11 @@ import {
 import type { ExtensionHost } from "./extensions/host.ts";
 import { refreshSchemaRegistry } from "./extensions/schema.ts";
 import { getObject, isCoreObject } from "./fields/index.ts";
-import { notifyStatements } from "./notifications/send.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { findProvisionalIds, newId } from "./ids.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
 import type { ModelRunner } from "./models.ts";
+import { notifyStatements } from "./notifications/send.ts";
 import {
   type AnyOperation,
   type ApplyingApproval,

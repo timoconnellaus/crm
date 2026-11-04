@@ -7,8 +7,8 @@ import { describe, expect, it } from "vitest";
 import {
   type AutomationDefinition,
   approvalTriggerSource,
-  cronMatches,
   coreRegistry,
+  cronMatches,
   memoryEventSink,
   parseCron,
   purgeAutomationRuns,
@@ -71,10 +71,7 @@ function automation(id: string, spec: Partial<AutomationManifest>): AutomationDe
   };
 }
 
-function message(
-  changes: RecordEventMessage["changes"],
-  bulk = false,
-): RecordEventMessage {
+function message(changes: RecordEventMessage["changes"], bulk = false): RecordEventMessage {
   return {
     v: 1,
     kind: "record",
@@ -102,7 +99,13 @@ describe("trigger sources", () => {
     trigger: { type: "record", object: "person", on: ["created"], includeBulk: true },
   });
   const toTen = automation("a.toTen", {
-    trigger: { type: "fieldChanged", object: "person", field: "level", from: { in: [1, 2] }, to: 10 },
+    trigger: {
+      type: "fieldChanged",
+      object: "person",
+      field: "level",
+      from: { in: [1, 2] },
+      to: 10,
+    },
   });
 
   it("record: matches object and event; bulk only with includeBulk", () => {
@@ -153,9 +156,15 @@ describe("trigger sources", () => {
       actionOrigin: { surface: "mcp" as const },
       origin: message([]).origin,
     };
-    expect(approvalTriggerSource.match({ ...base, decision: "approved" }, [decided])).toHaveLength(1);
-    expect(approvalTriggerSource.match({ ...base, decision: "rejected" }, [decided])).toHaveLength(0);
-    expect(approvalTriggerSource.match({ ...base, decision: "expired" }, [decided])).toHaveLength(0);
+    expect(approvalTriggerSource.match({ ...base, decision: "approved" }, [decided])).toHaveLength(
+      1,
+    );
+    expect(approvalTriggerSource.match({ ...base, decision: "rejected" }, [decided])).toHaveLength(
+      0,
+    );
+    expect(approvalTriggerSource.match({ ...base, decision: "expired" }, [decided])).toHaveLength(
+      0,
+    );
   });
 });
 
@@ -168,7 +177,12 @@ describe("events", () => {
       before: { name: "a" },
       after: { name: "b" },
     }));
-    const messages = recordEventMessages("aud_X", "2026-11-05T00:00:00Z", message([]).origin, changes);
+    const messages = recordEventMessages(
+      "aud_X",
+      "2026-11-05T00:00:00Z",
+      message([]).origin,
+      changes,
+    );
     expect(messages.map((m) => [m.id, m.changes.length])).toEqual([
       ["aud_X:0", 100],
       ["aud_X:1", 100],
@@ -193,7 +207,11 @@ describe("events", () => {
       "aud_Y",
       "2026-11-05T00:00:00Z",
       message([]).origin,
-      Array.from({ length: 150 }, (_, i) => ({ object: "task", id: `tsk_${i}`, action: "create" as const })),
+      Array.from({ length: 150 }, (_, i) => ({
+        object: "task",
+        id: `tsk_${i}`,
+        action: "create" as const,
+      })),
     );
     await sink.send([...messages, ...messages, ...messages, ...messages, ...messages]);
     expect(calls.every((n) => n <= 100)).toBe(true);
@@ -250,7 +268,11 @@ describe("retention", () => {
     const left = await env.DB.prepare(
       "SELECT id FROM core_automation_runs WHERE automation_id = 'r.x' ORDER BY id",
     ).all<{ id: string }>();
-    expect(left.results.map((r) => r.id)).toEqual(["arn_OLDFAILED", "arn_OLDWAITING", "arn_RECENT"]);
+    expect(left.results.map((r) => r.id)).toEqual([
+      "arn_OLDFAILED",
+      "arn_OLDWAITING",
+      "arn_RECENT",
+    ]);
     const records = await env.DB.prepare(
       "SELECT count(*) AS n FROM core_automation_run_records WHERE run_id = 'arn_OLDCOMPLETED'",
     ).first<{ n: number }>();

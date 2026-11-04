@@ -1,6 +1,11 @@
 // The RPC surface crm-app calls over the RUNNER service binding. Kept free of the Worker's Env so
 // crm-app can import the types without type-checking runner source against its own Env.
-import type { AutomationHost, ExtensionHost, IntegrationRuntime, ShippedInstallResult } from "@crm/core";
+import type {
+  AutomationHost,
+  ExtensionHost,
+  IntegrationRuntime,
+  ShippedInstallResult,
+} from "@crm/core";
 import type { HelloOutput } from "./hello-workflow.ts";
 
 export type { HelloOutput } from "./hello-workflow.ts";

@@ -58,7 +58,16 @@ export function zonedTime(at: Date, timeZone: string): ZonedTime {
   const minute = Number(parts.minute);
   const weekday = WEEKDAYS.indexOf(String(parts.weekday));
   const date = `${year}-${pad(month)}-${pad(day)}`;
-  return { year, month, day, hour, minute, weekday, date, minuteKey: `${date}T${pad(hour)}:${pad(minute)}` };
+  return {
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    weekday,
+    date,
+    minuteKey: `${date}T${pad(hour)}:${pad(minute)}`,
+  };
 }
 
 /** `YYYY-MM-DD` plus `days` (calendar arithmetic, no timezone). */

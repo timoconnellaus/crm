@@ -7,6 +7,7 @@ import {
   createTestSimulation,
   idsMatchingConditions,
   loadApprovalPolicy,
+  loadAutomationSettings,
   loadTriggerRecord,
   newId,
   parseSpec,
@@ -14,7 +15,6 @@ import {
   type RunOperationRecord,
   type StartRunInput,
   zonedTime,
-  loadAutomationSettings,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
 import type {
@@ -101,7 +101,11 @@ export async function testAutomation(
         error: { code: "not_found", message: `No ${input.record.object} ${input.record.id}` },
       };
     }
-    if (triggerObject && TRIGGER_OBJECT_TYPES.has(trigger.type) && triggerObject !== record.object) {
+    if (
+      triggerObject &&
+      TRIGGER_OBJECT_TYPES.has(trigger.type) &&
+      triggerObject !== record.object
+    ) {
       matched = false;
       matchReason = `It runs on ${triggerObject} records, not ${record.object}`;
     } else if (spec.conditions) {
@@ -226,7 +230,9 @@ export async function testAutomation(
       .filter((g) => g.gate === "review")
       .map((g) => ({ operation: g.operation, reason: g.reason, bulkSize: g.bulkSize })),
     ok: response.ok,
-    ...(response.ok ? {} : { error: { code: response.error.code, message: response.error.message } }),
+    ...(response.ok
+      ? {}
+      : { error: { code: response.error.code, message: response.error.message } }),
   };
   const at = now.toISOString();
   await db
@@ -261,7 +267,7 @@ export async function startManualRun(
   input: StartRunInput,
 ): Promise<{ runIds: string[]; skipped: number }> {
   const found = await loadDefinition(env, input.automationId);
-  if (!found || !found.enabled) {
+  if (!found?.enabled) {
     return { runIds: [], skipped: input.recordIds.length };
   }
   const nonce = crypto.randomUUID();
@@ -374,9 +380,7 @@ async function rerun(
     ],
     {
       depth: Math.max(0, run.depth - 1),
-      chain: (trigger.chain ?? []).filter(
-        (c) => !c.startsWith(`${run.automation_id}:`),
-      ),
+      chain: (trigger.chain ?? []).filter((c) => !c.startsWith(`${run.automation_id}:`)),
       rootEventId: run.root_event_id ?? `${mode}:${nonce}`,
       eventId: trigger.eventId ?? `${mode}:${nonce}`,
       at: new Date().toISOString(),
@@ -395,10 +399,7 @@ async function rerun(
   return { runId: started };
 }
 
-export async function cancelRun(
-  env: AutomationHostEnv,
-  runId: string,
-): Promise<{ runId: string }> {
+export async function cancelRun(env: AutomationHostEnv, runId: string): Promise<{ runId: string }> {
   const run = await loadRun(env, runId);
   if (run.workflow_id) {
     try {
@@ -413,7 +414,10 @@ export async function cancelRun(
 }
 
 /** The AutomationHost for crm-runner's own environment. */
-export function automationHost(env: AutomationHostEnv, options: ExecutorOptions = {}): AutomationHost {
+export function automationHost(
+  env: AutomationHostEnv,
+  options: ExecutorOptions = {},
+): AutomationHost {
   return {
     testAutomation: (input) => testAutomation(env, input, options),
     startManualRun: (input) => startManualRun(env, input),

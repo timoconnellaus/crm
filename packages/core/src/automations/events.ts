@@ -41,8 +41,8 @@ export function recordEventChange(change: RecordChange): RecordEventChange | nul
     const diff = change.diff ?? diffRecords(change.before, change.after);
     // A soft delete recorded as an update of deletedAt is a delete.
     const deletedAt = diff.deletedAt;
-    if (deletedAt && deletedAt.after) action = "deleted";
-    else if (deletedAt && deletedAt.before && !deletedAt.after) action = "restored";
+    if (deletedAt?.after) action = "deleted";
+    else if (deletedAt?.before && !deletedAt.after) action = "restored";
     const capped: FieldDiff = {};
     for (const [field, values] of Object.entries(diff)) {
       capped[field] = { before: capValue(values.before), after: capValue(values.after) };
@@ -111,7 +111,10 @@ export function recordEventMessages(
   };
   for (const event of events) {
     const size = JSON.stringify(event).length + 1;
-    if (chunk.length >= EVENT_CHANGES_PER_MESSAGE || (chunk.length && bytes + size > QUEUE_MESSAGE_MAX_BYTES)) {
+    if (
+      chunk.length >= EVENT_CHANGES_PER_MESSAGE ||
+      (chunk.length && bytes + size > QUEUE_MESSAGE_MAX_BYTES)
+    ) {
       flush();
     }
     // A single change larger than a message keeps only what matters for matching: the fields.
@@ -189,7 +192,10 @@ export function queueEventSink(queue: QueueProducer): EventSink {
       };
       for (const message of messages) {
         const size = JSON.stringify(message).length;
-        if (batch.length >= QUEUE_BATCH_MESSAGES || (batch.length && bytes + size > QUEUE_BATCH_MAX_BYTES)) {
+        if (
+          batch.length >= QUEUE_BATCH_MESSAGES ||
+          (batch.length && bytes + size > QUEUE_BATCH_MAX_BYTES)
+        ) {
           await flush();
         }
         batch.push(message);

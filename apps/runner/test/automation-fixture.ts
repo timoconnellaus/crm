@@ -1,5 +1,8 @@
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: the fixture is extension source text; its template literals run in the sandbox.
 // A small extension with one automation per trigger type and behaviour the engine tests need
 // (ADR 0130). It does not depend on Deals.
+
+import { introspectWorkflow } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import {
   type ActingUser,
@@ -8,7 +11,6 @@ import {
   invokeByName,
   memoryEventSink,
 } from "@crm/core";
-import { introspectWorkflow } from "cloudflare:test";
 import { dispatchAutomationMessages } from "../src/automations/dispatch.ts";
 import { automationHost } from "../src/automations/host.ts";
 import { context, db } from "./helpers.ts";
@@ -163,7 +165,10 @@ export function dispatch(messages: AutomationQueueMessage[]) {
 /** Runs every Workflow instance created inside `fn` to completion (sleeps disabled). */
 export async function runWorkflows<T>(
   fn: () => Promise<T>,
-  options: { status?: "complete" | "errored"; modify?: Parameters<Awaited<ReturnType<typeof introspectWorkflow>>["modifyAll"]>[0] } = {},
+  options: {
+    status?: "complete" | "errored";
+    modify?: Parameters<Awaited<ReturnType<typeof introspectWorkflow>>["modifyAll"]>[0];
+  } = {},
 ): Promise<T> {
   await using introspector = await introspectWorkflow(env.AUTOMATION_WORKFLOW);
   await introspector.modifyAll(async (m) => {

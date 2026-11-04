@@ -201,14 +201,15 @@ export async function startRuns(
 
   // Run rows, then Workflow instances.
   const rows = await Promise.all(
-    [...kept.map((c) => ({ candidate: c, skip: null as string | null })), ...skippedRows.map((s) => ({ candidate: s.candidate, skip: s.reason }))].map(
-      async ({ candidate, skip }) => ({
-        candidate,
-        skip,
-        workflowId: await workflowInstanceId(candidate.automation.id, candidate.idempotencyKey),
-        runId: newId("automationRun"),
-      }),
-    ),
+    [
+      ...kept.map((c) => ({ candidate: c, skip: null as string | null })),
+      ...skippedRows.map((s) => ({ candidate: s.candidate, skip: s.reason })),
+    ].map(async ({ candidate, skip }) => ({
+      candidate,
+      skip,
+      workflowId: await workflowInstanceId(candidate.automation.id, candidate.idempotencyKey),
+      runId: newId("automationRun"),
+    })),
   );
   if (!rows.length) return result;
   await crm.batch(

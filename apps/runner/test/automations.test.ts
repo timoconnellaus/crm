@@ -1,7 +1,13 @@
 // Stage 5 engine (ADR 0130, ADR 0133): triggers per type (AC1), durability (AC2), rails (AC3),
 // idempotency (AC4), review pause (AC5), test mode (AC6), event batching, and the executor's
 // stable worker ids. Real D1, Queues message batches, Workflows (introspected) and Worker Loader.
-import { createMessageBatch, createExecutionContext, getQueueResult } from "cloudflare:test";
+import {
+  createExecutionContext,
+  createMessageBatch,
+  getQueueResult,
+  introspectWorkflow,
+  type WorkflowInstanceModifier,
+} from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import {
   type ActingUser,
@@ -13,16 +19,15 @@ import {
   queueEventSink,
   type RecordEventMessage,
 } from "@crm/core";
-import { introspectWorkflow, type WorkflowInstanceModifier } from "cloudflare:test";
-import { beforeAll, describe, expect, it } from "vitest";
 import { z } from "@crm/sdk";
-import Runner from "../src/index.ts";
+import { beforeAll, describe, expect, it } from "vitest";
 import { dispatchAutomationMessages } from "../src/automations/dispatch.ts";
 import { automationHost } from "../src/automations/host.ts";
 import { advanceRun, startRun } from "../src/automations/run.ts";
 import { runAutomationCron, runDateRelative } from "../src/automations/schedule.ts";
 import { Executor } from "../src/executor/executor.ts";
 import { toolWorkerId } from "../src/executor/worker-code.ts";
+import Runner from "../src/index.ts";
 import {
   count,
   dispatch,
@@ -78,17 +83,21 @@ describe("AC1: triggers", () => {
     const run = await runRow(started.runIds[0] as string);
     expect(run.status).toBe("completed");
     expect(run.depth).toBe(1);
-    const steps = JSON.parse(run.steps) as { name: string; status: string; operations: unknown[] }[];
-    expect(steps).toEqual([
-      expect.objectContaining({ name: "makeTask", status: "completed" }),
-    ]);
+    const steps = JSON.parse(run.steps) as {
+      name: string;
+      status: string;
+      operations: unknown[];
+    }[];
+    expect(steps).toEqual([expect.objectContaining({ name: "makeTask", status: "completed" })]);
   });
 
   it("conditions: an item below the level starts nothing", async () => {
     const { messages } = await createItem({ name: "Low", level: 2 });
     const started = await dispatch(messages);
     expect(started.runIds).toEqual([]);
-    expect(started.dropped).toEqual([{ automationId: `${FIXTURE_ID}.onCreate`, reason: "conditions" }]);
+    expect(started.dropped).toEqual([
+      { automationId: `${FIXTURE_ID}.onCreate`, reason: "conditions" },
+    ]);
   });
 
   it("fieldChanged from/to: level changing to 10 runs; to 9 does not", async () => {
@@ -118,7 +127,10 @@ describe("AC1: triggers", () => {
       const result = await runWorkflows(() => runAutomationCron(env, at));
       expect(result.schedule?.runIds).toHaveLength(1);
       const run = await runRow(result.schedule?.runIds[0] as string);
-      expect(JSON.parse(run.trigger)).toMatchObject({ type: "schedule", period: "2026-11-06T09:30" });
+      expect(JSON.parse(run.trigger)).toMatchObject({
+        type: "schedule",
+        period: "2026-11-06T09:30",
+      });
       // The same minute again: the same run (per-period idempotency); 09:31 matches nothing.
       const again = await runAutomationCron(env, at);
       expect(again.schedule?.runIds).toEqual(result.schedule?.runIds);
@@ -131,7 +143,9 @@ describe("AC1: triggers", () => {
 
   it("dateRelative: the day before an item's due date, once per day", async () => {
     const { result: item } = await createItem({ name: "Soon", level: 1, due: "2027-03-02" });
-    const first = await runWorkflows(() => runDateRelative(env, "2027-03-01", new Date().toISOString()));
+    const first = await runWorkflows(() =>
+      runDateRelative(env, "2027-03-01", new Date().toISOString()),
+    );
     expect(first.runIds).toHaveLength(1);
     expect(await tasksOn(item.id)).toContain("Due tomorrow Soon");
     const again = await runDateRelative(env, "2027-03-01", new Date().toISOString());
@@ -169,7 +183,11 @@ describe("AC1: triggers", () => {
       expect(pendingAction).toMatch(/^pac_/);
       const approved = await withEvents(admin, "approval.approve", { actionIds: [pendingAction] });
       const decision = approved.messages.find((m) => m.kind === "approval");
-      expect(decision).toMatchObject({ kind: "approval", decision: "approved", actionId: pendingAction });
+      expect(decision).toMatchObject({
+        kind: "approval",
+        decision: "approved",
+        actionId: pendingAction,
+      });
       const started = await runWorkflows(() => dispatch(approved.messages));
       const runs = await runsOf(`${FIXTURE_ID}.onDecision`);
       expect(runs.at(-1)?.status).toBe("completed");
@@ -184,7 +202,11 @@ describe("AC2: durability", () => {
   it("a run with step.sleep resumes after the sleep without repeating earlier steps", async () => {
     const { result: item } = await createItem({ name: "Dur", level: 1 });
     await runWorkflows(() =>
-      call(admin, "automation.run", { id: `${FIXTURE_ID}.sleeper`, object: ITEM, recordIds: [item.id] }),
+      call(admin, "automation.run", {
+        id: `${FIXTURE_ID}.sleeper`,
+        object: ITEM,
+        recordIds: [item.id],
+      }),
     );
     // Each advance replays `run` from the start in the worker; the journal keeps "first" done.
     expect(await tasksOn(item.id)).toEqual(["Before sleep", "After sleep"]);
@@ -245,7 +267,10 @@ describe("AC3: rails", () => {
     const { result: item } = await createItem({ name: "Deep", level: 9 });
     const started = await dispatch([recordMessage(item, { depth: 3 })]);
     expect(started.runIds).toEqual([]);
-    expect(started.dropped).toContainEqual({ automationId: `${FIXTURE_ID}.onCreate`, reason: "cascade depth" });
+    expect(started.dropped).toContainEqual({
+      automationId: `${FIXTURE_ID}.onCreate`,
+      reason: "cascade depth",
+    });
     const skipped = (await runsOf(`${FIXTURE_ID}.onCreate`)).filter((r) => r.record_id === item.id);
     expect(skipped.map((r) => r.status)).toEqual(["skipped"]);
   });
@@ -255,12 +280,17 @@ describe("AC3: rails", () => {
     const started = await dispatch([
       recordMessage(item, { depth: 1, chain: [`${FIXTURE_ID}.onCreate:${ITEM}:${item.id}`] }),
     ]);
-    expect(started.dropped).toContainEqual({ automationId: `${FIXTURE_ID}.onCreate`, reason: "cycle" });
+    expect(started.dropped).toContainEqual({
+      automationId: `${FIXTURE_ID}.onCreate`,
+      reason: "cycle",
+    });
     expect(started.runIds).toEqual([]);
   });
 
   it("rate limit: above the runs-per-minute rail the automation auto-pauses and admins hear", async () => {
-    const items = await Promise.all([1, 2, 3].map((n) => createItem({ name: `Rate${n}`, level: 9 })));
+    const items = await Promise.all(
+      [1, 2, 3].map((n) => createItem({ name: `Rate${n}`, level: 9 })),
+    );
     const limited = { ...env, AUTOMATION_RATE_LIMIT: memoryRateLimit(1) };
     const before = await count("core_notifications");
     const result = await runWorkflows(() =>
@@ -361,7 +391,9 @@ describe("AC5: review pause", () => {
   async function bulkRun(modify?: (m: WorkflowInstanceModifier) => Promise<void>) {
     await setPreset("cautious");
     await Promise.all(
-      [1, 2].map((n) => call(admin, "person.create", { givenName: `Bulk${n}`, familyName: "Person" })),
+      [1, 2].map((n) =>
+        call(admin, "person.create", { givenName: `Bulk${n}`, familyName: "Person" }),
+      ),
     );
     const { result: item } = await createItem({ name: "Bulky", level: 1 });
     const introspector = await introspectWorkflow(env.AUTOMATION_WORKFLOW);
@@ -542,7 +574,11 @@ describe("event batching", () => {
         sent.push([...messages].map((m) => m.body));
       },
     };
-    await invokeOperation(bulkOp, { n: 5000 }, { ...context(admin), events: queueEventSink(queue) });
+    await invokeOperation(
+      bulkOp,
+      { n: 5000 },
+      { ...context(admin), events: queueEventSink(queue) },
+    );
     const messages = sent.flat() as RecordEventMessage[];
     expect(messages.length).toBeLessThanOrEqual(50);
     expect(sent.length).toBeLessThanOrEqual(50);

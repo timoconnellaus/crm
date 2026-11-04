@@ -71,7 +71,9 @@ export class AutomationWorkflow extends WorkflowEntrypoint<Env, AutomationRunPar
         const advance = outcome.advance;
 
         if (advance.kind === "done") {
-          await durable(step, "finish", BOOKKEEPING, () => finishRun(env, params.runId, "completed"));
+          await durable(step, "finish", BOOKKEEPING, () =>
+            finishRun(env, params.runId, "completed"),
+          );
           return { status: "completed" };
         }
 
@@ -131,7 +133,9 @@ export class AutomationWorkflow extends WorkflowEntrypoint<Env, AutomationRunPar
                 return { status: "cancelled" };
               }
             }
-            await durable(step, `resume:${i}:${k}`, BOOKKEEPING, () => markRunning(env, params.runId));
+            await durable(step, `resume:${i}:${k}`, BOOKKEEPING, () =>
+              markRunning(env, params.runId),
+            );
           }
           continue;
         }

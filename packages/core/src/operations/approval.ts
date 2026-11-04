@@ -5,6 +5,8 @@ import type { CoreDatabase, PendingActionStatus } from "@crm/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ApprovalStateError, objectOfId } from "../approvals/queue.ts";
+import { approvalDecidedMessages, emitEvents, eventOriginOf } from "../automations/events.ts";
+import type { ApprovalDecidedMessage, EventSink } from "../automations/types.ts";
 import {
   ForbiddenError,
   NotFoundError,
@@ -12,8 +14,6 @@ import {
   toOperationError,
   ValidationError,
 } from "../errors.ts";
-import { approvalDecidedMessages, emitEvents, eventOriginOf } from "../automations/events.ts";
-import type { ApprovalDecidedMessage, EventSink } from "../automations/types.ts";
 import { isProvisionalId, newId, replaceIds } from "../ids.ts";
 import { type OutboundInput, outboundAppliedAudit } from "../integrations/outbound.ts";
 import type { IntegrationRuntime } from "../integrations/runtime.ts";

@@ -131,9 +131,7 @@ export async function loadEnabledAutomations(
       "a.paused_at",
       "a.removed_at",
     ])
-    .where(
-      sql<boolean>`a.enabled = 1 AND a.paused_reason IS NULL AND a.removed_at IS NULL`,
-    )
+    .where(sql<boolean>`a.enabled = 1 AND a.paused_reason IS NULL AND a.removed_at IS NULL`)
     .where("a.trigger_type", "in", jsonList([...triggerTypes]))
     .where("e.status", "=", "active");
   if (objects) {

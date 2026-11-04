@@ -132,17 +132,24 @@ describe("rows read and query plans", () => {
     const { result, rows } = await measure(() =>
       loadEnabledAutomations(meteredDb.query, ["record", "fieldChanged"], [ITEM]),
     );
-    expect(result.map((a) => a.id).sort()).toEqual([`${FIXTURE_ID}.onCreate`, `${FIXTURE_ID}.onLevel`]);
+    expect(result.map((a) => a.id).sort()).toEqual([
+      `${FIXTURE_ID}.onCreate`,
+      `${FIXTURE_ID}.onLevel`,
+    ]);
     expect(rows).toBeLessThanOrEqual(20);
     expect(await scans(["core_automations"])).toEqual([]);
   });
 
   it("an automation's runs page", async () => {
     const { result, rows } = await measure(() =>
-      invokeByName("automation.runs", { id: AUTOMATION, limit: 20 }, {
-        ...context(admin),
-        db: meteredDb,
-      }),
+      invokeByName(
+        "automation.runs",
+        { id: AUTOMATION, limit: 20 },
+        {
+          ...context(admin),
+          db: meteredDb,
+        },
+      ),
     );
     expect((result as { items: unknown[] }).items).toHaveLength(20);
     expect(rows).toBeLessThanOrEqual(120);

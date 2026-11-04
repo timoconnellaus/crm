@@ -60,9 +60,11 @@ export async function loadTriggerRecord(
   await refreshSchemaRegistry(db);
   const def = getObject(object);
   if (!def) return null;
-  const row = (await (db as AnyDb).selectFrom(def.source).selectAll().where("id", "=", id).executeTakeFirst()) as
-    | Record<string, unknown>
-    | undefined;
+  const row = (await (db as AnyDb)
+    .selectFrom(def.source)
+    .selectAll()
+    .where("id", "=", id)
+    .executeTakeFirst()) as Record<string, unknown> | undefined;
   if (!row) return null;
   return {
     object,

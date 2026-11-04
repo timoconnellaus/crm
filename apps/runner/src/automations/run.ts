@@ -383,7 +383,12 @@ export async function finishRun(
   const statements = [
     crm.query
       .insertInto("core_automation_counters")
-      .values({ automation_id: row.automation_id, hour: now.slice(0, 13), runs: 1, writes: row.writes })
+      .values({
+        automation_id: row.automation_id,
+        hour: now.slice(0, 13),
+        runs: 1,
+        writes: row.writes,
+      })
       .onConflict((oc) =>
         oc.columns(["automation_id", "hour"]).doUpdateSet((eb) => ({
           runs: eb("core_automation_counters.runs", "+", 1),

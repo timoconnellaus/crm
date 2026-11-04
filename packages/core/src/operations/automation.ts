@@ -11,17 +11,17 @@ import type { AutomationManifest, ExtensionManifest } from "@crm/sdk";
 import { type Kysely, sql } from "kysely";
 import type { z } from "zod";
 import {
+  type AutomationRow,
+  effectiveRails,
   isTimeZone,
   loadAutomationSettings,
   parseSpec,
   triggerObject,
-  effectiveRails,
-  type AutomationRow,
 } from "../automations/registry.ts";
 import {
-  AUTOMATION_OPERATION_SCHEMAS as S,
   type AutomationListItem,
   type RunItem,
+  AUTOMATION_OPERATION_SCHEMAS as S,
 } from "../automations/schemas.ts";
 import {
   automationDiagram,
@@ -108,7 +108,14 @@ async function loadAutomation(db: Kysely<CoreDatabase>, id: string) {
   const row = await db
     .selectFrom("core_automations as a")
     .leftJoin("core_extensions as e", "e.id", "a.extension_id")
-    .select([...AUTOMATION_COLUMNS, "e.manifest", "e.source", "e.installed_by", "e.installed_at", "e.version"])
+    .select([
+      ...AUTOMATION_COLUMNS,
+      "e.manifest",
+      "e.source",
+      "e.installed_by",
+      "e.installed_at",
+      "e.version",
+    ])
     .where("a.id", "=", id)
     .executeTakeFirst();
   if (!row) throw new NotFoundError("automation", id);
@@ -186,7 +193,8 @@ function listItem(
     lastRunStatus: stats?.lastRunStatus ?? null,
     runs7d: stats?.runs7d ?? 0,
     errors7d: stats?.errors7d ?? 0,
-    manual: t.type === "manual" ? { label: t.label, object: t.object, bulk: t.bulk ?? false } : null,
+    manual:
+      t.type === "manual" ? { label: t.label, object: t.object, bulk: t.bulk ?? false } : null,
   };
 }
 
@@ -399,7 +407,9 @@ function outcomeText(row: {
     case "running":
       return "Running";
     case "waiting":
-      return row.wait_until ? `Waiting until ${row.wait_until.slice(0, 16).replace("T", " ")}` : "Waiting";
+      return row.wait_until
+        ? `Waiting until ${row.wait_until.slice(0, 16).replace("T", " ")}`
+        : "Waiting";
     case "review":
       return "Waiting for approval";
     case "completed":
@@ -731,7 +741,8 @@ export const automationUpdateSettings = defineOperation({
       throw new ValidationError(`"${input.timezone}" is not a timezone`, { field: "timezone" });
     }
     const before = await loadAutomationSettings(ctx.db);
-    if (input.timezone !== undefined) settingWrite(ctx, AUTOMATION_SETTINGS.timezone, input.timezone);
+    if (input.timezone !== undefined)
+      settingWrite(ctx, AUTOMATION_SETTINGS.timezone, input.timezone);
     if (input.debounceSeconds !== undefined) {
       settingWrite(ctx, AUTOMATION_SETTINGS.debounceSeconds, input.debounceSeconds);
     }

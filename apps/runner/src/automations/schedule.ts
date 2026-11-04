@@ -96,7 +96,13 @@ export async function runDateRelative(
   return startRuns(
     env,
     candidates,
-    { depth: 0, chain: [], rootEventId: `dateRelative:${date}`, eventId: `dateRelative:${date}`, at },
+    {
+      depth: 0,
+      chain: [],
+      rootEventId: `dateRelative:${date}`,
+      eventId: `dateRelative:${date}`,
+      at,
+    },
     {},
     settings,
   );

@@ -45,11 +45,9 @@ async function notificationsFor(runIds: string[]) {
 
 describe("Deals automations", () => {
   it("registers the three automations", async () => {
-    const list = await call<{ items: { id: string; status: string }[] }>(
-      admin,
-      "automation.list",
-      { extensionId: "deals" },
-    );
+    const list = await call<{ items: { id: string; status: string }[] }>(admin, "automation.list", {
+      extensionId: "deals",
+    });
     expect(list.items.map((i) => i.id).sort()).toEqual([
       "deals.closeDatePassed",
       "deals.stalledDeal",

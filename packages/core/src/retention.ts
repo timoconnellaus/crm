@@ -237,7 +237,10 @@ export async function purgeAutomationRuns(
         if (!due.length) return 0;
         const ids = jsonList(due.map((r) => r.id));
         await db.deleteFrom("core_automation_run_records").where("run_id", "in", ids).execute();
-        const r = await db.deleteFrom("core_automation_runs").where("id", "in", ids).executeTakeFirst();
+        const r = await db
+          .deleteFrom("core_automation_runs")
+          .where("id", "in", ids)
+          .executeTakeFirst();
         return Number(r.numDeletedRows ?? 0);
       },
       chunk,
