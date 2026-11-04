@@ -21,5 +21,6 @@ If Deals can be built entirely on the public contract, AI-written extensions can
   and `navigation`.
 - The base currency is a setting: [ADR 0101](0101-base-currency.md). Deals CSV import:
   [ADR 0102](0102-record-csv-import.md).
-- A deal needs a pipeline; its stage defaults to the pipeline's first stage. The lost reason is
+- A deal's pipeline defaults to the Default pipeline setting (phase 2, ADR 0103); its stage
+  defaults to the pipeline's first stage. The lost reason is
   required by `requiredByType.lost`, so editing the Lost stage cannot drop it.

@@ -154,6 +154,11 @@ How stage 3a built it ([ADR 0040](adr/0040-extension-runtime-build.md)):
   field widgets for every type, extension fields on core record pages, Settings → Extensions, set-up
   objects (`navigation: "settings"`, e.g. pipelines) under Settings, and Settings → General (the
   base currency, [ADR 0101](adr/0101-base-currency.md)).
+- **Shipped views and dashboards** ([ADR 0103](adr/0103-shipped-views-dashboards-and-relative-filters.md)):
+  `view.list` adds active extensions' `views` (read-only, `vw_x_…`) and `dashboard.*` their
+  `dashboards` (read-only, `dsh_x_…`); an extension dashboard marked `home` is the default Home.
+  Filter values `{ $relative }` resolve in the pipeline per call. Boards group by a select or by a
+  relation (a deal's stage, columns in stage order).
 
 How stage 3b added authoring ([ADR 0041](adr/0041-extension-authoring-and-proposals.md)):
 

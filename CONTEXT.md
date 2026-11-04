@@ -34,7 +34,9 @@ _Avoid_: kanban (in code and copy; fine as a synonym in prose)
 
 **Dashboard**
 A title, filters and widgets on a grid. Personal or shared; the shipped **Overview** lives in
-code. Any dashboard can be a user's **Home** (the page at `/`).
+code, and extensions can ship read-only dashboards (Deals' **Sales overview** and **Pipeline
+health**). Any dashboard can be a user's **Home** (the page at `/`); the default is Sales overview
+while Deals is installed, else the Overview.
 
 **Widget**
 One tile on a dashboard: KPI, bar, line, donut, funnel, table, leaderboard or markdown. Data
@@ -43,6 +45,11 @@ widgets run read-only SQL over `crm_*` views with named params bound from the da
 **Click-through**
 A widget's filter template: clicking a segment, KPI or row opens the matching records as a
 filtered list, exactly the records the widget counted.
+
+**Relative value**
+A filter value that resolves when the list runs: `{ "$relative": "me" }`, `"today"`,
+`"startOfMonth"`, `"startOfQuarter"` and so on. Saved views such as "My open deals" use them so
+they stay right for whoever opens them, whenever.
 
 **Record tab / record panel**
 A tab or side-panel card that an extension declares on another object's record page: a view spec

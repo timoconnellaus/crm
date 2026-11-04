@@ -10,7 +10,7 @@ and permission model as AI-written extensions, as principal `extension:deals`.
 | --- | --- | --- |
 | `deals.pipeline` | A sales process: name, order, description | `navigation: "settings"`; seeded: New business, Renewals |
 | `deals.stage` | A pipeline step: name, pipeline, order, type (`open`/`won`/`lost`), default probability, required fields | `navigation: "settings"`; seeded (below) |
-| `deals.deal` | name, value (base currency), pipeline (required), stage, status, expected close, probability, probability set by hand, weighted value (formula), owner, organisation, source, lost reason, next step and date, won/lost date | stage behaviour, `timelineLinks: ["organisation"]`, 6 indexes |
+| `deals.deal` | name, value (base currency), pipeline (default: the Default pipeline setting), stage, status, expected close, probability, probability set by hand, weighted value (formula), owner, organisation, source, lost reason, next step and date, won/lost date | stage behaviour, `timelineLinks: ["organisation"]`, 6 indexes |
 | `deals.participant` | A person on a deal and their role (decision maker, champion, influencer, user, other) | `navigation: "none"` |
 
 Seeded stages (stage rules in brackets):
@@ -42,10 +42,25 @@ multi-select of deal fields.
   average days in it; for won deals, the count, average days from entering the pipeline to winning
   and the value won. It reads `crm_stage_history` through `query.sql`.
 
-## Saved views
+## Views, tabs, settings and dashboards
 
-- Open deals (by expected close). Stage 4a's view types add the board, My open deals, Closing this
-  month and Won this quarter.
+- **Saved views** (shared, read-only, in the Deals views menu): My open deals (owner = you),
+  Closing this month, Won this quarter (relative values, ADR 0103), and Pipeline board (a board by
+  stage summing value; dragging a card runs the stage rules, and a refusal asks for the missing
+  field, e.g. the lost reason, then retries).
+- **Record tabs and panels** (ADR 0058): Deals on organisation pages (tab) and an Open deals panel;
+  Deals on person pages (the deals they take part in, with their role); People on a deal.
+- **Settings** (Settings → Extensions): Default pipeline (by name or id; "New business"), used
+  when a deal is created without a pipeline or stage.
+- **Dashboards** (read-only, copyable; ADR 0103):
+  - **Sales overview**, the default Home: won (vs the previous period), win rate, average deal
+    size, open pipeline, open pipeline by stage, weighted forecast by close month (value ×
+    probability), open pipeline by owner, won by month. Filters: Closed (date range, default this
+    quarter) and Owner.
+  - **Pipeline health**: slipped close dates and value at risk, days in current stage, stalled
+    deals (no activity or stage move in 14 days) and slipped deals.
+  - Every widget's click-through opens exactly the deals it counted
+    (`packages/core/test/deals-dashboards.test.ts`).
 
 ## Demo data
 
