@@ -1,4 +1,4 @@
-// Settings → Connected apps (ADR 0021): the MCP clients (Claude Desktop, claude.ai, Claude Code…)
+// Settings → Connected apps (ADR 0021): the external MCP clients
 // a user authorized over OAuth, with their scopes, when they connected and when they were last
 // used, and a revoke button. Admins also see every user's apps and can revoke any of them.
 // Revoking stops the app's access and refresh tokens at once (connectedApp.revoke).
@@ -67,7 +67,7 @@ function ConnectedAppsPage() {
         <AppList
           query={mine}
           label="Your connected apps"
-          empty="No apps connected yet. Add the address above as a custom connector in Claude."
+          empty="No apps connected yet. Add the address above as a custom connector in your MCP client."
           showUser={false}
         />
       </section>
@@ -76,7 +76,7 @@ function ConnectedAppsPage() {
   );
 }
 
-/** The /mcp address to paste into Claude's "Add custom connector". */
+/** The /mcp address to paste into an MCP client's "add custom connector" setting. */
 function McpAddress() {
   const [url, setUrl] = useState("");
   useEffect(() => setUrl(`${window.location.origin}/mcp`), []);
@@ -100,8 +100,8 @@ function McpAddress() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        In Claude Desktop or claude.ai: Settings → Connectors → Add custom connector, then paste
-        this address and sign in.
+        In your MCP client, add a custom connector (remote MCP server), paste this address and sign
+        in.
       </p>
     </div>
   );

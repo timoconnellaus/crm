@@ -5,7 +5,7 @@
 
 /** A problem found evaluating extension source (before the manifest exists). */
 export interface SourceIssue {
-  code: "syntax" | "import" | "entry" | "evaluate" | "too_large";
+  code: "syntax" | "import" | "entry" | "evaluate" | "too_large" | "type";
   path: string;
   message: string;
 }
@@ -48,6 +48,73 @@ export interface ShippedExtension {
   version: string;
 }
 
+/** An extension's working copy in the workspace (stage 3b, ADR 0041): edited, not committed. */
+export interface WorkingCopy {
+  id: string;
+  /** False when the workspace has no directory for this extension. */
+  exists: boolean;
+  /** The latest commit, or null before the first one. */
+  head: string | null;
+  files: Record<string, string>;
+  /** Paths that differ from `head` (added, modified or deleted). */
+  changed: string[];
+  /** A shipped extension copied into the workspace with extension.eject. */
+  ejected: boolean;
+}
+
+export interface WorkspaceEntry {
+  id: string;
+  head: string | null;
+  files: string[];
+  changed: boolean;
+  ejected: boolean;
+}
+
+/** Who a Code Mode script acts as (ADR 0042): the connected user's MCP (or assistant) actor. */
+export interface CodeCaller {
+  actor: "mcp" | "assistant";
+  user: { id: string; email: string; name: string; role: "admin" | "member" | "viewer" };
+  origin: {
+    surface: "mcp" | "ui";
+    clientId?: string;
+    clientName?: string;
+    sessionId?: string;
+  };
+  grantedPermissions?: string[];
+  /** Stored on anything the script's calls queue for approval. */
+  reason?: string;
+  approvalExpiryDays?: number;
+}
+
+export interface CodeLog {
+  level: "log" | "info" | "warn" | "error";
+  message: string;
+}
+
+export interface CodeOperationCall {
+  operation: string;
+  ok: boolean;
+  /** Error code when it failed. */
+  code?: string;
+  /** Queued for approval (pending action id) instead of applied. */
+  pendingActionId?: string;
+  ms: number;
+}
+
+export interface CodeResult {
+  ok: boolean;
+  /** The script's default export (awaited, called when a function), as JSON. */
+  value?: unknown;
+  error?: { code: string; message: string };
+  logs: CodeLog[];
+  operations: CodeOperationCall[];
+  /** The pending_approval results of calls the gate queued. */
+  pending: unknown[];
+  durationMs: number;
+  /** Set when logs, operations or the value were cut to the runtime limits. */
+  truncated?: boolean;
+}
+
 export interface ExtensionHost {
   /**
    * Writes `files` as `/extensions/<id>/` in the workspace (replacing what was there) and
@@ -77,4 +144,35 @@ export interface ExtensionHost {
   versions(id: string): Promise<ExtensionVersion[]>;
   /** The files of an extension at a commit. */
   files(id: string, commit: string): Promise<Record<string, string>>;
+
+  // --- Stage 3b: authoring (ADR 0041) and Code Mode (ADR 0042) ------------------------------
+
+  /** Every extension directory in the workspace, with its working-copy state. */
+  listWorkspace(): Promise<WorkspaceEntry[]>;
+  /** The working copy of `/extensions/<id>/` (uncommitted edits included). */
+  workingCopy(id: string): Promise<WorkingCopy>;
+  /**
+   * Writes files into the working copy without committing. `null` deletes a file; `replace`
+   * deletes every file not in `files`. Creates the directory (and its repository) if new.
+   */
+  writeFiles(input: {
+    id: string;
+    files: Record<string, string | null>;
+    replace: boolean;
+  }): Promise<WorkingCopy>;
+  /** Commits the working copy as it is. `changed` is false when it equals the last commit. */
+  commitWorkingCopy(input: {
+    id: string;
+    message: string;
+    author: { name: string; email: string };
+  }): Promise<{ commit: string; changed: boolean }>;
+  /** Copies a shipped extension's bundled source into its working copy and marks it ejected. */
+  eject(id: string): Promise<WorkingCopy>;
+  /** Runs a Code Mode script as `caller`, through the gate. */
+  runCode(input: { code: string; caller: CodeCaller }): Promise<CodeResult>;
+  /**
+   * Runs model role `build` on `prompt` (the AI-written summary of an extension change).
+   * Null when the deployment has no AI configured or the call fails.
+   */
+  describeChange(prompt: string): Promise<{ text: string; model: string } | null>;
 }

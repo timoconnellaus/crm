@@ -374,6 +374,11 @@ export async function invokeOperation<O extends AnyOperation>(
   let decision: GateDecision = gate.decision;
   // Bookkeeping (opening a change set, revoking a token) is never queued; deny still applies.
   if (op.bookkeeping && decision === "review") decision = "auto";
+  // Some changes always wait for a person (extension installs and upgrades, ADR 0041).
+  const forced =
+    op.alwaysReview === true ||
+    (Array.isArray(op.alwaysReview) && op.alwaysReview.includes(ctx.actor));
+  if (forced && decision === "auto" && !ctx.approval) decision = "review";
   // A write that refers to a record still pending creation can only be queued after it.
   const provisionalRefs = op.risk === "read" ? [] : findProvisionalIds(rawInput);
   if (decision === "auto" && provisionalRefs.length && !ctx.approval) decision = "review";
@@ -440,6 +445,8 @@ export async function invokeOperation<O extends AnyOperation>(
     now,
     db: ctx.db.query,
     floor: ctx.floor ?? {},
+    grantedPermissions: ctx.grantedPermissions,
+    reason: ctx.reason,
     write: (...statements) => {
       writes.push(...statements);
     },
@@ -470,6 +477,7 @@ export async function invokeOperation<O extends AnyOperation>(
           origin: nested.origin,
           grantedPermissions: nested.grantedPermissions,
           approval: nested.approval,
+          reason: nested.reason,
           ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
         });
       },

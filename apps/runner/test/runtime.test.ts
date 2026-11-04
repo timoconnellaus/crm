@@ -33,7 +33,7 @@ describe("sandbox", () => {
       id,
       source(
         id,
-        `tools: { ${tool("fetchIt", `return (await fetch("https://example.com")).status;`)} },`,
+        `tools: { ${tool("fetchIt", `return (await (globalThis as unknown as { fetch: (u: string) => Promise<{ status: number }> }).fetch("https://example.com")).status;`)} },`,
       ),
     );
     await expect(call(admin, `x.${id}.fetchIt`, {})).rejects.toMatchObject({
@@ -138,6 +138,11 @@ describe("failures and quarantine", () => {
     // A success resets the counter.
     expect(await call(admin, `x.${id}.boom`, { fail: false })).toBe("fine");
     expect((await extensionRow(id)).failure_count).toBe(0);
+    // A clean run on the last good commit changes nothing, so the row is not rewritten.
+    const before = (await extensionRow(id)).updated_at;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(await call(admin, `x.${id}.boom`, { fail: false })).toBe("fine");
+    expect((await extensionRow(id)).updated_at).toBe(before);
     for (let i = 0; i < 2; i++) {
       await expect(call(admin, `x.${id}.boom`, { fail: true })).rejects.toMatchObject({
         details: expect.objectContaining({ quarantined: false }),
@@ -164,6 +169,7 @@ describe("failures and quarantine", () => {
       "error",
       "error",
       "ok",
+      "ok",
       "error",
       "error",
       "error",
@@ -181,7 +187,7 @@ describe("versions and rollback", () => {
         id,
         `objects: { item: { label: "Item", plural: "Items", titleField: "name", fields: { name: { type: "text", label: "Name" } } } },
   permissions: { modules: ["crm"] },
-  tools: { ${tool("count", `return (await ctx.crm.call("record.list", { object: "${id}.item" })).items.length;`)} },`,
+  tools: { ${tool("count", `return (await ctx.crm.call<{ items: unknown[] }>("record.list", { object: "${id}.item" })).items.length;`)} },`,
       ),
     );
     const item = await call<{ id: string }>(admin, "record.create", {

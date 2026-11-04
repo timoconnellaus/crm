@@ -1,8 +1,11 @@
 // AC5: the shipped example extension is bundled, installed through extension.install at boot,
 // runs in the sandbox, and its schema, formula and tools work end to end.
+import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { installShippedExtensions } from "@crm/core";
 import { beforeAll, describe, expect, it } from "vitest";
+import type { ExtensionWorkspace } from "../src/extensions/workspace.ts";
+import { extensionWorkspace } from "../src/index.ts";
 import { auditFor, call, createAdmin, db, extensionRow, host, unique } from "./helpers.ts";
 
 let admin: Awaited<ReturnType<typeof createAdmin>>;
@@ -39,6 +42,29 @@ describe("shipped example extension", () => {
     expect(await installShippedExtensions({ db, host })).toEqual([
       { id: "example", outcome: "unchanged" },
     ]);
+  });
+
+  it("re-committing unchanged shipped source skips the workspace once it is recorded", async () => {
+    const { commit } = await host.commitShipped("example");
+    const stub = extensionWorkspace(env);
+    await runInDurableObject(stub, async (instance: ExtensionWorkspace, state) => {
+      const known = await state.storage.get<{ hash: string; commit: string }>("shipped:example");
+      expect(known?.commit).toBe(commit);
+      // Proof it short-circuits: a stale hash would force a rewrite, a matching one must not.
+      const writes: string[] = [];
+      const original = instance.workspace.fs.writeFile.bind(instance.workspace.fs);
+      instance.workspace.fs.writeFile = (async (path: string, ...rest: unknown[]) => {
+        writes.push(path);
+        // biome-ignore lint/suspicious/noExplicitAny: forwarding to the original signature
+        return (original as any)(path, ...rest);
+      }) as typeof instance.workspace.fs.writeFile;
+      try {
+        expect(await instance.commitShipped("example")).toEqual({ commit, changed: false });
+        expect(writes).toEqual([]);
+      } finally {
+        instance.workspace.fs.writeFile = original;
+      }
+    });
   });
 
   it("creates projects with a computed formula and lists them by it", async () => {

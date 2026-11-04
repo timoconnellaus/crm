@@ -10,7 +10,7 @@ import { tasks } from "../tasks.ts";
 // sources under this Node-typed package; vitest loads it at runtime like any other module.
 interface RegistryOperation {
   name: string;
-  mcp?: { curated?: boolean; expose?: boolean };
+  mcp?: { curated?: boolean; expose?: boolean; toolName?: string };
 }
 const coreSpecifier = "@crm/core";
 const { coreRegistry } = (await import(coreSpecifier)) as {
@@ -19,7 +19,9 @@ const { coreRegistry } = (await import(coreSpecifier)) as {
 const operations = coreRegistry.list();
 const exposed = operations.filter((op) => op.mcp?.expose !== false);
 const curatedTools = new Set([
-  ...exposed.filter((op) => op.mcp?.curated).map((op) => op.name.replace(/\./g, "_")),
+  ...exposed
+    .filter((op) => op.mcp?.curated)
+    .map((op) => op.mcp?.toolName ?? op.name.replace(/\./g, "_")),
   "describe_operations",
   "call_operation",
 ]);
@@ -42,7 +44,14 @@ describe("tasks", () => {
         "call_operation",
         "changeset_begin",
         "changeset_commit",
+        "code",
         "describe_operations",
+        "extension_check",
+        "extension_eject",
+        "extension_list",
+        "extension_propose",
+        "extension_read",
+        "extension_write",
         "organisation_create",
         "organisation_get",
         "organisation_update",

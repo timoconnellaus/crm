@@ -1,6 +1,7 @@
 // The pass/fail report: JSON for machines, Markdown for people, both under reports/.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ModelParams } from "./model.ts";
 
 export interface TaskResult {
   id: string;
@@ -21,7 +22,9 @@ export interface Report {
   startedAt: string;
   finishedAt: string;
   model: string;
-  effort: string;
+  /** Where the model was reached, e.g. "Workers AI". */
+  provider: string;
+  params: ModelParams;
   baseUrl: string;
   target: number;
   total: number;
@@ -34,7 +37,18 @@ export function summaryLine(report: Pick<Report, "passed" | "total" | "target">)
   return `${report.passed}/${report.total} passed (target ≥${report.target}: ${verdict})`;
 }
 
-const cell = (value: string) => value.replace(/\|/g, "\\|").replace(/\n+/g, " ");
+/** Escapes a value for a Markdown table cell. */
+export const cell = (value: string) => value.replace(/\|/g, "\\|").replace(/\n+/g, " ");
+
+/** "`model` via provider (temperature 0.2, max tokens 8000)" for a report header. */
+export function describeModel(model: string, provider: string, params: ModelParams = {}): string {
+  const parts = [
+    params.temperature !== undefined ? `temperature ${params.temperature}` : null,
+    params.maxTokens !== undefined ? `max tokens ${params.maxTokens}` : null,
+    params.reasoningEffort ? `reasoning effort ${params.reasoningEffort}` : null,
+  ].filter(Boolean);
+  return `\`${model}\` via ${provider}${parts.length ? ` (${parts.join(", ")})` : ""}`;
+}
 
 export function renderMarkdown(report: Report): string {
   const lines = [
@@ -42,7 +56,7 @@ export function renderMarkdown(report: Report): string {
     "",
     `**${summaryLine(report)}**`,
     "",
-    `- Model: \`${report.model}\` (effort ${report.effort})`,
+    `- Model: ${describeModel(report.model, report.provider, report.params)}`,
     `- Deployment: ${report.baseUrl}`,
     `- Started: ${report.startedAt}`,
     `- Finished: ${report.finishedAt}`,

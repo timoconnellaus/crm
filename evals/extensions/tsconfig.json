@@ -1,0 +1,7 @@
+{
+  "extends": "@crm/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["*.ts", "lib", "test", "reference"]
+}

@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { addDays, type HarnessDeps, makeSuffix, runTask, systemPrompt } from "../lib/harness.ts";
 import { tasks } from "../tasks.ts";
-import { fakeSession, message, scriptedModel, text, toolUse } from "./fakes.ts";
+import { fakeSession, reply, scriptedModel, toolCall } from "./fakes.ts";
 
 const mergeTask = tasks.find((t) => t.id === "merge");
 if (!mergeTask) throw new Error("merge task missing");
@@ -52,8 +52,8 @@ function deps(script: ReturnType<typeof scriptedModel>, crm: ReturnType<typeof f
       return session;
     },
     model: script.model,
-    modelId: "claude-opus-5-5",
-    effort: "high",
+    modelId: "@cf/test/model",
+    params: { temperature: 0 },
     maxTurns: 10,
     today: "2026-11-04",
     suffix: () => words.shift() ?? "Extra",
@@ -65,14 +65,14 @@ describe("runTask", () => {
   it("passes when the model queues the right merge and says so", async () => {
     const crm = fakeCrm();
     const script = scriptedModel([
-      message([
-        toolUse("call_operation", {
+      reply(null, [
+        toolCall("call_operation", {
           name: "person.merge",
           input: { survivorId: "per_1", mergedId: "per_2" },
           reason: "Dan and Daniel are the same person (duplicate)",
         }),
       ]),
-      message([text("The merge is queued and waiting for approval in the Approvals inbox.")]),
+      reply("The merge is queued and waiting for approval in the Approvals inbox."),
     ]);
     const { value, sessions, names } = deps(script, crm);
     const result = await runTask(mergeTask, value);
@@ -81,13 +81,17 @@ describe("runTask", () => {
     expect(result.passed).toBe(true);
     expect(result.toolCalls).toEqual(["call_operation(person.merge) ⏳"]);
     // Setup and the agent use separate connections, and both are closed.
-    expect(names).toEqual(["MCP eval setup (merge)", "Claude MCP eval (merge)"]);
+    expect(names).toEqual(["MCP eval setup (merge)", "Agent MCP eval (merge)"]);
     expect(sessions.every((s) => s.closed)).toBe(true);
     // Fixture names carry the run's unique word; the prompt uses them.
     expect([...crm.people.values()].map((p) => p.familyName)).toEqual(["Varodin", "Varodin"]);
     const firstRequest = script.requests[0];
-    expect(firstRequest?.messages[0]?.content).toContain("Daniel Varodin and Dan Varodin");
-    expect(firstRequest?.system).toBe("CRM instructions\n\nToday's date is 2026-11-04 (UTC).");
+    expect(firstRequest?.messages[0]).toEqual({
+      role: "system",
+      content: "CRM instructions\n\nToday's date is 2026-11-04 (UTC).",
+    });
+    expect(firstRequest?.messages[1]?.content).toContain("Daniel Varodin and Dan Varodin");
+    expect(firstRequest?.temperature).toBe(0);
     // Setup sends a reason with every call.
     expect(sessions[0]?.calls.find((c) => c.name === "person_create")?.args.reason).toBeTruthy();
   });
@@ -95,14 +99,14 @@ describe("runTask", () => {
   it("fails with reasons when the model merges the wrong way round and does not mention approval", async () => {
     const crm = fakeCrm();
     const script = scriptedModel([
-      message([
-        toolUse("call_operation", {
+      reply(null, [
+        toolCall("call_operation", {
           name: "person.merge",
           input: { survivorId: "per_2", mergedId: "per_1" },
           reason: "User asked",
         }),
       ]),
-      message([text("Done, merged.")]),
+      reply("Done, merged."),
     ]);
     const result = await runTask(mergeTask, deps(script, crm).value);
     expect(result.passed).toBe(false);

@@ -2,6 +2,7 @@
 // registry, read with the MCP TypeScript client. mcp-flows.test.ts covers AC3-7 and 9.
 import { coreRegistry } from "@crm/core";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { toolInputSchema } from "../src/server/mcp/tools.ts";
 import {
   appFor,
   call,
@@ -42,6 +43,14 @@ describe("OAuth discovery", () => {
 });
 
 describe("tools from the registry (AC2)", () => {
+  it("converts each operation's input schema once, not on every request", () => {
+    const op = coreRegistry.list().find((o) => o.mcp?.curated && o.risk !== "read");
+    if (!op) throw new Error("no curated write operation");
+    const first = toolInputSchema(op);
+    expect(toolInputSchema(op)).toBe(first);
+    expect((first.required as string[]).includes("reason")).toBe(true);
+  });
+
   it("lists curated tools with descriptions and hides non-MCP operations", async () => {
     const tokens = await connect(fetchApp, member);
     const client = await mcpClient(fetchApp, tokens.access_token);
@@ -49,7 +58,7 @@ describe("tools from the registry (AC2)", () => {
     const names = tools.map((t) => t.name);
     const curated = coreRegistry.list().filter((op) => op.mcp?.curated);
     for (const op of curated) {
-      const tool = tools.find((t) => t.name === op.name.replace(/\./g, "_"));
+      const tool = tools.find((t) => t.name === (op.mcp?.toolName ?? op.name.replace(/\./g, "_")));
       expect(tool, op.name).toBeDefined();
       expect(tool?.description?.length ?? 0).toBeGreaterThan(60);
       const schema = (tool?.inputSchema ?? {}) as Record<string, unknown>;

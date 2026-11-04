@@ -1,45 +1,53 @@
-// Test doubles: a scripted model and an in-memory MCP session.
-import type Anthropic from "@anthropic-ai/sdk";
-import type { ModelClient } from "../lib/agent.ts";
-import type { McpSession, ToolCallResult, ToolInfo } from "../lib/mcp.ts";
+// Test doubles: a scripted chat-completions model and an in-memory MCP session.
 
-type Block =
-  | { type: "text"; text: string }
-  | { type: "tool_use"; id: string; name: string; input: unknown };
+import type { McpSession, ToolCallResult, ToolInfo } from "../lib/mcp.ts";
+import type {
+  AssistantMessage,
+  ChatCompletionRequest,
+  ChatCompletionResponse,
+  ChatToolCall,
+  ModelClient,
+} from "../lib/model.ts";
 
 let ids = 0;
 
-export function toolUse(name: string, input: Record<string, unknown>): Block {
+/** A tool call as the model sends it: arguments are a JSON string. */
+export function toolCall(name: string, input: Record<string, unknown>): ChatToolCall {
   ids += 1;
-  return { type: "tool_use", id: `toolu_${ids}`, name, input };
-}
-
-export function text(value: string): Block {
-  return { type: "text", text: value };
-}
-
-export function message(content: Block[], stopReason?: Anthropic.StopReason): Anthropic.Message {
-  const stop = stopReason ?? (content.some((b) => b.type === "tool_use") ? "tool_use" : "end_turn");
-  // Only the fields the loop reads are filled in; the rest of Message does not matter here.
   return {
-    id: `msg_${ids}`,
-    type: "message",
+    id: `call_${ids}`,
+    type: "function",
+    function: { name, arguments: JSON.stringify(input) },
+  };
+}
+
+/** An assistant reply: optional text and tool calls. finish_reason follows from the calls. */
+export function reply(
+  content: string | null,
+  calls: ChatToolCall[] = [],
+  finishReason?: string,
+): ChatCompletionResponse {
+  const message: AssistantMessage = {
     role: "assistant",
-    model: "claude-opus-5-5",
     content,
-    stop_reason: stop,
-    stop_sequence: null,
-    usage: { input_tokens: 10, output_tokens: 5 },
-  } as unknown as Anthropic.Message;
+    ...(calls.length ? { tool_calls: calls } : {}),
+  };
+  return {
+    id: `chatcmpl_${ids}`,
+    choices: [
+      { index: 0, message, finish_reason: finishReason ?? (calls.length ? "tool_calls" : "stop") },
+    ],
+    usage: { prompt_tokens: 10, completion_tokens: 5 },
+  };
 }
 
 /** A model that replays `script` in order and records every request. */
-export function scriptedModel(script: Anthropic.Message[]) {
-  const requests: Anthropic.MessageCreateParamsNonStreaming[] = [];
+export function scriptedModel(script: ChatCompletionResponse[]) {
+  const requests: ChatCompletionRequest[] = [];
   const model: ModelClient = {
-    async createMessage(params) {
+    async createCompletion(request) {
       // Snapshot: the loop keeps appending to the same array.
-      requests.push({ ...params, messages: [...params.messages] });
+      requests.push({ ...request, messages: [...request.messages] });
       const next = script.shift();
       if (!next) throw new Error("the script ran out");
       return next;

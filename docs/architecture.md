@@ -118,7 +118,8 @@ How stage 3a built it ([ADR 0040](adr/0040-extension-runtime-build.md)):
   `record.*` operations, filters, saved views, search, CSV export and history work for them. Tools
   are operations `x.<ext>.<tool>`.
 - **Runtime** (`apps/runner/src/extensions/`): the `ExtensionWorkspace` DO holds each extension's
-  source in its own git repo, builds it (transpile + import check), and runs tools with the
+  source in its own git repo, builds it (transpile, import check and a TypeScript type check
+  against `@crm/sdk`'s declarations), and runs tools with the
   declared `codemode:crm`, `codemode:storage`, `codemode:log` and `codemode:ai` host modules. Code
   acts as principal `extension:<id>` (actor `extension`) within its declared permissions. Runs are
   recorded; 3 consecutive failures quarantine an extension; rollback reinstalls an earlier commit.
@@ -126,6 +127,30 @@ How stage 3a built it ([ADR 0040](adr/0040-extension-runtime-build.md)):
   and installed through the same `extension.install` path at boot.
 - **UI**: generic list and record pages at `/x/<ext>.<object>`, field widgets for every type,
   extension fields on core record pages, and Settings → Extensions.
+
+How stage 3b added authoring ([ADR 0041](adr/0041-extension-authoring-and-proposals.md)):
+
+```
+ MCP client ── extension.write ──► working copy (/extensions/<id>/, uncommitted)
+            ── extension.check ──► evaluate + typecheck + contract + formulas + dry-run reconcile
+            ── extension.propose ─► commit ─► check ─► diff + host-computed impact (+ build-role
+                                    summary) ─► pending action `extension.apply` (risk extension)
+ Approvals inbox ── approve ──► approval.approve re-runs extension.apply as the proposer
+                                 └─► installExtension: DDL + state + audit + pending status, one batch
+```
+
+- `extension.apply` is `alwaysReview`: whatever the actor or preset, it is queued, so a version
+  that widens permissions never auto-applies. Approving one needs an admin (`extensions:manage`).
+  `extension.approve` / `extension.reject` are the same decision as the inbox, for one proposal.
+- The review detail (diff, impact, check, AI summary) is stored by proposal in
+  `core_extension_proposals` (migration 0030) and shown on the approval screen.
+- Shipped extensions can be extended from another extension but not written in place;
+  `extension.eject` copies one into the working copy, and its approved proposal turns it into a
+  runtime extension that releases no longer update.
+- **Code Mode** ([ADR 0042](adr/0042-code-mode.md)): the MCP `code` tool (operation `code.run`)
+  runs a client model's script in a Dynamic Worker as the connected user's `mcp` actor; each
+  `crm.call` goes through the pipeline with that user's role, scopes and session, so gates, pending
+  actions and simulated reads behave exactly as for tool calls.
 
 ### 5. Integrations
 
@@ -194,6 +219,10 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
 **Model roles** (`build`, `assistant`, `summarise`, `extract`, `classify`, `embed`, `vision`,
 `review`) map to a provider and model in a core model registry, which checks capabilities. All calls
 go through AI Gateway ([ADR 0009](adr/0009-model-roles.md)). Code asks for a role, never a model.
+Workers AI is the default provider for every role. So far the minimal mapping in
+`packages/core/src/models.ts` covers `summarise`, `extract`, `classify` (extension code) and
+`build` (the AI-written summary on an extension proposal); without an `ai` binding on crm-runner
+those features say no AI is available.
 
 ### 9. Dashboards and views
 

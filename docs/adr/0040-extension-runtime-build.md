@@ -91,3 +91,25 @@ operation, and crm-runner exposes it as `installShipped()` for deploy scripts.
   the old object name.
 - The SDK bundle is about 470 KB per execution; trim it (zod mini, no validation code in the
   sandbox) if cold executions matter.
+
+## Amendment, 2026-11-04 (stage 3b build)
+- **Full TypeScript checking.** `extension.check` (and every build) now type-checks extension
+  source against `@crm/sdk`'s declarations with the TypeScript compiler API over an in-memory host,
+  in the workspace DO (`apps/runner/src/extensions/typecheck.ts`), after the sucrase build and
+  import rules pass. Issues are stage `typecheck`, code `type`, path the file and message
+  `line:col message (TSnnnn)`. Options: strict, ES2022 libs without DOM, `isolatedModules`, no
+  `types`. The declarations (the SDK's emitted `.d.ts`, the zod 4 `.d.cts` files it reaches, the
+  ES2022 libs; 448 KiB raw, about 58 KB gzipped) are generated at build time by
+  `scripts/bundle.mjs`, as is an ESM bundle of the compiler with `process.browser` set (importing
+  `typescript` directly under `nodejs_compat` crashes at load). Measured: the Worker grows from
+  767 KiB to 2,036 KiB gzipped (10 MB limit); a check of the example takes ~220 ms cold and
+  ~100–150 ms warm in workerd; parsed declarations stay cached (~38 MB live), and a check peaks
+  ~40 MB above that, so memory is the tightest limit for very large extensions. The compiler
+  module is imported lazily on the first build, so isolates that never build skip its ~130 ms
+  start-up. Consequence: strict typing applies to AI-written code, e.g. `ctx.crm.call<T>()`
+  results are `unknown` unless typed and `catch (error)` binds `unknown` (the SDK README says
+  so).
+- **Authoring** (write, propose, approve, reject, eject) and the approval screen are in ADR 0041;
+  `installExtension` gained an `eject` option that lets an approved proposal turn a shipped
+  extension into a runtime one. Install failures now name the first issue in the error message.
+- **Code Mode** runs in the same DO and backend (ADR 0042).
