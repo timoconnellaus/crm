@@ -38,6 +38,14 @@ model-facing description, a permission and a risk class. It is exposed as a serv
 tool and a host module.
 _Avoid_: endpoint, action (an "action" is a gatekeeper term, below)
 
+**Permission**
+What an operation requires of the caller's role: `records:read`, `records:write`, `records:erase`,
+`audit:read`, `users:manage`, `policy:manage`. Viewers have read; members read and write; admins all.
+
+**Field registry**
+Per-object field definitions (name, type, filterable, sortable, `track`). Filters, sorts and
+timeline tracking are validated against it.
+
 **Risk class**
 How dangerous an operation is: `read`, `write`, `bulk-write`, `destructive`, `schema`, `extension`,
 `outbound`.
@@ -51,7 +59,10 @@ Gate → adjudicator → human queue, configured per org. It decides whether an 
 automatically, is denied, or waits.
 
 **Floor**
-Deploy-time (env) rules the per-org policy can never loosen.
+Deploy-time (env `APPROVAL_FLOOR`) rules the per-org policy can never loosen.
+
+**Preset**
+The org's approval policy: Cautious, Balanced (default) or Autonomous. Changed by human admins only.
 
 **Adjudicator**
 The optional AI reviewer (model role `review`) that judges pending changes against the org's

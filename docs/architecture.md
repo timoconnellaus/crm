@@ -59,7 +59,11 @@ definition:
 | MCP tool | Claude and other MCP clients |
 | host module (`codemode:crm`) | extension code in dynamic workers |
 
-Every call passes through the **approval pipeline** before it takes effect.
+Every call passes through the **approval pipeline** before it takes effect. In code that is
+`invoke()` in `packages/core` (ADR 0018): validate → gate → role check → handler → one D1 batch
+holding the handler's writes, timeline activities and the audit row with field diffs. Handlers
+read with Kysely and queue writes; list operations take filter JSON validated against the **field
+registry** and compiled to parameterised SQL. `packages/core/README.md` shows how to add one.
 
 ### 3. Data
 
@@ -70,8 +74,9 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
   queue and the audit log.
 - **Extension schema** (`x_<extension>_*` tables): declared in extension code (`defineObject`) and
   reconciled into D1 by the host, additive-first. Core migrations never touch `x_` tables.
-- **`crm.*` views**: generated read views with friendly names. They are what dashboard SQL and AI
-  queries run against.
+- **`crm.*` views**: generated read views with friendly names, spelled `crm_people`,
+  `crm_organisations`, … because D1 has no schemas (ADR 0015 amendment). They are what list
+  operations, dashboard SQL and AI queries run against.
 - **R2** holds attachments and imports.
 
 Core migrations are plain SQL in `packages/db/migrations`. Both Workers point their `DB` binding's
