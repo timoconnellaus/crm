@@ -127,6 +127,9 @@ export function triggerObject(trigger: AutomationManifest["trigger"]): string | 
     case "dateRelative":
     case "manual":
       return trigger.object;
+    // The synced email or meeting (an activity) is the trigger record.
+    case "syncEvent":
+      return "activity";
     default:
       return null;
   }
@@ -303,7 +306,40 @@ export function checkAutomation(
         contract(`${path}.trigger.object`, `Unknown object "${trigger.object}"`);
       }
       break;
+    case "webhook":
+      if (trigger.events && new Set(trigger.events).size !== trigger.events.length) {
+        contract(`${path}.trigger.events`, "List each event type once");
+      }
+      break;
+    case "syncEvent":
+      if (!canRead("activity")) {
+        contract(
+          "permissions.read",
+          `Automation ${name} runs on synced activities: add "activity" to permissions.read`,
+        );
+      }
+      break;
   }
+
+  // 1b. Connections it needs (ADR 0170): bound by a person, reached through the gatekeeper module.
+  const slots = new Set<string>();
+  (automation.connections ?? []).forEach((connection, i) => {
+    const at = `${path}.connections.${i}`;
+    if (!NAME_RE.test(connection.id)) {
+      contract(`${at}.id`, `Connection id "${connection.id}" must be camelCase, e.g. mailbox`);
+    }
+    if (slots.has(connection.id)) {
+      contract(`${at}.id`, `Connection id "${connection.id}" is declared twice`);
+    }
+    slots.add(connection.id);
+    if (!perms.modules.includes(connection.gatekeeper)) {
+      contract(
+        `${at}.gatekeeper`,
+        `The connection uses the ${connection.gatekeeper} gatekeeper: add "${connection.gatekeeper}" ` +
+          "to permissions.modules",
+      );
+    }
+  });
 
   // 2. Conditions.
   if (automation.conditions) {

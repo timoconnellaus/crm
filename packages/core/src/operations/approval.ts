@@ -671,7 +671,8 @@ async function emitDecisions(
   bindings?: ReadonlyMap<string, Record<string, string>>,
 ): Promise<void> {
   if (!ctx.events) return;
-  await emitEvents(
+  await emitDurably(
+    ctx.pipeline.crm,
     ctx.events,
     decisionMessages(
       rows,
@@ -1059,10 +1060,23 @@ export const approvalReject = defineOperation({
     const outbound = [...targets, ...cascaded].filter((r) => r.connection_id !== null);
     const output = { results, counts: counts(results) };
     if (!outbound.length && !ctx.events) return output;
+    // The decisions are known now: their events go in this batch's outbox (ADR 0171).
+    const events = ctx.events;
+    const outbox = events
+      ? outboxEntries(
+          decisionMessages(
+            [...targets, ...cascaded],
+            () => "rejected",
+            { actor: "human", userId: ctx.user.id, origin: ctx.origin, operation: ctx.operation },
+            ctx.now,
+          ),
+        )
+      : [];
+    if (outbox.length) ctx.write(...outboxInserts(ctx.pipeline.crm, outbox, ctx.now));
     const integrations = ctx.integrations;
     return ctx.afterCommit(async () => {
       await rejectOnFacets(integrations, outbound);
-      await emitDecisions(ctx, [...targets, ...cascaded], () => "rejected");
+      if (events && outbox.length) await deliverOutbox(ctx.pipeline.crm, events, outbox);
       return output;
     });
   },

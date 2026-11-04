@@ -342,6 +342,7 @@ export function toManifest(extension: Extension): ExtensionManifest {
           steps: automation.steps,
           ...(automation.onRejected ? { onRejected: automation.onRejected } : {}),
           ...(automation.rails ? { rails: automation.rails } : {}),
+          ...(automation.connections?.length ? { connections: automation.connections } : {}),
         },
       ]),
     ),

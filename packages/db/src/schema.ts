@@ -30,6 +30,8 @@ export interface CoreUserTable {
   role: ColumnType<UserRole, UserRole | undefined, UserRole>;
   /** `extension` rows are extension principals (migration 0020); they never sign in. */
   kind: ColumnType<UserKind, UserKind | undefined, UserKind>;
+  /** Migration 0170: a deactivated person cannot sign in or act. */
+  deactivated_at: ColumnType<string | null, string | null | undefined, string | null>;
 }
 
 export type UserKind = "human" | "extension";
@@ -604,6 +606,49 @@ export interface CoreNotificationsTable {
   created_at: string;
 }
 
+/** Migration 0170 (ADR 0170): a person's consent that an automation uses a connection. */
+export interface CoreAutomationBindingTable {
+  automation_id: string;
+  slot: string;
+  gatekeeper: string;
+  purpose: string;
+  connection_id: string;
+  bound_by: string;
+  bound_at: string;
+  revoked_at: string | null;
+  revoked_by: string | null;
+  revoke_reason: string | null;
+}
+
+/** Migration 0171 (ADR 0171): automation events written with the change, sent after commit. */
+export interface CoreAutomationOutboxTable {
+  id: string;
+  messages: string;
+  attempts: ColumnType<number, number | undefined, number>;
+  next_at: string;
+  last_error: string | null;
+  created_at: string;
+}
+
+/** Migration 0172 (ADR 0172): a person's notification channels per type and the digest. */
+export interface CoreNotificationPreferenceTable {
+  user_id: string;
+  channels: ColumnType<string, string | undefined, string>;
+  digest: ColumnType<number, number | undefined, number>;
+  updated_at: string;
+}
+
+/** Migration 0172: one external delivery (email / Slack), keyed for exactly-once sending. */
+export interface CoreNotificationDeliveryTable {
+  key: string;
+  kind: "notification" | "escalation" | "digest" | "route";
+  channel: "email" | "slack";
+  user_id: string | null;
+  status: "sending" | "sent" | "pending" | "failed" | "skipped";
+  detail: string | null;
+  created_at: string;
+}
+
 export interface CoreExtensionKvTable {
   extension_id: string;
   key: string;
@@ -978,6 +1023,10 @@ export interface CoreDatabase {
   core_automation_run_records: CoreAutomationRunRecordsTable;
   core_automation_counters: CoreAutomationCountersTable;
   core_notifications: CoreNotificationsTable;
+  core_automation_binding: CoreAutomationBindingTable;
+  core_automation_outbox: CoreAutomationOutboxTable;
+  core_notification_preference: CoreNotificationPreferenceTable;
+  core_notification_delivery: CoreNotificationDeliveryTable;
   crm_stage_history: CrmStageHistoryView;
   crm_users: CrmUsersView;
   crm_people: CrmPeopleView;

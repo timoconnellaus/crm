@@ -10,7 +10,14 @@
 // declared step of the matching kind. Effects a step did not declare are still gated at run time
 // (and flagged in the run history), never silently allowed.
 import { z } from "zod";
-import type { ExtensionContext, FilterOp, StageType, ViewFilter } from "./contract.ts";
+import {
+  type ExtensionContext,
+  type FilterOp,
+  GATEKEEPER_MODULES,
+  type GatekeeperModuleName,
+  type StageType,
+  type ViewFilter,
+} from "./contract.ts";
 
 // ---------------------------------------------------------------------------------------------
 // Durations
@@ -59,8 +66,24 @@ export type ValueMatch =
   | { stageType: StageType };
 
 /**
- * What starts a run. Inbound webhooks and sync events arrive with integrations (stage 6b) as
- * further trigger types; the host dispatches each kind of event to its own trigger source.
+ * Sync events (stage 6, ADR 0112): what the built-in email and calendar sync records when it
+ * writes, updates or removes an activity. `meeting.scheduled` is a new meeting (the sync service
+ * records it as `meeting.created`; both names match it).
+ */
+export const SYNC_EVENT_TYPES = [
+  "email.received",
+  "email.sent",
+  "email.deleted",
+  "meeting.scheduled",
+  "meeting.created",
+  "meeting.updated",
+  "meeting.cancelled",
+] as const;
+export type SyncEventType = (typeof SYNC_EVENT_TYPES)[number];
+
+/**
+ * What starts a run. Inbound webhooks and sync events (stage 6b) come from integrations; the host
+ * dispatches each kind of event to its own trigger source.
  */
 export type AutomationTrigger =
   | {
@@ -123,6 +146,31 @@ export type AutomationTrigger =
       operation?: string;
       /** Only actions touching records of this object. */
       object?: string;
+    }
+  | {
+      /**
+       * A verified delivery to an inbound webhook endpoint (the `webhook` gatekeeper, ADR 0113).
+       * The run gets the typed event in `event.integration` (`payload.payload` is the sender's
+       * JSON).
+       */
+      type: "webhook";
+      /** The endpoint id an admin set up (`webhook://endpoint/<id>`), e.g. `stripe-billing`. */
+      endpoint: string;
+      /** Only these event types (e.g. `invoice.paid`). Omitted: every event. */
+      events?: readonly string[];
+    }
+  | {
+      /**
+       * Email or calendar sync wrote, changed or removed an activity (ADR 0112). The trigger
+       * record is that activity; the event carries ids only, never content.
+       */
+      type: "syncEvent";
+      event: SyncEventType;
+      /**
+       * Only when the email or meeting is linked to a known `person`, a known `organisation`, or
+       * (the default) `either`. Sync records activities only for known people and organisations.
+       */
+      from?: "person" | "organisation" | "either";
     };
 
 export type AutomationTriggerType = AutomationTrigger["type"];
@@ -133,7 +181,24 @@ export const AUTOMATION_TRIGGER_TYPES = [
   "dateRelative",
   "manual",
   "approvalDecided",
+  "webhook",
+  "syncEvent",
 ] as const satisfies readonly AutomationTriggerType[];
+
+/**
+ * A connection an automation needs (ADR 0051, ADR 0170). When the automation is approved or
+ * installed, a person binds each one to a connection they own or to an org connection; steps then
+ * reach it with `ctx.gatekeeper(gatekeeper).call(id, resource, method, ...args)`, acting as that
+ * connection's owner. Until every declared connection is bound, the automation does not run.
+ */
+export interface AutomationConnection {
+  /** camelCase, unique within the automation: what steps pass as the connection id. */
+  id: string;
+  /** The gatekeeper (host module) it is a connection of; declare it in permissions.modules. */
+  gatekeeper: GatekeeperModuleName;
+  /** Why it needs it, shown to the person binding it ("Send the welcome email"). */
+  purpose: string;
+}
 
 // ---------------------------------------------------------------------------------------------
 // Steps and their intents
@@ -260,6 +325,17 @@ export interface AutomationEvent {
     decision: "approved" | "rejected";
     records: { object: string; id: string }[];
   };
+  /**
+   * webhook / syncEvent: the integration event. Webhooks carry the sender's verified JSON in
+   * `payload.payload`; sync events carry ids only (`activityId`, `personIds`, `organisationIds`).
+   */
+  integration?: {
+    eventId: string;
+    source: "webhook" | "sync";
+    type: string;
+    connectionId: string | null;
+    payload: unknown;
+  };
   /** True in test mode: writes are simulated, waits are skipped. */
   test: boolean;
 }
@@ -310,6 +386,8 @@ export interface AutomationSpec<T extends AutomationTrigger = AutomationTrigger>
   steps: readonly AutomationStep[];
   onRejected?: OnRejected;
   rails?: AutomationRails;
+  /** Connections it needs, bound by a person when it is approved or installed. */
+  connections?: readonly AutomationConnection[];
   run(event: AutomationEvent, step: AutomationStepApi, ctx: AutomationContext): Promise<unknown>;
 }
 
@@ -376,7 +454,33 @@ export const automationTriggerSchema = z.discriminatedUnion("type", [
       object: objectName.optional(),
     })
     .strict(),
+  z
+    .object({
+      type: z.literal("webhook"),
+      endpoint: z
+        .string()
+        .min(1)
+        .max(64)
+        .regex(/^[a-z0-9][a-z0-9_-]*$/, "Endpoint ids are lowercase letters, digits, - and _"),
+      events: z.array(z.string().min(1).max(200)).min(1).max(50).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("syncEvent"),
+      event: z.enum(SYNC_EVENT_TYPES),
+      from: z.enum(["person", "organisation", "either"]).optional(),
+    })
+    .strict(),
 ]);
+
+export const automationConnectionSchema = z
+  .object({
+    id: z.string().min(1).max(40),
+    gatekeeper: z.enum(GATEKEEPER_MODULES),
+    purpose: z.string().min(1).max(200),
+  })
+  .strict();
 
 export const durationSchema = z.union([
   z.number().int().min(0),
@@ -496,6 +600,7 @@ export const automationManifestSchema = z.object({
   steps: z.array(automationStepSchema).min(1).max(50),
   onRejected: onRejectedSchema.optional(),
   rails: automationRailsSchema.optional(),
+  connections: z.array(automationConnectionSchema).max(10).optional(),
 });
 export type AutomationManifest = z.infer<typeof automationManifestSchema>;
 

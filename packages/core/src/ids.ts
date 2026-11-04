@@ -35,6 +35,10 @@ export const ID_PREFIXES = {
   automationRun: "arn",
   /** Notifications (ADR 0132). */
   notification: "ntf",
+  /** Automation events outbox rows (ADR 0171). */
+  outbox: "obx",
+  /** Admin notification channel routes (ADR 0172). */
+  notificationRoute: "nrt",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
