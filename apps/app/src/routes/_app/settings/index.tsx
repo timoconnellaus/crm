@@ -15,7 +15,7 @@ function Section({
   icon: ReactNode;
   title: string;
   description: string;
-  to?: "/settings/approval-policy";
+  to?: "/settings/approval-policy" | "/settings/users" | "/settings/audit";
 }) {
   const body = (
     <Card className="h-full transition-colors hover:bg-accent/50">
@@ -59,18 +59,24 @@ function SettingsPage() {
           }
           to="/settings/approval-policy"
         />
-        {/* TODO(stage-1-wire): users and roles (user.list, user.setRole), admin only. */}
         <Section
           icon={<UsersIcon className="size-5" />}
           title="Users and roles"
-          description="Coming soon: invite people and set their roles."
+          description={
+            isAdmin
+              ? "See who can sign in and set their roles."
+              : "See who can sign in and their roles."
+          }
+          to="/settings/users"
         />
-        {/* TODO(stage-1-wire): the Audit page (audit.list), admin only. */}
-        <Section
-          icon={<ScrollTextIcon className="size-5" />}
-          title="Audit log"
-          description="Coming soon: every change, who made it and how."
-        />
+        {isAdmin && (
+          <Section
+            icon={<ScrollTextIcon className="size-5" />}
+            title="Audit log"
+            description="Every change, who made it and how."
+            to="/settings/audit"
+          />
+        )}
       </div>
     </div>
   );
