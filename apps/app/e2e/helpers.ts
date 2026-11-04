@@ -48,7 +48,8 @@ export async function createPerson(
   await dialog.getByRole("button", { name: "Create person" }).click();
   await expect(page).toHaveURL(/\/people\/per_/);
   // Wait out the closing animation, so a following create cannot grab the closing dialog.
-  await expect(dialog).toBeHidden();
+  // (data-state flips to closed before the animation ends, so wait for the element to go.)
+  await expect(page.getByRole("dialog", { name: "New person" })).toHaveCount(0);
   const name = [person.given, person.family].filter(Boolean).join(" ");
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   return page.url().split("/people/")[1]?.split("?")[0] ?? "";
