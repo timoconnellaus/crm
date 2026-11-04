@@ -64,3 +64,18 @@ export function tableRows(page: Page) {
     .getByRole("table", { name: "People" })
     .locator("tbody tr:not(:has([data-testid=empty-state]))");
 }
+
+/** Drags `source` onto `target`; on phones (touch) uses the card's own "Move to" menu instead. */
+export async function moveCard(page: Page, source: Locator, target: Locator, menuChoice: string) {
+  if (isPhone(page)) {
+    // The menu can re-render while the board settles; reopen it until the choice takes.
+    await expect(async () => {
+      if (!(await page.getByRole("menuitem", { name: menuChoice }).isVisible())) {
+        await source.getByRole("button", { name: /^Move / }).click();
+      }
+      await page.getByRole("menuitem", { name: menuChoice }).click({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
+    return;
+  }
+  await source.dragTo(target);
+}

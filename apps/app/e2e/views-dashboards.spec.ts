@@ -1,9 +1,8 @@
-// Stage 4a: view types and dashboards, desktop and phone. A board drag that a stage rule refuses
-// asks for the missing field; a calendar drag moves a task's due date; people as a gallery; the
-// Overview Home renders, follows its filters and clicks through to the records it counted;
-// "Describe a widget" (with the local stand-in model) builds a widget; the example extension's
-// Projects tab shows on organisation pages.
-import { expect, type Locator, type Page, test } from "@playwright/test";
+// Stage 4a: view types and dashboards, desktop and phone. A calendar drag moves a task's due date;
+// people as a gallery; the Overview renders, follows its filters and clicks through to the
+// records it counted; "Describe a widget" (with the local stand-in model) builds a widget. The
+// board, record tab, panel and extension settings run on the Deals extension in deals.spec.ts.
+import { expect, test } from "@playwright/test";
 import {
   createPerson,
   expectNoHorizontalScroll,
@@ -12,60 +11,8 @@ import {
   pressUntil,
   unique,
 } from "./helpers.ts";
-import { createOrganisation } from "./org-helpers.ts";
 
 const q = (value: unknown) => encodeURIComponent(JSON.stringify(value));
-
-/** Drags `source` onto `target`; on phones (touch) uses the card's own "Move to" menu instead. */
-async function moveCard(page: Page, source: Locator, target: Locator, menuChoice: string) {
-  if (isPhone(page)) {
-    // The menu can re-render while the board settles; reopen it until the choice takes.
-    await expect(async () => {
-      if (!(await page.getByRole("menuitem", { name: menuChoice }).isVisible())) {
-        await source.getByRole("button", { name: /^Move / }).click();
-      }
-      await page.getByRole("menuitem", { name: menuChoice }).click({ timeout: 2_000 });
-    }).toPass({ timeout: 20_000 });
-    return;
-  }
-  await source.dragTo(target);
-}
-
-test("board: a stage rule asks for the missing field, then the card moves", async ({ page }) => {
-  const name = `Board ${unique()}`;
-  await open(page, "/x/example.project");
-  await page.getByRole("button", { name: "New project" }).first().click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Name").fill(name);
-  await dialog.getByRole("button", { name: "Create project" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
-
-  const layout = { groupBy: "status", sumField: "budget", cardFields: ["budget", "spent"] };
-  await open(
-    page,
-    `/x/example.project?vt=board&layout=${q(layout)}&filter=${q({ field: "name", op: "eq", value: name })}`,
-  );
-  const board = page.getByTestId("board");
-  const none = board.getByTestId("board-column-__none__");
-  const done = board.getByTestId("board-column-done");
-  const card = none.getByTestId("board-card").filter({ hasText: name });
-  await expect(card).toBeVisible();
-  await expect(none.getByTestId("board-column-count")).toHaveText("1");
-  await expect(done.getByTestId("board-column-count")).toHaveText("0");
-
-  // Done needs Spent: the move is refused and a dialog asks for it.
-  await moveCard(page, card, done, "Done");
-  const ask = page.getByTestId("missing-field-dialog");
-  await expect(ask).toBeVisible();
-  await expect(ask).toContainText("Spent");
-  await ask.getByLabel("Spent").fill("250");
-  await ask.getByRole("button", { name: "Move" }).click();
-
-  await expect(done.getByTestId("board-card").filter({ hasText: name })).toBeVisible();
-  await expect(done.getByTestId("board-column-count")).toHaveText("1");
-  await expect(none).toHaveCount(0);
-  await expectNoHorizontalScroll(page);
-});
 
 function dayKey(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -125,8 +72,9 @@ test("people as a gallery", async ({ page }) => {
   await expect(page.getByRole("table", { name: "People" })).toBeVisible();
 });
 
-test("the Overview Home renders, follows its filters and clicks through", async ({ page }) => {
-  await open(page, "/");
+test("the Overview renders, follows its filters and clicks through", async ({ page }) => {
+  // With Deals installed, Home is Sales overview (deals.spec.ts); the Overview is a dashboard.
+  await open(page, "/dashboards/dsh_overview");
   await expect(page.getByRole("heading", { level: 1, name: "Overview" })).toBeVisible();
   const kpi = page.getByTestId("widget-people-added");
   await expect(kpi.getByTestId("kpi-value")).toBeVisible();
@@ -178,17 +126,4 @@ test("describe a widget with the local model, and save it to a new dashboard", a
   await widget.getByRole("button", { name: /actions$/ }).click();
   await page.getByRole("menuitem", { name: "View SQL" }).click();
   await expect(page.getByTestId("widget-sql")).toContainText("FROM crm_tasks");
-});
-
-test("the example extension's Projects tab on an organisation page", async ({ page }) => {
-  const name = `Tabbed ${unique()}`;
-  await createOrganisation(page, { name });
-  await page.getByRole("tab", { name: "Projects" }).click();
-  await expect(page).toHaveURL(/tab=x%3Aexample\.projects|tab=x:example\.projects/);
-  await expect(page.getByTestId("record-main")).toContainText(/No projects yet|Name/);
-  // Its panel (a board of the organisation's projects) is in the side panel on desktop.
-  if (!isPhone(page)) {
-    await page.getByRole("tab", { name: "Overview" }).click();
-    await expect(page.getByTestId("record-panel-example.projectBoard")).toBeVisible();
-  }
 });

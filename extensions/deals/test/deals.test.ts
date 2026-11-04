@@ -17,6 +17,34 @@ describe("deals extension (test host)", () => {
       "participant",
     ]);
     expect(Object.keys(host.manifest.tools)).toEqual(["stageMetrics"]);
+    // Phase 2: a Deals tab on organisations and people, People on a deal, an open-deals panel,
+    // the default pipeline setting, four shipped views and two dashboards.
+    expect(host.manifest.recordTabs.organisationDeals).toMatchObject({
+      on: "organisation",
+      view: { type: "table", object: "deals.deal", relation: "organisation" },
+    });
+    expect(host.manifest.recordTabs.personDeals?.view).toMatchObject({
+      object: "deals.participant",
+      relation: "person",
+    });
+    expect(Object.keys(host.manifest.recordPanels)).toEqual(["organisationOpenDeals"]);
+    expect(host.manifest.settings.defaultPipeline).toMatchObject({
+      type: "text",
+      default: "New business",
+    });
+    expect(Object.values(host.manifest.views).map((v) => v.label)).toEqual([
+      "My open deals",
+      "Closing this month",
+      "Won this quarter",
+      "Pipeline board",
+    ]);
+    expect(host.manifest.views.pipelineBoard).toMatchObject({ type: "board", groupBy: "stage" });
+    expect(
+      Object.values(host.manifest.dashboards).map((d) => [d.title, d.home ?? false]),
+    ).toEqual([
+      ["Sales overview", true],
+      ["Pipeline health", false],
+    ]);
     expect(host.manifest.objects.deal?.stages).toMatchObject({
       field: "stage",
       group: "pipeline",
