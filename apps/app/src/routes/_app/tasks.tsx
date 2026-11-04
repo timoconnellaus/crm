@@ -1,7 +1,9 @@
-// Tasks: "My tasks" (task.listMine, grouped by due date in the browser's timezone) and an
-// all-tasks table (task.list, virtualised with infinite scroll) with status/assignee quick
-// filters and the filter builder. The header (title, live count, tabs, filters) stays fixed.
-// Quick-add with `c`, the New task button or the command palette.
+// Tasks: "My tasks" (task.listMine, grouped by due date in the browser's timezone) and all tasks
+// (task.list, virtualised with infinite scroll) as a table, a board by status or a calendar by
+// due date, with status/assignee quick filters, the filter builder and saved views. The view
+// (filter, sort, type) lives in the URL, so dashboard click-throughs land on a filtered list.
+// The header (title, live count, tabs, filters) stays fixed. Quick-add with `c`, the New task
+// button or the command palette.
 import { type Filter, type Sort, taskObject } from "@crm/core/client";
 import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
@@ -30,16 +32,28 @@ import { PageCount, PageLayout } from "#/components/layout/page-layout";
 import { toTaskItem, useTaskActions } from "#/components/record/adapters";
 import { formatDue, isOverdue, TaskList } from "#/components/record/tasks";
 import { RecordLink } from "#/components/record/timeline";
+import { ObjectViewBody, scrollFor, ViewTypeSwitcher } from "#/components/views/object-views";
+import { SavedViewsMenu } from "#/components/views/saved-views-menu";
+import {
+  parseViewSearch,
+  useViewState,
+  type ViewSearch,
+  type ViewStateApi,
+} from "#/components/views/view-state";
 import { countQueryOptions } from "#/lib/count";
 import { callOp } from "#/lib/operations";
 import { errorMessage, useOp } from "#/lib/query";
+import { useObjectInfo } from "#/lib/schema";
 import { useUserLabel, useUsers } from "#/lib/users-adapter";
 
 type TasksTab = "mine" | "all";
+type TasksSearch = ViewSearch & { tab?: TasksTab };
 
 export const Route = createFileRoute("/_app/tasks")({
-  validateSearch: (search: Record<string, unknown>): { tab?: TasksTab } =>
-    search.tab === "all" ? { tab: "all" } : {},
+  validateSearch: (search: Record<string, unknown>): TasksSearch => ({
+    ...(search.tab === "all" ? { tab: "all" as const } : {}),
+    ...parseViewSearch(taskObject, search),
+  }),
   component: TasksPage,
 });
 
@@ -52,10 +66,17 @@ function browserTimeZone(): string {
 }
 
 function TasksPage() {
-  const { tab = "mine" } = Route.useSearch();
+  const search = Route.useSearch();
+  const { tab = "mine" } = search;
   const navigate = useNavigate({ from: "/tasks" });
+  const setSearch = useCallback(
+    (update: (current: TasksSearch) => TasksSearch) => navigate({ search: update, replace: true }),
+    [navigate],
+  );
+  const view = useViewState({ object: taskObject, defaults: TASK_DEFAULTS, search, setSearch });
   const { create } = useAppCommands();
-  const all = useAllTasksFilters();
+  const all = useAllTasksFilters(view);
+  const { object: info } = useObjectInfo("task");
   const timezone = useMemo(browserTimeZone, []);
   const mine = useOp("task.listMine", { timezone });
   const allCount = useQuery({ ...countQueryOptions("task", all.combined), enabled: tab === "all" });
@@ -67,7 +88,7 @@ function TasksPage() {
     <PageLayout
       title="Tasks"
       width={tab === "all" ? "fluid" : "xl"}
-      scroll={tab === "all" ? "none" : "body"}
+      scroll={tab === "all" ? scrollFor(view.state.type) : "body"}
       count={
         tab === "all" ? (
           <PageCount
@@ -79,6 +100,11 @@ function TasksPage() {
         ) : (
           <PageCount value={mineCount} isPending={mine.isPending} noun="open tasks" />
         )
+      }
+      titleAddon={
+        tab === "all" ? (
+          <SavedViewsMenu object="task" defaultLabel="All tasks" view={view} />
+        ) : undefined
       }
       actions={
         <Button onClick={() => create("task")} aria-keyshortcuts="c">
@@ -102,9 +128,23 @@ function TasksPage() {
           </TabsList>
         </Tabs>
       }
-      toolbar={tab === "all" ? <AllTasksFilters state={all} /> : undefined}
+      toolbar={
+        tab === "all" ? (
+          <>
+            <AllTasksFilters state={all} />
+            <div className="flex-1" />
+            {info && <ViewTypeSwitcher info={info} view={view} />}
+          </>
+        ) : undefined
+      }
     >
-      {tab === "all" ? <AllTasks state={all} total={allCount.data} /> : <MyTasks />}
+      {tab !== "all" ? (
+        <MyTasks />
+      ) : view.state.type === "table" ? (
+        <AllTasks state={all} total={allCount.data} />
+      ) : (
+        info && <ObjectViewBody info={info} view={{ ...view, state: { ...view.state, filter: all.combined } }} />
+      )}
     </PageLayout>
   );
 }
@@ -193,14 +233,21 @@ type TaskRow = ReturnType<typeof toTaskItem> & { completedAt?: string | null; cr
 
 const TASK_COLUMNS = ["title", "dueAt", "status", "assigneeId", "createdAt", "completedAt"];
 const DEFAULT_SORT: Sort = { field: "dueAt", direction: "asc" };
+const TASK_DEFAULTS = { sort: DEFAULT_SORT, columns: TASK_COLUMNS };
 const ANY = "__any__";
 
-/** The all-tasks quick filters (status, assignee) and filter builder, kept by the page. */
-function useAllTasksFilters() {
-  const [status, setStatus] = useState<string>("open");
+/**
+ * The all-tasks quick filters (status, assignee), kept by the page, over the view's filter and
+ * sort in the URL. A list opened with a filter (a dashboard click-through, a saved view) starts
+ * with every status, so it shows exactly the records the filter names.
+ */
+function useAllTasksFilters(view: ViewStateApi) {
+  const [status, setStatus] = useState<string>(() => (view.state.filter ? ANY : "open"));
   const [assignee, setAssignee] = useState<string>(ANY);
-  const [filter, setFilter] = useState<Filter | undefined>(undefined);
-  const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
+  const filter = view.state.filter;
+  const setFilter = view.setFilter;
+  const sort = view.state.sort;
+  const setSort = view.setSort;
 
   const combined = useMemo<Filter | undefined>(() => {
     const parts: Filter[] = [];

@@ -23,6 +23,7 @@ import { FilterBuilder } from "#/components/filter-builder/filter-builder";
 import { PageCount, PageLayout } from "#/components/layout/page-layout";
 import { BulkActions, ListActionsMenu } from "#/components/list/list-actions";
 import { PERSON_COLUMNS, PERSON_LIST_DEFAULTS, type PersonRow } from "#/components/people/config";
+import { ObjectViewBody, scrollFor, ViewTypeSwitcher } from "#/components/views/object-views";
 import { SavedViewsMenu } from "#/components/views/saved-views-menu";
 import {
   parseViewSearch,
@@ -33,6 +34,7 @@ import {
 import { countQueryOptions, useRecordCount } from "#/lib/count";
 import { initials } from "#/lib/format";
 import { callOp } from "#/lib/operations";
+import { useObjectInfo } from "#/lib/schema";
 import { useUserLabel } from "#/lib/users-adapter";
 
 const QUERY_KEY = ["op", "person.list", "table"] as const;
@@ -80,12 +82,14 @@ function PeoplePage() {
   const { create } = useAppCommands();
   const userLabel = useUserLabel();
   const count = useRecordCount("person", view.state.filter);
+  const { object: info } = useObjectInfo("person");
+  const type = view.state.type;
 
   return (
     <PageLayout
       title="People"
       width="fluid"
-      scroll="none"
+      scroll={scrollFor(type)}
       count={
         <PageCount
           value={count.data?.count}
@@ -115,15 +119,21 @@ function PeoplePage() {
             onChange={view.setFilter}
           />
           <div className="flex-1" />
-          <ColumnPicker
-            object={personObject}
-            available={PERSON_COLUMNS}
-            value={view.state.columns}
-            onChange={view.setColumns}
-          />
+          {info && <ViewTypeSwitcher info={info} view={view} />}
+          {type === "table" && (
+            <ColumnPicker
+              object={personObject}
+              available={PERSON_COLUMNS}
+              value={view.state.columns}
+              onChange={view.setColumns}
+            />
+          )}
         </>
       }
     >
+      {type !== "table" ? (
+        info && <ObjectViewBody info={info} view={view} />
+      ) : (
       <DataTable<PersonRow>
         object={personObject}
         label="People"
@@ -173,6 +183,7 @@ function PeoplePage() {
           />
         }
       />
+      )}
     </PageLayout>
   );
 }

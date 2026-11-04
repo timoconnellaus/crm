@@ -42,6 +42,10 @@
     "MCP_RATE_LIMIT_REQUESTS": "120",
     "MCP_RATE_LIMIT_WRITES": "30",
     // MCP access token lifetime in seconds; refresh tokens last 30 days.
-    "MCP_ACCESS_TOKEN_TTL": "3600"
+    "MCP_ACCESS_TOKEN_TTL": "3600",
+    // AI Gateway id for model roles (ADR 0009); empty calls Workers AI directly. Model roles need
+    // an `ai` binding ("ai": { "binding": "AI" }), which is optional: "Describe a widget" says
+    // AI is not configured without it. See docs/deploying.md.
+    "AI_GATEWAY_ID": ""
   }
 }

@@ -28,6 +28,7 @@ import {
   ORGANISATION_LIST_DEFAULTS,
   type OrganisationRow,
 } from "#/components/organisations/config";
+import { ObjectViewBody, scrollFor, ViewTypeSwitcher } from "#/components/views/object-views";
 import { SavedViewsMenu } from "#/components/views/saved-views-menu";
 import {
   parseViewSearch,
@@ -38,6 +39,7 @@ import {
 import { countQueryOptions, useRecordCount } from "#/lib/count";
 import { initials } from "#/lib/format";
 import { callOp } from "#/lib/operations";
+import { useObjectInfo } from "#/lib/schema";
 import { useUserLabel } from "#/lib/users-adapter";
 
 const QUERY_KEY = ["op", "organisation.list", "table"] as const;
@@ -89,12 +91,14 @@ function OrganisationsPage() {
   const { create } = useAppCommands();
   const userLabel = useUserLabel();
   const count = useRecordCount("organisation", view.state.filter);
+  const { object: info } = useObjectInfo("organisation");
+  const type = view.state.type;
 
   return (
     <PageLayout
       title="Organisations"
       width="fluid"
-      scroll="none"
+      scroll={scrollFor(type)}
       count={
         <PageCount
           value={count.data?.count}
@@ -130,15 +134,21 @@ function OrganisationsPage() {
             onChange={view.setFilter}
           />
           <div className="flex-1" />
-          <ColumnPicker
-            object={organisationObject}
-            available={ORGANISATION_COLUMNS}
-            value={view.state.columns}
-            onChange={view.setColumns}
-          />
+          {info && <ViewTypeSwitcher info={info} view={view} />}
+          {type === "table" && (
+            <ColumnPicker
+              object={organisationObject}
+              available={ORGANISATION_COLUMNS}
+              value={view.state.columns}
+              onChange={view.setColumns}
+            />
+          )}
         </>
       }
     >
+      {type !== "table" ? (
+        info && <ObjectViewBody info={info} view={view} />
+      ) : (
       <DataTable<OrganisationRow>
         object={organisationObject}
         label="Organisations"
@@ -203,6 +213,7 @@ function OrganisationsPage() {
           />
         }
       />
+      )}
     </PageLayout>
   );
 }

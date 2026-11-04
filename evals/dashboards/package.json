@@ -1,0 +1,22 @@
+{
+  "name": "@crm/evals-dashboards",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eval": "node --experimental-transform-types --disable-warning=ExperimentalWarning runner.ts",
+    "smoke": "node --experimental-transform-types --disable-warning=ExperimentalWarning smoke.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@crm/core": "workspace:*",
+    "@crm/evals-mcp": "workspace:*"
+  },
+  "devDependencies": {
+    "@crm/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

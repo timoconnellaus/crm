@@ -14,3 +14,7 @@ GOOGLE_CLIENT_SECRET=
 # Cloudflare Access (only with IDENTITY_PROVIDER=cloudflare-access in wrangler.jsonc).
 CF_ACCESS_TEAM_DOMAIN=
 CF_ACCESS_AUD=
+
+# Local only, never in production: "true" answers the build model role ("Describe a widget")
+# with a deterministic stand-in when there is no `ai` binding. `pnpm dev` adds it to .dev.vars.
+# AI_FAKE_MODEL=

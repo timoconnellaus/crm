@@ -1,6 +1,9 @@
-// Saved views picker for a list: apply a view, save the current state as a view, update or
-// delete the active one, or reset to the default. Persistence is the SavedViewsAdapter (view.*).
+// Saved views picker for a list: apply a view (table, board, calendar or gallery), save the
+// current state as a personal or shared view, update or delete the active one (when you may), or
+// reset to the default. Persistence is the SavedViewsAdapter (view.*).
+import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
+import { Checkbox } from "@crm/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +23,17 @@ import {
 import { Input } from "@crm/ui/components/input";
 import { Label } from "@crm/ui/components/label";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckIcon, ChevronDownIcon, RotateCcwIcon, SaveIcon, Trash2Icon } from "lucide-react";
+import {
+  CalendarIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  KanbanIcon,
+  LayoutGridIcon,
+  RotateCcwIcon,
+  SaveIcon,
+  TableIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { errorMessage } from "#/lib/query";
@@ -44,6 +57,13 @@ export interface SavedViewsMenuProps {
   adapter?: SavedViewsAdapter;
 }
 
+const TYPE_ICONS = {
+  table: TableIcon,
+  board: KanbanIcon,
+  calendar: CalendarIcon,
+  gallery: LayoutGridIcon,
+} as const;
+
 export function SavedViewsMenu({
   object,
   defaultLabel,
@@ -54,13 +74,15 @@ export function SavedViewsMenu({
   const key = ["saved-views", object];
   const { data: views = [] } = useQuery({ queryKey: key, queryFn: () => adapter.list(object) });
   const [saving, setSaving] = useState(false);
+  const [share, setShare] = useState(false);
   const active = views.find((v) => v.id === view.viewId);
 
   const spec = (): SavedViewSpec => ({
-    type: "table",
+    type: view.state.type,
     ...(view.state.filter ? { filter: view.state.filter } : {}),
     sort: view.state.sort,
     columns: view.state.columns,
+    ...(view.state.type !== "table" ? { layout: view.state.layout } : {}),
   });
 
   // Optimistic: the menu shows a created, updated or deleted view at once and rolls back if the
@@ -76,10 +98,17 @@ export function SavedViewsMenu({
   const settle = () => client.invalidateQueries({ queryKey: key });
 
   const create = useMutation({
-    mutationFn: (name: string) => adapter.create({ object, name, spec: spec() }),
+    mutationFn: (name: string) => adapter.create({ object, name, spec: spec(), shared: share }),
     onMutate: async (name): Promise<Snapshot> => {
       const context = await snapshot();
-      const draft: SavedView = { id: `pending:${name}`, name, object, spec: spec() };
+      const draft: SavedView = {
+        id: `pending:${name}`,
+        name,
+        object,
+        spec: spec(),
+        shared: share,
+        canEdit: true,
+      };
       client.setQueryData<SavedView[]>(key, (views = []) => [...views, draft]);
       setSaving(false);
       return context;
@@ -164,36 +193,47 @@ export function SavedViewsMenu({
             {!view.viewId && !view.isDirty ? <CheckIcon /> : <span className="size-4" />}
             {defaultLabel}
           </DropdownMenuItem>
-          {views.map((saved) => (
-            <DropdownMenuItem
-              key={saved.id}
-              onSelect={() =>
-                view.apply(
-                  {
-                    filter: saved.spec.filter,
-                    ...(saved.spec.sort ? { sort: saved.spec.sort } : {}),
-                    ...(saved.spec.columns ? { columns: saved.spec.columns } : {}),
-                  },
-                  saved.id,
-                )
-              }
-            >
-              {saved.id === view.viewId ? <CheckIcon /> : <span className="size-4" />}
-              {saved.name}
-            </DropdownMenuItem>
-          ))}
+          {views.map((saved) => {
+            const TypeIcon = TYPE_ICONS[saved.spec.type] ?? TableIcon;
+            return (
+              <DropdownMenuItem
+                key={saved.id}
+                onSelect={() =>
+                  view.apply(
+                    {
+                      type: saved.spec.type,
+                      filter: saved.spec.filter,
+                      ...(saved.spec.sort ? { sort: saved.spec.sort } : {}),
+                      ...(saved.spec.columns ? { columns: saved.spec.columns } : {}),
+                      ...(saved.spec.layout ? { layout: saved.spec.layout } : {}),
+                    },
+                    saved.id,
+                  )
+                }
+              >
+                {saved.id === view.viewId ? <CheckIcon /> : <span className="size-4" />}
+                <TypeIcon className="text-muted-foreground" aria-hidden />
+                <span className="min-w-0 flex-1 truncate">{saved.name}</span>
+                {saved.shared && (
+                  <Badge variant="outline" className="ml-auto text-[10px]">
+                    Shared
+                  </Badge>
+                )}
+              </DropdownMenuItem>
+            );
+          })}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setSaving(true)}>
             <SaveIcon />
             Save as new view…
           </DropdownMenuItem>
-          {active && (
+          {active && active.canEdit !== false && (
             <DropdownMenuItem disabled={!view.isDirty} onSelect={() => update.mutate(active)}>
               <SaveIcon />
               Update “{active.name}”
             </DropdownMenuItem>
           )}
-          {active && (
+          {active && active.canEdit !== false && (
             <DropdownMenuItem variant="destructive" onSelect={() => remove.mutate(active)}>
               <Trash2Icon />
               Delete “{active.name}”
@@ -213,13 +253,17 @@ export function SavedViewsMenu({
             <DialogHeader>
               <DialogTitle>Save view</DialogTitle>
               <DialogDescription>
-                Saves the current filter, sort and columns for you.
+                Saves the current view type, filter, sort and columns.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-2">
               <Label htmlFor="view-name">Name</Label>
               <Input id="view-name" name="name" required maxLength={100} autoFocus />
             </div>
+            <Label className="flex items-center gap-2 font-normal">
+              <Checkbox checked={share} onCheckedChange={(checked) => setShare(checked === true)} />
+              Share with everyone in the org
+            </Label>
             <DialogFooter>
               <Button type="submit" disabled={create.isPending}>
                 Save

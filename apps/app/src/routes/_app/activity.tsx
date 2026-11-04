@@ -1,11 +1,12 @@
 // Activity: the recent activity feed across all records (activity.list, newest first), with a
 // type filter and "only mine" in the fixed header, a live count, and a virtualised feed that
-// loads more as you scroll. Each item links to the records it is on.
-import type { Filter } from "@crm/core/client";
+// loads more as you scroll. Each item links to the records it is on. A `filter` search param
+// (a dashboard click-through) narrows the feed further until it is cleared.
+import { type Filter, filterSchema } from "@crm/core/client";
 import { Button } from "@crm/ui/components/button";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { MessageSquareTextIcon } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { MessageSquareTextIcon, XIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyState, ErrorState } from "#/components/empty-state";
 import { VirtualFeed } from "#/components/layout/infinite";
@@ -16,20 +17,41 @@ import { useRecordCount } from "#/lib/count";
 import { callOp } from "#/lib/operations";
 import { opKey } from "#/lib/query";
 
-export const Route = createFileRoute("/_app/activity")({ component: ActivityPage });
+function parseFilter(raw: unknown): Filter | undefined {
+  let value = raw;
+  if (typeof raw === "string") {
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      return undefined;
+    }
+  }
+  const parsed = filterSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+export const Route = createFileRoute("/_app/activity")({
+  validateSearch: (search: Record<string, unknown>): { filter?: Filter } => {
+    const filter = parseFilter(search.filter);
+    return filter ? { filter } : {};
+  },
+  component: ActivityPage,
+});
 
 function ActivityPage() {
   const { user } = Route.useRouteContext();
+  const { filter: linked } = Route.useSearch();
+  const navigate = useNavigate({ from: "/activity" });
   const [types, setTypes] = useState<ActivityType[]>([]);
   const [mineOnly, setMineOnly] = useState(false);
 
   const filter = useMemo<Filter | undefined>(() => {
-    const parts: Filter[] = [];
+    const parts: Filter[] = linked ? [linked] : [];
     if (types.length) parts.push({ field: "type", op: "in", value: types });
     if (mineOnly) parts.push({ field: "authorUserId", op: "eq", value: user.id });
     if (!parts.length) return undefined;
     return parts.length === 1 ? parts[0] : { and: parts };
-  }, [types, mineOnly, user.id]);
+  }, [types, mineOnly, user.id, linked]);
 
   const input = {
     ...(filter ? { filter } : {}),
@@ -64,6 +86,17 @@ function ActivityPage() {
       toolbar={
         <>
           <TimelineFilter value={types} onChange={setTypes} />
+          {linked && (
+            <Button
+              size="xs"
+              variant="secondary"
+              data-testid="linked-filter"
+              onClick={() => navigate({ search: {}, replace: true })}
+            >
+              Filtered list
+              <XIcon />
+            </Button>
+          )}
           <div className="flex-1" />
           <Button
             size="xs"
