@@ -133,6 +133,14 @@ async function recordFacts(
   return { title: title || id, facts };
 }
 
+/** `(l.object_type, l.record_id)` is one of `refs`: ORed equalities, so each uses the index. */
+function linkedTo(refs: readonly { object: string; id: string }[]) {
+  return sql<boolean>`(${sql.join(
+    refs.slice(0, 20).map((r) => sql`(l.object_type = ${r.object} AND l.record_id = ${r.id})`),
+    sql` OR `,
+  )})`;
+}
+
 /** Recent non-private activities linked to a record. */
 async function timelineFacts(
   db: Kysely<CoreDatabase>,
@@ -143,8 +151,7 @@ async function timelineFacts(
   const rows = await sql<{ id: string; type: string; subject: string | null; body: string | null; occurred_at: string }>`
     SELECT DISTINCT a.id, a.type, a.subject, a.body, a.occurred_at
     FROM crm_activity_links l JOIN crm_activities a ON a.id = l.activity_id
-    WHERE (l.object_type, l.record_id) IN (SELECT json_extract(j.value, '$[0]'), json_extract(j.value, '$[1]')
-      FROM json_each(${JSON.stringify(refs.map((r) => [r.object, r.id]))}) j)
+    WHERE ${linkedTo(refs)}
     ORDER BY a.occurred_at DESC, a.id DESC LIMIT ${limit}`.execute(db);
   return {
     facts: rows.rows.map((a) =>
@@ -161,8 +168,7 @@ async function openTaskFacts(
   if (!refs.length) return { facts: [], ids: [] };
   const rows = await sql<{ id: string; title: string; due_at: string | null }>`
     SELECT DISTINCT t.id, t.title, t.due_at FROM crm_task_links l JOIN crm_tasks t ON t.id = l.task_id
-    WHERE t.status = 'open' AND (l.object_type, l.record_id) IN (SELECT json_extract(j.value, '$[0]'),
-      json_extract(j.value, '$[1]') FROM json_each(${JSON.stringify(refs.map((r) => [r.object, r.id]))}) j)
+    WHERE t.status = 'open' AND ${linkedTo(refs)}
     ORDER BY t.due_at IS NULL, t.due_at LIMIT 5`.execute(db);
   return {
     facts: rows.rows.map((t) => fact(`Open task: ${t.title}${t.due_at ? ` (due ${day(t.due_at)})` : ""}`)),
