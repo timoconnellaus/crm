@@ -62,10 +62,29 @@ export interface WorkingCopy {
   ejected: boolean;
 }
 
-export interface WorkspaceEntry {
+/** What `workingCopy` reads (ADR 0043): by default every file and the git status. */
+export interface WorkingCopyOptions {
+  /** Read only these files (none for `[]`). */
+  paths?: string[];
+  /** False skips git status (which reads every file); `changed` is then empty. */
+  status?: boolean;
+}
+
+/** The result of writing a working copy: its paths, not their contents. */
+export interface WorkspaceWrite {
   id: string;
   head: string | null;
-  files: string[];
+  /** Every file in the working copy now. */
+  paths: string[];
+  /** True: the working copy has edits since its last commit. */
+  changed: boolean;
+  ejected: boolean;
+}
+
+/** An extension directory in the workspace: its name and flags only (no file reads, no git). */
+export interface WorkspaceEntry {
+  id: string;
+  /** Edited since its last commit. */
   changed: boolean;
   ejected: boolean;
 }
@@ -150,7 +169,7 @@ export interface ExtensionHost {
   /** Every extension directory in the workspace, with its working-copy state. */
   listWorkspace(): Promise<WorkspaceEntry[]>;
   /** The working copy of `/extensions/<id>/` (uncommitted edits included). */
-  workingCopy(id: string): Promise<WorkingCopy>;
+  workingCopy(id: string, options?: WorkingCopyOptions): Promise<WorkingCopy>;
   /**
    * Writes files into the working copy without committing. `null` deletes a file; `replace`
    * deletes every file not in `files`. Creates the directory (and its repository) if new.
@@ -159,7 +178,7 @@ export interface ExtensionHost {
     id: string;
     files: Record<string, string | null>;
     replace: boolean;
-  }): Promise<WorkingCopy>;
+  }): Promise<WorkspaceWrite>;
   /** Commits the working copy as it is. `changed` is false when it equals the last commit. */
   commitWorkingCopy(input: {
     id: string;
@@ -167,12 +186,20 @@ export interface ExtensionHost {
     author: { name: string; email: string };
   }): Promise<{ commit: string; changed: boolean }>;
   /** Copies a shipped extension's bundled source into its working copy and marks it ejected. */
-  eject(id: string): Promise<WorkingCopy>;
-  /** Runs a Code Mode script as `caller`, through the gate. */
+  eject(id: string): Promise<WorkspaceWrite>;
+  /**
+   * Runs a Code Mode script as `caller`, through the gate. At most one per user at a time: a
+   * second concurrent run returns error code `concurrency_limit`.
+   */
   runCode(input: { code: string; caller: CodeCaller }): Promise<CodeResult>;
   /**
-   * Runs model role `build` on `prompt` (the AI-written summary of an extension change).
-   * Null when the deployment has no AI configured or the call fails.
+   * Runs model role `build` on `prompt` (the AI-written summary of a proposal of `commit` against
+   * `base`), cached by (id, commit, base). Null when no AI is configured or the call fails.
    */
-  describeChange(prompt: string): Promise<{ text: string; model: string } | null>;
+  describeChange(input: {
+    id: string;
+    commit: string;
+    base: string | null;
+    prompt: string;
+  }): Promise<{ text: string; model: string } | null>;
 }
