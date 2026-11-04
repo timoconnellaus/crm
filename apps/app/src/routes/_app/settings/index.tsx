@@ -11,6 +11,7 @@ import {
   ScrollTextIcon,
   ShieldCheckIcon,
   UsersIcon,
+  WorkflowIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { PageLayout } from "#/components/layout/page-layout";
@@ -34,7 +35,8 @@ function Section({
     | "/settings/connected-apps"
     | "/settings/extensions"
     | "/settings/storage"
-    | "/settings/general";
+    | "/settings/general"
+    | "/settings/automations";
 }) {
   const body = (
     <Card className="h-full transition-colors hover:bg-accent/50">
@@ -144,6 +146,12 @@ function SettingsPage() {
             title="Extensions"
             description="Installed extensions, their permissions, runs and versions."
             to="/settings/extensions"
+          />
+          <Section
+            icon={<WorkflowIcon className="size-5" />}
+            title="Automations"
+            description="The kill switch, the schedule timezone and the debounce window."
+            to="/settings/automations"
           />
           {isAdmin && (
             <Section

@@ -15,10 +15,13 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppImportRouteImport } from './routes/_app/import'
+import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppStatusRouteImport } from './routes/_app/status'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as AppAutomationsIndexRouteImport } from './routes/_app/automations/index'
+import { Route as AppAutomationsIdRouteImport } from './routes/_app/automations/$id'
 import { Route as AppDashboardsIndexRouteImport } from './routes/_app/dashboards/index'
 import { Route as AppDashboardsIdRouteImport } from './routes/_app/dashboards/$id'
 import { Route as AppOrganisationsIndexRouteImport } from './routes/_app/organisations/index'
@@ -28,6 +31,7 @@ import { Route as AppPeopleIdRouteImport } from './routes/_app/people/$id'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsApprovalPolicyRouteImport } from './routes/_app/settings/approval-policy'
 import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
+import { Route as AppSettingsAutomationsRouteImport } from './routes/_app/settings/automations'
 import { Route as AppSettingsConnectedAppsRouteImport } from './routes/_app/settings/connected-apps'
 import { Route as AppSettingsExtensionsRouteImport } from './routes/_app/settings/extensions'
 import { Route as AppSettingsGeneralRouteImport } from './routes/_app/settings/general'
@@ -66,6 +70,11 @@ const AppImportRoute = AppImportRouteImport.update({
   path: '/import',
   getParentRoute: () => AppRoute,
 } as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppStatusRoute = AppStatusRouteImport.update({
   id: '/status',
   path: '/status',
@@ -85,6 +94,16 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppAutomationsIndexRoute = AppAutomationsIndexRouteImport.update({
+  id: '/automations/',
+  path: '/automations/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAutomationsIdRoute = AppAutomationsIdRouteImport.update({
+  id: '/automations/$id',
+  path: '/automations/$id',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardsIndexRoute = AppDashboardsIndexRouteImport.update({
   id: '/dashboards/',
@@ -130,6 +149,11 @@ const AppSettingsApprovalPolicyRoute =
 const AppSettingsAuditRoute = AppSettingsAuditRouteImport.update({
   id: '/settings/audit',
   path: '/settings/audit',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsAutomationsRoute = AppSettingsAutomationsRouteImport.update({
+  id: '/settings/automations',
+  path: '/settings/automations',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsConnectedAppsRoute =
@@ -180,21 +204,25 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
   '/import': typeof AppImportRoute
+  '/notifications': typeof AppNotificationsRoute
   '/status': typeof AppStatusRoute
   '/tasks': typeof AppTasksRoute
   '/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
+  '/automations/$id': typeof AppAutomationsIdRoute
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/settings/audit': typeof AppSettingsAuditRoute
+  '/settings/automations': typeof AppSettingsAutomationsRoute
   '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/automations/': typeof AppAutomationsIndexRoute
   '/dashboards/': typeof AppDashboardsIndexRoute
   '/organisations/': typeof AppOrganisationsIndexRoute
   '/people/': typeof AppPeopleIndexRoute
@@ -207,22 +235,26 @@ export interface FileRoutesByTo {
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
   '/import': typeof AppImportRoute
+  '/notifications': typeof AppNotificationsRoute
   '/status': typeof AppStatusRoute
   '/tasks': typeof AppTasksRoute
   '/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
   '/': typeof AppIndexRoute
+  '/automations/$id': typeof AppAutomationsIdRoute
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/settings/audit': typeof AppSettingsAuditRoute
+  '/settings/automations': typeof AppSettingsAutomationsRoute
   '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/automations': typeof AppAutomationsIndexRoute
   '/dashboards': typeof AppDashboardsIndexRoute
   '/organisations': typeof AppOrganisationsIndexRoute
   '/people': typeof AppPeopleIndexRoute
@@ -237,22 +269,26 @@ export interface FileRoutesById {
   '/_app/activity': typeof AppActivityRoute
   '/_app/approvals': typeof AppApprovalsRoute
   '/_app/import': typeof AppImportRoute
+  '/_app/notifications': typeof AppNotificationsRoute
   '/_app/status': typeof AppStatusRoute
   '/_app/tasks': typeof AppTasksRoute
   '/_app/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/automations/$id': typeof AppAutomationsIdRoute
   '/_app/dashboards/$id': typeof AppDashboardsIdRoute
   '/_app/organisations/$id': typeof AppOrganisationsIdRoute
   '/_app/people/$id': typeof AppPeopleIdRoute
   '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/_app/settings/audit': typeof AppSettingsAuditRoute
+  '/_app/settings/automations': typeof AppSettingsAutomationsRoute
   '/_app/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/_app/settings/extensions': typeof AppSettingsExtensionsRoute
   '/_app/settings/general': typeof AppSettingsGeneralRoute
   '/_app/settings/storage': typeof AppSettingsStorageRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/automations/': typeof AppAutomationsIndexRoute
   '/_app/dashboards/': typeof AppDashboardsIndexRoute
   '/_app/organisations/': typeof AppOrganisationsIndexRoute
   '/_app/people/': typeof AppPeopleIndexRoute
@@ -268,21 +304,25 @@ export interface FileRouteTypes {
     | '/activity'
     | '/approvals'
     | '/import'
+    | '/notifications'
     | '/status'
     | '/tasks'
     | '/trash'
     | '/api/health'
+    | '/automations/$id'
     | '/dashboards/$id'
     | '/organisations/$id'
     | '/people/$id'
     | '/settings/approval-policy'
     | '/settings/audit'
+    | '/settings/automations'
     | '/settings/connected-apps'
     | '/settings/extensions'
     | '/settings/general'
     | '/settings/storage'
     | '/settings/users'
     | '/api/auth/$'
+    | '/automations/'
     | '/dashboards/'
     | '/organisations/'
     | '/people/'
@@ -295,22 +335,26 @@ export interface FileRouteTypes {
     | '/activity'
     | '/approvals'
     | '/import'
+    | '/notifications'
     | '/status'
     | '/tasks'
     | '/trash'
     | '/api/health'
     | '/'
+    | '/automations/$id'
     | '/dashboards/$id'
     | '/organisations/$id'
     | '/people/$id'
     | '/settings/approval-policy'
     | '/settings/audit'
+    | '/settings/automations'
     | '/settings/connected-apps'
     | '/settings/extensions'
     | '/settings/general'
     | '/settings/storage'
     | '/settings/users'
     | '/api/auth/$'
+    | '/automations'
     | '/dashboards'
     | '/organisations'
     | '/people'
@@ -324,22 +368,26 @@ export interface FileRouteTypes {
     | '/_app/activity'
     | '/_app/approvals'
     | '/_app/import'
+    | '/_app/notifications'
     | '/_app/status'
     | '/_app/tasks'
     | '/_app/trash'
     | '/api/health'
     | '/_app/'
+    | '/_app/automations/$id'
     | '/_app/dashboards/$id'
     | '/_app/organisations/$id'
     | '/_app/people/$id'
     | '/_app/settings/approval-policy'
     | '/_app/settings/audit'
+    | '/_app/settings/automations'
     | '/_app/settings/connected-apps'
     | '/_app/settings/extensions'
     | '/_app/settings/general'
     | '/_app/settings/storage'
     | '/_app/settings/users'
     | '/api/auth/$'
+    | '/_app/automations/'
     | '/_app/dashboards/'
     | '/_app/organisations/'
     | '/_app/people/'
@@ -399,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImportRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/notifications': {
+      id: '/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/status': {
       id: '/_app/status'
       path: '/status'
@@ -426,6 +481,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/automations/': {
+      id: '/_app/automations/'
+      path: '/automations'
+      fullPath: '/automations/'
+      preLoaderRoute: typeof AppAutomationsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/automations/$id': {
+      id: '/_app/automations/$id'
+      path: '/automations/$id'
+      fullPath: '/automations/$id'
+      preLoaderRoute: typeof AppAutomationsIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/dashboards/': {
       id: '/_app/dashboards/'
@@ -488,6 +557,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/audit'
       fullPath: '/settings/audit'
       preLoaderRoute: typeof AppSettingsAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/automations': {
+      id: '/_app/settings/automations'
+      path: '/settings/automations'
+      fullPath: '/settings/automations'
+      preLoaderRoute: typeof AppSettingsAutomationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/connected-apps': {
@@ -553,20 +629,24 @@ interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppApprovalsRoute: typeof AppApprovalsRoute
   AppImportRoute: typeof AppImportRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppStatusRoute: typeof AppStatusRoute
   AppTasksRoute: typeof AppTasksRoute
   AppTrashRoute: typeof AppTrashRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAutomationsIdRoute: typeof AppAutomationsIdRoute
   AppDashboardsIdRoute: typeof AppDashboardsIdRoute
   AppOrganisationsIdRoute: typeof AppOrganisationsIdRoute
   AppPeopleIdRoute: typeof AppPeopleIdRoute
   AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
+  AppSettingsAutomationsRoute: typeof AppSettingsAutomationsRoute
   AppSettingsConnectedAppsRoute: typeof AppSettingsConnectedAppsRoute
   AppSettingsExtensionsRoute: typeof AppSettingsExtensionsRoute
   AppSettingsGeneralRoute: typeof AppSettingsGeneralRoute
   AppSettingsStorageRoute: typeof AppSettingsStorageRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
+  AppAutomationsIndexRoute: typeof AppAutomationsIndexRoute
   AppDashboardsIndexRoute: typeof AppDashboardsIndexRoute
   AppOrganisationsIndexRoute: typeof AppOrganisationsIndexRoute
   AppPeopleIndexRoute: typeof AppPeopleIndexRoute
@@ -579,20 +659,24 @@ const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppApprovalsRoute: AppApprovalsRoute,
   AppImportRoute: AppImportRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppStatusRoute: AppStatusRoute,
   AppTasksRoute: AppTasksRoute,
   AppTrashRoute: AppTrashRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAutomationsIdRoute: AppAutomationsIdRoute,
   AppDashboardsIdRoute: AppDashboardsIdRoute,
   AppOrganisationsIdRoute: AppOrganisationsIdRoute,
   AppPeopleIdRoute: AppPeopleIdRoute,
   AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
   AppSettingsAuditRoute: AppSettingsAuditRoute,
+  AppSettingsAutomationsRoute: AppSettingsAutomationsRoute,
   AppSettingsConnectedAppsRoute: AppSettingsConnectedAppsRoute,
   AppSettingsExtensionsRoute: AppSettingsExtensionsRoute,
   AppSettingsGeneralRoute: AppSettingsGeneralRoute,
   AppSettingsStorageRoute: AppSettingsStorageRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,
+  AppAutomationsIndexRoute: AppAutomationsIndexRoute,
   AppDashboardsIndexRoute: AppDashboardsIndexRoute,
   AppOrganisationsIndexRoute: AppOrganisationsIndexRoute,
   AppPeopleIndexRoute: AppPeopleIndexRoute,
