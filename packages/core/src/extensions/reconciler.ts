@@ -495,7 +495,16 @@ export function planFromState(
     }
   }
 
-  return finishPlan(db, ext, current, next, tableDdl, [...dataStatements, ...seedWrites], changes, issues);
+  return finishPlan(
+    db,
+    ext,
+    current,
+    next,
+    tableDdl,
+    [...dataStatements, ...seedWrites],
+    changes,
+    issues,
+  );
 }
 
 function finishPlan(

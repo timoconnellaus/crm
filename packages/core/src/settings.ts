@@ -28,3 +28,23 @@ export async function loadApprovalPolicy(db: Kysely<CoreDatabase>): Promise<Appr
 }
 
 export { DEFAULT_POLICY };
+
+/** The base currency (migration 0100, ADR 0101): ISO 4217, JSON string. */
+export const BASE_CURRENCY_SETTING = "base_currency";
+
+/** The org's general settings. A missing or unreadable base currency falls back to USD. */
+export async function loadGeneralSettings(
+  db: Kysely<CoreDatabase>,
+): Promise<{ baseCurrency: string }> {
+  const row = await db
+    .selectFrom("core_settings")
+    .select("value")
+    .where("key", "=", BASE_CURRENCY_SETTING)
+    .executeTakeFirst();
+  try {
+    const value = row ? (JSON.parse(row.value) as unknown) : null;
+    return { baseCurrency: typeof value === "string" && /^[A-Z]{3}$/.test(value) ? value : "USD" };
+  } catch {
+    return { baseCurrency: "USD" };
+  }
+}

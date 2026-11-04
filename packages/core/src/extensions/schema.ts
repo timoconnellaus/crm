@@ -90,7 +90,7 @@ export async function loadSchemaState(db: Kysely<CoreDatabase>): Promise<SchemaS
     db.selectFrom("core_extension_fields").selectAll().orderBy("id").execute(),
     sql<{ name: string; tbl_name: string }>`
       SELECT name, tbl_name FROM sqlite_master
-      WHERE type = 'index' AND tbl_name LIKE 'x\_%' ESCAPE '\' AND sql IS NOT NULL
+      WHERE type = 'index' AND substr(tbl_name, 1, 2) = 'x_' AND sql IS NOT NULL
     `.execute(db),
   ]);
   return {

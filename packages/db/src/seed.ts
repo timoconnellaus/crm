@@ -21,12 +21,89 @@ export interface SeedOptions {
   seed?: number;
   /** Rows per multi-row INSERT. Keep statements under D1's 100 KB statement limit. */
   rowsPerStatement?: number;
+  /**
+   * Demo deals (the shipped Deals extension, stage 4b) with stage history. Default 0. Their
+   * statements are returned separately (`dealStatements`): the x_deals_* tables exist only once
+   * the app has installed the extension.
+   */
+  deals?: number;
+  /** User ids deals are owned by (round robin); none leaves deals unowned. */
+  owners?: string[];
+  /** The day deals' timelines end on (ISO date). Default today, so dashboards look current. */
+  dealsUntil?: string;
 }
 
 export interface SeedResult {
   statements: string[];
-  counts: { people: number; organisations: number; activities: number; tasks: number };
+  /** Deals, their search entries and stage history (needs the Deals extension installed). */
+  dealStatements: string[];
+  counts: {
+    people: number;
+    organisations: number;
+    activities: number;
+    tasks: number;
+    deals: number;
+  };
 }
+
+const SEED_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/**
+ * The id of an extension's seed record (a copy of @crm/core's `seedRecordId`, which this file
+ * cannot import; packages/core/test/seed-ids.test.ts keeps them equal).
+ */
+export function seedRecordId(extension: string, object: string, key: string): string {
+  const text = `${extension}.${object}.${key}`;
+  let out = "";
+  for (const seed of [1, 2, 3, 4]) {
+    let hash = (0x811c9dc5 ^ seed) >>> 0;
+    for (let i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    for (let i = 0; i < 4; i++) {
+      out += SEED_ALPHABET[hash % 32];
+      hash = Math.floor(hash / 32);
+    }
+  }
+  return `rec_0000000000${out}`;
+}
+
+/** The Deals extension's seeded pipelines and stages (extensions/deals/index.ts), in order. */
+export const DEAL_PIPELINES = [
+  {
+    key: "newBusiness",
+    stages: [
+      { key: "nbLead", type: "open", probability: 10 },
+      { key: "nbQualified", type: "open", probability: 25 },
+      { key: "nbProposal", type: "open", probability: 50 },
+      { key: "nbNegotiation", type: "open", probability: 75 },
+      { key: "nbWon", type: "won", probability: 100 },
+      { key: "nbLost", type: "lost", probability: 0 },
+    ],
+  },
+  {
+    key: "renewals",
+    stages: [
+      { key: "rnUpcoming", type: "open", probability: 60 },
+      { key: "rnInDiscussion", type: "open", probability: 75 },
+      { key: "rnCommitted", type: "open", probability: 90 },
+      { key: "rnRenewed", type: "won", probability: 100 },
+      { key: "rnChurned", type: "lost", probability: 0 },
+    ],
+  },
+] as const;
+
+const DEAL_KINDS = (
+  "Platform licence|Expansion|Pilot|Annual renewal|Services|Enterprise plan|Add-on seats|" +
+  "Data migration|Support upgrade|Multi-year deal"
+).split("|");
+const DEAL_SOURCES = ["inbound", "outbound", "referral", "partner", "event", "existing"];
+const LOST_REASONS = ["price", "competitor", "noBudget", "noDecision", "timing", "productFit"];
+const NEXT_STEPS = (
+  "Send proposal|Book demo|Security review|Pricing call|Intro to legal|Follow up on budget|" +
+  "Workshop with team"
+).split("|");
 
 /** Fixed records every seed contains, for tests and demos to search for. */
 export const SEED_FIXTURES = {
@@ -321,15 +398,143 @@ export function generateSeed(options: SeedOptions = {}): SeedResult {
     }
   }
 
-  const statements: string[] = [];
-  for (const [table, { columns, rows }] of tables) {
-    for (let i = 0; i < rows.length; i += chunk) {
-      statements.push(
-        `INSERT OR IGNORE INTO ${table} (${columns.join(", ")}) VALUES ${rows.slice(i, i + chunk).join(", ")}`,
+  const toStatements = (from: Map<string, { columns: string[]; rows: string[] }>) => {
+    const out: string[] = [];
+    for (const [table, { columns, rows }] of from) {
+      for (let i = 0; i < rows.length; i += chunk) {
+        out.push(
+          `INSERT OR IGNORE INTO ${table} (${columns.join(", ")}) VALUES ${rows.slice(i, i + chunk).join(", ")}`,
+        );
+      }
+    }
+    return out;
+  };
+  const statements = toStatements(tables);
+
+  // Deals: each walks its pipeline from the first stage, spending 1-20 days per stage, and ends
+  // open (in any open stage), won or lost, so time in stage, velocity and win rates have data.
+  tables.clear();
+  const dealCount = options.deals ?? 0;
+  const until = Date.parse(
+    `${(options.dealsUntil ?? new Date().toISOString()).slice(0, 10)}T12:00:00.000Z`,
+  );
+  const DAY = 86_400_000;
+  const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const owners = options.owners ?? [];
+  for (let i = 0; i < dealCount && orgs.length; i++) {
+    const pipeline = rand() < 0.8 ? DEAL_PIPELINES[0] : DEAL_PIPELINES[1];
+    const open = pipeline.stages.filter((s) => s.type === "open");
+    type Stage = (typeof pipeline.stages)[number];
+    const won = pipeline.stages.find((s) => s.type === "won") as Stage;
+    const lost = pipeline.stages.find((s) => s.type === "lost") as Stage;
+    const roll = rand();
+    // ~55% open, ~25% won, ~20% lost.
+    const path =
+      roll < 0.55
+        ? open.slice(0, 1 + Math.floor(rand() * open.length))
+        : roll < 0.8
+          ? [...open, won]
+          : [...open.slice(0, 1 + Math.floor(rand() * open.length)), lost];
+    const durations = path.map(() => 1 + Math.floor(rand() * 20));
+    const total = durations.slice(0, -1).reduce((a, b) => a + b, 0);
+    const created = until - (total + Math.floor(rand() * 30)) * DAY - Math.floor(rand() * DAY);
+    const org = pick(orgs);
+    const id = `rec_${ulid()}`;
+    const final = path[path.length - 1] as (typeof pipeline.stages)[number];
+    const closed = final.type !== "open";
+    let at = created;
+    const entries = path.map((stage, n) => {
+      const entered = at;
+      at += (durations[n] as number) * DAY;
+      return { stage, entered, left: n < path.length - 1 ? at : null };
+    });
+    const lastEntered = entries[entries.length - 1]?.entered ?? created;
+    const value = Math.round((1 + rand() * 149) * 10) * 100;
+    const expected = closed
+      ? day(lastEntered)
+      : day(until + Math.floor((rand() - 0.25) * 90) * DAY);
+    const name = `${org.name} — ${pick(DEAL_KINDS)}`;
+    const createdIso = new Date(created).toISOString();
+    insert(
+      "x_deals_deal",
+      [
+        "id",
+        "created_at",
+        "updated_at",
+        "created_by",
+        "name",
+        "value",
+        "pipeline",
+        "stage",
+        "status",
+        "expected_close",
+        "probability",
+        "probability_overridden",
+        "owner",
+        "organisation",
+        "source",
+        "lost_reason",
+        "next_step",
+        "next_step_date",
+        "closed_at",
+      ],
+      [
+        id,
+        createdIso,
+        new Date(lastEntered).toISOString(),
+        null,
+        name,
+        value,
+        seedRecordId("deals", "pipeline", pipeline.key),
+        seedRecordId("deals", "stage", final.key),
+        final.type,
+        expected,
+        final.probability,
+        0,
+        owners.length ? (owners[i % owners.length] as string) : null,
+        org.id,
+        pick(DEAL_SOURCES),
+        final.type === "lost" ? pick(LOST_REASONS) : null,
+        closed ? null : pick(NEXT_STEPS),
+        closed ? null : day(until + Math.floor(rand() * 14) * DAY),
+        closed ? day(lastEntered) : null,
+      ],
+    );
+    insert(
+      "core_search_docs",
+      ["object_type", "record_id", "title", "body"],
+      ["deals.deal", id, name, ""],
+    );
+    for (const entry of entries) {
+      insert(
+        "core_stage_history",
+        [
+          "id",
+          "object_type",
+          "record_id",
+          "stage_id",
+          "group_id",
+          "stage_type",
+          "entered_at",
+          "left_at",
+          "entered_by",
+        ],
+        [
+          `sth_${ulid()}`,
+          "deals.deal",
+          id,
+          seedRecordId("deals", "stage", entry.stage.key),
+          seedRecordId("deals", "pipeline", pipeline.key),
+          entry.stage.type,
+          new Date(entry.entered).toISOString(),
+          entry.left === null ? null : new Date(entry.left).toISOString(),
+          null,
+        ],
       );
     }
   }
-  return { statements, counts };
+  const dealStatements = toStatements(tables);
+  return { statements, dealStatements, counts: { ...counts, deals: orgs.length ? dealCount : 0 } };
 }
 
 /** Minimal D1 surface, so this file needs no Workers types at runtime. */
@@ -343,9 +548,12 @@ export async function seedDatabase(
   db: SeedTarget,
   options: SeedOptions = {},
 ): Promise<SeedResult["counts"]> {
-  const { statements, counts } = generateSeed(options);
-  for (let i = 0; i < statements.length; i += 20) {
-    await db.batch(statements.slice(i, i + 20).map((sql) => db.prepare(sql)));
+  const { statements, dealStatements, counts } = generateSeed(options);
+  // Deals need the Deals extension's tables (installed by the app), so callers seed them only
+  // when asked for.
+  const all = [...statements, ...dealStatements];
+  for (let i = 0; i < all.length; i += 20) {
+    await db.batch(all.slice(i, i + 20).map((sql) => db.prepare(sql)));
   }
   return counts;
 }

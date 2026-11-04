@@ -343,7 +343,10 @@ function timelineActivity(
         before: diff[f.name]?.before ?? null,
         after: diff[f.name]?.after ?? null,
         ...(display[f.name]
-          ? { beforeLabel: display[f.name]?.before ?? null, afterLabel: display[f.name]?.after ?? null }
+          ? {
+              beforeLabel: display[f.name]?.before ?? null,
+              afterLabel: display[f.name]?.after ?? null,
+            }
           : {}),
       })),
     },

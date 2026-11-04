@@ -359,12 +359,12 @@ describe("widening permissions is a reviewable change (AC3)", () => {
 describe("shipped extensions: extend, don't modify; eject", () => {
   it("refuses to write a shipped extension in place, and check says why", async () => {
     await expect(
-      call(admin, "extension.write", { id: "example", files: { "index.ts": "// edit" } }),
+      call(admin, "extension.write", { id: "deals", files: { "index.ts": "// edit" } }),
     ).rejects.toMatchObject({ code: "forbidden" });
     const check = await call<{ ok: boolean; issues: { code: string }[] }>(
       admin,
       "extension.check",
-      { id: "example" },
+      { id: "deals" },
     );
     expect(check.ok).toBe(false);
     expect(check.issues[0]?.code).toBe("shipped");
@@ -376,8 +376,8 @@ describe("shipped extensions: extend, don't modify; eject", () => {
       id,
       files: source(
         id,
-        `fields: { "example.project": { risk: { type: "select", label: "Risk", options: ["low", "high"] } } },
-  views: { risky: { label: "Risky projects", object: "example.project", filter: { field: "${id}.risk", op: "eq", value: "high" } } },`,
+        `fields: { "deals.pipeline": { risk: { type: "select", label: "Risk", options: ["low", "high"] } } },
+  views: { risky: { label: "Risky pipelines", object: "deals.pipeline", filter: { field: "${id}.risk", op: "eq", value: "high" } } },`,
       ),
     });
     const check = await call<{ ok: boolean; issues: unknown[] }>(admin, "extension.check", { id });
@@ -385,11 +385,11 @@ describe("shipped extensions: extend, don't modify; eject", () => {
     const proposed = await call<Proposed>(admin, "extension.propose", { id });
     await call(admin, "extension.approve", { actionId: proposed.actionId });
     const project = await call<{ id: string }>(admin, "record.create", {
-      object: "example.project",
+      object: "deals.pipeline",
       values: { name: "Bridge", [`${id}.risk`]: "high" },
     });
     const got = await call<{ values: Record<string, unknown> }>(admin, "record.get", {
-      object: "example.project",
+      object: "deals.pipeline",
       id: project.id,
     });
     expect(got.values[`${id}.risk`]).toBe("high");
@@ -401,27 +401,27 @@ describe("shipped extensions: extend, don't modify; eject", () => {
       ejected: boolean;
       changed: boolean;
       warning: string;
-    }>(admin, "extension.eject", { id: "example" });
+    }>(admin, "extension.eject", { id: "deals" });
     expect(ejected).toMatchObject({ ejected: true, changed: true });
     expect(ejected.paths).toContain("index.ts");
     expect(ejected.warning).toMatch(/upstream updates/);
     const read = await call<{ files: Record<string, string> }>(admin, "extension.read", {
-      id: "example",
+      id: "deals",
       path: "index.ts",
     });
     const index = read.files["index.ts"] as string;
     await call(admin, "extension.write", {
-      id: "example",
+      id: "deals",
       files: { "index.ts": index.replace('version: "1.0.0"', 'version: "1.1.0"') },
     });
-    const proposed = await call<Proposed>(admin, "extension.propose", { id: "example" });
+    const proposed = await call<Proposed>(admin, "extension.propose", { id: "deals" });
     expect(proposed.status).toBe("pending_approval");
     expect(proposed.impact.kind).toBe("eject");
     await call(admin, "extension.approve", { actionId: proposed.actionId });
-    expect(await extensionRow("example")).toMatchObject({ source: "runtime", version: "1.1.0" });
+    expect(await extensionRow("deals")).toMatchObject({ source: "runtime", version: "1.1.0" });
     // New releases leave it alone.
     expect(await installShippedExtensions({ db, host })).toEqual([
-      { id: "example", outcome: "ejected" },
+      { id: "deals", outcome: "ejected" },
     ]);
   });
 });

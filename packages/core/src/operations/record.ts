@@ -16,8 +16,8 @@ import { getObject, isCoreObject, listObjects } from "../fields/index.ts";
 import type { FieldDefinition, ObjectDefinition } from "../fields/types.ts";
 import { newId } from "../ids.ts";
 import { listInputSchema, pageSchema, runListQuery } from "../list.ts";
-import { defineOperation, type HandlerContext } from "../operation.ts";
 import type { RecordRef } from "../operation.ts";
+import { defineOperation, type HandlerContext } from "../operation.ts";
 import { viewColumnOf } from "../records/columns.ts";
 import { jsonList, restorableUntil, TRASH_RETENTION_DAYS } from "../records/common.ts";
 import { applyStageBehaviour, type StageCache, type StageOutcome } from "../records/stages.ts";
@@ -215,7 +215,11 @@ function hostValues(object: ObjectDefinition, values: Record<string, unknown>): 
   });
 }
 
-function withHostValues(prepared: PreparedValue[], outcome: StageOutcome, object: ObjectDefinition) {
+function withHostValues(
+  prepared: PreparedValue[],
+  outcome: StageOutcome,
+  object: ObjectDefinition,
+) {
   const extra = hostValues(object, outcome.values);
   return [...prepared.filter((p) => !Object.hasOwn(outcome.values, p.field.name)), ...extra];
 }
@@ -328,7 +332,14 @@ export async function createRecord(
   let prepared = await prepareValues(ctx, object, values, "create", options);
   const table = objectTableOf(object.name) as string;
   const id = newId("record");
-  const outcome = await applyStageBehaviour(ctx, object, id, null, valuesOf(prepared), options.cache);
+  const outcome = await applyStageBehaviour(
+    ctx,
+    object,
+    id,
+    null,
+    valuesOf(prepared),
+    options.cache,
+  );
   prepared = withHostValues(prepared, outcome, object);
   const own = prepared.filter((p) => p.own);
   const columns = ["id", "created_at", "updated_at", "created_by", ...own.map((p) => p.column)];
@@ -378,7 +389,8 @@ async function timelineFor(
 ) {
   const tracked = object.fields.filter(
     (f) =>
-      f.track === "timeline" && JSON.stringify(before[f.name] ?? null) !== JSON.stringify(after[f.name] ?? null),
+      f.track === "timeline" &&
+      JSON.stringify(before[f.name] ?? null) !== JSON.stringify(after[f.name] ?? null),
   );
   if (!tracked.length) return undefined;
   const links: RecordRef[] = [{ object: object.name, id }];
@@ -623,6 +635,11 @@ export const objectInfoSchema = z.object({
   /** The crm_* view, for query.sql. */
   view: z.string(),
   fields: z.array(fieldInfoSchema),
+  /** Where the UI lists it: main navigation, Settings, or nowhere (ADR 0100). */
+  navigation: z.enum(["main", "settings", "none"]),
+  /** The stage behaviour, when it has one (ADR 0100). */
+  stages: z.record(z.string(), z.unknown()).nullable(),
+  timelineLinks: z.array(z.string()),
 });
 export type ObjectInfo = z.infer<typeof objectInfoSchema>;
 
@@ -636,6 +653,9 @@ export function objectInfo(object: ObjectDefinition): ObjectInfo {
     extension: object.extension ?? null,
     description: object.description ?? null,
     view: object.source,
+    navigation: object.navigation ?? "main",
+    stages: object.stages ? { ...object.stages } : null,
+    timelineLinks: [...(object.timelineLinks ?? [])],
     fields: object.fields.map((f) => ({
       name: f.name,
       label: f.label,

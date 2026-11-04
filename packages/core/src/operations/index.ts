@@ -12,6 +12,7 @@ import { exportOperations } from "./export.ts";
 import { extensionOperations } from "./extension.ts";
 import { extensionAuthoringOperations } from "./extension-authoring.ts";
 import { importOperations } from "./import.ts";
+import { importRecordsOperations } from "./import-records.ts";
 import { organisationOperations } from "./organisation.ts";
 import { personOperations } from "./person.ts";
 import { policyOperations } from "./policy.ts";
@@ -19,6 +20,7 @@ import { queryOperations } from "./query.ts";
 import { recordOperations } from "./record.ts";
 import { retentionOperations } from "./retention.ts";
 import { searchOperations } from "./search.ts";
+import { settingsOperations } from "./settings.ts";
 import { taskOperations } from "./task.ts";
 import { trashOperations } from "./trash.ts";
 import { userOperations } from "./user.ts";
@@ -39,6 +41,7 @@ export const coreOperations = [
   ...searchOperations,
   ...queryOperations,
   ...importOperations,
+  ...importRecordsOperations,
   ...exportOperations,
   ...recordOperations,
   ...extensionOperations,
@@ -48,4 +51,5 @@ export const coreOperations = [
   ...connectedAppOperations,
   ...retentionOperations,
   ...countOperations,
+  ...settingsOperations,
 ] as const;

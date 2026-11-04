@@ -134,9 +134,7 @@ async function firstStage(
   const order = column(stageObject, stages.stage.order);
   const groupColumn = stages.stage.group ? column(stageObject, stages.stage.group) : null;
   if (!order) return null;
-  const where = groupColumn
-    ? sql`WHERE ${sql.ref(groupColumn)} = ${group}`
-    : sql``;
+  const where = groupColumn ? sql`WHERE ${sql.ref(groupColumn)} = ${group}` : sql``;
   const row = await sql<{ id: string }>`
     SELECT id FROM ${sql.table(stageObject.source)} ${where}
     ORDER BY ${sql.ref(order)} IS NULL, ${sql.ref(order)}, id LIMIT 1
@@ -185,7 +183,8 @@ export async function applyStageBehaviour(
   const has = (field: string) => Object.hasOwn(written, field);
   /** Written with a value other than the one stored (UIs may send unchanged fields). */
   const changed = (field: string) =>
-    has(field) && JSON.stringify(written[field] ?? null) !== JSON.stringify(before?.[field] ?? null);
+    has(field) &&
+    JSON.stringify(written[field] ?? null) !== JSON.stringify(before?.[field] ?? null);
   const after: Record<string, unknown> = { ...(before ?? {}), ...written };
   const values: Record<string, unknown> = {};
   const set = (field: string | undefined, value: unknown) => {
@@ -322,7 +321,16 @@ export async function applyStageBehaviour(
     history.push(
       CompiledQuery.raw(
         "INSERT INTO core_stage_history (id, object_type, record_id, stage_id, group_id, stage_type, entered_at, left_at, entered_by) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)",
-        [newId("stageHistory"), object.name, id, stage.id, groupId, stage.type, ctx.now, ctx.user.id],
+        [
+          newId("stageHistory"),
+          object.name,
+          id,
+          stage.id,
+          groupId,
+          stage.type,
+          ctx.now,
+          ctx.user.id,
+        ],
       ),
     );
   }
@@ -333,4 +341,3 @@ export async function applyStageBehaviour(
     left: moved && beforeStage ? (loaded.get(beforeStage) ?? null) : null,
   };
 }
-

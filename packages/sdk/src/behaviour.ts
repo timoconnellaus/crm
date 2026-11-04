@@ -166,7 +166,10 @@ export function checkObjectBehaviour(
       for (const local of list ?? []) {
         const field = fieldOf(local);
         if (!field || field.type === "formula" || field.readOnly) {
-          contract(`${sp}.requiredByType.${type}`, `"${local}" must be a writable field of ${name}`);
+          contract(
+            `${sp}.requiredByType.${type}`,
+            `"${local}" must be a writable field of ${name}`,
+          );
         }
       }
     }

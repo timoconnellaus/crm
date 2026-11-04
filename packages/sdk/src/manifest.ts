@@ -3,6 +3,7 @@
 // diffs and reconciles the manifest. `validateManifest` is the contract check `extension.check`
 // runs; it returns structured issues a model can act on.
 import { z } from "zod";
+import { checkObjectBehaviour } from "./behaviour.ts";
 import {
   type Extension,
   HOST_MODULES,
@@ -12,7 +13,6 @@ import {
   TOOL_RISKS,
 } from "./contract.ts";
 import { FIELD_TYPES, type FieldTypeName, formulaTypeOf } from "./field-types.ts";
-import { checkObjectBehaviour } from "./behaviour.ts";
 import { checkFormula, type FormulaFieldRef } from "./formula/compile.ts";
 
 export const EXTENSION_ID_RE = /^[a-z][a-z0-9]{1,29}$/;
@@ -98,7 +98,9 @@ export const stagesManifestSchema = z.object({
   probability: z.object({ field: z.string().max(40), overridden: z.string().max(40) }).optional(),
   closedDate: z.string().max(40).optional(),
   status: z.string().max(40).optional(),
-  requiredByType: z.partialRecord(z.enum(STAGE_TYPES), z.array(z.string().max(40)).max(50)).optional(),
+  requiredByType: z
+    .partialRecord(z.enum(STAGE_TYPES), z.array(z.string().max(40)).max(50))
+    .optional(),
 });
 export type StagesManifest = z.infer<typeof stagesManifestSchema>;
 
@@ -111,7 +113,10 @@ export const objectManifestSchema = z.object({
   renamedFrom: z.string().max(40).optional(),
   fields: z.record(z.string(), fieldManifestSchema),
   navigation: z.enum(["main", "settings", "none"]).optional(),
-  indexes: z.array(z.array(z.string().max(40)).min(1).max(4)).max(16).optional(),
+  indexes: z
+    .array(z.array(z.string().max(40)).min(1).max(4))
+    .max(16)
+    .optional(),
   timelineLinks: z.array(z.string().max(40)).max(8).optional(),
   stages: stagesManifestSchema.optional(),
   seed: z
