@@ -85,7 +85,7 @@ export const enrichmentEnrichNow = defineOperation({
     filled: z.array(z.string()).optional(),
   }),
   permission: "records:write",
-  risk: "read",
+  risk: "write",
   // The record writes go through person.update / organisation.update (gated and audited); the
   // enrichment itself is an outbound action gated by the integration host.
   bookkeeping: true,
