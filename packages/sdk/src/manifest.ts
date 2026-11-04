@@ -7,10 +7,12 @@ import {
   type Extension,
   HOST_MODULES,
   type HostModuleName,
+  STAGE_TYPES,
   SUPPORTED_CONTRACT_VERSIONS,
   TOOL_RISKS,
 } from "./contract.ts";
 import { FIELD_TYPES, type FieldTypeName, formulaTypeOf } from "./field-types.ts";
+import { checkObjectBehaviour } from "./behaviour.ts";
 import { checkFormula, type FormulaFieldRef } from "./formula/compile.ts";
 
 export const EXTENSION_ID_RE = /^[a-z][a-z0-9]{1,29}$/;
@@ -71,6 +73,7 @@ export const fieldManifestSchema = z.object({
   track: z.literal("timeline").optional(),
   renamedFrom: z.string().max(40).optional(),
   required: z.boolean().optional(),
+  readOnly: z.boolean().optional(),
   currency: z
     .string()
     .regex(/^[A-Z]{3}$/)
@@ -82,6 +85,23 @@ export const fieldManifestSchema = z.object({
 });
 export type FieldManifest = z.infer<typeof fieldManifestSchema>;
 
+export const stagesManifestSchema = z.object({
+  field: z.string().max(40),
+  stage: z.object({
+    type: z.string().max(40),
+    order: z.string().max(40),
+    requiredFields: z.string().max(40).optional(),
+    probability: z.string().max(40).optional(),
+    group: z.string().max(40).optional(),
+  }),
+  group: z.string().max(40).optional(),
+  probability: z.object({ field: z.string().max(40), overridden: z.string().max(40) }).optional(),
+  closedDate: z.string().max(40).optional(),
+  status: z.string().max(40).optional(),
+  requiredByType: z.partialRecord(z.enum(STAGE_TYPES), z.array(z.string().max(40)).max(50)).optional(),
+});
+export type StagesManifest = z.infer<typeof stagesManifestSchema>;
+
 export const objectManifestSchema = z.object({
   label: z.string().min(1).max(100),
   plural: z.string().min(1).max(100),
@@ -90,6 +110,14 @@ export const objectManifestSchema = z.object({
   description: z.string().max(1000).optional(),
   renamedFrom: z.string().max(40).optional(),
   fields: z.record(z.string(), fieldManifestSchema),
+  navigation: z.enum(["main", "settings", "none"]).optional(),
+  indexes: z.array(z.array(z.string().max(40)).min(1).max(4)).max(16).optional(),
+  timelineLinks: z.array(z.string().max(40)).max(8).optional(),
+  stages: stagesManifestSchema.optional(),
+  seed: z
+    .record(z.string().max(40), z.record(z.string().max(40), z.unknown()))
+    .refine((seed) => Object.keys(seed).length <= 200, "At most 200 seed records per object")
+    .optional(),
 });
 export type ObjectManifest = z.infer<typeof objectManifestSchema>;
 
@@ -436,6 +464,9 @@ export function validateManifest(
       } else if (field.type !== "currency" && field.currency !== undefined) {
         contract(`${path}.currency`, "Only currency fields take `currency`");
       }
+      if (field.readOnly && field.required) {
+        contract(`${path}.readOnly`, "A read-only field is set by the host and cannot be required");
+      }
       if (field.type === "formula") {
         if (field.required) contract(`${path}.required`, "Formula fields cannot be required");
         if (field.track)
@@ -482,6 +513,7 @@ export function validateManifest(
     }
     const env = formulaFields(object.fields);
     checkFields(`${path}.fields`, `${m.id}.${name}`, object.fields, env);
+    checkObjectBehaviour(m, name, object, contract);
   }
 
   for (const [target, fields] of Object.entries(m.fields)) {

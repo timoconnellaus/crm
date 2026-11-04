@@ -278,8 +278,9 @@ function timelineActivity(
   const tracked = object.fields.filter((f) => f.track === "timeline" && f.name in diff);
   if (!tracked.length) return null;
   const labels = tracked.map((f) => f.label);
+  const display = change.timeline?.labels ?? {};
   return {
-    subject: `${labels.join(", ")} changed`,
+    subject: change.timeline?.subject ?? `${labels.join(", ")} changed`,
     payload: {
       kind: "field_change",
       operation,
@@ -290,9 +291,12 @@ function timelineActivity(
         label: f.label,
         before: diff[f.name]?.before ?? null,
         after: diff[f.name]?.after ?? null,
+        ...(display[f.name]
+          ? { beforeLabel: display[f.name]?.before ?? null, afterLabel: display[f.name]?.after ?? null }
+          : {}),
       })),
     },
-    links: [{ object: change.object, id: change.id }],
+    links: change.timeline?.links ?? [{ object: change.object, id: change.id }],
   };
 }
 

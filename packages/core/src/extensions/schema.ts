@@ -1,7 +1,12 @@
 // Extension schema state (core_extension_objects / core_extension_fields), the field registry
 // built from it, and the crm_* view SQL generated from it (ADR 0023, ADR 0024).
 import type { CoreDatabase } from "@crm/db";
-import { type FieldManifest, type FieldTypeName, formulaTypeOf } from "@crm/sdk";
+import {
+  type FieldManifest,
+  type FieldTypeName,
+  formulaTypeOf,
+  type StagesManifest,
+} from "@crm/sdk";
 import {
   compileFormula,
   type FormulaEnvironment,
@@ -31,6 +36,11 @@ export interface ObjectDefinitionJson {
   description?: string;
   /** Declared field order. */
   fieldOrder: string[];
+  /** Behaviour keys (ADR 0100), as declared. */
+  navigation?: "main" | "settings" | "none";
+  indexes?: string[][];
+  timelineLinks?: string[];
+  stages?: StagesManifest;
 }
 
 export type FieldDefinitionJson = FieldManifest & {
@@ -69,15 +79,22 @@ export interface FieldState {
 export interface SchemaState {
   objects: ObjectState[];
   fields: FieldState[];
+  /** Indexes on x_* tables (from sqlite_master), so the reconciler can add and drop its own. */
+  indexes?: { name: string; table: string }[];
 }
 
 /** Reads the reconciler's state tables. */
 export async function loadSchemaState(db: Kysely<CoreDatabase>): Promise<SchemaState> {
-  const [objects, fields] = await Promise.all([
+  const [objects, fields, indexes] = await Promise.all([
     db.selectFrom("core_extension_objects").selectAll().orderBy("name").execute(),
     db.selectFrom("core_extension_fields").selectAll().orderBy("id").execute(),
+    sql<{ name: string; tbl_name: string }>`
+      SELECT name, tbl_name FROM sqlite_master
+      WHERE type = 'index' AND tbl_name LIKE 'x\_%' ESCAPE '\' AND sql IS NOT NULL
+    `.execute(db),
   ]);
   return {
+    indexes: indexes.rows.map((row) => ({ name: row.name, table: row.tbl_name })),
     objects: objects.map((row) => ({
       name: row.name,
       extensionId: row.extension_id,
@@ -312,7 +329,8 @@ function registryField(field: FieldState, object: string): FieldDefinition {
     ...(def.options ? { choices: def.options } : {}),
     ...(def.to ? { to: def.to } : {}),
     ...(def.many !== undefined ? { many: def.many } : {}),
-    ...(field.type === "currency" ? { currency: def.currency ?? "USD" } : {}),
+    // No currency of its own: the deployment's base currency applies (ADR 0101).
+    ...(field.type === "currency" && def.currency ? { currency: def.currency } : {}),
     ...(field.type === "formula"
       ? { expression: def.expression ?? "", resultType: def.resultType ?? "text" }
       : {}),
@@ -337,7 +355,7 @@ function registryField(field: FieldState, object: string): FieldDefinition {
     extension: field.extensionId,
     fieldType: field.type,
     options,
-    ...(field.type === "formula" ? { readOnly: true } : {}),
+    ...(field.type === "formula" || def.readOnly ? { readOnly: true } : {}),
     ...(def.required ? { required: true } : {}),
     ...(def.description ? { description: def.description } : {}),
   };
@@ -408,6 +426,11 @@ export function buildRegistry(state: SchemaState): Map<string, ObjectDefinition>
       extension: object.extensionId,
       fields,
       defaultSort: { field: object.definition.titleField, direction: "asc" },
+      ...(object.definition.navigation ? { navigation: object.definition.navigation } : {}),
+      ...(object.definition.timelineLinks?.length
+        ? { timelineLinks: object.definition.timelineLinks }
+        : {}),
+      ...(object.definition.stages ? { stages: object.definition.stages } : {}),
     });
   }
   return map;

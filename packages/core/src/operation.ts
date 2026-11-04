@@ -31,6 +31,16 @@ export interface RecordChange {
   after?: Record<string, unknown> | null;
   /** Precomputed diff; when given, before/after are ignored. */
   diff?: FieldDiff;
+  /**
+   * For updates that post on the timeline (tracked fields changed): a subject instead of
+   * "<Field> changed", the records to post on (default: this one) and display labels for
+   * values such as relation ids (ADR 0100).
+   */
+  timeline?: {
+    subject?: string;
+    links?: RecordRef[];
+    labels?: Record<string, { before: string | null; after: string | null }>;
+  };
 }
 
 /** A link from an activity or task to a record. */

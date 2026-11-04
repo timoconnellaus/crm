@@ -622,6 +622,33 @@ export interface CoreRateLimitTable {
   count: Defaulted<number>;
 }
 
+/** One stage a record has been in (migration 0100, ADR 0100). `left_at` is null for the current one. */
+export interface CoreStageHistoryTable {
+  id: string;
+  object_type: string;
+  record_id: string;
+  stage_id: string;
+  group_id: string | null;
+  stage_type: "open" | "won" | "lost";
+  entered_at: Timestamp;
+  left_at: Timestamp | null;
+  entered_by: string | null;
+}
+
+export interface CrmStageHistoryView {
+  id: string;
+  object_type: string;
+  record_id: string;
+  stage_id: string;
+  group_id: string | null;
+  stage_type: "open" | "won" | "lost";
+  entered_at: Timestamp;
+  left_at: Timestamp | null;
+  is_current: number;
+  days_in_stage: number;
+  entered_by: string | null;
+}
+
 export interface CoreDatabase {
   core_meta: CoreMetaTable;
   core_migrations: CoreMigrationsTable;
@@ -661,6 +688,8 @@ export interface CoreDatabase {
   core_extension_proposals: CoreExtensionProposalsTable;
   core_extension_objects: CoreExtensionObjectsTable;
   core_extension_fields: CoreExtensionFieldsTable;
+  core_stage_history: CoreStageHistoryTable;
+  crm_stage_history: CrmStageHistoryView;
   crm_users: CrmUsersView;
   crm_people: CrmPeopleView;
   crm_organisations: CrmOrganisationsView;

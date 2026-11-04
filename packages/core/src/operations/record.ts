@@ -17,7 +17,10 @@ import type { FieldDefinition, ObjectDefinition } from "../fields/types.ts";
 import { newId } from "../ids.ts";
 import { listInputSchema, pageSchema, runListQuery } from "../list.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
+import type { RecordRef } from "../operation.ts";
+import { viewColumnOf } from "../records/columns.ts";
 import { jsonList, restorableUntil, TRASH_RETENTION_DAYS } from "../records/common.ts";
+import { applyStageBehaviour, type StageCache, type StageOutcome } from "../records/stages.ts";
 
 const objectName = z
   .string()
@@ -113,13 +116,6 @@ async function loadRecord(
   return row ? fromRow(object, row as Record<string, unknown>) : null;
 }
 
-/** The stored column of a multi-valued field (whose registry entry has no `column`). */
-function viewColumnOf(field: FieldDefinition): string | null {
-  if (field.column) return field.column;
-  const match = /json_each\(r2\.([a-z0-9_]+)\)/.exec(field.related?.from ?? "");
-  return match?.[1] ?? null;
-}
-
 interface PreparedValue {
   field: FieldDefinition;
   value: unknown;
@@ -135,6 +131,7 @@ async function prepareValues(
   object: ObjectDefinition,
   values: Record<string, unknown>,
   mode: "create" | "update",
+  options: { checkReferences?: boolean } = {},
 ): Promise<PreparedValue[]> {
   const prepared: PreparedValue[] = [];
   for (const [name, value] of Object.entries(values)) {
@@ -154,9 +151,12 @@ async function prepareValues(
       );
     }
     if (field.readOnly) {
-      throw new ValidationError(`${object.name}.${name} is computed and cannot be set`, {
-        field: name,
-      });
+      throw new ValidationError(
+        field.fieldType === "formula"
+          ? `${object.name}.${name} is computed and cannot be set`
+          : `${object.name}.${name} is set automatically and cannot be written`,
+        { field: name },
+      );
     }
     const storage = fieldStorage(object.name, name);
     if (!storage?.column) throw new ValidationError(`${object.name}.${name} cannot be written`);
@@ -192,9 +192,36 @@ async function prepareValues(
       }
     }
   }
-  await assertReferences(ctx, prepared);
+  if (options.checkReferences !== false) await assertReferences(ctx, prepared);
   return prepared;
 }
+
+/** Values the host sets (the stage behaviour): validated by type; read-only fields allowed. */
+function hostValues(object: ObjectDefinition, values: Record<string, unknown>): PreparedValue[] {
+  return Object.entries(values).map(([name, value]) => {
+    const field = object.fields.find((f) => f.name === name);
+    const storage = fieldStorage(object.name, name);
+    if (!field || !storage?.column) throw new Error(`${object.name}.${name} cannot be set`);
+    const spec = FIELD_TYPE_REGISTRY[storage.type];
+    const parsed = spec.schema(manifestOf(field)).parse(value);
+    return {
+      field,
+      value: parsed,
+      stored: spec.toStorage(parsed),
+      table: storage.table,
+      column: storage.column,
+      own: storage.own,
+    };
+  });
+}
+
+function withHostValues(prepared: PreparedValue[], outcome: StageOutcome, object: ObjectDefinition) {
+  const extra = hostValues(object, outcome.values);
+  return [...prepared.filter((p) => !Object.hasOwn(outcome.values, p.field.name)), ...extra];
+}
+
+const valuesOf = (prepared: PreparedValue[]) =>
+  Object.fromEntries(prepared.map((p) => [p.field.name, p.value]));
 
 /** Relation and user fields must point at live records and real users. */
 async function assertReferences(ctx: HandlerContext, prepared: PreparedValue[]) {
@@ -282,25 +309,102 @@ export const recordCreate = defineOperation({
   risk: "write",
   async handler(input, ctx) {
     const object = requireExtensionObject(input.object);
-    const prepared = await prepareValues(ctx, object, input.values, "create");
-    const table = objectTableOf(object.name) as string;
-    const id = newId("record");
-    const own = prepared.filter((p) => p.own);
-    const columns = ["id", "created_at", "updated_at", "created_by", ...own.map((p) => p.column)];
-    ctx.write(
-      CompiledQuery.raw(
-        `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
-        [id, ctx.now, ctx.now, ctx.user.id, ...own.map((p) => p.stored)],
-      ),
-      ...sideWrites(id, prepared),
-    );
-    const title = prepared.find((p) => p.field.name === object.titleField)?.value;
-    ctx.write(...searchDoc(object.name, id, title == null ? null : String(title)));
-    const after = Object.fromEntries(prepared.map((p) => [p.field.name, p.value]));
-    ctx.recordChange({ object: object.name, id, action: "create", after });
+    const id = await createRecord(ctx, object, input.values);
     return ctx.afterCommit(async () => (await loadRecord(ctx.db, object, id)) as RecordOutput);
   },
 });
+
+/**
+ * Queues the writes that create one record of an extension object (validation, the stage
+ * behaviour and its history, search, audit) and returns its id. record.create and the record CSV
+ * import share it.
+ */
+export async function createRecord(
+  ctx: HandlerContext,
+  object: ObjectDefinition,
+  values: Record<string, unknown>,
+  options: { cache?: StageCache; checkReferences?: boolean } = {},
+): Promise<string> {
+  let prepared = await prepareValues(ctx, object, values, "create", options);
+  const table = objectTableOf(object.name) as string;
+  const id = newId("record");
+  const outcome = await applyStageBehaviour(ctx, object, id, null, valuesOf(prepared), options.cache);
+  prepared = withHostValues(prepared, outcome, object);
+  const own = prepared.filter((p) => p.own);
+  const columns = ["id", "created_at", "updated_at", "created_by", ...own.map((p) => p.column)];
+  ctx.write(
+    CompiledQuery.raw(
+      `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
+      [id, ctx.now, ctx.now, ctx.user.id, ...own.map((p) => p.stored)],
+    ),
+    ...sideWrites(id, prepared),
+    ...outcome.history,
+  );
+  const title = prepared.find((p) => p.field.name === object.titleField)?.value;
+  ctx.write(...searchDoc(object.name, id, title == null ? null : String(title)));
+  ctx.recordChange({ object: object.name, id, action: "create", after: valuesOf(prepared) });
+  return id;
+}
+
+/** Titles of records by id (relation targets), for timeline labels. */
+async function titleOf(ctx: HandlerContext, to: string | undefined, id: unknown) {
+  if (typeof id !== "string" || !to) return null;
+  const target = getObject(to);
+  const column = target?.titleField
+    ? target.fields.find((f) => f.name === target.titleField)?.column
+    : target?.name === "organisation"
+      ? "name"
+      : target?.name === "person"
+        ? "display_name"
+        : undefined;
+  if (!target || !column) return null;
+  const row = await sql<{ title: string | null }>`
+    SELECT ${sql.ref(column)} AS title FROM ${sql.table(target.source)} WHERE id = ${id}
+  `.execute(ctx.db);
+  return row.rows[0]?.title ?? null;
+}
+
+/**
+ * The timeline post's subject, links and value labels for an update (ADR 0100): a stage move
+ * reads "Moved to <stage>", and posts also go on the records named by the object's timelineLinks.
+ */
+async function timelineFor(
+  ctx: HandlerContext,
+  object: ObjectDefinition,
+  id: string,
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  outcome: StageOutcome,
+) {
+  const tracked = object.fields.filter(
+    (f) =>
+      f.track === "timeline" && JSON.stringify(before[f.name] ?? null) !== JSON.stringify(after[f.name] ?? null),
+  );
+  if (!tracked.length) return undefined;
+  const links: RecordRef[] = [{ object: object.name, id }];
+  for (const name of object.timelineLinks ?? []) {
+    const to = object.fields.find((f) => f.name === name)?.options?.to;
+    const value = after[name];
+    if (to && typeof value === "string") links.push({ object: to, id: value });
+  }
+  const labels: Record<string, { before: string | null; after: string | null }> = {};
+  for (const field of tracked) {
+    if (field.fieldType !== "relation" || field.options?.many) continue;
+    if (outcome.moved && field.name === object.stages?.field) {
+      labels[field.name] = { before: outcome.left?.title ?? null, after: outcome.moved.title };
+      continue;
+    }
+    labels[field.name] = {
+      before: await titleOf(ctx, field.options?.to, before[field.name]),
+      after: await titleOf(ctx, field.options?.to, after[field.name]),
+    };
+  }
+  return {
+    ...(outcome.moved ? { subject: `Moved to ${outcome.moved.title}` } : {}),
+    links,
+    labels,
+  };
+}
 
 export const recordGet = defineOperation({
   name: "record.get",
@@ -336,8 +440,16 @@ export const recordUpdate = defineOperation({
     const object = requireObject(input.object);
     const before = await loadRecord(ctx.db, object, input.id);
     if (!before) throw new NotFoundError(input.object, input.id);
-    const prepared = await prepareValues(ctx, object, input.values, "update");
+    let prepared = await prepareValues(ctx, object, input.values, "update");
     if (!prepared.length) return before;
+    const outcome = await applyStageBehaviour(
+      ctx,
+      object,
+      input.id,
+      before.values,
+      valuesOf(prepared),
+    );
+    prepared = withHostValues(prepared, outcome, object);
     const own = prepared.filter((p) => p.own);
     if (own.length || !isCoreObject(object.name)) {
       const table = objectTableOf(object.name);
@@ -350,11 +462,12 @@ export const recordUpdate = defineOperation({
         );
       }
     }
-    ctx.write(...sideWrites(input.id, prepared));
+    ctx.write(...sideWrites(input.id, prepared), ...outcome.history);
     const after = {
       ...before.values,
       ...Object.fromEntries(prepared.map((p) => [p.field.name, p.value])),
     };
+    const timeline = await timelineFor(ctx, object, input.id, before.values, after, outcome);
     if (object.titleField && prepared.some((p) => p.field.name === object.titleField)) {
       const title = after[object.titleField];
       ctx.write(...searchDoc(object.name, input.id, title == null ? null : String(title)));
@@ -365,6 +478,7 @@ export const recordUpdate = defineOperation({
       action: "update",
       before: snapshot(before),
       after,
+      ...(timeline ? { timeline } : {}),
     });
     return ctx.afterCommit(
       async () => (await loadRecord(ctx.db, object, input.id)) as RecordOutput,

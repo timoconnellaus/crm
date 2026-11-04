@@ -24,6 +24,8 @@ export const ID_PREFIXES = {
   changeSet: "chs",
   pendingAction: "pac",
   connectedApp: "cap",
+  /** Stage history rows (ADR 0100). */
+  stageHistory: "sth",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
