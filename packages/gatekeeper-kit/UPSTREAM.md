@@ -44,13 +44,18 @@ All vendored gatekeeper packages move together, at one upstream commit.
 2. Review what changed in the paths we take:
    `git -C <checkout> diff <old>..<new> -- packages/workshop-shared/src/gatekeeper.ts
    packages/gatekeeper-kit packages/mcp-shared packages/gatekeeper-mcp packages/gatekeeper-google
-   packages/observability/src packages/configurator-ui/src scripts/assert-workerd.ts`.
-   Look hardest at `gatekeeper.ts` (the interface our runner implements) and at new dependencies.
+   packages/gatekeeper-microsoft packages/gatekeeper-slack packages/gatekeeper-email
+   packages/gatekeeper-zoominfo packages/gatekeeper-websearch packages/observability/src
+   packages/configurator-ui/src scripts/assert-workerd.ts`.
+   `pnpm upstream:check` (`scripts/upstream-sync-check.mjs`) prints the same per-package summary
+   against upstream's latest `main`. Look hardest at `gatekeeper.ts` (the interface our runner
+   implements) and at new dependencies.
 3. Run `node scripts/vendor-gatekeepers.mjs <checkout>`. It replaces only upstream-owned paths.
 4. Bring locally-owned files in step by hand: dependencies in each `package.json` (compare with
    upstream's manifests and its `pnpm-workspace.yaml` catalog), `wrangler.jsonc` (compare with
    upstream's generated one: flags, bindings, migrations), and the test-file lists in
-   `gatekeeper-google`'s workerd configs. A new `@gadgets/*` import needs a `SPECIFIERS` entry in
+   `gatekeeper-google`'s workerd configs and the bindings in `gatekeeper-microsoft`'s and
+   `gatekeeper-websearch`'s. A new `@gadgets/*` import needs a `SPECIFIERS` entry in
    the script or a shim. A new `src/configurator/*-ui.tsx` needs a placeholder in `src/generated/`.
 5. Run `pnpm install`, then `pnpm types` in each gatekeeper Worker package, then `pnpm lint`,
    `pnpm typecheck`, `pnpm test`, and `pnpm build` (the `wrangler deploy --dry-run` of each Worker).
