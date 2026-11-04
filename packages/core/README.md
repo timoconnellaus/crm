@@ -9,6 +9,14 @@ src/
   operations/          one file per object; index.ts lists them all
     person.ts          the reference implementation — copy its shape
     policy.ts
+    activity.ts        activity.log/get/update/delete/restore/listForRecord (typed payloads)
+    task.ts            task.create/get/update/complete/reopen/delete/restore/list/listMine
+    view.ts            view.create/update/delete/list (saved `table` view specs)
+    audit.ts           audit.list (admin), audit.listForRecord (History tab)
+    search.ts          search.global (FTS5 over core_search, prefix as-you-type)
+    query.ts           query.sql + validateReadOnlySql (ADR 0020)
+    import.ts          import.csv.preview/commit, CSV parse/format helpers
+    export.ts          export.csv
     index.ts           coreOperations = [...personOperations, ...]
   fields/              field registry per object (person, organisation, activity, task)
   operation.ts         defineOperation, HandlerContext, RecordChange
@@ -17,6 +25,7 @@ src/
   gate.ts              presets, floor (APPROVAL_FLOOR), evaluateGate
   filter.ts list.ts    filter JSON → SQL; listInputSchema, runListQuery, selectFields
   records/tags.ts      loadTags / queueSetTags (shared by any taggable object)
+  records/links.ts     activity/task links: LINK_TARGETS, assertLinkTargets, loadLinks, jsonList
   ids.ts               newId("person") → per_01J…
   errors.ts            typed errors (NotFoundError, ConflictError, ValidationError, …)
   users.ts             resolveActingUser (Principal → core_user)
@@ -88,6 +97,22 @@ src/
    viewer refusal and conflicts. `test/registry.test.ts` already fails if a definition is
    incomplete or its schemas can't become JSON Schema. Storage is shared within a test file, so use
    `unique()` for emails, domains and names.
+
+## Patterns worth reusing
+
+- **Long id lists**: D1 allows 100 bound parameters per statement, so never spread a list into
+  `IN (?, ?, …)`. Use `where("id", "in", jsonList(ids))` (`records/links.ts`), which binds the list
+  as one JSON parameter.
+- **Bulk writes**: for hundreds or thousands of rows, insert or update from one JSON parameter per
+  chunk with `json_each` (see `queueInsert` / `queueUpdate` in `operations/import.ts`) rather than
+  one statement per row. The pipeline does the same for audit diffs, so a bulk operation's whole
+  batch stays a few dozen statements.
+- **Links**: activities and tasks link to records by `{ object, id }`. Validate with
+  `assertLinkTargets` (known object, live record) and read with `loadLinks` (adds titles). Stage 3
+  adds extension objects to `LINK_TARGETS`.
+- **System activities** are posted by the pipeline (`ctx.postActivity`), never by `activity.log`.
+- **Timeline / audit cursors**: newest-first lists that are not registry lists encode
+  `{ f, d, v, id }` with `encodeCursor` and check them with `decodeCursor`, like `runListQuery`.
 
 ## Calling operations
 
