@@ -1,0 +1,21 @@
+{
+  "name": "@crm/release-scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Builds release bundles and their manifest (ADR 0053, ADR 0160). See README.md.",
+  "scripts": {
+    "build-release": "node build-release.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@crm/release": "workspace:*"
+  },
+  "devDependencies": {
+    "@crm/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

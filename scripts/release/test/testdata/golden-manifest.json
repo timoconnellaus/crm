@@ -1,0 +1,1322 @@
+{
+  "assets": {
+    "2c662e531fb9c5f77c3f0a2ad441a5c3": {
+      "size": 42
+    },
+    "9bd9cb7f8ebf32b97562661e7a00055c": {
+      "size": 24
+    }
+  },
+  "channel": "stable",
+  "commit": "0123456789abcdef0123456789abcdef01234567",
+  "coreSchemaVersion": 112,
+  "extensionContract": {
+    "supported": [
+      1
+    ],
+    "version": 1
+  },
+  "inputs": [
+    {
+      "description": "Public hostname: <crm-app>.<subdomain>.workers.dev or a hostname on your zone",
+      "kind": "placeholder",
+      "name": "HOSTNAME"
+    },
+    {
+      "default": "better-auth",
+      "description": "Identity adapter: Better Auth (email and password) or Cloudflare Access",
+      "kind": "var",
+      "name": "IDENTITY_PROVIDER",
+      "options": [
+        "better-auth",
+        "cloudflare-access"
+      ],
+      "workers": [
+        "crm-app"
+      ]
+    },
+    {
+      "default": "false",
+      "description": "Let anyone sign up (true), or only the first user (false)",
+      "kind": "var",
+      "name": "AUTH_ALLOW_SIGNUP",
+      "options": [
+        "false",
+        "true"
+      ],
+      "workers": [
+        "crm-app"
+      ]
+    },
+    {
+      "default": "",
+      "description": "Approval-policy floor no preset can loosen (JSON, ADR 0011)",
+      "kind": "var",
+      "name": "APPROVAL_FLOOR",
+      "workers": [
+        "crm-app",
+        "crm-runner"
+      ]
+    }
+  ],
+  "manifestVersion": 1,
+  "migrations": [
+    {
+      "name": "0001_init.sql",
+      "sha256": "f456b9df0c8b61ec0f2846901679232113ba1e4944a762380a297b4384430380"
+    },
+    {
+      "name": "0002_users_settings.sql",
+      "sha256": "6a95f3d190760332352a93dd27eb95e698cca2cc6ff305784959afaa3bdfe0b7"
+    },
+    {
+      "name": "0003_people_organisations.sql",
+      "sha256": "7f7469bca600f14b86ccccb1d84fe50e7648f1402ceb49738a36dd782b6bc7e9"
+    },
+    {
+      "name": "0004_activities_tasks.sql",
+      "sha256": "feb763a417c5a01af1c82df13b1e944bd1e203525b016be6bedd060c2f73aa73"
+    },
+    {
+      "name": "0005_views_audit.sql",
+      "sha256": "1dad930d722861ebc844aae1992374573078f130b9e090a749efb955719af265"
+    },
+    {
+      "name": "0006_search.sql",
+      "sha256": "d905cc1c1d5553147a460bd92f9fb30ade67692f595d77579d399d0be1919eed"
+    },
+    {
+      "name": "0007_crm_views.sql",
+      "sha256": "55f0ee31ada0cce6c2d7b25d148439c3078db0e0cc09b9122e7d57e9466a9a34"
+    },
+    {
+      "name": "0008_audit_redaction.sql",
+      "sha256": "e44636905cc6755d6055a3828261d118c0461c99e5f58d6f97618f5c5d81df07"
+    },
+    {
+      "name": "0010_approval_queue.sql",
+      "sha256": "48f6963ee4b66a8d45f71da977c865ffe8cf4b889d70b329b0bb12cd63e56681"
+    },
+    {
+      "name": "0011_connected_apps.sql",
+      "sha256": "fb391ff5f5f074b5983425440428d4d0d814473b05ae9c11a3ae860be78da039"
+    },
+    {
+      "name": "0020_extensions.sql",
+      "sha256": "8ef6197cb10d225d65de025a81b64708713e4b1b854ed751bd521827f271e75c"
+    },
+    {
+      "name": "0030_extension_proposals.sql",
+      "sha256": "1a3532bcf59f2d2d74861cd2214344d5c44a3bec25e08313fbfb2bf5b923518d"
+    },
+    {
+      "name": "0050_live_row_indexes.sql",
+      "sha256": "8dca5a1addd86fd3154a65e6893a8e8cb8a90576b3116d49b9bca152ce8dd65e"
+    },
+    {
+      "name": "0060_audit_read_counts.sql",
+      "sha256": "e5f40b4b7462957466dd6bb83b150a7a2b55718d73b6f8bfe2fde4d2a07c7913"
+    },
+    {
+      "name": "0061_audit_retention.sql",
+      "sha256": "997362abc8b4501a089abebeb3c519aac303ead757358370f0ae88f747cc14fc"
+    },
+    {
+      "name": "0062_run_history_retention.sql",
+      "sha256": "da1f88e662500a33067d93ae310ee5798988c3a0b6ad24ca257276fa185897c5"
+    },
+    {
+      "name": "0063_pending_action_compaction.sql",
+      "sha256": "16274f559d488b9e4d590e8bc89fbce944ca133597eea56855b66fffd7b77a52"
+    },
+    {
+      "name": "0064_drop_rate_limit.sql",
+      "sha256": "e8a5c0f9ddacafc1e690d370ab55c8e67aede276a549a4e3f6a27a270878232a"
+    },
+    {
+      "name": "0065_storage_stats.sql",
+      "sha256": "36f5519ef385cf6b67d0294918b9b4879c3cf9cb7344e346a3118364b7e209ef"
+    },
+    {
+      "name": "0070_drop_proposals_ext_idx.sql",
+      "sha256": "66b50cfcac9e62ae9055f0b090a7dd0e16e1c2be81e575789fa56bd5b220a1cb"
+    },
+    {
+      "name": "0080_views_dashboards.sql",
+      "sha256": "dbdf32ad9f4e57c3ad4be0043e4094456655f9c244ac4cc0629acd36a7171d4b"
+    },
+    {
+      "name": "0100_stage_history.sql",
+      "sha256": "76e35fc20c1284132f8f7a73306c9e81e7f21bea32d7a7d175d04a5094b272a1"
+    },
+    {
+      "name": "0110_integrations.sql",
+      "sha256": "e1edf16a7fffd2b2ec4b6b71fa1e7ff462c12a4b134a30d8b30f06a126970686"
+    },
+    {
+      "name": "0111_email_calendar_sync.sql",
+      "sha256": "c0de88d0bcbe1ab64d16f287e998ff5a96ba7c9a9b016660b5f6ea2e3ffdead1"
+    },
+    {
+      "name": "0112_sync_item_occurred_at.sql",
+      "sha256": "7b8e34ffa316e8be792c4cdb38f72fb4f03a8545ba860e52dacac5f1aafda5ee"
+    }
+  ],
+  "product": "crm",
+  "repository": "timoconnellaus/crm",
+  "resources": [
+    {
+      "implicit": false,
+      "name": "crm",
+      "optional": false,
+      "placeholder": "$D1_ID(crm)",
+      "type": "d1",
+      "usedBy": [
+        "crm-app",
+        "crm-runner"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "crm-gatekeeper-webhook:WebhookEndpoint",
+      "optional": true,
+      "type": "durable_object",
+      "usedBy": [
+        "crm-gatekeeper-webhook"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "crm-runner:CodeModeGate",
+      "optional": false,
+      "type": "durable_object",
+      "usedBy": [
+        "crm-runner"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "crm-runner:ExtensionWorkspace",
+      "optional": false,
+      "type": "durable_object",
+      "usedBy": [
+        "crm-runner"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "crm-runner:FakeAccount",
+      "optional": false,
+      "type": "durable_object",
+      "usedBy": [
+        "crm-runner"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "crm-runner:FakeProvider",
+      "optional": false,
+      "type": "durable_object",
+      "usedBy": [
+        "crm-runner"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "crm-runner:IntegrationHost",
+      "optional": false,
+      "type": "durable_object",
+      "usedBy": [
+        "crm-runner"
+      ]
+    },
+    {
+      "implicit": false,
+      "name": "crm-app-oauth-kv",
+      "optional": false,
+      "placeholder": "$KV_ID(crm-app-oauth-kv)",
+      "type": "kv",
+      "usedBy": [
+        "crm-app"
+      ]
+    },
+    {
+      "implicit": false,
+      "name": "crm-blobs",
+      "optional": false,
+      "placeholder": "$R2_NAME(crm-blobs)",
+      "type": "r2",
+      "usedBy": [
+        "crm-app",
+        "crm-runner"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "crm-hello",
+      "optional": false,
+      "type": "workflow",
+      "usedBy": [
+        "crm-runner"
+      ]
+    }
+  ],
+  "version": "1.0.0",
+  "workers": [
+    {
+      "assets": {
+        "config": {},
+        "files": {
+          "/assets/app.js": {
+            "hash": "9bd9cb7f8ebf32b97562661e7a00055c",
+            "size": 24
+          },
+          "/favicon.svg": {
+            "hash": "2c662e531fb9c5f77c3f0a2ad441a5c3",
+            "size": 42
+          }
+        }
+      },
+      "bindings": [
+        {
+          "database_id": "$D1_ID(crm)",
+          "name": "DB",
+          "type": "d1"
+        },
+        {
+          "bucket_name": "$R2_NAME(crm-blobs)",
+          "name": "BLOBS",
+          "type": "r2_bucket"
+        },
+        {
+          "name": "OAUTH_KV",
+          "namespace_id": "$KV_ID(crm-app-oauth-kv)",
+          "type": "kv_namespace"
+        },
+        {
+          "name": "RUNNER",
+          "service": "$WORKER_NAME(crm-runner)",
+          "type": "service"
+        },
+        {
+          "name": "MCP_RATE_LIMIT",
+          "namespace_id": "4101",
+          "simple": {
+            "limit": 120,
+            "period": 60
+          },
+          "type": "ratelimit"
+        },
+        {
+          "name": "MCP_WRITE_RATE_LIMIT",
+          "namespace_id": "4102",
+          "simple": {
+            "limit": 30,
+            "period": 60
+          },
+          "type": "ratelimit"
+        },
+        {
+          "name": "CODE_MODE_RATE_LIMIT",
+          "namespace_id": "4103",
+          "simple": {
+            "limit": 10,
+            "period": 60
+          },
+          "type": "ratelimit"
+        },
+        {
+          "name": "AI_FAKE_MODEL",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "AI_GATEWAY_ID",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "APPROVAL_EXPIRY_DAYS",
+          "text": "7",
+          "type": "plain_text"
+        },
+        {
+          "name": "APPROVAL_FLOOR",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "AUTH_ALLOW_SIGNUP",
+          "text": "false",
+          "type": "plain_text"
+        },
+        {
+          "name": "CRM_ACCOUNT_ID",
+          "text": "$ACCOUNT_ID",
+          "type": "plain_text"
+        },
+        {
+          "name": "CRM_RELEASE_REPO",
+          "text": "timoconnellaus/crm",
+          "type": "plain_text"
+        },
+        {
+          "name": "CRM_RELEASE_VERSION",
+          "text": "1.0.0",
+          "type": "plain_text"
+        },
+        {
+          "name": "IDENTITY_PROVIDER",
+          "text": "better-auth",
+          "type": "plain_text"
+        },
+        {
+          "name": "MCP_ACCESS_TOKEN_TTL",
+          "text": "3600",
+          "type": "plain_text"
+        },
+        {
+          "name": "BETTER_AUTH_SECRET",
+          "text": "$SECRET(BETTER_AUTH_SECRET)",
+          "type": "secret_text"
+        },
+        {
+          "name": "BETTER_AUTH_URL",
+          "text": "$SECRET(BETTER_AUTH_URL)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CF_ACCESS_AUD",
+          "text": "$SECRET(CF_ACCESS_AUD)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CF_ACCESS_TEAM_DOMAIN",
+          "text": "$SECRET(CF_ACCESS_TEAM_DOMAIN)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CRM_UPDATE_TOKEN",
+          "text": "$SECRET(CRM_UPDATE_TOKEN)",
+          "type": "secret_text"
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "text": "$SECRET(GOOGLE_CLIENT_ID)",
+          "type": "secret_text"
+        },
+        {
+          "name": "GOOGLE_CLIENT_SECRET",
+          "text": "$SECRET(GOOGLE_CLIENT_SECRET)",
+          "type": "secret_text"
+        }
+      ],
+      "compatibilityDate": "2026-10-01",
+      "compatibilityFlags": [
+        "nodejs_compat"
+      ],
+      "crons": [
+        "17 3 * * *"
+      ],
+      "dependsOn": [
+        "crm-runner"
+      ],
+      "durableObjectMigrations": [],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "e7f801e577c211b248f6152529e3dce800a762cd22e43aa395c3c5b7ef2e69bf",
+          "size": 50,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-app",
+      "observability": {
+        "enabled": true
+      },
+      "optional": false,
+      "package": "apps/app",
+      "public": true,
+      "queueConsumers": [],
+      "role": "app",
+      "secrets": [
+        {
+          "description": "Signs sessions. At least 32 random characters, e.g. the output of `openssl rand -hex 32`.",
+          "name": "BETTER_AUTH_SECRET",
+          "required": true,
+          "source": "generated"
+        },
+        {
+          "description": "Public origin of the app, e.g. https://crm.example.com. Optional: inferred from requests when empty.",
+          "name": "BETTER_AUTH_URL",
+          "required": false,
+          "source": "installer"
+        },
+        {
+          "description": "Only with IDENTITY_PROVIDER=cloudflare-access: the Access application's AUD tag.",
+          "name": "CF_ACCESS_AUD",
+          "required": false,
+          "source": "installer"
+        },
+        {
+          "description": "Only with IDENTITY_PROVIDER=cloudflare-access: your team domain.",
+          "name": "CF_ACCESS_TEAM_DOMAIN",
+          "required": false,
+          "source": "installer"
+        },
+        {
+          "description": "Optional. A scoped Cloudflare API token that lets Settings → Updates update this deployment itself (docs/deploying.md). Without it, updates use the `crm upgrade` CLI.",
+          "name": "CRM_UPDATE_TOKEN",
+          "required": false,
+          "source": "installer"
+        },
+        {
+          "description": "Optional. Google OAuth client ID for Google sign-in.",
+          "name": "GOOGLE_CLIENT_ID",
+          "required": false,
+          "source": "user"
+        },
+        {
+          "description": "Optional. Google OAuth client secret for Google sign-in.",
+          "name": "GOOGLE_CLIENT_SECRET",
+          "required": false,
+          "source": "user"
+        }
+      ],
+      "sha256": "a526e65ba9718bfc38c45813610d67fb79f34abb3594a5bf328fc6da830c2ffa"
+    },
+    {
+      "bindings": [
+        {
+          "database_id": "$D1_ID(crm)",
+          "name": "DB",
+          "type": "d1"
+        },
+        {
+          "bucket_name": "$R2_NAME(crm-blobs)",
+          "name": "BLOBS",
+          "type": "r2_bucket"
+        },
+        {
+          "entrypoint": "FakeGatekeeperVendor",
+          "name": "GATEKEEPER_FAKE",
+          "service": "$WORKER_NAME(crm-runner)",
+          "type": "service"
+        },
+        {
+          "class_name": "ExtensionWorkspace",
+          "name": "EXTENSION_WORKSPACE",
+          "type": "durable_object_namespace"
+        },
+        {
+          "class_name": "CodeModeGate",
+          "name": "CODE_MODE_GATE",
+          "type": "durable_object_namespace"
+        },
+        {
+          "class_name": "IntegrationHost",
+          "name": "INTEGRATION_HOST",
+          "type": "durable_object_namespace"
+        },
+        {
+          "class_name": "FakeAccount",
+          "name": "FAKE_ACCOUNT",
+          "type": "durable_object_namespace"
+        },
+        {
+          "class_name": "FakeProvider",
+          "name": "FAKE_PROVIDER",
+          "type": "durable_object_namespace"
+        },
+        {
+          "class_name": "HelloWorkflow",
+          "name": "HELLO_WORKFLOW",
+          "type": "workflow",
+          "workflow_name": "crm-hello"
+        },
+        {
+          "name": "LOADER",
+          "type": "worker_loader"
+        },
+        {
+          "name": "AI_GATEWAY_ID",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "APP_ORIGIN",
+          "text": "https://$HOSTNAME",
+          "type": "plain_text"
+        },
+        {
+          "name": "APPROVAL_FLOOR",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "INTEGRATIONS_FAKE_PROVIDER",
+          "text": "false",
+          "type": "plain_text"
+        }
+      ],
+      "compatibilityDate": "2026-10-01",
+      "compatibilityFlags": [
+        "nodejs_compat",
+        "allow_irrevocable_stub_storage"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "SpikeWorkspace"
+          ],
+          "tag": "v1"
+        },
+        {
+          "deleted_classes": [
+            "SpikeWorkspace"
+          ],
+          "new_sqlite_classes": [
+            "ExtensionWorkspace"
+          ],
+          "tag": "v2"
+        },
+        {
+          "new_sqlite_classes": [
+            "CodeModeGate"
+          ],
+          "tag": "v3"
+        },
+        {
+          "new_sqlite_classes": [
+            "IntegrationHost",
+            "FakeAccount",
+            "FakeProvider",
+            "FakeGatekeeper"
+          ],
+          "tag": "v4"
+        }
+      ],
+      "gatekeeperBindings": {
+        "entrypoint": "GatekeeperVendor",
+        "prefix": "GATEKEEPER_"
+      },
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "51b5f115d23e3bcfccd761abf54b676f7822f809fab8b79b439b9decb2e2dfb5",
+          "size": 53,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-runner",
+      "observability": {
+        "enabled": true
+      },
+      "optional": false,
+      "package": "apps/runner",
+      "public": false,
+      "queueConsumers": [],
+      "role": "runner",
+      "secrets": [],
+      "sha256": "3b6d967dc857fc01d443d55c306dcb7ce9721640308c90ffe2708cee331a8268"
+    },
+    {
+      "bindings": [],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage",
+        "nodejs_als"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "UserAccount",
+            "EmailGatekeeperImpl",
+            "EmailAddress"
+          ],
+          "tag": "v0"
+        }
+      ],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "96f275d2d0ca4dbb761eabd33ee68ee05f659c1c39df7a0ed2e1d28b24f1c446",
+          "size": 67,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-gatekeeper-email",
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "optional": true,
+      "package": "packages/gatekeeper-email",
+      "public": false,
+      "queueConsumers": [],
+      "role": "gatekeeper",
+      "secrets": [],
+      "sha256": "29512db789f660ffbd662454d43c04549294dd3cde54b2e44d4edb9f2bb515e3",
+      "shortName": "email"
+    },
+    {
+      "bindings": [
+        {
+          "name": "EMAIL",
+          "type": "send_email"
+        },
+        {
+          "name": "ALLOWED_SENDER_DOMAINS",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "INTERNAL_DOMAINS",
+          "text": "",
+          "type": "plain_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "EmailSendGatekeeper"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "984f069581e1681a3c6da762f863f814f5f983ed7268883cdf6b6e5c2b190772",
+          "size": 72,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-gatekeeper-email-send",
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "optional": true,
+      "package": "packages/gatekeeper-email-send",
+      "public": false,
+      "queueConsumers": [],
+      "role": "gatekeeper",
+      "secrets": [],
+      "sha256": "8e4daf5daaff42213d9c45555ea80f5cd0d070ac2587b8d9add5933aad382db5",
+      "shortName": "email-send"
+    },
+    {
+      "bindings": [
+        {
+          "name": "AI",
+          "type": "ai"
+        },
+        {
+          "name": "CLIENT_ID",
+          "text": "$SECRET(CLIENT_ID)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CLIENT_SECRET",
+          "text": "$SECRET(CLIENT_SECRET)",
+          "type": "secret_text"
+        },
+        {
+          "name": "PUBSUB_CHAT_TOPIC",
+          "text": "$SECRET(PUBSUB_CHAT_TOPIC)",
+          "type": "secret_text"
+        },
+        {
+          "name": "PUBSUB_GMAIL_TOPIC",
+          "text": "$SECRET(PUBSUB_GMAIL_TOPIC)",
+          "type": "secret_text"
+        },
+        {
+          "name": "PUBSUB_PUSH_SERVICE_ACCOUNT",
+          "text": "$SECRET(PUBSUB_PUSH_SERVICE_ACCOUNT)",
+          "type": "secret_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage",
+        "nodejs_als"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "UserAccount",
+            "GmailGatekeeperImpl"
+          ],
+          "tag": "v0"
+        },
+        {
+          "new_sqlite_classes": [
+            "BigQueryGatekeeperImpl"
+          ],
+          "tag": "v1"
+        },
+        {
+          "new_sqlite_classes": [
+            "GoogleCalendarGatekeeperImpl"
+          ],
+          "tag": "v2"
+        },
+        {
+          "new_sqlite_classes": [
+            "GoogleSheetsGatekeeperImpl"
+          ],
+          "tag": "v3"
+        },
+        {
+          "new_sqlite_classes": [
+            "GoogleDriveGatekeeperImpl",
+            "GoogleDocGatekeeperImpl"
+          ],
+          "tag": "v4"
+        },
+        {
+          "new_sqlite_classes": [
+            "GoogleChatGatekeeperImpl"
+          ],
+          "tag": "v5"
+        },
+        {
+          "new_sqlite_classes": [
+            "ChatHookDriver"
+          ],
+          "tag": "v6"
+        },
+        {
+          "new_sqlite_classes": [
+            "GmailHookDriver"
+          ],
+          "tag": "v7"
+        },
+        {
+          "new_sqlite_classes": [
+            "GoogleSlidesGatekeeperImpl"
+          ],
+          "tag": "v8"
+        }
+      ],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "359b2d87189ee93cd24c894d12b72a3bb988d7798a1af6717ab62c8e0d2c94f3",
+          "size": 68,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-gatekeeper-google",
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "optional": true,
+      "package": "packages/gatekeeper-google",
+      "public": false,
+      "queueConsumers": [],
+      "role": "gatekeeper",
+      "secrets": [
+        {
+          "description": "Google (Web application) OAuth client ID",
+          "name": "CLIENT_ID",
+          "required": true,
+          "source": "user"
+        },
+        {
+          "description": "Google (Web application) OAuth client secret",
+          "name": "CLIENT_SECRET",
+          "required": true,
+          "source": "user"
+        },
+        {
+          "description": "Pub/Sub topic for Google Chat push hooks",
+          "name": "PUBSUB_CHAT_TOPIC",
+          "required": false,
+          "source": "user"
+        },
+        {
+          "description": "Pub/Sub topic for Gmail push hooks",
+          "name": "PUBSUB_GMAIL_TOPIC",
+          "required": false,
+          "source": "user"
+        },
+        {
+          "description": "Service account that signs Pub/Sub pushes",
+          "name": "PUBSUB_PUSH_SERVICE_ACCOUNT",
+          "required": false,
+          "source": "user"
+        }
+      ],
+      "sha256": "c6578457843fda496b57cccdbed3c72e001157edf3b01bffa738b620a4bf1a11",
+      "shortName": "google"
+    },
+    {
+      "bindings": [
+        {
+          "name": "MCP_ALLOW_INSECURE",
+          "text": "false",
+          "type": "plain_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage",
+        "global_fetch_strictly_public"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "McpAccount",
+            "McpGatekeeperImpl"
+          ],
+          "tag": "v0"
+        }
+      ],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "7f0d60e5a485b24e7b439e24ece30a53fe585a3fa16a8883e0b66c8fbccaa05a",
+          "size": 65,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-gatekeeper-mcp",
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "optional": true,
+      "package": "packages/gatekeeper-mcp",
+      "public": false,
+      "queueConsumers": [],
+      "role": "gatekeeper",
+      "secrets": [],
+      "sha256": "fcf6f683937e0fd24063289e45cf52ac4ab9c35c3285f0e301d81399c03d9417",
+      "shortName": "mcp"
+    },
+    {
+      "bindings": [
+        {
+          "name": "AI",
+          "type": "ai"
+        },
+        {
+          "name": "CLIENT_ID",
+          "text": "$SECRET(CLIENT_ID)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CLIENT_SECRET",
+          "text": "$SECRET(CLIENT_SECRET)",
+          "type": "secret_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage",
+        "nodejs_als"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "UserAccount",
+            "SharePointGatekeeper",
+            "OutlookGatekeeper",
+            "OutlookHookDriver",
+            "CalendarGatekeeper"
+          ],
+          "tag": "v0"
+        }
+      ],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "9a78a03024ce2e17069adff0f809cb97501e8004939de3a4071c216482faf70e",
+          "size": 71,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-gatekeeper-microsoft",
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "optional": true,
+      "package": "packages/gatekeeper-microsoft",
+      "public": false,
+      "queueConsumers": [],
+      "role": "gatekeeper",
+      "secrets": [
+        {
+          "description": "Microsoft Entra ID app OAuth client ID",
+          "name": "CLIENT_ID",
+          "required": true,
+          "source": "user"
+        },
+        {
+          "description": "Microsoft Entra ID app OAuth client secret",
+          "name": "CLIENT_SECRET",
+          "required": true,
+          "source": "user"
+        }
+      ],
+      "sha256": "5a3a8a1e0fd92715a9b5083b4698799fc9ec43fac402086c11d7fd20ec968c19",
+      "shortName": "microsoft"
+    },
+    {
+      "bindings": [
+        {
+          "name": "CLIENT_ID",
+          "text": "$SECRET(CLIENT_ID)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CLIENT_SECRET",
+          "text": "$SECRET(CLIENT_SECRET)",
+          "type": "secret_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "UserAccount",
+            "SlackWorkspaceGatekeeperImpl",
+            "SlackConversationGatekeeperImpl",
+            "SlackThreadGatekeeperImpl"
+          ],
+          "tag": "v0"
+        }
+      ],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "ace6f74eb14d3f4648e662e95c2d034307010c6e832df1c494e55eebe4bd040d",
+          "size": 67,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-gatekeeper-slack",
+      "optional": true,
+      "package": "packages/gatekeeper-slack",
+      "public": false,
+      "queueConsumers": [],
+      "role": "gatekeeper",
+      "secrets": [
+        {
+          "description": "Slack app OAuth client ID",
+          "name": "CLIENT_ID",
+          "required": true,
+          "source": "user"
+        },
+        {
+          "description": "Slack app OAuth client secret",
+          "name": "CLIENT_SECRET",
+          "required": true,
+          "source": "user"
+        }
+      ],
+      "sha256": "b5dd7c6077f480d475c3b00ef9ac8ae177371de277d6c889bbbfa8d867a44e8e",
+      "shortName": "slack"
+    },
+    {
+      "bindings": [
+        {
+          "name": "BASE_URL",
+          "text": "https://$HOSTNAME/gatekeeper/slack-post",
+          "type": "plain_text"
+        },
+        {
+          "name": "SLACK_API_BASE",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "SLACK_OAUTH_BASE",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "CLIENT_ID",
+          "text": "$SECRET(CLIENT_ID)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CLIENT_SECRET",
+          "text": "$SECRET(CLIENT_SECRET)",
+          "type": "secret_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "SlackPostUserAccount",
+            "SlackPostGatekeeper"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "6c4979ec468ab1fc96bdea5004d7fe8cbefeea12ab06c388475509763bd367d0",
+          "size": 72,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-gatekeeper-slack-post",
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "optional": true,
+      "package": "packages/gatekeeper-slack-post",
+      "public": false,
+      "queueConsumers": [],
+      "role": "gatekeeper",
+      "secrets": [
+        {
+          "description": "Slack app (the same app as gatekeeper-slack) OAuth client ID",
+          "name": "CLIENT_ID",
+          "required": true,
+          "source": "user"
+        },
+        {
+          "description": "Slack app (the same app as gatekeeper-slack) OAuth client secret",
+          "name": "CLIENT_SECRET",
+          "required": true,
+          "source": "user"
+        }
+      ],
+      "sha256": "1c6d3e1f449d039189ac5e7883d5deff4a1d7c8126290864aa9e8630c36e0c81",
+      "shortName": "slack-post"
+    },
+    {
+      "bindings": [
+        {
+          "class_name": "WebhookEndpoint",
+          "name": "WEBHOOK_ENDPOINT",
+          "type": "durable_object_namespace"
+        },
+        {
+          "name": "BASE_URL",
+          "text": "https://$HOSTNAME/gatekeeper/webhook",
+          "type": "plain_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "WebhookEndpoint",
+            "WebhookEndpointGatekeeper"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "d457a97a9a64041cab5989901163f1dc01f3f897af977d2274329e57b175f9c2",
+          "size": 69,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-gatekeeper-webhook",
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "optional": true,
+      "package": "packages/gatekeeper-webhook",
+      "public": false,
+      "queueConsumers": [],
+      "role": "gatekeeper",
+      "secrets": [],
+      "sha256": "87fce2cde0107dda6fde5640c3901f12d283d8a52234ddb11eedb8314dd428e9",
+      "shortName": "webhook"
+    },
+    {
+      "bindings": [
+        {
+          "name": "AI",
+          "type": "ai"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "WebSearchGatekeeper"
+          ],
+          "tag": "v1"
+        }
+      ],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "0beea22001a6ddb4fab1d59b46d15e326cb80d1736599cee240e8377ebd34cbb",
+          "size": 71,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-gatekeeper-websearch",
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "optional": true,
+      "package": "packages/gatekeeper-websearch",
+      "public": false,
+      "queueConsumers": [],
+      "role": "gatekeeper",
+      "secrets": [],
+      "sha256": "0fb86454e09c2f2dd67c0752d9cee6e1033551ae2dd03af7905f8aed8b3529ae",
+      "shortName": "websearch"
+    },
+    {
+      "bindings": [
+        {
+          "name": "CLIENT_ID",
+          "text": "$SECRET(CLIENT_ID)",
+          "type": "secret_text"
+        },
+        {
+          "name": "CLIENT_SECRET",
+          "text": "$SECRET(CLIENT_SECRET)",
+          "type": "secret_text"
+        }
+      ],
+      "compatibilityDate": "2026-09-04",
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
+      "crons": [],
+      "dependsOn": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "UserAccount",
+            "ZoomInfoGatekeeperImpl"
+          ],
+          "tag": "v0"
+        }
+      ],
+      "mainModule": "index.js",
+      "modules": [
+        {
+          "name": "index.js",
+          "sha256": "4f83fc5d713d102cfd431c7d24fdfe8cdf4a1882c1204c691bf4a7a12cb4a798",
+          "size": 70,
+          "type": "esm"
+        }
+      ],
+      "name": "crm-gatekeeper-zoominfo",
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "logs": {
+          "invocation_logs": false
+        }
+      },
+      "optional": true,
+      "package": "packages/gatekeeper-zoominfo",
+      "public": false,
+      "queueConsumers": [],
+      "role": "gatekeeper",
+      "secrets": [
+        {
+          "description": "ZoomInfo OAuth client ID",
+          "name": "CLIENT_ID",
+          "required": true,
+          "source": "user"
+        },
+        {
+          "description": "ZoomInfo OAuth client secret",
+          "name": "CLIENT_SECRET",
+          "required": true,
+          "source": "user"
+        }
+      ],
+      "sha256": "ab5c78bc385a19cb30129fd91207c88c83b468ec90ebc73d517213ab9f299a9f",
+      "shortName": "zoominfo"
+    }
+  ],
+  "wranglerVersion": "0.0.0-fixture"
+}

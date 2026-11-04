@@ -15,6 +15,11 @@ GOOGLE_CLIENT_SECRET=
 CF_ACCESS_TEAM_DOMAIN=
 CF_ACCESS_AUD=
 
+# Self-updater (optional): a scoped Cloudflare API token so Settings → Updates can update this
+# deployment itself. Permissions are listed in docs/deploying.md. Leave empty to update with the
+# `crm upgrade` CLI instead.
+CRM_UPDATE_TOKEN=
+
 # Local only, never in production: "true" answers the build model role ("Describe a widget")
 # with a deterministic stand-in when there is no `ai` binding. `pnpm dev` adds it to .dev.vars.
 # AI_FAKE_MODEL=
