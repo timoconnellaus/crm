@@ -2,9 +2,16 @@
 // (ADR 0019). Ordinary updates and deletes of audit rows stay refused.
 import { env } from "cloudflare:workers";
 import { beforeAll, describe, expect, it } from "vitest";
-import { type ActingUser, ConflictError, ForbiddenError, invoke } from "../src/index.ts";
+import {
+  type ActingUser,
+  ConflictError,
+  ForbiddenError,
+  invoke,
+  type PendingApproval,
+  PendingApprovalError,
+} from "../src/index.ts";
 import { insertActivity, insertTask } from "./fixtures.ts";
-import { auditChanges, context, createUser, timeline, unique } from "./helpers.ts";
+import { auditChanges, context, createUser, setPreset, timeline, unique } from "./helpers.ts";
 
 let admin: ActingUser;
 let member: ActingUser;
@@ -368,5 +375,128 @@ describe("person.erase across activity, task, import and search", () => {
       expect((await invoke("search.global", { query }, context(member))).hits).toEqual([]);
     }
     expect(await storedTerms()).toBe(0);
+  });
+});
+
+describe("person.erase and the approval queue", () => {
+  function mcp(user: ActingUser, sessionId: string, reason: string) {
+    return context(user, {
+      actor: "mcp",
+      origin: { surface: "mcp", clientId: "c", clientName: "Test client", sessionId },
+      reason,
+    });
+  }
+  async function queued(promise: Promise<unknown>): Promise<PendingApproval> {
+    const error = await promise.then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(PendingApprovalError);
+    return (error as PendingApprovalError).pending;
+  }
+  async function pendingRow(id: string) {
+    return env.DB.prepare(
+      "SELECT input, reason, preview, simulated, status, status_reason FROM core_pending_action WHERE id = ?",
+    )
+      .bind(id)
+      .first<Record<string, string>>();
+  }
+  const pendingFor = async (id: string) =>
+    (await invoke("approval.pendingForRecord", { object: "person", ids: [id] }, context(member)))
+      .items;
+
+  it("redacts pending actions that touch or mention the person and rejects waiting ones", async () => {
+    await setPreset("cautious");
+    try {
+      const email = `${unique("queued")}@example.com`;
+      const person = await invoke(
+        "person.create",
+        { displayName: unique("Queued Subject"), emails: [{ email }] },
+        context(member),
+      );
+      const session = `cap_${unique()}`;
+      await invoke(
+        "changeset.begin",
+        { title: `Tidy up ${email}` },
+        mcp(member, session, "Grouping the task"),
+      );
+      // Applied earlier: stays applied, loses its content.
+      const applied = await queued(
+        invoke("person.update", { id: person.id, location: "Hobart" }, mcp(member, session, "x")),
+      );
+      await invoke("approval.approve", { actionIds: [applied.actionId] }, context(admin));
+      // Waiting, about the person.
+      const update = await queued(
+        invoke(
+          "person.update",
+          { id: person.id, location: "Perth" },
+          mcp(member, session, `Moved, per ${email}`),
+        ),
+      );
+      // Waiting, not about the person but mentioning their email in the reason...
+      const friend = await queued(
+        invoke(
+          "person.create",
+          { displayName: unique("Friend") },
+          mcp(member, session, `Colleague of ${email}`),
+        ),
+      );
+      // ...and one depending on that, which mentions nothing.
+      const note = await queued(
+        invoke(
+          "activity.log",
+          {
+            type: "note",
+            body: "Met at the offsite",
+            links: [{ object: "person", id: friend.provisionalIds[0] as string }],
+          },
+          mcp(member, session, "Logging the meeting"),
+        ),
+      );
+      // Unrelated: untouched.
+      const other = await queued(
+        invoke(
+          "person.create",
+          { displayName: unique("Bystander") },
+          mcp(member, `cap_${unique()}`, "Someone else"),
+        ),
+      );
+      expect(await pendingFor(person.id)).toHaveLength(1);
+
+      await invoke("person.erase", { id: person.id }, context(admin));
+
+      for (const id of [applied.actionId, update.actionId, friend.actionId]) {
+        const row = await pendingRow(id);
+        const stored = JSON.stringify(row).toLowerCase();
+        expect(stored).not.toContain(email.toLowerCase());
+        expect(stored).not.toContain(person.id.toLowerCase());
+        expect(row).toMatchObject({ input: '"[erased]"', reason: "[erased]", preview: "[]" });
+      }
+      expect(await pendingRow(applied.actionId)).toMatchObject({ status: "applied" });
+      expect(await pendingRow(update.actionId)).toMatchObject({
+        status: "rejected",
+        status_reason: "Rejected: a record it mentions was erased",
+      });
+      expect(await pendingRow(friend.actionId)).toMatchObject({ status: "rejected" });
+      expect(await pendingRow(note.actionId)).toMatchObject({
+        status: "rejected",
+        reason: "Logging the meeting",
+        status_reason: "Rejected because an action it depends on was rejected",
+      });
+      expect(await pendingRow(other.actionId)).toMatchObject({
+        status: "pending",
+        reason: "Someone else",
+      });
+      // (Approving the first action closed the titled set; later ones went to a new one.)
+      const set = await invoke(
+        "approval.get",
+        { changeSetId: applied.changeSetId },
+        context(admin),
+      );
+      expect(set.title).toBe("Tidy up [erased]");
+      expect(await pendingFor(person.id)).toEqual([]);
+    } finally {
+      await setPreset("balanced");
+    }
   });
 });

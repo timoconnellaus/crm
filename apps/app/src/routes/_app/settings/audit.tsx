@@ -16,8 +16,8 @@ import {
 import { Skeleton } from "@crm/ui/components/skeleton";
 import { cn } from "@crm/ui/lib/utils";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { ChevronRightIcon, LockIcon, ScrollTextIcon } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ChevronRightIcon, LinkIcon, LockIcon, ScrollTextIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { EmptyState } from "#/components/empty-state";
 import { diffValue } from "#/components/record/history";
@@ -27,7 +27,13 @@ import { callOp } from "#/lib/operations";
 import { errorMessage, opKey } from "#/lib/query";
 import { useUsers } from "#/lib/users-adapter";
 
-export const Route = createFileRoute("/_app/settings/audit")({ component: AuditPage });
+export const Route = createFileRoute("/_app/settings/audit")({
+  validateSearch: (search: Record<string, unknown>): { pendingActionId?: string } =>
+    typeof search.pendingActionId === "string" && /^pac_[\w-]{1,60}$/.test(search.pendingActionId)
+      ? { pendingActionId: search.pendingActionId }
+      : {},
+  component: AuditPage,
+});
 
 const ANY = "__any__";
 const ACTORS = ["human", "assistant", "mcp", "automation"] as const;
@@ -41,6 +47,8 @@ interface Filters {
   outcome: string;
   object: string;
   recordId: string;
+  /** Only the rows of one pending action: its queued request and applied result. */
+  pendingActionId: string;
   from: string;
   to: string;
 }
@@ -52,6 +60,7 @@ const EMPTY: Filters = {
   outcome: ANY,
   object: ANY,
   recordId: "",
+  pendingActionId: "",
   from: "",
   to: "",
 };
@@ -90,8 +99,18 @@ function AuditPage() {
 
 function AuditLog() {
   const users = useUsers();
-  const [filters, setFilters] = useState<Filters>(EMPTY);
+  const { pendingActionId = "" } = Route.useSearch();
+  const navigate = useNavigate({ from: "/settings/audit" });
+  const [filters, setFilters] = useState<Filters>({ ...EMPTY, pendingActionId });
+  // Following a link to a pending action (?pendingActionId=) filters to it.
+  useEffect(() => {
+    if (pendingActionId) setFilters((f) => ({ ...f, pendingActionId }));
+  }, [pendingActionId]);
   const set = (key: keyof Filters, value: string) => setFilters((f) => ({ ...f, [key]: value }));
+  const showPending = (id: string) => {
+    navigate({ search: { pendingActionId: id } });
+    set("pendingActionId", id);
+  };
   const typed = useDebounced({ operation: filters.operation, recordId: filters.recordId }, 300);
 
   const operationValid = !typed.operation || /^[a-zA-Z0-9.]+(\.\*)?$/.test(typed.operation.trim());
@@ -106,6 +125,9 @@ function AuditLog() {
       ...(typed.operation.trim() && operationValid ? { operation: typed.operation.trim() } : {}),
       ...(filters.object !== ANY ? { object: filters.object } : {}),
       ...(typed.recordId.trim() ? { recordId: typed.recordId.trim() } : {}),
+      ...(/^pac_[\w-]{1,60}$/.test(filters.pendingActionId)
+        ? { pendingActionId: filters.pendingActionId }
+        : {}),
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
     };
@@ -216,6 +238,17 @@ function AuditLog() {
           />,
         )}
         {filter(
+          "audit-pending",
+          "Pending action",
+          <Input
+            id="audit-pending"
+            value={filters.pendingActionId}
+            onChange={(e) => set("pendingActionId", e.target.value.trim())}
+            placeholder="pac_…"
+            className="h-8"
+          />,
+        )}
+        {filter(
           "audit-from",
           "From",
           <Input
@@ -243,7 +276,10 @@ function AuditLog() {
             variant="ghost"
             size="sm"
             className="col-span-2 justify-self-start sm:col-span-4"
-            onClick={() => setFilters(EMPTY)}
+            onClick={() => {
+              setFilters(EMPTY);
+              if (pendingActionId) navigate({ search: {}, replace: true });
+            }}
           >
             Clear filters
           </Button>
@@ -261,7 +297,12 @@ function AuditLog() {
       ) : (
         <ol className="grid divide-y rounded-md border" aria-label="Audit entries">
           {entries.map((entry) => (
-            <AuditRow key={entry.id} entry={entry} />
+            <AuditRow
+              key={entry.id}
+              entry={entry}
+              onShowPending={showPending}
+              showingPending={Boolean(filters.pendingActionId)}
+            />
           ))}
         </ol>
       )}
@@ -282,7 +323,69 @@ function AuditLog() {
 
 type AuditEntry = Awaited<ReturnType<typeof callOp<"audit.list">>>["items"][number];
 
-function AuditRow({ entry }: { entry: AuditEntry }) {
+/** The change set a queued request went into (its result names it). */
+function changeSetOf(entry: AuditEntry): string | null {
+  const result = entry.result as { changeSetId?: unknown } | null;
+  return typeof result?.changeSetId === "string" ? result.changeSetId : null;
+}
+
+/**
+ * Links between a pending action's audit rows: the queued request (outcome `review`) and, once
+ * approved, the applied result (gate `review`, outcome `ok`), both carrying pendingActionId.
+ */
+function PendingLink({
+  entry,
+  onShow,
+  showing,
+}: {
+  entry: AuditEntry;
+  onShow: (pendingActionId: string) => void;
+  showing: boolean;
+}) {
+  if (!entry.pendingActionId) return null;
+  const queued = entry.outcome === "review";
+  const changeSetId = changeSetOf(entry);
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-6 text-xs text-muted-foreground"
+      data-testid="pending-link"
+    >
+      <LinkIcon className="size-3.5" aria-hidden />
+      <span>
+        {queued ? "Queued for approval as " : "Applied on approval of "}
+        <code className="font-mono">{entry.pendingActionId}</code>
+      </span>
+      {!showing && (
+        <button
+          type="button"
+          className="underline underline-offset-2 hover:text-foreground"
+          onClick={() => onShow(entry.pendingActionId as string)}
+        >
+          {queued ? "Show the applied result" : "Show the queued request"}
+        </button>
+      )}
+      {changeSetId && (
+        <Link
+          to="/approvals"
+          search={{ set: changeSetId, tab: "history" }}
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          Open change set
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function AuditRow({
+  entry,
+  onShowPending,
+  showingPending,
+}: {
+  entry: AuditEntry;
+  onShowPending: (pendingActionId: string) => void;
+  showingPending: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const changed = entry.changes.filter((c) => Object.keys(c.diff).length > 0);
   const expandable = changed.length > 0;
@@ -321,6 +424,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
           {formatDateTime(entry.at)}
         </time>
       </button>
+      <PendingLink entry={entry} onShow={onShowPending} showing={showingPending} />
       {open && (
         <div className="grid gap-3 pl-6" data-testid="audit-diffs">
           {changed.map((change) => {

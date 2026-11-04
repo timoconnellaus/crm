@@ -21,6 +21,8 @@ export interface RecordLayoutProps {
   title: string;
   /** Primary title/org line under the name. */
   subtitle?: ReactNode;
+  /** Shown next to the name, e.g. the pending-changes badge. */
+  badge?: ReactNode;
   avatarUrl?: string | null;
   /** Header actions (buttons, menus), right-aligned. */
   actions?: ReactNode;
@@ -37,6 +39,7 @@ export interface RecordLayoutProps {
 export function RecordLayout({
   title,
   subtitle,
+  badge,
   avatarUrl,
   actions,
   banner,
@@ -54,7 +57,12 @@ export function RecordLayout({
           <AvatarFallback>{initials(title)}</AvatarFallback>
         </Avatar>
         <div className="grid min-w-0 flex-1 gap-0.5">
-          <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight sm:text-2xl">
+              {title}
+            </h1>
+            {badge}
+          </div>
           {subtitle && <div className="truncate text-sm text-muted-foreground">{subtitle}</div>}
         </div>
         {actions && <div className="flex w-full items-center gap-2 sm:w-auto">{actions}</div>}
