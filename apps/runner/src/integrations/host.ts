@@ -354,7 +354,7 @@ export class IntegrationHost extends DurableObject<Env> {
   ): Promise<{ targetOrigin: string; ticket: string }> {
     const meta = await this.#meta();
     const pending = await this.ctx.storage.get<PendingConnect>("connect");
-    if (!pending || pending.mode !== "reconnect" || pending.vendor !== vendor) {
+    if (pending?.mode !== "reconnect" || pending.vendor !== vendor) {
       throw new Error("No reconnect is waiting");
     }
     const ticket = `${meta.connectionId}.${token()}`;

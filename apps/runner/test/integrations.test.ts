@@ -6,6 +6,7 @@ import { abortAllDurableObjects } from "cloudflare:test";
 import { env, exports } from "cloudflare:workers";
 import { type ActingUser, invokeByName, PendingApprovalError } from "@crm/core";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { extensionHost } from "../src/index.ts";
 import { fakeProviderStub } from "../src/integrations/fake.ts";
 import { blobStore, integrationRuntime } from "../src/integrations/runtime.ts";
 import { createAdmin, db, unique } from "./helpers.ts";
@@ -461,8 +462,61 @@ describe("sync", () => {
   });
 });
 
-describe("pending errors", () => {
-  it("integration.call is not itself queued", () => {
+describe("codemode:<gatekeeper>", () => {
+  it("a Code Mode script lists connections and sends through the outbox under the gate", async () => {
+    const connection = await connect(admin, address);
+    await bind(admin, connection.id, `fake://outbox/${address}`);
+    const result = (await invokeByName(
+      "code.run",
+      {
+        code: `import { connections, call } from "codemode:fake";
+export default async function () {
+  const mine = await connections();
+  const target = mine.find((c) => c.id === ${JSON.stringify(connection.id)});
+  const sent = await call(target.id, "OUTBOX", "send", { to: ["ada@ext.test"], subject: "From a script", text: "Hi" });
+  return { count: mine.length, sent };
+}`,
+      },
+      as(admin, {
+        actor: "mcp",
+        origin: {
+          surface: "mcp",
+          clientId: "t",
+          clientName: "Test",
+          sessionId: `cap_${unique("s")}`,
+        },
+        extensionHost: (await import("../src/index.ts")).extensionHost(env),
+      }),
+    )) as {
+      ok: boolean;
+      value: { sent: { value: { status: string }; pending: unknown[] } };
+      error?: unknown;
+    };
+    expect(result.error).toBeUndefined();
+    expect(result.value.sent.value.status).toBe("pending");
+    expect(result.value.sent.pending).toHaveLength(1);
+    expect(await fakeProviderStub(env, address).sent()).toEqual([]);
+  });
+
+  it("refuses unknown modules and connections of another gatekeeper", async () => {
+    const connection = await connect(admin, address);
+    const run = (code: string) =>
+      invokeByName(
+        "code.run",
+        { code },
+        as(admin, {
+          actor: "mcp",
+          origin: { surface: "mcp", sessionId: `cap_${unique("s")}` },
+          extensionHost: extensionHost(env),
+        }),
+      ) as Promise<{ ok: boolean; error?: { code: string; message: string } }>;
+    const unknown = await run(`import x from "codemode:nope"; export default x;`);
+    expect(JSON.stringify(unknown)).toMatch(/may import only/);
+    const other = await run(
+      `import { call } from "codemode:google"; export default () => call(${JSON.stringify(connection.id)}, "OUTBOX", "send", {});`,
+    );
+    expect(other.ok).toBe(false);
+    expect(JSON.stringify(other)).toMatch(/No usable google connection/);
     expect(PendingApprovalError).toBeDefined();
   });
 });
