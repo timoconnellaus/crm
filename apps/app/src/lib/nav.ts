@@ -7,6 +7,7 @@ import {
   InboxIcon,
   type LucideIcon,
   PlugIcon,
+  PuzzleIcon,
   ScrollTextIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -28,7 +29,8 @@ export interface NavItem {
     | "/settings/approval-policy"
     | "/settings/users"
     | "/settings/audit"
-    | "/settings/connected-apps";
+    | "/settings/connected-apps"
+    | "/settings/extensions";
   label: string;
   icon: LucideIcon;
   /** Extra words the palette matches on. */
@@ -78,6 +80,13 @@ export const SETTINGS_NAV: NavItem[] = [
     label: "Audit log",
     icon: ScrollTextIcon,
     keywords: ["history", "changes", "log", "settings"],
+    adminOnly: true,
+  },
+  {
+    to: "/settings/extensions",
+    label: "Extensions",
+    icon: PuzzleIcon,
+    keywords: ["objects", "fields", "tools", "quarantine", "rollback", "settings"],
     adminOnly: true,
   },
 ];

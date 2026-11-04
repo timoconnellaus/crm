@@ -5,6 +5,7 @@ import type { CoreDatabase } from "@crm/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ConflictError, NotFoundError, ValidationError } from "../errors.ts";
+import { getObject } from "../fields/index.ts";
 import { personObject } from "../fields/person.ts";
 import { newId } from "../ids.ts";
 import { listInputSchema, pageSchema, runListQuery, selectFields } from "../list.ts";
@@ -551,7 +552,7 @@ export const personList = defineOperation({
   async handler(input, ctx) {
     const page = await runListQuery(
       ctx.db.selectFrom("crm_people").selectAll(),
-      personObject,
+      getObject("person") ?? personObject,
       input,
     );
     const items: PersonListItem[] = page.rows.map((row) => ({

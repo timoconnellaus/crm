@@ -34,6 +34,7 @@ const ACTOR_LABEL: Record<HistoryEntry["actor"], string> = {
   assistant: "AI assistant",
   mcp: "MCP client",
   automation: "Automation",
+  extension: "Extension",
 };
 
 export { diffValue };

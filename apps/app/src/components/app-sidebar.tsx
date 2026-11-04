@@ -6,6 +6,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuBadge,
@@ -14,8 +15,16 @@ import {
   useSidebar,
 } from "@crm/ui/components/sidebar";
 import { Link } from "@tanstack/react-router";
-import { ActivitySquareIcon } from "lucide-react";
+import {
+  ActivitySquareIcon,
+  BoxIcon,
+  BriefcaseIcon,
+  FolderKanbanIcon,
+  HandshakeIcon,
+  type LucideIcon,
+} from "lucide-react";
 import { MAIN_NAV, type NavItem, SETTINGS_NAV } from "#/lib/nav";
+import { useExtensionObjects } from "#/lib/schema";
 import { usePendingCount } from "./approvals/hooks.ts";
 
 function NavLink({ item, badge }: { item: NavItem; badge?: number | undefined }) {
@@ -46,6 +55,47 @@ function NavLink({ item, badge }: { item: NavItem; badge?: number | undefined })
   );
 }
 
+const OBJECT_ICONS: Record<string, LucideIcon> = {
+  "folder-kanban": FolderKanbanIcon,
+  briefcase: BriefcaseIcon,
+  handshake: HandshakeIcon,
+};
+
+/** Extension objects (from the field registry), each with a generic list page. */
+function ExtensionObjectsNav() {
+  const { setOpenMobile } = useSidebar();
+  const objects = useExtensionObjects();
+  if (!objects.length) return null;
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Extensions</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {objects.map((object) => {
+            const Icon = (object.icon && OBJECT_ICONS[object.icon]) || BoxIcon;
+            const label = object.plural ?? object.label;
+            return (
+              <SidebarMenuItem key={object.name}>
+                <SidebarMenuButton asChild tooltip={label}>
+                  <Link
+                    to="/x/$object"
+                    params={{ object: object.name }}
+                    activeProps={{ "data-active": true, "aria-current": "page" }}
+                    onClick={() => setOpenMobile(false)}
+                  >
+                    <Icon />
+                    <span>{label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
 export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
   const pendingCount = usePendingCount();
@@ -68,6 +118,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <ExtensionObjectsNav />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

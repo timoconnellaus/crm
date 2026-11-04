@@ -9,12 +9,14 @@ import type { CoreDatabase } from "@crm/db";
 import { type Kysely, type SqlBool, sql } from "kysely";
 import { z } from "zod";
 import { ValidationError } from "../errors.ts";
+import { fieldStorage, objectTableOf } from "../extensions/schema.ts";
+import { getObject } from "../fields/index.ts";
 import type { HandlerContext, RecordRef, SimulationView } from "../operation.ts";
 import { jsonList } from "./common.ts";
 
 interface LinkTarget {
   /** Core table holding the records. Trusted identifier. */
-  table: "core_person" | "core_organisation" | "core_task";
+  table: string;
   /** Column used as the record's display title. Trusted identifier. */
   titleColumn: string;
 }
@@ -25,12 +27,25 @@ export const LINK_TARGETS: Record<string, LinkTarget> = {
   task: { table: "core_task", titleColumn: "title" },
 };
 
+/**
+ * An extension object (`<extension>.<object>`) as a link target: its x_* table, for existence
+ * checks (deleted_at), and its title column. Null for anything else.
+ */
+function extensionTarget(object: string): { table: string; titleColumn: string } | null {
+  const definition = getObject(object);
+  const table = objectTableOf(object);
+  if (!definition?.extension || !table || !definition.titleField) return null;
+  const title = definition.fields.find((f) => f.name === definition.titleField);
+  const column = fieldStorage(object, definition.titleField)?.column;
+  return title && column ? { table, titleColumn: column } : null;
+}
+
 export const recordRefSchema = z.object({
   object: z
     .string()
-    .regex(/^[a-z][a-z0-9_]*$/)
+    .regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9]*)?$/)
     .max(64)
-    .describe("Object type: person, organisation or task (extension objects later)"),
+    .describe("Object type: person, organisation, task or an extension object (<ext>.<object>)"),
   id: z.string().min(1).max(64).describe("Record id, e.g. per_…"),
 });
 
@@ -56,7 +71,7 @@ export async function assertLinkTargets(
 ): Promise<void> {
   const byObject = new Map<string, string[]>();
   for (const ref of refs) {
-    if (!Object.hasOwn(LINK_TARGETS, ref.object)) {
+    if (!Object.hasOwn(LINK_TARGETS, ref.object) && !extensionTarget(ref.object)) {
       throw new ValidationError(`Cannot link to object type "${ref.object}"`, {
         field: "links",
         allowed: Object.keys(LINK_TARGETS),
@@ -74,8 +89,8 @@ export async function assertLinkTargets(
     byObject.set(ref.object, [...(byObject.get(ref.object) ?? []), ref.id]);
   }
   for (const [object, ids] of byObject) {
-    const target = LINK_TARGETS[object] as LinkTarget;
-    const found = await db
+    const target = (LINK_TARGETS[object] ?? extensionTarget(object)) as LinkTarget;
+    const found = await (db as Kysely<Record<string, { id: string; deleted_at: string | null }>>)
       .selectFrom(target.table)
       .select("id")
       .where("id", "in", jsonList(ids))
@@ -101,14 +116,14 @@ export async function loadRecordTitles(
   const titles = new Map<string, string>();
   const byObject = new Map<string, string[]>();
   for (const ref of refs) {
-    if (Object.hasOwn(LINK_TARGETS, ref.object)) {
+    if (Object.hasOwn(LINK_TARGETS, ref.object) || extensionTarget(ref.object)) {
       byObject.set(ref.object, [...(byObject.get(ref.object) ?? []), ref.id]);
     }
   }
   await Promise.all(
     [...byObject].map(async ([object, ids]) => {
-      const target = LINK_TARGETS[object] as LinkTarget;
-      const rows = await db
+      const target = (LINK_TARGETS[object] ?? extensionTarget(object)) as LinkTarget;
+      const rows = await (db as unknown as Kysely<Record<string, { id: string }>>)
         .selectFrom(target.table)
         .select(["id", sql<string>`${sql.ref(target.titleColumn)}`.as("title")])
         .where("id", "in", jsonList([...new Set(ids)]))

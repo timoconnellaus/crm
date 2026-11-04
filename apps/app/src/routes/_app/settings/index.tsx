@@ -4,6 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronRightIcon,
   PlugIcon,
+  PuzzleIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
   UsersIcon,
@@ -25,7 +26,8 @@ function Section({
     | "/settings/approval-policy"
     | "/settings/users"
     | "/settings/audit"
-    | "/settings/connected-apps";
+    | "/settings/connected-apps"
+    | "/settings/extensions";
 }) {
   const body = (
     <Card className="h-full transition-colors hover:bg-accent/50">
@@ -88,6 +90,12 @@ function SettingsPage() {
               : "AI apps you connected over MCP, with revoke."
           }
           to="/settings/connected-apps"
+        />
+        <Section
+          icon={<PuzzleIcon className="size-5" />}
+          title="Extensions"
+          description="Installed extensions, their permissions, runs and versions."
+          to="/settings/extensions"
         />
         {isAdmin && (
           <Section

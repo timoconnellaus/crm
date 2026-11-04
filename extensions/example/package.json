@@ -1,0 +1,21 @@
+{
+  "name": "@crm/extension-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The example shipped extension (stage 3). Bundled as source into crm-runner.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@crm/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@cloudflare/workers-types": "5.20261104.1",
+    "@crm/config": "workspace:*",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

@@ -13,6 +13,7 @@ export type OperationErrorCode =
   | "conflict"
   | "config"
   | "timeout"
+  | "extension_error"
   | "internal";
 
 export class OperationError extends Error {

@@ -40,8 +40,11 @@ describe("core registry", () => {
       });
 
       it("read operations use a read permission", () => {
+        // extension.check runs extension source in the sandbox, so it stays admin-only.
         if (op.risk === "read") {
-          expect(["records:read", "audit:read", "users:manage"]).toContain(op.permission);
+          expect(["records:read", "audit:read", "users:manage", "extensions:manage"]).toContain(
+            op.permission,
+          );
         }
       });
 

@@ -1,2 +1,3 @@
 # Copied to .dev.vars by `pnpm dev` when missing. Local development only.
-DEV_ROUTES=true
+# Optional: an AI Gateway id for codemode:ai (which also needs an `ai` binding, see docs/deploying.md).
+# AI_GATEWAY_ID=
