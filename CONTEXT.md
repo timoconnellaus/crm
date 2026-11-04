@@ -379,6 +379,28 @@ The deploy-time choice of how a Principal is resolved: `better-auth` (default) o
 A named AI job (`build`, `assistant`, `summarise`, `extract`, `classify`, `embed`, `vision`, `review`)
 mapped to a provider + model in the model registry. Code asks for a role, never a model.
 
+**Model role registry**
+The core table (`packages/core/src/ai/roles.ts`) that resolves each model role to
+`{ provider, model, params, fallback }` through three layers: shipped defaults (every role on
+Workers AI), deploy config (`AI_MODEL_ROLES`) and admin overrides (Settings → AI, stored in
+`core_settings`, settings only). Each role declares the capabilities it needs (tool use, JSON
+schema, context size, vision, embeddings); the registry rejects a model that lacks one. Calls run
+through the AI SDK and AI Gateway (ADR 0150). Provider keys are Workers secrets or AI Gateway
+BYOK, never D1 (ADR 0151).
+_Avoid_: model config, LLM settings
+
+**AI summary**
+Text written by the `summarise` role about a record, a meeting (meeting prep), a long activity
+(one-liner) or a change set, cached in `core_ai_summary` by a hash of its inputs and the model:
+it is stale as soon as anything it was built from changes. Always labelled "AI-generated" and only
+generated on request (ADR 0153).
+
+**Semantic search**
+Search by meaning: records' text embedded by the `embed` role into Vectorize, re-embedded only
+when the text's hash changes, merged with full-text results by rank (hybrid search). Powers Cmd-K's
+"Related by meaning", Similar records and the assistant's retrieval (ADR 0154, ADR 0155).
+_Avoid_: vector search (for the feature; Vectorize is the store)
+
 **View spec**
 The JSON a view is made of, rendered by our components: a discriminated union of `table`, `board`,
 `calendar`, `gallery` and `dashboard` (filters and widgets with read-only SQL over `crm_*` views

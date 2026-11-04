@@ -1,6 +1,8 @@
 // Org settings (core_settings), starting with the approval policy.
 import type { CoreDatabase } from "@crm/db";
 import type { Kysely } from "kysely";
+import type { AiAdminSettings } from "./ai/client.ts";
+import { PROVIDERS, type ProviderId, parseRoleLayer } from "./ai/roles.ts";
 import {
   APPROVAL_POLICY_SETTING,
   type ApprovalPolicy,
@@ -99,4 +101,28 @@ export async function loadGeneralSettings(db: Kysely<CoreDatabase>): Promise<Gen
     timezone: typeof timezone === "string" && isTimezone(timezone) ? timezone : "UTC",
     aiMode: (AI_MODES as readonly unknown[]).includes(aiMode) ? (aiMode as AiMode) : "workers-ai",
   };
+}
+
+/** Settings → AI (ADR 0150): role overrides and BYOK flags. Settings only, never keys. */
+export const AI_SETTINGS = "ai_settings";
+
+/** The admin layer of the model registry. A missing or unreadable setting means no overrides. */
+export async function loadAiSettings(db: Kysely<CoreDatabase>): Promise<AiAdminSettings> {
+  const row = await db
+    .selectFrom("core_settings")
+    .select("value")
+    .where("key", "=", AI_SETTINGS)
+    .executeTakeFirst();
+  if (!row) return { roles: {}, byok: [] };
+  try {
+    const value = JSON.parse(row.value) as { roles?: unknown; byok?: unknown };
+    return {
+      roles: parseRoleLayer(JSON.stringify(value.roles ?? {})),
+      byok: Array.isArray(value.byok)
+        ? (value.byok.filter((p) => (PROVIDERS as readonly unknown[]).includes(p)) as ProviderId[])
+        : [],
+    };
+  } catch {
+    return { roles: {}, byok: [] };
+  }
 }

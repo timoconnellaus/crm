@@ -29,6 +29,7 @@ import { dispatchAutomationMessages } from "./automations/dispatch.ts";
 import { automationHost } from "./automations/host.ts";
 import { runAutomationCron } from "./automations/schedule.ts";
 import { Executor, type ExecutorOptions } from "./executor/executor.ts";
+import { embedFromEvents } from "./extensions/embeddings.ts";
 import type { HelloOutput } from "./hello-workflow.ts";
 import { fakeProviderFetch } from "./integrations/fake.ts";
 import { availableVendors, integrationRuntime } from "./integrations/runtime.ts";
@@ -216,10 +217,10 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
    */
   override async queue(batch: MessageBatch<AutomationQueueMessage>): Promise<void> {
     try {
-      await dispatchAutomationMessages(
-        this.env,
-        batch.messages.map((m) => m.body),
-      );
+      const messages = batch.messages.map((m) => m.body);
+      await dispatchAutomationMessages(this.env, messages);
+      // Semantic search: embed the records this batch changed (ADR 0154). Never throws.
+      await embedFromEvents(this.env, messages);
       batch.ackAll();
     } catch (error) {
       console.error("automation events: batch failed, retrying", error);

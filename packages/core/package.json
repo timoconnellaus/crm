@@ -5,25 +5,31 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./client": "./src/client.ts"
+    "./client": "./src/client.ts",
+    "./ai-roles": "./src/ai/roles.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "relevance:real": "RELEVANCE_REAL=1 vitest run test/ai-relevance.test.ts --silent=false"
   },
   "devDependencies": {
-    "@crm/extension-deals": "workspace:*",
     "@cloudflare/vitest-plugin": "1.5.1",
     "@cloudflare/workers-types": "5.20261104.1",
     "@crm/config": "workspace:*",
+    "@crm/extension-deals": "workspace:*",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "3.0.73",
+    "@ai-sdk/provider": "4.0.30",
     "@crm/db": "workspace:*",
     "@crm/release": "workspace:*",
     "@crm/sdk": "workspace:*",
+    "ai": "7.0.145",
     "kysely": "0.29.8",
+    "workers-ai-provider": "4.0.0",
     "zod": "4.6.7"
   }
 }

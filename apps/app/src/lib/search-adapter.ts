@@ -1,5 +1,6 @@
 // Global search for the command palette: `search.global` (FTS5 over people, organisations,
-// activities and tasks, prefix match as you type), with each hit's route.
+// activities and tasks, prefix match as you type), with each hit's route, and `search.hybrid`
+// for hits related by meaning once typing pauses.
 import type { HighlightSegment } from "@crm/core";
 import { callOp } from "./operations.ts";
 
@@ -21,10 +22,15 @@ export interface SearchHit {
 
 export interface SearchAdapter {
   search(query: string, options?: { limit?: number }): Promise<SearchHit[]>;
+  /**
+   * Hits related by meaning (semantic search) that words alone may miss. Slower than `search`:
+   * call it once typing pauses, not per keystroke.
+   */
+  related?(query: string, options?: { limit?: number }): Promise<SearchHit[]>;
 }
 
 /** Where a hit opens. Activities and tasks have no page of their own: open a linked record. */
-function hrefFor(hit: { object: SearchHit["object"]; id: string }): string {
+export function hrefFor(hit: { object: SearchHit["object"]; id: string }): string {
   switch (hit.object) {
     case "person":
       return `/people/${hit.id}`;
@@ -46,6 +52,18 @@ export const globalSearch: SearchAdapter = {
     if (!q) return [];
     const { hits } = await callOp("search.global", { query: q, limit });
     return hits.map((hit) => ({ ...hit, href: hrefFor(hit) }));
+  },
+  async related(query, { limit = 8 } = {}) {
+    const q = query.trim();
+    if (!q) return [];
+    const { hits, semantic } = await callOp("search.hybrid", { query: q, limit });
+    if (!semantic) return [];
+    return hits
+      .filter((hit) => hit.matchedBy.includes("meaning"))
+      .map(({ score: _score, matchedBy: _matchedBy, text: _text, ...hit }) => ({
+        ...hit,
+        href: hrefFor(hit),
+      }));
   },
 };
 

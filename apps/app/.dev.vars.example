@@ -20,6 +20,12 @@ CF_ACCESS_AUD=
 # `crm upgrade` CLI instead.
 CRM_UPDATE_TOKEN=
 
-# Local only, never in production: "true" answers the build model role ("Describe a widget")
-# with a deterministic stand-in when there is no `ai` binding. `pnpm dev` adds it to .dev.vars.
+# Local only, never in production: "true" answers every model role with deterministic stand-ins
+# and keeps vectors in memory when there is no `ai` binding (ADR 0156). `pnpm dev` adds it.
 # AI_FAKE_MODEL=
+
+# Settings → AI (optional, docs/deploying.md "In-app AI"): a Cloudflare API token for provider
+# keys and usage, an authenticated AI Gateway token, and provider keys (never stored in D1).
+# CLOUDFLARE_API_TOKEN=
+# AI_GATEWAY_TOKEN=
+# AI_KEY_OPENAI=

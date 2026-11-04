@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { SimilarRecordsCard } from "#/components/ai/similar-records";
+import { RecordSummaryCard } from "#/components/ai/summary";
 import { useAppCommands } from "#/components/app-commands";
 import { PendingChangesBadge } from "#/components/approvals/pending-badge";
 import {
@@ -327,6 +329,7 @@ function OrganisationRecord({
       side={
         <>
           <OrganisationDetailsCard organisation={org} readOnly={deleted} />
+          <RecordSummaryCard object="organisation" id={org.id} />
           {recordViews.panels}
           <RecordAutomationsCard object={"organisation"} id={org.id} />
           <ExtensionFieldsCards object="organisation" id={org.id} readOnly={deleted} />
@@ -349,6 +352,7 @@ function OrganisationRecord({
             onToggle={toggleTask}
             onAdd={addTask}
           />
+          <SimilarRecordsCard object="organisation" id={org.id} />
         </>
       }
     />

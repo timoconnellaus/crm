@@ -29,7 +29,7 @@ Terms are defined in [`CONTEXT.md`](../CONTEXT.md). Decisions and their reasons 
                          └─────────────────────────────┬─────────────────────────────────────┘
                                                        ▼
                                              external services
- D1 (one database) · R2 (files) · AI Gateway → Workers AI by default / other providers optional (per model role)
+ D1 (one database) · R2 (files) · Vectorize (record embeddings) · AI Gateway → Workers AI by default / other providers optional (per model role)
 ```
 
 ## Layers
@@ -338,13 +338,53 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
 ### 8. AI
 
 **Model roles** (`build`, `assistant`, `summarise`, `extract`, `classify`, `embed`, `vision`,
-`review`) map to a provider and model in a core model registry, which checks capabilities. All calls
-go through AI Gateway ([ADR 0009](adr/0009-model-roles.md)). Code asks for a role, never a model.
-Workers AI is the default provider for every role. So far the minimal mapping in
-`packages/core/src/models.ts` covers `summarise`, `extract`, `classify` (extension code) and
-`build` (the AI-written summary on an extension proposal); without an `ai` binding on crm-runner
-those features say no AI is available. Stage 4a gives crm-app the same optional binding for
-"Describe a widget" (`ModelRunner`, passed to operations as `ctx.models`).
+`review`) map to a provider and model in the core **model role registry**
+(`packages/core/src/ai/roles.ts`, [ADR 0009](adr/0009-model-roles.md),
+[ADR 0150](adr/0150-model-role-registry-and-ai-sdk.md)). Code asks for a role, never a model.
+
+```
+ operation ── ctx.models.run("summarise", …) ──► registry: shipped (Workers AI) → AI_MODEL_ROLES → Settings → AI
+                                                    │ capability check (tools, JSON, context, vision, embeddings)
+                                                    ▼
+                                AI SDK ── workers-ai-provider (AI binding) ─┐
+                                       └─ @ai-sdk/openai-compatible ────────┴─► AI Gateway (cf-aig-metadata: role) ─► provider
+```
+
+- **The registry** resolves each role through shipped defaults (every role on Workers AI),
+  deploy config (`AI_MODEL_ROLES`) and admin overrides (`core_settings.ai_settings`), rejecting
+  models without the role's capabilities, with one fallback per role. crm-app passes the runner to
+  operations as `ctx.models`; crm-runner uses the same registry for `codemode:ai` and proposal
+  summaries. Every call goes through AI Gateway when `AI_GATEWAY_ID` is set, tagged with its role.
+- **Settings → AI** (`ai.*` operations, admins): per role provider, model, fallback, capability
+  badges and a Test button; provider keys stored as Workers secrets through the Cloudflare API or
+  as AI Gateway BYOK, **never in D1** ([ADR 0151](adr/0151-provider-keys-as-workers-secrets-or-byok.md));
+  usage and spend per role from AI Gateway's logs, cached 10 minutes
+  ([ADR 0152](adr/0152-usage-and-spend-per-role.md)).
+- **Summaries** (`summary.*`, [ADR 0153](adr/0153-ai-summaries.md)): record summaries (people,
+  organisations, deals), meeting prep, one-liners for long emails and notes, and change-set
+  summaries for approvers. Cached in `core_ai_summary` by a SHA-256 of their facts and the model,
+  so any change makes them stale; generated only on request; labelled AI-generated.
+- **Semantic search** ([ADR 0154](adr/0154-embeddings-queue-and-vectorize.md),
+  [ADR 0155](adr/0155-hybrid-search-similar-records-and-retrieval.md)):
+
+```
+ write ─► pipeline commit ─► stage 5 record events (Queue) ─► crm-runner consumer ─► embedRecordEvents
+         (no Vectorize, erase, sync: core_embedding_queue rows in the batch ─► onCommitted ─► drain)
+                                       10-minute cron (crm-app) ─► backfill + drain retries
+ drain: text per record ─► SHA-256 unchanged? skip : embed role (≤100 per call) ─► Vectorize (crm-records)
+ search.hybrid: FTS5 (all words, any word) + Vectorize nearest ─► reciprocal rank fusion ─► Cmd-K, retrieval
+ record.similar: the record's stored vector ─► Vectorize nearest ─► "Similar records"
+```
+
+  Private and metadata-only synced activities are never embedded; an erase deletes vectors and
+  summaries. Changed records are embedded from stage 5's record events by crm-runner's queue
+  consumer; the D1 queue is only the fallback (ADR 0154 amendment).
+- **Bindings are optional** ([ADR 0156](adr/0156-optional-ai-bindings-and-local-stand-ins.md)):
+  `pnpm run deploy` adds `ai` (both Workers) and `vectorize` (crm-app). Without them AI features
+  say AI is not configured and search is full-text only. Locally `AI_FAKE_MODEL=true` answers
+  every role with deterministic stand-ins and keeps vectors in memory.
+- **Stage 7b** adds the in-app assistant (`assistant` role, retrieval through `search.hybrid` /
+  `retrieve`), the policy adjudicator (`review` role) and the daily digest.
 
 ### 9. Dashboards and views
 
@@ -381,7 +421,7 @@ apps/
   app/                 TanStack Start + shadcn UI, server functions, /mcp       → Worker "crm-app"
   runner/              extension runtime, automations, Workflows, Queues         → Worker "crm-runner"
 packages/
-  core/                operations registry, risk classes, policy types, model roles, schema reconciler
+  core/                operations registry, risk classes, policy types, model role registry (ai/), schema reconciler
   db/                  core D1 migrations (incl. core_base_* views), typed core schema
   auth/                IdentityProvider interface; better-auth and cloudflare-access adapters
   sdk/                 the extension contract (defineExtension, defineTool), formula language, test harness

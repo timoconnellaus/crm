@@ -41,7 +41,8 @@ describe("core registry", () => {
 
       it("read operations use a read permission", () => {
         // extension.check runs extension source in the sandbox, so it stays admin-only; the
-        // update.* reads (Settings → Updates) are admin-only too.
+        // update.* reads (Settings → Updates) and Settings → AI (ai.settings, ai.testRole,
+        // ai.usage) are admin-only too.
         if (op.risk === "read") {
           expect([
             "records:read",

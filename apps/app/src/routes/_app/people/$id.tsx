@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
+import { SimilarRecordsCard } from "#/components/ai/similar-records";
+import { RecordSummaryCard } from "#/components/ai/summary";
 import { useAppCommands } from "#/components/app-commands";
 import { PendingChangesBadge } from "#/components/approvals/pending-badge";
 import {
@@ -305,6 +307,7 @@ function PersonRecord({
         side={
           <>
             <PersonDetailsCard person={person} readOnly={deleted} />
+            <RecordSummaryCard object="person" id={person.id} />
             {recordViews.panels}
             <RecordAutomationsCard object={"person"} id={person.id} />
             <ExtensionFieldsCards object="person" id={person.id} readOnly={deleted} />
@@ -324,6 +327,7 @@ function PersonRecord({
               onToggle={toggle}
               onAdd={addTask}
             />
+            <SimilarRecordsCard object="person" id={person.id} />
           </>
         }
       />

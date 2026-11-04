@@ -1,5 +1,10 @@
 // @crm/core: the operations registry and everything an operation needs. See README.md.
 
+export * from "./ai/admin.ts";
+export * from "./ai/embedding.ts";
+export * from "./ai/hybrid.ts";
+export * from "./ai/summaries.ts";
+export * from "./ai/vectors.ts";
 export { DEFAULT_APPROVAL_EXPIRY_DAYS, runSessionKey } from "./approvals/queue.ts";
 export { isSimulatedRead } from "./approvals/simulation.ts";
 export * from "./automations/cron.ts";
@@ -47,6 +52,7 @@ export * from "./notifications/types.ts";
 export * from "./operation.ts";
 export * from "./operations/activity.ts";
 export * from "./operations/affiliation.ts";
+export * from "./operations/ai.ts";
 export * from "./operations/approval.ts";
 export * from "./operations/audit.ts";
 export * from "./operations/automation.ts";
@@ -73,12 +79,14 @@ export * from "./operations/search.ts";
 export { COMMON_CURRENCIES, MAX_LOGO_LENGTH } from "./operations/settings.ts";
 export * from "./operations/setup.ts";
 export * from "./operations/suggestions.ts";
+export * from "./operations/summary.ts";
 export * from "./operations/task.ts";
 export * from "./operations/trash.ts";
 export * from "./operations/update.ts";
 export * from "./operations/user.ts";
 export * from "./operations/view.ts";
 export {
+  type CommitEvent,
   type InvocationContext,
   invokeOperation,
   operationObject,
@@ -107,8 +115,10 @@ export * from "./relative.ts";
 export * from "./retention.ts";
 export {
   AI_MODES,
+  AI_SETTINGS,
   BASE_CURRENCY_SETTING,
   type GeneralSettings,
+  loadAiSettings,
   loadApprovalPolicy,
   loadGeneralSettings,
 } from "./settings.ts";
