@@ -78,8 +78,25 @@ const REASON_SCHEMA = {
 
 type JsonSchema = Record<string, unknown>;
 
+/**
+ * Converted schemas, kept per operation. /mcp builds a new MCP server for every request
+ * (stateless transport). Without this cache, every request re-ran z.toJSONSchema over every
+ * curated operation, paying CPU each time for a result that changes only with a deploy (core
+ * operations) or an extension version (extension tool operations are cached objects).
+ */
+const inputSchemas = new WeakMap<AnyOperation, JsonSchema>();
+
 /** The operation's input as JSON Schema, plus a required `reason` for reviewable operations. */
 export function toolInputSchema(op: AnyOperation): JsonSchema {
+  let schema = inputSchemas.get(op);
+  if (!schema) {
+    schema = buildToolInputSchema(op);
+    inputSchemas.set(op, schema);
+  }
+  return schema;
+}
+
+function buildToolInputSchema(op: AnyOperation): JsonSchema {
   const schema = z.toJSONSchema(op.input, { io: "input", unrepresentable: "any" }) as JsonSchema;
   delete schema.$schema;
   if (!requiresReason(op)) return flattenUnion(schema);

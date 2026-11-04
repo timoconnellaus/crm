@@ -7,6 +7,7 @@
 // Host modules are configured once on the backend, so they find the running extension through
 // `#current`. Executions are serialised by `#queue` (one at a time, which is also the Workspace's
 // default), so `#current` always belongs to the execution making the call.
+
 import { DurableObject } from "cloudflare:workers";
 import { Workspace, type WorkspaceRuntimeValue } from "@cloudflare/computer";
 import { WorkerJavaScriptBackend } from "@cloudflare/computer/backends/worker-javascript";
@@ -90,6 +91,13 @@ function assertPath(path: string): void {
   }
 }
 const buildDir = (id: string, key: string) => `/build/${id}/${key}`;
+
+/** A content hash of a shipped extension's files (path order independent). */
+export async function shippedHash(files: Record<string, string>): Promise<string> {
+  const canonical = JSON.stringify(Object.entries(files).sort(([a], [b]) => (a < b ? -1 : 1)));
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 function json(value: unknown): WorkspaceRuntimeValue {
   return JSON.parse(JSON.stringify(value ?? null)) as WorkspaceRuntimeValue;
@@ -496,18 +504,42 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
     return SHIPPED_EXTENSIONS.map(({ id, version }) => ({ id, version }));
   }
 
+  /**
+   * Every new crm-app isolate calls this (through installShipped) on its first request. When the
+   * bundled source is the one already committed and the repository's HEAD is still that commit,
+   * it returns at once. Otherwise every isolate start rewrote each shipped file into the
+   * workspace filesystem and ran git add + status, in the singleton DO and in that request's
+   * path.
+   */
   async commitShipped(id: string): Promise<{ commit: string; changed: boolean }> {
     const shipped = SHIPPED_EXTENSIONS.find((s) => s.id === id);
     if (!shipped) throw new Error(`No shipped extension ${id}`);
     if (await this.ctx.storage.get(ejectedKey(id))) {
       throw new Error(`${id} was ejected; releases no longer update it`);
     }
-    return this.commit({
-      id,
-      files: shipped.files,
-      message: `Shipped ${id} ${shipped.version}`,
-      author: IDENTITY,
+    return this.#serialise(async () => {
+      const hash = await shippedHash(shipped.files);
+      const key = `shipped:${id}`;
+      const known = await this.ctx.storage.get<{ hash: string; commit: string }>(key);
+      if (known?.hash === hash && (await this.#head(id)) === known.commit) {
+        return { commit: known.commit, changed: false };
+      }
+      const result = await this.#commit(
+        id,
+        shipped.files,
+        `Shipped ${id} ${shipped.version}`,
+        IDENTITY,
+      );
+      await this.ctx.storage.put(key, { hash, commit: result.commit });
+      return result;
     });
+  }
+
+  async #head(id: string): Promise<string | null> {
+    const dir = extensionDir(id);
+    if (!(await this.#exists(`${dir}/.git`))) return null;
+    const log = await this.workspace.git.log({ dir, depth: 1 }).catch(() => []);
+    return log[0]?.oid ?? null;
   }
 
   async evaluate(
@@ -577,7 +609,15 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
     const row = await db
       .selectFrom("core_extensions as e")
       .innerJoin("core_user as u", "u.id", "e.user_id")
-      .select(["e.status", "e.manifest", "e.failure_count", "u.id as user_id", "u.email", "u.name"])
+      .select([
+        "e.status",
+        "e.manifest",
+        "e.failure_count",
+        "e.last_good_commit",
+        "u.id as user_id",
+        "u.email",
+        "u.name",
+      ])
       .where("e.id", "=", input.id)
       .executeTakeFirst();
     if (row?.status !== "active") {
@@ -636,6 +676,17 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
       logs: context.logs,
       operations: context.operations,
     });
+    // Most runs succeed on the last good commit with no failures behind them: nothing changes,
+    // so skip the write (a D1 row plus its index entries on every tool and automation step).
+    const unchanged =
+      failures === row.failure_count &&
+      !quarantined &&
+      (!response.ok || row.last_good_commit === input.commit);
+    if (unchanged) {
+      return response.ok
+        ? { ok: true, value: response.value, runId }
+        : { ok: false, error: response.error, runId, quarantined };
+    }
     const now = new Date().toISOString();
     await db
       .updateTable("core_extensions")
