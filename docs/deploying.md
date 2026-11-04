@@ -37,6 +37,10 @@ there (in your fork) to switch adapter. Everything else is a **secret** on `crm-
 | `GOOGLE_CLIENT_SECRET` | secret | Google sign-in | |
 | `CF_ACCESS_TEAM_DOMAIN` | secret | Cloudflare Access | `myteam` or `myteam.cloudflareaccess.com` |
 | `CF_ACCESS_AUD` | secret | Cloudflare Access | The Access application's Audience (AUD) tag |
+| `CRM_UPDATE_TOKEN` | secret | optional | Scoped API token for in-app updates ([Updates](#updates)) |
+| `CRM_RELEASE_VERSION` | var | releases | The installed release; set by the release manifest, empty from source |
+| `CRM_RELEASE_REPO` | var | releases | GitHub repository releases are read from (default `timoconnellaus/crm`) |
+| `CRM_ACCOUNT_ID` | var | releases | The account the self-updater deploys to; set by the installer |
 
 `BETTER_AUTH_SECRET` is declared in `secrets.required`, so wrangler refuses to deploy `crm-app`
 without it. Set it even with Cloudflare Access (any random value): it keeps the config uniform.
@@ -88,7 +92,108 @@ Dashboard widget results are cached for 60 seconds in the Workers Cache API (ADR
 API does nothing on `*.workers.dev` hostnames, so put crm-app on a custom domain to get the cache;
 without it every widget view runs its query.
 
-## Option 1: Deploy to Cloudflare button
+## Option 1 (recommended): `npx create-crm`
+
+Installs a published, verified **release bundle** (ADR 0053, ADR 0160) with the Cloudflare API. No
+checkout, no wrangler, no service of ours.
+
+```sh
+npx create-crm            # or: pnpm dlx create-crm
+```
+
+It asks for, in order:
+
+1. **A Cloudflare API token.** Create one at *My Profile → API Tokens → Create Token → Custom token*
+   (or an account-owned token), limited to the account you install into, with these **account**
+   permissions:
+
+   | Permission | Why |
+   | --- | --- |
+   | Workers Scripts: Edit | upload Workers, versions, deployments, secrets, crons, workers.dev |
+   | D1: Edit | create the `crm` database, run migrations, Time Travel bookmarks and restore |
+   | Workers R2 Storage: Edit | create the `crm-blobs` bucket |
+   | Workers KV Storage: Edit | create the `crm-app-oauth-kv` namespace |
+   | Queues: Edit | queues and consumers, once a release declares them |
+   | Vectorize: Edit | indexes, once a release declares them |
+   | Account Settings: Read | list the account |
+
+   For a **custom hostname** also add, on that zone, **Zone: Read** and **Workers Routes: Edit**. The
+   token is only used by the CLI unless you choose to store it for in-app updates (below). Pass it as
+   `--token` or `CLOUDFLARE_API_TOKEN` to skip the prompt.
+2. **The account** (asked only when the token sees several).
+3. **The hostname:** `workers.dev` (gives `https://crm-app.<subdomain>.workers.dev`) or a hostname on
+   one of your zones, e.g. `crm.example.com`, attached as a Worker custom domain.
+4. **Sign-in:** Better Auth (email and password) or Cloudflare Access (then the Access team domain
+   and AUD; see [Cloudflare Access](#cloudflare-access)).
+
+Then it downloads the newest release on the channel (`--version`, `--channel beta` to choose),
+**checks its sha256 against SHA256SUMS and its GitHub build attestation** (and runs
+`gh attestation verify` too when the GitHub CLI is installed; `--require-gh` insists), and refuses
+a bundle that fails. It creates or finds the D1 database, R2 bucket and KV namespace, runs the core
+migrations, uploads crm-runner then crm-app with their assets, generates `BETTER_AUTH_SECRET`, sets
+`BETTER_AUTH_URL`, and prints the URL. Open `<url>/setup`: sign up (the first account is the admin)
+and the setup wizard takes it from there.
+
+Re-running `npx create-crm` repairs an install: it changes only what is missing or wrong and keeps
+secrets. Non-interactive use (CI):
+
+```sh
+npx create-crm --yes --token "$CF_TOKEN" --account "$CF_ACCOUNT_ID" \
+  --hostname crm.example.com --identity better-auth --gatekeepers google \
+  --secret crm-gatekeeper-google:CLIENT_ID=… --secret crm-gatekeeper-google:CLIENT_SECRET=…
+```
+
+Gatekeepers (integrations, ADR 0169) are optional: add them with `--gatekeepers` (now or on a later
+re-run) and enable them in Settings → Integrations.
+
+## Updates
+
+New releases are listed in **Settings → Updates** (admins), from the public GitHub Releases of this
+repository, with their changelogs. Pick the **channel** there: **stable** (default) or **beta**.
+
+Every update runs the same procedure, whether from the app or the CLI (ADR 0164):
+
+1. **Preflight:** checks runtime extensions against the new extension contract, and lists pending
+   migrations, gatekeeper changes and new secrets. A blocker (an incompatible active extension, a
+   missing required secret) stops it and says what to do.
+2. Pause automations, take a **D1 Time Travel bookmark**, apply core migrations, switch all Workers
+   to the new version, smoke-check `/api/health`, resume automations.
+3. If a migration, the switch or the smoke check fails, the previous release is redeployed and the
+   database is restored to the bookmark.
+
+**From the app (one click):** store a scoped token as the `CRM_UPDATE_TOKEN` secret on crm-app (with
+the permissions above): `npx create-crm --update-token <token>` (or `--store-update-token` to store
+the install token), or `wrangler secret put CRM_UPDATE_TOKEN --name crm-app`. Then Settings → Updates →
+**Preflight** → **Update**. Only human admins can update; every update is audited and listed under
+History.
+
+**From your machine (no stored token):** Settings → Updates shows the command:
+
+```sh
+npx create-crm upgrade                  # newest release on the deployment's channel
+npx create-crm upgrade --version 1.4.0
+npx create-crm status                   # installed version, channel, available releases, history
+```
+
+## Rollback
+
+Settings → Updates → History → **Roll back** on the latest successful update, or:
+
+```sh
+npx create-crm rollback
+```
+
+It redeploys the release the update replaced and restores the database to the bookmark taken just
+before it (D1 Time Travel keeps 30 days on Workers Paid). **Changes made since the update are lost.**
+To undo a restore, use `wrangler d1 time-travel restore crm --bookmark <previous_bookmark>`.
+
+## Privacy
+
+There is no telemetry (ADR 0166). The CLI talks only to the Cloudflare API (with your token) and
+GitHub Releases; a deployment only reads public GitHub Releases, when an admin opens Settings →
+Updates (cached for an hour).
+
+## Option 2: Deploy to Cloudflare button
 
 The button in the README forks the repository into your GitHub account, creates the `crm` D1
 database, asks for the secrets in `apps/app/.dev.vars.example`, and connects Workers Builds.
@@ -98,7 +203,7 @@ it deploys `crm-runner`, applies migrations and deploys `crm-app`.
 After it finishes, open `https://crm-app.<your-subdomain>.workers.dev/sign-in` and sign up: the
 first user to sign up is the only one allowed to while `AUTH_ALLOW_SIGNUP=false`.
 
-## Option 2: From a checkout
+## Option 3: From a checkout (manual)
 
 ```sh
 pnpm install
@@ -141,9 +246,41 @@ Every request is then admitted only with a valid `Cf-Access-Jwt-Assertion` heade
 Worker answers on (including `workers.dev`, or turn it off), since requests without the JWT are
 rejected but should never get that far.
 
-## Upgrades
+## Upgrades from source
 
-Pull the new release (or merge upstream into your fork) and run `pnpm run deploy` again (Workers
-Builds does this on push). Migrations apply before the new `crm-app` is deployed, so
-`/api/health` reports `upToDate: true` once the deploy finishes. Release bundles and an in-app
-updater come in stage 8 (ADR 0012).
+For the button and checkout installs: pull the new release (or merge upstream into your fork) and run
+`pnpm run deploy` again (Workers Builds does this on push). Migrations apply before the new `crm-app`
+is deployed, so `/api/health` reports `upToDate: true` once the deploy finishes. Settings → Updates
+says the deployment is from source and does not offer in-app updates.
+
+## Building a release yourself
+
+```sh
+node scripts/release/build-release.ts --version 1.2.3 --out release-out
+node scripts/release/inspect-bundle.ts release-out/crm-1.2.3.tar.gz
+```
+
+Releases are built by `.github/workflows/release.yml` on a `vX.Y.Z` / `vX.Y.Z-beta.N` tag; see
+[`scripts/release/README.md`](../scripts/release/README.md).
+
+## Manual end-to-end run (needs a human)
+
+Stage 8 acceptance criterion 8. **Status: not yet run; needs a human with a Cloudflare account.**
+Save a screenshot of each numbered step to `docs/stages/assets/stage-8-manual/NN-name.png`.
+
+1. Create an API token with the permissions in [Option 1](#option-1-recommended-npx-create-crm).
+2. `npx create-crm` and answer the prompts (workers.dev, Better Auth). Screenshot the summary. (`01-install.png`)
+3. Open the printed URL, sign up; the setup wizard opens. Walk every step: organisation (name, logo,
+   currency, timezone), "Use Workers AI only for now", a policy preset, skip connect, install sample
+   data. (`02-wizard-*.png`)
+4. Check People and Organisations show the "(sample)" records; remove them from Settings → General. (`03-sample.png`)
+5. Connect Claude over MCP (`docs/mcp.md`) and create a person from Claude. (`04-mcp.png`)
+6. Settings → Updates: version, channel, changelog; switch to beta and back. (`05-updates.png`)
+7. When a newer release exists: Preflight, then `npx create-crm upgrade` (no stored token). (`06-upgrade-cli.png`)
+8. Store a token (`npx create-crm --update-token …`), then update or roll back from Settings →
+   Updates. (`07-update-app.png`, `08-rollback.png`)
+9. `npx create-crm status`. (`09-status.png`)
+10. Tear down: `npx create-crm uninstall`.
+
+The automated equivalent in a dedicated test account is `.github/workflows/install-test.yml`
+(ADR 0168); create its secrets with `bash scripts/setup-ci-cloudflare.sh`.
