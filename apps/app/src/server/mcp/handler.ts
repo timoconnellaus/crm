@@ -16,12 +16,13 @@ import type { IdentityEnv } from "@crm/auth";
 import {
   type ActingUser,
   bindConnectionGrant,
-  consumeRateLimit,
   loadConnection,
   parseFloor,
+  type RateLimitBinding,
   RateLimitedError,
   ROLES,
   type Role,
+  rateLimit,
   scopePermissions,
   touchConnection,
 } from "@crm/core";
@@ -36,8 +37,10 @@ export const MCP_PATH = "/mcp";
 export interface McpEnv extends IdentityEnv, OperationsEnv {
   OAUTH_KV: KVNamespace;
   APPROVAL_EXPIRY_DAYS?: string;
-  MCP_RATE_LIMIT_REQUESTS?: string;
-  MCP_RATE_LIMIT_WRITES?: string;
+  /** Every /mcp request, per connected app (Workers Rate Limiting, ADR 0056). */
+  MCP_RATE_LIMIT?: RateLimitBinding;
+  /** Non-read operations over MCP, per connected app. */
+  MCP_WRITE_RATE_LIMIT?: RateLimitBinding;
   MCP_ACCESS_TOKEN_TTL?: string;
   /** The public /mcp URL tokens are bound to. Default: this request's origin + /mcp. */
   MCP_RESOURCE?: string;
@@ -48,13 +51,6 @@ const REFRESH_TOKEN_TTL = 30 * 24 * 3600;
 function int(value: string | undefined, fallback: number, min = 1): number {
   const n = Number.parseInt(value ?? "", 10);
   return Number.isFinite(n) && n >= min ? n : fallback;
-}
-
-export function mcpLimits(env: McpEnv) {
-  return {
-    requestsPerMinute: int(env.MCP_RATE_LIMIT_REQUESTS, 120),
-    writesPerMinute: int(env.MCP_RATE_LIMIT_WRITES, 30),
-  };
 }
 
 function bearerError(status: number, error: string, description: string, headers?: HeadersInit) {
@@ -101,17 +97,12 @@ export async function serveMcp(
   };
 
   const now = clock().toISOString();
-  const limits = mcpLimits(env);
-  const requests = await consumeRateLimit(
-    db.query,
-    `${connection.id}:requests`,
-    limits.requestsPerMinute,
-    now,
-  );
+  // Keyed per connected app, so refreshing a token does not reset the budget (ADR 0056).
+  const requests = await rateLimit(env.MCP_RATE_LIMIT, connection.id);
   if (!requests.ok) {
     return rpcError(
       429,
-      `Rate limit: this connection may make ${limits.requestsPerMinute} requests per minute. Retry in ${requests.retryAfterSeconds}s.`,
+      `Rate limit: this connection is making too many requests. Retry in ${requests.retryAfterSeconds}s.`,
       { "retry-after": String(requests.retryAfterSeconds) },
     );
   }
@@ -136,15 +127,10 @@ export async function serveMcp(
       ...(extensionHost ? { extensionHost } : {}),
     },
     async consumeWrite() {
-      const writes = await consumeRateLimit(
-        db.query,
-        `${connection.id}:writes`,
-        limits.writesPerMinute,
-        clock().toISOString(),
-      );
+      const writes = await rateLimit(env.MCP_WRITE_RATE_LIMIT, connection.id);
       if (!writes.ok) {
         throw new RateLimitedError(
-          `Rate limit: this connection may make ${limits.writesPerMinute} changes per minute. Retry in ${writes.retryAfterSeconds}s.`,
+          `Rate limit: this connection is making too many changes. Retry in ${writes.retryAfterSeconds}s.`,
           { retryAfterSeconds: writes.retryAfterSeconds },
         );
       }

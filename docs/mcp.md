@@ -18,7 +18,7 @@ approve it.
 | Resource | `crm://schema`: objects and fields, operations, their risk classes and whether you may call them. |
 | Approvals | Under the approval policy, a change may come back as `pending_approval` instead of applying. It waits in a Change set until a person approves it in the Approvals inbox. |
 | Provisional IDs | A queued create gets a Provisional ID (`per_pending_…`) that Claude can keep using in the same session. |
-| Rate limits | Per Connected app: 120 requests and 30 changes per minute by default. |
+| Rate limits | Per Connected app: about 120 requests and 30 changes per minute by default (approximate, per Cloudflare location; ADR 0056). |
 | Tokens | Access tokens last an hour, refresh tokens 30 days. |
 | Revocation | Settings → Connected apps. Revoking stops the app's access and refresh tokens on their next use. |
 
@@ -281,14 +281,14 @@ Plain vars in `apps/app/wrangler.jsonc` (change them in your fork):
 | Name | Default | Purpose |
 | --- | --- | --- |
 | `APPROVAL_EXPIRY_DAYS` | `7` | Days before a Pending action expires |
-| `MCP_RATE_LIMIT_REQUESTS` | `120` | Requests per minute per Connected app |
-| `MCP_RATE_LIMIT_WRITES` | `30` | Changes (non-read tool calls) per minute per Connected app |
 | `MCP_ACCESS_TOKEN_TTL` | `3600` | Access token lifetime in seconds (minimum 60). Refresh tokens last 30 days |
 | `MCP_RESOURCE` | request origin + `/mcp` | Optional. The public `/mcp` URL tokens are bound to. Set it if the app answers on several hostnames, e.g. `https://crm.example.com/mcp` |
 
 | Binding | Purpose |
 | --- | --- |
 | `OAUTH_KV` | KV namespace for OAuth clients, grants and hashed tokens. Created by name on the first deploy, like the D1 database. |
+| `MCP_RATE_LIMIT` | Workers Rate Limiting: requests per Connected app, default 120 per 60 s. Edit `ratelimits` in `wrangler.jsonc` ([deploying.md](deploying.md#rate-limits)). |
+| `MCP_WRITE_RATE_LIMIT` | Workers Rate Limiting: changes (non-read tool calls) per Connected app, default 30 per 60 s. |
 
 Invalid or missing numbers fall back to the defaults.
 
@@ -340,8 +340,8 @@ Calls:
       `actionId` and a `per_pending_…` id; `person_get` on that id returns the simulated person.
 - [ ] `approval_status` with that `actionId` reports it as `pending`.
 - [ ] With a read-only connection (untick `write` at consent), a write fails with a scope error.
-- [ ] Rate limit: with `MCP_RATE_LIMIT_WRITES` set low (e.g. `2` in `.dev.vars`), the third write
-      in a minute returns `rate_limited` with "Retry in Ns".
+- [ ] Rate limit: with `MCP_WRITE_RATE_LIMIT`'s `simple.limit` set low in `wrangler.jsonc` (e.g.
+      `2`), the third write in a minute returns `rate_limited` with "Retry in Ns".
 - [ ] Revoke the app in Settings → Connected apps; the next Inspector call gets 401
       `invalid_token` ("This app was disconnected. Connect it again."), and refreshing fails.
 
@@ -378,9 +378,9 @@ consent. Reconnect and tick it, if your role allows.
 **Forbidden: "Your role (…) cannot …".** The scope is there but your role does not have the
 permission. Scopes never widen a role; ask an admin.
 
-**`rate_limited` or HTTP 429.** The connection exceeded `MCP_RATE_LIMIT_REQUESTS` or
-`MCP_RATE_LIMIT_WRITES`. The message and `Retry-After` say how long to wait. Raise the vars if
-your usage is legitimate.
+**`rate_limited` or HTTP 429.** The connection exceeded the `MCP_RATE_LIMIT` or
+`MCP_WRITE_RATE_LIMIT` binding's limit. The message and `Retry-After` say how long to wait. Raise
+the limits under `ratelimits` in `apps/app/wrangler.jsonc` if your usage is legitimate.
 
 **A colleague cannot see the change Claude made.** It is probably pending. Simulated changes are
 only visible to the session that made them. Check the Approvals inbox or ask Claude for

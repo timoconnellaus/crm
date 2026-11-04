@@ -3,6 +3,7 @@
 // TypeScript client talking to /mcp through it.
 import { env } from "cloudflare:workers";
 import { createIdentityProvider } from "@crm/auth";
+import { memoryRateLimit } from "@crm/core";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { createAppHandler, type McpEnv } from "../src/server/mcp/handler.ts";
 
@@ -20,6 +21,10 @@ export function testEnv(overrides: Partial<McpEnv> = {}): McpEnv {
     ...(env as unknown as McpEnv),
     IDENTITY_PROVIDER: "better-auth",
     AUTH_ALLOW_SIGNUP: "true",
+    // Exact fakes for the Workers Rate Limiting bindings (ADR 0056); tests that check limits
+    // pass their own.
+    MCP_RATE_LIMIT: memoryRateLimit(10_000),
+    MCP_WRITE_RATE_LIMIT: memoryRateLimit(10_000),
     ...overrides,
   };
 }
