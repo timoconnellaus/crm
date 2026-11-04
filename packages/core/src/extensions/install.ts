@@ -5,6 +5,7 @@
 import type { CoreDatabase } from "@crm/db";
 import { type ExtensionManifest, type ManifestIssue, validateManifest } from "@crm/sdk";
 import type { Kysely } from "kysely";
+import { dashboardSpecSchema } from "../dashboards/spec.ts";
 import { ConfigError, ValidationError } from "../errors.ts";
 import { listObjects } from "../fields/index.ts";
 import type { HandlerContext } from "../operation.ts";
@@ -91,6 +92,21 @@ export async function checkManifest(
     baseFields: (object) => (isCoreTarget(object) ? coreFormulaFields(object) : {}),
   });
   const all = issues.map(fromManifest);
+  // Shipped dashboards (ADR 0103) must be valid dashboard specs; their SQL runs through the
+  // query.sql guards when shown (the views it reads may not exist until this install).
+  for (const [name, dashboard] of Object.entries(manifest?.dashboards ?? {})) {
+    const parsed = dashboardSpecSchema.safeParse(dashboard);
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues.slice(0, 10)) {
+        all.push({
+          stage: "contract",
+          code: "contract",
+          path: `dashboards.${name}.${issue.path.join(".")}`,
+          message: issue.message,
+        });
+      }
+    }
+  }
   if (manifest && manifest.id !== id) {
     all.push({
       stage: "contract",

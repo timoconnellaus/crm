@@ -6,6 +6,7 @@ import type { CoreDatabase } from "@crm/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ForbiddenError, NotFoundError } from "../errors.ts";
+import { getObject } from "../fields/index.ts";
 import { newId } from "../ids.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import {
@@ -79,12 +80,83 @@ function toView(row: ViewRow, ctx: Pick<HandlerContext, "user">): SavedView {
   };
 }
 
-/** A view the caller can see (their own, or a shared one), or NotFoundError. */
+/** The id of extension `ext`'s shipped view `name`. */
+export function extensionViewId(ext: string, name: string): string {
+  return `vw_x_${ext}_${name}`;
+}
+
+/**
+ * Views active extensions ship (ADR 0103): shared, read-only, after people's own. A table spec
+ * without columns shows the object's title and its next five fields. A declaration that no longer
+ * fits the registry is left out.
+ */
+export async function extensionViews(
+  db: Kysely<CoreDatabase>,
+  object?: string,
+): Promise<SavedView[]> {
+  const rows = await db
+    .selectFrom("core_extensions")
+    .select(["id", "manifest", "installed_at", "updated_at"])
+    .where("status", "=", "active")
+    .orderBy("id")
+    .execute();
+  const out: SavedView[] = [];
+  for (const row of rows) {
+    const manifest = JSON.parse(row.manifest) as {
+      views?: Record<string, Record<string, unknown> & { label: string; object: string }>;
+    };
+    let position = 1000;
+    for (const [name, declared] of Object.entries(manifest.views ?? {})) {
+      position += 1;
+      if (object && declared.object !== object) continue;
+      const { label, type, ...rest } = declared;
+      const target = getObject(declared.object);
+      if (!target) continue;
+      const columns =
+        (rest.columns as string[] | undefined) ??
+        target.fields
+          .filter((f) => f.extension === target.extension && f.column)
+          .slice(0, 6)
+          .map((f) => f.name);
+      const parsed = objectViewSpecSchema.safeParse({
+        ...rest,
+        type: type ?? "table",
+        ...((type ?? "table") === "table" ? { columns } : {}),
+      });
+      if (!parsed.success) continue;
+      try {
+        validateViewSpec(parsed.data);
+      } catch {
+        continue;
+      }
+      out.push({
+        id: extensionViewId(row.id, name),
+        name: label,
+        object: declared.object,
+        spec: parsed.data,
+        position,
+        shared: true,
+        ownerId: `extension:${row.id}`,
+        canEdit: false,
+        createdAt: row.installed_at,
+        updatedAt: row.updated_at,
+      });
+    }
+  }
+  return out;
+}
+
+/** A view the caller can see (their own, a shared one, or an extension's), or NotFoundError. */
 async function requireVisibleView(
   db: Kysely<CoreDatabase>,
   ctx: Pick<HandlerContext, "user">,
   id: string,
 ): Promise<SavedView> {
+  if (id.startsWith("vw_x_")) {
+    const found = (await extensionViews(db)).find((v) => v.id === id);
+    if (!found) throw new NotFoundError("view", id);
+    return found;
+  }
   const row = await db.selectFrom("core_views").selectAll().where("id", "=", id).executeTakeFirst();
   if (!row || (row.user_id !== ctx.user.id && row.shared !== 1))
     throw new NotFoundError("view", id);
@@ -95,7 +167,11 @@ async function requireVisibleView(
 async function requireEditableView(ctx: HandlerContext, id: string): Promise<SavedView> {
   const view = await requireVisibleView(ctx.db, ctx, id);
   if (!view.canEdit) {
-    throw new ForbiddenError("Only the view's owner or an admin can change a shared view");
+    throw new ForbiddenError(
+      view.id.startsWith("vw_x_")
+        ? "This view ships with an extension and cannot be changed; save a copy as your own view"
+        : "Only the view's owner or an admin can change a shared view",
+    );
   }
   return view;
 }
@@ -249,9 +325,11 @@ export const viewGet = defineOperation({
 export const viewList = defineOperation({
   name: "view.list",
   description:
-    "List the saved views you can use, optionally for one object: your own and every shared " +
-    "view, in their saved order, each with its full spec (table, board, calendar or gallery) " +
-    "and whether you can edit it. Read-only.",
+    "List the saved views you can use, optionally for one object: your own, every shared " +
+    "view and the views installed extensions ship (e.g. Deals' My open deals), in their saved " +
+    "order, each with its full spec (table, board, calendar or gallery) and whether you can " +
+    "edit it. Filter values may be relative ({ $relative: 'me' | 'today' | 'startOfMonth' | … }), " +
+    "resolved when the list runs. Read-only.",
   input: z.object({ object: viewObjectName.optional() }),
   output: z.object({ items: z.array(savedViewSchema) }),
   permission: "records:read",
@@ -282,7 +360,7 @@ export const viewList = defineOperation({
           a.created_at.localeCompare(b.created_at),
       )
       .map((row) => toView(row, ctx));
-    return { items };
+    return { items: [...items, ...(await extensionViews(ctx.db, input.object))] };
   },
 });
 

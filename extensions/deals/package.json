@@ -1,9 +1,12 @@
 {
-  "name": "@crm/extension-example",
+  "name": "@crm/extension-deals",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "The example shipped extension (stage 3). Bundled as source into crm-runner.",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "description": "Deals, pipelines and stages: the first shipped extension (stage 4, ADR 0026). Bundled as source into crm-runner.",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

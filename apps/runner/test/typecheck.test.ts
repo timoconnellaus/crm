@@ -7,9 +7,9 @@ import { typecheck } from "../src/executor/build-cache.ts";
 import { MAX_TYPE_ISSUES, typecheckExtension } from "../src/extensions/typecheck.ts";
 import { SHIPPED_EXTENSIONS } from "../src/generated/shipped.ts";
 
-const example = SHIPPED_EXTENSIONS.find((e) => e.id === "example");
-if (!example) throw new Error("the example extension is not bundled");
-const files = example.files;
+const deals = SHIPPED_EXTENSIONS.find((e) => e.id === "deals");
+if (!deals) throw new Error("the deals extension is not bundled");
+const files = deals.files;
 
 /** workerd's clock only moves across I/O, so a timer tick before and after brackets the call. */
 async function timed<T>(run: () => T): Promise<[T, number]> {
@@ -38,13 +38,13 @@ describe("the checker worker", () => {
     const bad = await typecheck(env.LOADER, { "index.ts": "const x: number = 'a';\n" });
     expect(bad[0]?.message).toMatch(/TS2322/);
     console.log(
-      `checker worker, example: cold ${coldMs} ms (load the compiler + parse the declarations), warm ${warm.join(" / ")} ms`,
+      `checker worker, deals: cold ${coldMs} ms (load the compiler + parse the declarations), warm ${warm.join(" / ")} ms`,
     );
   });
 });
 
 describe("typecheckExtension", () => {
-  it("checks the example extension clean, cold and warm", async () => {
+  it("checks the deals extension clean, cold and warm", async () => {
     const [cold, coldMs] = await timed(() => typecheckExtension(files));
     expect(cold).toEqual([]);
     const warm: number[] = [];
@@ -54,7 +54,7 @@ describe("typecheckExtension", () => {
       warm.push(ms);
     }
     console.log(
-      `typecheck example: cold ${coldMs.toFixed(0)} ms, warm ${warm.map((ms) => ms.toFixed(0)).join(" / ")} ms`,
+      `typecheck deals: cold ${coldMs.toFixed(0)} ms, warm ${warm.map((ms) => ms.toFixed(0)).join(" / ")} ms`,
     );
   });
 
@@ -70,14 +70,14 @@ describe("typecheckExtension", () => {
 
   it("reports a non-existent ctx module and a handler returning the wrong shape", () => {
     const tools = (files["tools.ts"] as string)
-      .replace("await ctx.crm.call(", "await ctx.crm.cal(")
-      .replace("return { organisationId, tier };", "return { organisationId: 1, tier };");
+      .replace("await ctx.crm.call<SqlResult>(", "await ctx.crm.cal<SqlResult>(")
+      .replace("      pipelineId,\n      stages:", "      pipelineId: 1,\n      stages:");
     const issues = typecheckExtension({ ...files, "tools.ts": tools });
     expect(issues.every((i) => i.code === "type" && i.path === "tools.ts")).toBe(true);
     expect(issues.map((i) => i.message).join("\n")).toMatch(
       /Property 'cal' does not exist on type 'CrmModule'/,
     );
-    expect(issues.some((i) => /organisationId/.test(i.message))).toBe(true);
+    expect(issues.some((i) => /pipelineId/.test(i.message))).toBe(true);
   });
 
   it("resolves own files with or without an extension, and reports unknown imports", () => {

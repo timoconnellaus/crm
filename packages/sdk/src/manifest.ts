@@ -3,10 +3,12 @@
 // diffs and reconciles the manifest. `validateManifest` is the contract check `extension.check`
 // runs; it returns structured issues a model can act on.
 import { z } from "zod";
+import { checkObjectBehaviour } from "./behaviour.ts";
 import {
   type Extension,
   HOST_MODULES,
   type HostModuleName,
+  STAGE_TYPES,
   SUPPORTED_CONTRACT_VERSIONS,
   TOOL_RISKS,
 } from "./contract.ts";
@@ -72,6 +74,7 @@ export const fieldManifestSchema = z.object({
   track: z.literal("timeline").optional(),
   renamedFrom: z.string().max(40).optional(),
   required: z.boolean().optional(),
+  readOnly: z.boolean().optional(),
   currency: z
     .string()
     .regex(/^[A-Z]{3}$/)
@@ -83,6 +86,26 @@ export const fieldManifestSchema = z.object({
 });
 export type FieldManifest = z.infer<typeof fieldManifestSchema>;
 
+export const stagesManifestSchema = z.object({
+  field: z.string().max(40),
+  stage: z.object({
+    type: z.string().max(40),
+    order: z.string().max(40),
+    requiredFields: z.string().max(40).optional(),
+    probability: z.string().max(40).optional(),
+    group: z.string().max(40).optional(),
+  }),
+  group: z.string().max(40).optional(),
+  probability: z.object({ field: z.string().max(40), overridden: z.string().max(40) }).optional(),
+  closedDate: z.string().max(40).optional(),
+  status: z.string().max(40).optional(),
+  defaultGroupSetting: z.string().max(40).optional(),
+  requiredByType: z
+    .partialRecord(z.enum(STAGE_TYPES), z.array(z.string().max(40)).max(50))
+    .optional(),
+});
+export type StagesManifest = z.infer<typeof stagesManifestSchema>;
+
 export const objectManifestSchema = z.object({
   label: z.string().min(1).max(100),
   plural: z.string().min(1).max(100),
@@ -91,6 +114,17 @@ export const objectManifestSchema = z.object({
   description: z.string().max(1000).optional(),
   renamedFrom: z.string().max(40).optional(),
   fields: z.record(z.string(), fieldManifestSchema),
+  navigation: z.enum(["main", "settings", "none"]).optional(),
+  indexes: z
+    .array(z.array(z.string().max(40)).min(1).max(4))
+    .max(16)
+    .optional(),
+  timelineLinks: z.array(z.string().max(40)).max(8).optional(),
+  stages: stagesManifestSchema.optional(),
+  seed: z
+    .record(z.string().max(40), z.record(z.string().max(40), z.unknown()))
+    .refine((seed) => Object.keys(seed).length <= 200, "At most 200 seed records per object")
+    .optional(),
 });
 export type ObjectManifest = z.infer<typeof objectManifestSchema>;
 
@@ -107,11 +141,19 @@ export type ToolManifest = z.infer<typeof toolManifestSchema>;
 export const viewManifestSchema = z.object({
   label: z.string().min(1).max(100),
   object: z.string().max(80),
+  /** The view type (ADR 0056). Default table. */
+  type: z.enum(["table", "board", "calendar", "gallery"]).optional(),
   filter: z.unknown().optional(),
   sort: z
     .object({ field: z.string().max(64), direction: z.enum(["asc", "desc"]).default("asc") })
     .optional(),
   columns: z.array(z.string().max(80)).max(100).optional(),
+  groupBy: z.string().max(80).optional(),
+  sumField: z.string().max(80).optional(),
+  dateField: z.string().max(80).optional(),
+  mode: z.enum(["month", "week", "agenda"]).optional(),
+  imageField: z.string().max(80).optional(),
+  cardFields: z.array(z.string().max(80)).max(8).optional(),
 });
 export type ViewManifest = z.infer<typeof viewManifestSchema>;
 
@@ -139,6 +181,20 @@ export const recordViewManifestSchema = z.object({
   order: z.number().int().min(0).max(10_000).default(100),
 });
 export type RecordViewManifest = z.infer<typeof recordViewManifestSchema>;
+
+/**
+ * A dashboard an extension ships (stage 4b): read-only for everyone, listed beside the CRM's own
+ * Overview while the extension is active, copyable. `home` makes it the default Home. The host
+ * validates `filters` and `widgets` against its dashboard spec (ADR 0057) at check time.
+ */
+export const dashboardManifestSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().max(1000).optional(),
+  home: z.boolean().optional(),
+  filters: z.array(z.record(z.string(), z.unknown())).max(8).default([]),
+  widgets: z.array(z.record(z.string(), z.unknown())).min(1).max(30),
+});
+export type DashboardManifest = z.infer<typeof dashboardManifestSchema>;
 
 export const settingManifestSchema = z.object({
   type: z.enum(["text", "number", "boolean", "select"]),
@@ -189,6 +245,7 @@ export const manifestSchema = z.object({
   recordTabs: z.record(z.string(), recordViewManifestSchema).default({}),
   recordPanels: z.record(z.string(), recordViewManifestSchema).default({}),
   settings: z.record(z.string(), settingManifestSchema).default({}),
+  dashboards: z.record(z.string(), dashboardManifestSchema).default({}),
   tools: z.record(z.string(), toolManifestSchema).default({}),
   automations: z.record(z.string(), automationManifestSchema).default({}),
 });
@@ -263,6 +320,7 @@ export function toManifest(extension: Extension): ExtensionManifest {
       ]),
     ),
     views: extension.views ?? {},
+    dashboards: extension.dashboards ?? {},
     recordTabs: extension.recordTabs ?? {},
     recordPanels: extension.recordPanels ?? {},
     settings: Object.fromEntries(
@@ -500,6 +558,9 @@ export function validateManifest(
       } else if (field.type !== "currency" && field.currency !== undefined) {
         contract(`${path}.currency`, "Only currency fields take `currency`");
       }
+      if (field.readOnly && field.required) {
+        contract(`${path}.readOnly`, "A read-only field is set by the host and cannot be required");
+      }
       if (field.type === "formula") {
         if (field.required) contract(`${path}.required`, "Formula fields cannot be required");
         if (field.track)
@@ -546,6 +607,7 @@ export function validateManifest(
     }
     const env = formulaFields(object.fields);
     checkFields(`${path}.fields`, `${m.id}.${name}`, object.fields, env);
+    checkObjectBehaviour(m, name, object, contract);
   }
 
   for (const [target, fields] of Object.entries(m.fields)) {
@@ -576,7 +638,20 @@ export function validateManifest(
     if (!FIELD_NAME_RE.test(name)) contract(`views.${name}`, "View names must be camelCase");
     if (!known.has(view.object))
       contract(`views.${name}.object`, `Unknown object "${view.object}"`);
+    if (view.type === "board" && !view.groupBy) {
+      contract(`views.${name}.groupBy`, "board views need groupBy");
+    }
+    if (view.type === "calendar" && !view.dateField) {
+      contract(`views.${name}.dateField`, "calendar views need dateField");
+    }
   }
+
+  const homes = Object.entries(m.dashboards).filter(([, d]) => d.home);
+  for (const [name] of Object.entries(m.dashboards)) {
+    if (!FIELD_NAME_RE.test(name))
+      contract(`dashboards.${name}`, "Dashboard names must be camelCase");
+  }
+  if (homes.length > 1) contract("dashboards", "At most one dashboard can be the default Home");
 
   for (const [kind, entries] of [
     ["recordTabs", m.recordTabs],

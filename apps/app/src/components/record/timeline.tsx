@@ -280,8 +280,8 @@ export function TimelineEntry({ item, showLinks }: { item: TimelineItem; showLin
         <ul className="mt-1 text-sm text-muted-foreground">
           {item.payload.changes.map((change) => (
             <li key={change.field}>
-              {change.label}: {formatValue(change.before) || "empty"} →{" "}
-              {formatValue(change.after) || "empty"}
+              {change.label}: {change.beforeLabel ?? (formatValue(change.before) || "empty")} →{" "}
+              {change.afterLabel ?? (formatValue(change.after) || "empty")}
             </li>
           ))}
         </ul>

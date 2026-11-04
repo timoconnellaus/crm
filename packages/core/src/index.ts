@@ -17,6 +17,7 @@ export * from "./extensions/naming.ts";
 export * from "./extensions/proposal.ts";
 export * from "./extensions/reconciler.ts";
 export * from "./extensions/schema.ts";
+export * from "./extensions/seed.ts";
 export * from "./extensions/shipped.ts";
 export * from "./extensions/tools.ts";
 export * from "./fields/field-types.ts";
@@ -55,6 +56,7 @@ export * from "./operations/query.ts";
 export * from "./operations/record.ts";
 export * from "./operations/retention.ts";
 export * from "./operations/search.ts";
+export { COMMON_CURRENCIES } from "./operations/settings.ts";
 export * from "./operations/suggestions.ts";
 export * from "./operations/task.ts";
 export * from "./operations/trash.ts";
@@ -82,10 +84,12 @@ export {
   recordRefSchema,
   uniqueRefs,
 } from "./records/links.ts";
+export { type StageRuleDetails, StageRuleError } from "./records/stages.ts";
 export * from "./records/tags.ts";
 export * from "./registry.ts";
+export * from "./relative.ts";
 export * from "./retention.ts";
-export { loadApprovalPolicy } from "./settings.ts";
+export { BASE_CURRENCY_SETTING, loadApprovalPolicy, loadGeneralSettings } from "./settings.ts";
 export * from "./sync/ingest.ts";
 export * from "./sync/signals.ts";
 export { type PrincipalLike, resolveActingUser, SYSTEM_USER } from "./users.ts";

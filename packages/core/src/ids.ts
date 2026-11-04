@@ -28,6 +28,8 @@ export const ID_PREFIXES = {
   connection: "con",
   integrationEvent: "iev",
   jobChange: "jcs",
+  /** Stage history rows (ADR 0100). */
+  stageHistory: "sth",
   dashboard: "dsh",
 } as const;
 

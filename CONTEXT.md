@@ -34,7 +34,9 @@ _Avoid_: kanban (in code and copy; fine as a synonym in prose)
 
 **Dashboard**
 A title, filters and widgets on a grid. Personal or shared; the shipped **Overview** lives in
-code. Any dashboard can be a user's **Home** (the page at `/`).
+code, and extensions can ship read-only dashboards (Deals' **Sales overview** and **Pipeline
+health**). Any dashboard can be a user's **Home** (the page at `/`); the default is Sales overview
+while Deals is installed, else the Overview.
 
 **Widget**
 One tile on a dashboard: KPI, bar, line, donut, funnel, table, leaderboard or markdown. Data
@@ -43,6 +45,11 @@ widgets run read-only SQL over `crm_*` views with named params bound from the da
 **Click-through**
 A widget's filter template: clicking a segment, KPI or row opens the matching records as a
 filtered list, exactly the records the widget counted.
+
+**Relative value**
+A filter value that resolves when the list runs: `{ "$relative": "me" }`, `"today"`,
+`"startOfMonth"`, `"startOfQuarter"` and so on. Saved views such as "My open deals" use them so
+they stay right for whoever opens them, whenever.
 
 **Record tab / record panel**
 A tab or side-panel card that an extension declares on another object's record page: a view spec
@@ -97,7 +104,7 @@ _Avoid_: endpoint, action (an "action" is a gatekeeper term, below)
 
 **Permission**
 What an operation requires of the caller's role: `records:read`, `records:write`, `records:erase`,
-`audit:read`, `users:manage`, `policy:manage`, `extensions:manage`. Viewers have read; members read and write; admins all.
+`audit:read`, `users:manage`, `policy:manage`, `extensions:manage`, `settings:manage`. Viewers have read; members read and write; admins all.
 
 **Field registry**
 Per-object field definitions (name, type, filterable, sortable, `track`). Filters, sorts and
@@ -222,6 +229,43 @@ An extension field computed from other fields of the same record by a small type
 (`coalesce(budget, 0) - coalesce(spent, 0)`). It is parsed and type-checked by `extension.check`,
 compiled to SQL in the `crm_*` view, so it can be filtered and sorted, and it is never written. No
 cross-record rollups.
+
+**Deal**
+A potential sale (`deals.deal`, from the shipped Deals extension) moving through a pipeline: value
+in the base currency, stage, probability, owner, organisation, expected close, and a won/lost date
+set automatically. **Deal participants** are the people on it, each with a role.
+_Avoid_: opportunity
+
+**Pipeline**
+An ordered set of stages deals move through ("New business", "Renewals"). Pipelines and their
+stages are records, edited under Settings or by AI through record operations.
+
+**Pipeline stage**
+One step of a pipeline: its order, its type (`open`, `won` or `lost`), a default probability and
+its **stage rules**. In code and UI copy "stage" means this when talking about deals; the build
+roadmap's stages are a different word (see **Stage** below).
+
+**Stage rule**
+A field a stage requires before a record may enter it (Proposal needs a value and an expected close
+date; Lost needs a lost reason). The host enforces it in the record operations for every actor and
+refuses a move with an error naming the missing fields.
+
+**Stage behaviour**
+The contract's declarative `stages` key (ADR 0100): it makes an extension object move through stage
+records with stage rules, probability, status, a closed date, stage history and "Moved to" posts.
+Deals uses it; AI-written extensions can too.
+
+**Stage history**
+One row per stage a record has been in, with entered and left times (`crm_stage_history`). It powers
+time in stage and velocity.
+
+**Base currency**
+The deployment's one currency (Settings → General). Currency fields without their own currency
+show in it. Changing it relabels amounts; there is no FX.
+
+**Seed record**
+A record an extension declares to be created once when its object is installed (the default
+pipelines and stages), with a deterministic id.
 
 **Quarantine**
 What happens to an extension after 3 consecutive failed runs: it is disabled (status
