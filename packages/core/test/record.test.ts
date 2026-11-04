@@ -174,7 +174,6 @@ describe("record operations", () => {
     const view = await invoke(
       "view.create",
       {
-        object,
         name: "High priority",
         spec: {
           type: "table",
