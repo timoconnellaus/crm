@@ -75,6 +75,13 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
   people, organisations, activities and tasks after 30 days through the operations pipeline
   (`trash.purge`), and admin erase redacts the append-only audit log through a sanctioned path
   ([ADR 0019](adr/0019-audit-redaction-for-erasure.md)).
+- **Storage retention** ([ADR 0090](adr/0090-storage-retention.md)): D1 stops at 10 GB, so the same
+  cron keeps growth bounded. Successful reads by AI, extensions and automations are counted per
+  hour (`core_audit_read_counts`) rather than audited row by row. Write audits are kept forever by
+  default; an admin can choose 1, 2 or 7 years, and `audit.purge` then deletes older rows through
+  a second sanctioned path (purge markers). Run history goes after 30 days (failures 90), decided
+  pending actions are compacted to a summary after 30 days, and Settings → Storage shows the
+  database size against the cap.
 - **Extension schema** (`x_<extension>_*` tables): declared in extension code (`defineObject`) and
   reconciled into D1 by the host, additive-first. Core migrations never touch `x_` tables.
 - **`crm.*` views**: generated read views with friendly names, spelled `crm_people`,

@@ -189,6 +189,11 @@ This also removes the stage 3b concerns: Code Mode, type checks and listing all 
 
 ### D3. Storage growth under D1's 10 GB cap (F6, F16, F17, F20; U1)
 
+**Decided and built (2026-11-04):** [ADR 0090](../adr/0090-storage-retention.md). Non-human reads
+are counted hourly. Audit retention is an admin setting (default forever; 1, 2 or 7 years). Runs
+are purged after 30/90 days, pending actions are capped and compacted after 30 days, and there is
+a storage gauge. U1 (email bodies) is still open.
+
 D1 can't grow past 10 GB, and `core_audit` refuses deletes by design (ADR 0017). Decide now, before stages 5–7 multiply the write volume:
 
 - **Read audits:** aggregate non-human reads (per session, operation and hour) or send them to Analytics Engine or Logpush/R2 with retention, rather than one D1 row each. Writes and refusals stay in D1.
@@ -198,6 +203,8 @@ D1 can't grow past 10 GB, and `core_audit` refuses deletes by design (ADR 0017).
 - Show a storage gauge in Settings, with warnings at 6 and 8 GB.
 
 ### D4. MCP rate limiting (F7)
+
+**Decided and built (2026-11-04):** option (b), [ADR 0091](../adr/0091-rate-limiting-binding.md).
 
 Options:
 

@@ -91,6 +91,8 @@ export interface HandlerContext {
   readonly origin: Origin;
   /** The invocation's timestamp (ISO-8601 UTC). Use it for created_at/updated_at. */
   readonly now: string;
+  /** The id of this invocation's audit row (written with the batch, when the call is audited). */
+  readonly auditId?: string;
   /** Typed Kysely for reads and for building the statements passed to `write`. */
   readonly db: Kysely<CoreDatabase>;
   /** The deploy-time approval floor (APPROVAL_FLOOR) the gate applied, for display. */

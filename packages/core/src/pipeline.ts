@@ -9,6 +9,7 @@
 import type { AuditChangeAction, CrmDb } from "@crm/db";
 import { checkGrant } from "@crm/sdk";
 import { type Compilable, type CompiledQuery, sql } from "kysely";
+import { matchesPreviewValue } from "./approvals/caps.ts";
 import { type DryRunResult, prepareQueuedAction } from "./approvals/queue.ts";
 import { isSimulatedRead, loadSessionOverlay, overlayRead } from "./approvals/simulation.ts";
 import { diffRecords, type FieldDiff } from "./diff.ts";
@@ -120,9 +121,59 @@ export function redactInput(value: unknown, extra: readonly string[] = []): unkn
   return value;
 }
 
-/** Reads by humans are not audited; every write, refusal and non-human call is. */
+/**
+ * Reads by humans are not audited; every write, refusal and non-human call is. A non-human read
+ * that succeeds is counted in core_audit_read_counts instead of getting its own row (ADR 0090);
+ * one that fails or is refused still gets a full audit row.
+ */
 function isAudited(op: AnyOperation, actor: Actor): boolean {
   return op.risk !== "read" || actor !== "human";
+}
+
+/** The UTC hour a read is counted in: 'YYYY-MM-DDTHH:00:00.000Z'. */
+export function readCountHour(at: string): string {
+  return `${at.slice(0, 13)}:00:00.000Z`;
+}
+
+/** Who, within the actor, a read is counted against: the connected app, extension or automation. */
+function readCaller(ctx: InvocationContext): string {
+  const o = ctx.origin;
+  return o.sessionId ?? o.extensionId ?? ctx.extension?.id ?? o.automationId ?? o.clientId ?? "";
+}
+
+/** Counts one successful non-human read (an upsert of one row). Never throws. */
+async function countRead(
+  op: AnyOperation,
+  ctx: InvocationContext,
+  at: string,
+  simulated: boolean,
+): Promise<void> {
+  try {
+    await ctx.db.batch([
+      ctx.db.query
+        .insertInto("core_audit_read_counts")
+        .values({
+          hour: readCountHour(at),
+          actor: ctx.actor,
+          user_id: ctx.user.id,
+          caller: readCaller(ctx),
+          operation: op.name,
+          count: 1,
+          simulated: simulated ? 1 : 0,
+          first_at: at,
+          last_at: at,
+        })
+        .onConflict((oc) =>
+          oc.columns(["hour", "actor", "user_id", "caller", "operation"]).doUpdateSet((eb) => ({
+            count: eb("core_audit_read_counts.count", "+", 1),
+            simulated: eb("core_audit_read_counts.simulated", "+", eb.ref("excluded.simulated")),
+            last_at: sql<string>`max(core_audit_read_counts.last_at, excluded.last_at)`,
+          })),
+        ),
+    ]);
+  } catch (error) {
+    console.error("failed to count read", op.name, error);
+  }
 }
 
 function defaultSummary(output: unknown, changes: RecordChange[]): unknown {
@@ -300,9 +351,6 @@ function timelineActivity(
   };
 }
 
-const sameJson = (a: unknown, b: unknown) =>
-  JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
-
 /**
  * When applying an approved action: fails with ConflictError if a record the human approved a
  * change to has changed meanwhile (a previewed field's current value is not its preview `before`).
@@ -316,7 +364,7 @@ function assertUnchangedSincePreview(approval: ApplyingApproval, changes: Record
     if (!previewed) continue;
     for (const [field, values] of Object.entries(previewed.diff)) {
       if (!(field in change.before)) continue;
-      if (!sameJson(change.before[field], values.before)) {
+      if (!matchesPreviewValue(change.before[field], values.before)) {
         throw new ConflictError(
           `The ${change.object} ${change.id} changed after this was queued (${field}), so the ` +
             "approved change no longer matches what was reviewed",
@@ -447,6 +495,7 @@ export async function invokeOperation<O extends AnyOperation>(
     user: ctx.user,
     origin: ctx.origin,
     now,
+    auditId,
     db: ctx.db.query,
     floor: ctx.floor ?? {},
     grantedPermissions: ctx.grantedPermissions,
@@ -570,14 +619,7 @@ export async function invokeOperation<O extends AnyOperation>(
       } catch (error) {
         return fail(error);
       }
-      if (audited) {
-        await auditAlone({
-          ...base,
-          gate: decision,
-          outcome: "ok",
-          result: { simulated: true, ...((defaultSummary(output, []) as object | null) ?? {}) },
-        });
-      }
+      if (audited) await countRead(op, ctx, now, true);
       return output as OperationOutput<O>;
     }
   }
@@ -629,7 +671,10 @@ export async function invokeOperation<O extends AnyOperation>(
 
   const summary =
     op.auditSummary && !deferred ? op.auditSummary(output, input) : defaultSummary(output, changes);
-  if (audited) {
+  if (audited && op.risk === "read") {
+    // A successful non-human read: counted, not audited row by row (ADR 0090).
+    await countRead(op, ctx, now, false);
+  } else if (audited) {
     statements.push(
       auditInsert(ctx.db, { ...base, gate: decision, outcome: "ok", result: summary ?? null }),
       ...auditChangeInserts(ctx.db, auditId, now, changeRows),

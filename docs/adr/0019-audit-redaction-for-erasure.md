@@ -82,3 +82,14 @@ refused on both tables, unconditionally.
   catches. Change rows written in chunked `json_each` statements (ADR 0018 amendment) are ordinary
   rows, so markers and guarded triggers apply unchanged. `packages/core/test/erase.test.ts` covers
   notes, tasks, a CSV import and search together.
+
+## Amendment, 2026-11-04 (storage retention, ADR 0090)
+- **Redaction markers can now be purged.** When audit retention is set, the retention purge
+  deletes a redaction marker together with the audit or change row it redacted (its foreign key
+  would otherwise pin that row forever). The guard allows this only for markers whose target is
+  older than a purge marker's cutoff. The erase's own audit row is newer and stays. Markers are
+  still never updated, and are never deleted any other way.
+- **Erase and the new storage.** Read counts (`core_audit_read_counts`) hold only ids and counts,
+  so there is nothing in them to redact. Compacted pending actions are still found through
+  `core_pending_action_records` and redacted as before. `packages/core/test/retention.test.ts`
+  covers both.

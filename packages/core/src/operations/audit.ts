@@ -49,7 +49,8 @@ const HISTORY_SORT = { field: "changeId", direction: "desc" } as const;
 export const auditList = defineOperation({
   name: "audit.list",
   description:
-    "The admin audit log: every write, every refusal and every non-human read, newest first. " +
+    "The admin audit log: every write, every refusal and every failed non-human read, newest " +
+    "first (successful reads by AI and automations are counted per hour in audit.readCounts). " +
     "Filter by userId, actor (human, assistant, mcp, automation), operation (exact name, or a " +
     "prefix ending in '.*' such as 'person.*'), outcome, a record (object + recordId), a pending " +
     "action (pendingActionId: its queued request and applied result) and a date range (from " +

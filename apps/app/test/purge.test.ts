@@ -2,7 +2,7 @@
 import { env } from "cloudflare:workers";
 import { GateDeniedError } from "@crm/core";
 import { describe, expect, it } from "vitest";
-import { runScheduledPurge } from "../src/server/purge.ts";
+import { runScheduledMaintenance, runScheduledPurge } from "../src/server/purge.ts";
 
 const DAY = 86_400_000;
 
@@ -44,5 +44,30 @@ describe("runScheduledPurge", () => {
       runScheduledPurge({ ...env, APPROVAL_FLOOR: '{"automation":{"*":"deny"}}' }),
     ).rejects.toBeInstanceOf(GateDeniedError);
     expect(await exists("per_01JC00000000000000000PURGE2")).toBe(true);
+  });
+});
+
+describe("runScheduledMaintenance", () => {
+  it("runs storage retention after the Trash purge and caches a storage measurement", async () => {
+    await env.DB.prepare(
+      `INSERT INTO core_extension_runs (id, extension_id, kind, started_at, duration_ms, outcome)
+       VALUES ('xrn_cron_old', 'example', 'tool', ?, 5, 'ok'), ('xrn_cron_new', 'example', 'tool', ?, 5, 'ok')`,
+    )
+      .bind(new Date(Date.now() - 40 * DAY).toISOString(), new Date().toISOString())
+      .run();
+    const result = await runScheduledMaintenance(env);
+    // Retention is "forever" by default: no audit purge round, so no audit row for it.
+    expect(result.audit).toMatchObject({ rounds: 0 });
+    expect(result.runs).toMatchObject({ deleted: 1 });
+    expect(result.compacted).toMatchObject({ compacted: 0 });
+    expect(result.storage?.tables.core_extension_runs).toBe(1);
+    // D1 reports the database size (meta.size_after), locally too.
+    expect(result.storage?.sizeBytes).toBeGreaterThan(0);
+    const cached = await env.DB.prepare(
+      "SELECT tables FROM core_storage_stats WHERE id = 1",
+    ).first<{
+      tables: string;
+    }>();
+    expect(JSON.parse(cached?.tables ?? "{}")).toMatchObject({ core_extension_runs: 1 });
   });
 });
