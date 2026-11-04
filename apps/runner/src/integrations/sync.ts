@@ -513,8 +513,7 @@ export const outlookAdapter: SyncAdapter = {
         sentAt: new Date(sent).toISOString(),
         headers: {},
       });
-      if (!normalised || normalised.item.kind !== "email" || normalised.item.op !== "upsert")
-        continue;
+      if (normalised?.item.kind !== "email" || normalised.item.op !== "upsert") continue;
       // Outlook's conversation id is per mailbox: threads group within one mailbox only.
       normalised.item.threadKey = `thread:outlook.${info.conversationId}`;
       result.items.push(normalised.item);
