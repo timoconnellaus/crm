@@ -147,6 +147,22 @@ describe("stage 6b rows read and query plans", () => {
     expect(result.revoked).toBe(20);
     expect(rows).toBeLessThanOrEqual(80);
     expect(await scans(["core_automation_binding", "core_automations"])).toEqual([]);
+    // Applying it pauses only the automations bound to that connection.
+    await env.DB.prepare(
+      "INSERT INTO core_automations (id, extension_id, key, label, trigger_type, spec, enabled, paused_reason, created_at, updated_at) VALUES ('ext.waiting', 'ext', 'waiting', 'W', 'manual', '{}', 1, 'Waiting for connections', ?, ?)",
+    )
+      .bind(AT, AT)
+      .run();
+    await createCrmDb(env.DB).batch(result.statements);
+    const { results } = await env.DB.prepare(
+      "SELECT id, paused_reason FROM core_automations WHERE paused_reason IS NOT NULL ORDER BY id",
+    ).all<{ id: string; paused_reason: string }>();
+    expect(results.find((r) => r.id === "ext.waiting")?.paused_reason).toBe(
+      "Waiting for connections",
+    );
+    expect(results.filter((r) => r.paused_reason.startsWith("Connection revoked"))).toHaveLength(
+      result.automationIds.length,
+    );
   });
 
   it("the outbox retry reads one page in key order and nothing when empty", async () => {

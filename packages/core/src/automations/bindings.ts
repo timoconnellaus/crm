@@ -194,7 +194,7 @@ export async function revokeBindingsPlan(
       .updateTable("core_automations")
       .set({ paused_reason: pauseReason, paused_at: input.now, updated_at: input.now })
       .where("id", "in", jsonList([...automations.keys()]))
-      .where(sql<boolean>`paused_reason IS NULL OR paused_reason = ${WAITING_FOR_CONNECTIONS}`),
+      .where(sql<boolean>`(paused_reason IS NULL OR paused_reason = ${WAITING_FOR_CONNECTIONS})`),
   );
   for (const [id, a] of automations) {
     const plan = await notifyStatements(
