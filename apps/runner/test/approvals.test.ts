@@ -26,7 +26,8 @@ beforeAll(async () => {
         try {
           return await ctx.crm.call("record.delete", { object: "${id}.item", id });
         } catch (error) {
-          if (error.code === "pending_approval") return { queued: error.details.actionId };
+          const e = error as { code?: string; details?: { actionId: string } };
+          if (e.code === "pending_approval") return { queued: e.details?.actionId };
           throw error;
         }
       },

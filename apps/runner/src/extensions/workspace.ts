@@ -427,8 +427,14 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
   ): Promise<{ ok: true; dir: string } | { ok: false; issues: SourceIssue[] }> {
     const dir = buildDir(id, key);
     if (await this.#exists(`${dir}/.built`)) return { ok: true, dir };
-    const built = buildExtension(await files());
+    const source = await files();
+    const built = buildExtension(source);
     if (!built.ok) return built;
+    // A real type check against @crm/sdk's types (ADR 0040 amendment). Loaded on first use, so
+    // isolates that never build an extension skip the compiler's ~130 ms start-up.
+    const { typecheckExtension } = await import("./typecheck.ts");
+    const typeIssues = typecheckExtension(source);
+    if (typeIssues.length) return { ok: false, issues: typeIssues };
     await this.workspace.fs.rm(dir, { recursive: true, force: true });
     for (const [path, code] of Object.entries(built.modules)) {
       const target = `${dir}/${path}`;

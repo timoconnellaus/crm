@@ -33,10 +33,10 @@ beforeAll(async () => {
   },
   fields: { organisation: { flag: { type: "boolean", label: "Flag" } } },
   tools: {
-    ${tool("readOrg", `return (await ctx.crm.call("organisation.get", { id })).name;`)}
+    ${tool("readOrg", `return (await ctx.crm.call<{ name: string }>("organisation.get", { id })).name;`)}
     ${tool("writeOrg", `return ctx.crm.call("record.update", { object: "organisation", id, values: { "${id}.flag": true } });`)}
     ${tool("readPerson", `return ctx.crm.call("person.get", { id });`)}
-    ${tool("ownObject", `return (await ctx.crm.call("record.create", { object: "${id}.note", values: { title: id } })).title;`)}
+    ${tool("ownObject", `return (await ctx.crm.call<{ title: string }>("record.create", { object: "${id}.note", values: { title: id } })).title;`)}
     ${tool("adminOp", `return ctx.crm.call("extension.list", {});`)}
     ${tool("search", `return ctx.crm.call("search.global", { query: "x" });`)}
     ${tool("deleteOrg", `return ctx.crm.call("organisation.delete", { id });`)}
