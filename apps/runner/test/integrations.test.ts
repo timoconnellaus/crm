@@ -5,7 +5,7 @@
 import { abortAllDurableObjects } from "cloudflare:test";
 import { env, exports } from "cloudflare:workers";
 import { type ActingUser, invokeByName, PendingApprovalError } from "@crm/core";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { extensionHost } from "../src/index.ts";
 import { fakeProviderStub } from "../src/integrations/fake.ts";
 import { blobStore, integrationRuntime } from "../src/integrations/runtime.ts";
@@ -459,6 +459,75 @@ describe("sync", () => {
         args: [""],
       }),
     ).rejects.toThrow(/disconnected/);
+  });
+});
+
+describe("inbound webhooks (the real webhook gatekeeper)", () => {
+  async function sign(secret: string, body: string): Promise<string> {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+    return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  it("rejects bad signatures and records verified deliveries as typed events", async () => {
+    await op(admin, "integration.setVendor", { vendor: "webhook", enabled: true });
+    const created = await op<{ connection: ConnectionView; connect: null }>(
+      admin,
+      "connection.create",
+      {
+        vendor: "webhook",
+        scope: "org",
+      },
+    );
+    expect(created.connection.status).toBe("active");
+    const id = created.connection.id;
+    const endpointId = unique("billing").toLowerCase().slice(0, 30);
+    const configured = await op<{ value: { secret: string } }>(admin, "connection.configure", {
+      id,
+      pattern: "webhook://endpoint/:endpointId",
+      method: "configure",
+      args: [{ endpointId, scheme: "hmac-sha256" }],
+    });
+    const secret = configured.value.secret;
+    expect(secret).toMatch(/^[0-9a-f]{64}$/);
+    await bind(admin, id, `webhook://endpoint/${endpointId}`);
+
+    const post = async (body: string, signature: string) =>
+      runner.gatekeeperFetch(
+        "webhook",
+        new Request(`http://crm.test/gatekeeper/webhook/in/${endpointId}`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-webhook-signature": `sha256=${signature}`,
+            "x-webhook-event": "invoice.paid",
+          },
+          body,
+        }),
+      );
+    const body = JSON.stringify({ id: "evt_1", amount: 42 });
+    expect((await post(body, await sign("wrong-secret", body))).status).toBe(401);
+    expect((await post(body, await sign(secret, body))).status).toBe(200);
+
+    const events = async () =>
+      (
+        await op<{ items: { type: string; payload: { payload: { amount: number } } }[] }>(
+          admin,
+          "integrationEvent.list",
+          { source: "webhook", connectionId: id },
+        )
+      ).items;
+    await vi.waitFor(async () => expect(await events()).toHaveLength(1), { timeout: 10_000 });
+    expect((await events())[0]).toMatchObject({
+      type: "invoice.paid",
+      payload: { payload: { amount: 42 } },
+    });
   });
 });
 

@@ -51,7 +51,9 @@ export type { EndpointStatus, WebhookEndpointInfo, WebhookEvent, WebhookEventHoo
 export { WebhookEndpoint };
 
 /** The largest body accepted; a larger one is answered 413. */
-export const MAX_BODY_BYTES = 256 * 1024;
+// Not exported: a Worker's main module may export only handlers and classes (workerd refuses a
+// constant export at startup).
+const MAX_BODY_BYTES = 256 * 1024;
 /** Request headers handed to the endpoint DO: at most this many, each value at most this long. */
 const MAX_HEADERS = 100;
 const MAX_HEADER_VALUE = 8 * 1024;
