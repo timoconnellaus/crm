@@ -1,3 +1,20 @@
-// Placeholder. The operations registry, risk classes, policy types and the model-role registry
-// arrive in later stages (see README.md). Nothing is exported yet on purpose.
-export {};
+// @crm/core: the operations registry and everything an operation needs. See README.md.
+
+export * from "./diff.ts";
+export * from "./errors.ts";
+export * from "./fields/index.ts";
+export * from "./filter.ts";
+export * from "./gate.ts";
+export * from "./ids.ts";
+export * from "./invoke.ts";
+export * from "./list.ts";
+export * from "./operation.ts";
+export { coreOperations } from "./operations/index.ts";
+export * from "./operations/person.ts";
+export * from "./operations/policy.ts";
+export { type InvocationContext, invokeOperation, redactInput } from "./pipeline.ts";
+export * from "./principals.ts";
+export * from "./records/tags.ts";
+export * from "./registry.ts";
+export { loadApprovalPolicy } from "./settings.ts";
+export { type PrincipalLike, resolveActingUser } from "./users.ts";

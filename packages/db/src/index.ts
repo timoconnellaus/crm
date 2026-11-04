@@ -3,6 +3,7 @@ import { D1Dialect } from "./dialect.ts";
 import type { CoreDatabase } from "./schema.ts";
 
 export { D1Dialect } from "./dialect.ts";
+export { type CrmDb, createCrmDb } from "./handle.ts";
 export {
   applyMigrations,
   CORE_SCHEMA_VERSION,
