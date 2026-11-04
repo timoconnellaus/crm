@@ -9,7 +9,33 @@ import { personObject } from "../fields/person.ts";
 import { newId } from "../ids.ts";
 import { listInputSchema, pageSchema, runListQuery, selectFields } from "../list.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
+import { bulkTagListSchema, queueBulkTags } from "../records/bulk-tags.ts";
+import {
+  assertUserExists,
+  BATCH_MAX,
+  blankToNull,
+  chunk,
+  restorableUntil,
+  TRASH_RETENTION_DAYS,
+  uniqueIds,
+  withPrimary,
+} from "../records/common.ts";
+import { countRedactions, queueErase, withMergedRecords } from "../records/erase.ts";
+import { countLinks, queueClearTags, queueMoveLinks } from "../records/links.ts";
 import { loadTags, queueSetTags, tagsInputSchema } from "../records/tags.ts";
+import {
+  type Affiliation,
+  affiliationSchema,
+  affiliationSnapshot,
+  calendarDate,
+  loadPrimaryAffiliation,
+  queueInsertAffiliation,
+  requireAffiliation,
+  requireLiveOrganisation,
+  today,
+} from "./affiliation.ts";
+
+export { TRASH_RETENTION_DAYS } from "../records/common.ts";
 
 // --- Schemas -----------------------------------------------------------------------------------
 
@@ -216,15 +242,6 @@ export function personSnapshot(person: Person): Record<string, unknown> {
 
 // --- Writing helpers ---------------------------------------------------------------------------
 
-function withPrimary<T extends { primary?: boolean | undefined }>(
-  items: readonly T[],
-  what: string,
-): (Omit<T, "primary"> & { primary: boolean })[] {
-  const flagged = items.filter((item) => item.primary).length;
-  if (flagged > 1) throw new ValidationError(`Only one ${what} can be primary`);
-  return items.map((item, i) => ({ ...item, primary: flagged ? Boolean(item.primary) : i === 0 }));
-}
-
 function normaliseEmails(emails: z.output<typeof emailInputSchema>[]) {
   const list = withPrimary(emails, "email").map((e) => ({
     email: e.email,
@@ -275,16 +292,6 @@ async function assertEmailsFree(
   }
 }
 
-async function assertUserExists(db: Kysely<CoreDatabase>, id: string | null | undefined) {
-  if (!id) return;
-  const user = await db
-    .selectFrom("core_user")
-    .select("id")
-    .where("id", "=", id)
-    .executeTakeFirst();
-  if (!user) throw new ValidationError(`No user with id ${id}`, { field: "ownerId" });
-}
-
 function queueEmails(ctx: HandlerContext, personId: string, emails: Person["emails"]) {
   ctx.write(ctx.db.deleteFrom("core_person_emails").where("person_id", "=", personId));
   if (emails.length) {
@@ -333,9 +340,6 @@ function deriveDisplayName(
   if (name) return name;
   return emails.find((e) => e.primary)?.email ?? null;
 }
-
-const blankToNull = (value: string | null | undefined) =>
-  value === undefined ? undefined : value === null || value === "" ? null : value;
 
 // --- Operations --------------------------------------------------------------------------------
 
@@ -553,9 +557,6 @@ export const personList = defineOperation({
   },
 });
 
-/** How long a soft-deleted record stays restorable before the scheduled purge. */
-export const TRASH_RETENTION_DAYS = 30;
-
 export const personDelete = defineOperation({
   name: "person.delete",
   description:
@@ -581,16 +582,17 @@ export const personDelete = defineOperation({
       action: "delete",
       diff: { deletedAt: { before: null, after: ctx.now } },
     });
-    const until = new Date(Date.parse(ctx.now) + TRASH_RETENTION_DAYS * 86_400_000);
-    return { id: input.id, deletedAt: ctx.now, restorableUntil: until.toISOString() };
+    return { id: input.id, deletedAt: ctx.now, restorableUntil: restorableUntil(ctx.now) };
   },
 });
 
 export const personRestore = defineOperation({
   name: "person.restore",
   description:
-    "Restore a person from Trash. Fails with a conflict if one of their emails now belongs to " +
-    "another live person (edit or delete that person first). Returns the restored person.",
+    "Restore a person from Trash, including one that was merged away (they come back without " +
+    "what the merge moved to the survivor). Fails with a conflict if one of their emails now " +
+    "belongs to another live person (edit or delete that person first). Returns the restored " +
+    "person.",
   input: z.object({ id: personId }),
   output: personSchema,
   permission: "records:write",
@@ -606,16 +608,511 @@ export const personRestore = defineOperation({
     ctx.write(
       ctx.db
         .updateTable("core_person")
-        .set({ deleted_at: null, deleted_by: null, updated_at: ctx.now })
+        .set({ deleted_at: null, deleted_by: null, merged_into_id: null, updated_at: ctx.now })
         .where("id", "=", input.id),
     );
     ctx.recordChange({
       object: "person",
       id: input.id,
       action: "restore",
-      diff: { deletedAt: { before: person.deletedAt, after: null } },
+      diff: {
+        deletedAt: { before: person.deletedAt, after: null },
+        ...(person.mergedIntoId
+          ? { mergedIntoId: { before: person.mergedIntoId, after: null } }
+          : {}),
+      },
     });
     return ctx.afterCommit(() => requirePerson(ctx.db, input.id));
+  },
+});
+
+// --- Job change --------------------------------------------------------------------------------
+
+export const personChangeJob = defineOperation({
+  name: "person.changeJob",
+  description:
+    "Record that a person changed jobs: their current primary affiliation ends (it stays in " +
+    "their job history), a new current affiliation at organisationId starts and becomes " +
+    "primary, so their job title and organisation follow it. Posts a 'Job change' system " +
+    "activity on the person's, the old organisation's and the new organisation's timelines. " +
+    "Works for a promotion within the same organisation too. Returns the person, the ended " +
+    "and the started affiliation.",
+  input: z.object({
+    personId,
+    organisationId: z.string().startsWith("org_").max(64).describe("The new organisation"),
+    title: shortText(200).nullish().describe("The new job title"),
+    role: shortText(200).nullish().describe("Role in the relationship, e.g. Decision maker"),
+    startedOn: calendarDate.optional().describe("Start of the new job; default today"),
+    previousEndedOn: calendarDate
+      .optional()
+      .describe("End of the previous job; default the new start date"),
+  }),
+  output: z.object({
+    person: personSchema,
+    ended: affiliationSchema.nullable(),
+    started: affiliationSchema,
+    activityId: z.string(),
+  }),
+  permission: "records:write",
+  risk: "write",
+  async handler(input, ctx) {
+    const person = await requirePerson(ctx.db, input.personId);
+    const organisation = await requireLiveOrganisation(ctx.db, input.organisationId);
+    const previous = await loadPrimaryAffiliation(ctx.db, person.id);
+    const startedOn = input.startedOn ?? today(ctx);
+    const endedOn = input.previousEndedOn ?? startedOn;
+
+    if (previous) {
+      if (previous.startedOn && endedOn < previous.startedOn) {
+        throw new ValidationError("The previous job would end before it started", {
+          field: "previousEndedOn",
+        });
+      }
+      const ended: Affiliation = { ...previous, current: false, primary: false, endedOn };
+      ctx.write(
+        ctx.db
+          .updateTable("core_affiliation")
+          .set({ is_current: 0, is_primary: 0, ended_on: endedOn, updated_at: ctx.now })
+          .where("id", "=", previous.id),
+      );
+      ctx.recordChange({
+        object: "affiliation",
+        id: previous.id,
+        action: "update",
+        before: affiliationSnapshot(previous),
+        after: affiliationSnapshot(ended),
+      });
+    }
+    const title = blankToNull(input.title) ?? null;
+    const startedId = queueInsertAffiliation(ctx, {
+      personId: person.id,
+      organisationId: organisation.id,
+      title,
+      role: blankToNull(input.role) ?? null,
+      startedOn,
+      endedOn: null,
+      current: true,
+      primary: true,
+    });
+
+    const from = previous
+      ? {
+          affiliationId: previous.id,
+          organisationId: previous.organisationId,
+          organisationName: previous.organisationName,
+          title: previous.title,
+          endedOn,
+        }
+      : null;
+    const to = {
+      affiliationId: startedId,
+      organisationId: organisation.id,
+      organisationName: organisation.name,
+      title,
+      startedOn,
+    };
+    const subject = previous
+      ? `Job change: ${person.displayName} moved from ${previous.organisationName ?? "an organisation"} to ${organisation.name}`
+      : `Job change: ${person.displayName} joined ${organisation.name}`;
+    const activityId = ctx.postActivity({
+      subject,
+      payload: { kind: "job_change", personId: person.id, from, to },
+      links: [
+        { object: "person", id: person.id },
+        ...(previous ? [{ object: "organisation", id: previous.organisationId }] : []),
+        { object: "organisation", id: organisation.id },
+      ],
+    });
+
+    return ctx.afterCommit(async () => ({
+      person: await requirePerson(ctx.db, person.id),
+      ended: previous ? await requireAffiliation(ctx.db, previous.id) : null,
+      started: await requireAffiliation(ctx.db, startedId),
+      activityId,
+    }));
+  },
+});
+
+// --- Batch variants ----------------------------------------------------------------------------
+
+const batchIds = z
+  .array(personId)
+  .min(1)
+  .max(BATCH_MAX)
+  .describe(`Person ids, at most ${BATCH_MAX} per call`);
+
+const BATCH_NOTE =
+  `At most ${BATCH_MAX} people per call, applied atomically (all or none). For more, call ` +
+  "again with the next ids: separate calls are separate transactions, each audited and gated " +
+  "on its own, so a later call can fail after earlier ones applied.";
+
+/** Live people by id (chunked reads); fails if any id is missing or deleted. */
+async function requireLivePeople(db: Kysely<CoreDatabase>, ids: readonly string[]) {
+  const parts = await Promise.all(
+    chunk(ids).map((part) =>
+      db
+        .selectFrom("core_person")
+        .select(["id", "owner_id", "location", "timezone"])
+        .where("id", "in", part)
+        .where("deleted_at", "is", null)
+        .execute(),
+    ),
+  );
+  const rows = parts.flat();
+  const found = new Map(rows.map((row) => [row.id, row]));
+  const missing = ids.find((id) => !found.has(id));
+  if (missing) throw new NotFoundError("person", missing);
+  return rows;
+}
+
+export const personUpdateMany = defineOperation({
+  name: "person.updateMany",
+  description:
+    "Set the same fields on many people at once: owner, location, timezone, and tags to add " +
+    "or remove. Fields you leave out are untouched; pass null to clear owner, location or " +
+    `timezone. Owner changes post a system activity on each person's timeline. ${BATCH_NOTE} ` +
+    "Returns the ids updated.",
+  input: z.object({
+    ids: batchIds,
+    set: z
+      .object({
+        ownerId: userId.nullish(),
+        location: shortText(200).nullish(),
+        timezone: shortText(64).nullish(),
+      })
+      .default({}),
+    addTags: bulkTagListSchema.optional().describe("Tag names to add (created if unknown)"),
+    removeTags: bulkTagListSchema.optional().describe("Tag names to remove"),
+  }),
+  output: z.object({ ids: z.array(z.string()), count: z.number() }),
+  permission: "records:write",
+  risk: "bulk-write",
+  bulkSize: (input) => input.ids.length,
+  async handler(input, ctx) {
+    const ids = uniqueIds(input.ids);
+    const rows = await requireLivePeople(ctx.db, ids);
+    const set: Record<string, string | null> = {};
+    if (input.set.ownerId !== undefined) {
+      await assertUserExists(ctx.db, input.set.ownerId);
+      set.owner_id = input.set.ownerId ?? null;
+    }
+    if (input.set.location !== undefined) set.location = blankToNull(input.set.location) ?? null;
+    if (input.set.timezone !== undefined) set.timezone = blankToNull(input.set.timezone) ?? null;
+    if (Object.keys(set).length) {
+      for (const part of chunk(ids)) {
+        ctx.write(
+          ctx.db
+            .updateTable("core_person")
+            .set({ ...set, updated_at: ctx.now })
+            .where("id", "in", part),
+        );
+      }
+    }
+    const tags = await queueBulkTags(
+      ctx,
+      "person",
+      ids,
+      input.addTags ?? [],
+      input.removeTags ?? [],
+    );
+    for (const row of rows) {
+      const pick = (column: "owner_id" | "location" | "timezone") =>
+        column in set ? set[column] : row[column];
+      ctx.recordChange({
+        object: "person",
+        id: row.id,
+        action: "update",
+        before: {
+          ownerId: row.owner_id,
+          location: row.location,
+          timezone: row.timezone,
+          tags: tags.before.get(row.id) ?? [],
+        },
+        after: {
+          ownerId: pick("owner_id"),
+          location: pick("location"),
+          timezone: pick("timezone"),
+          tags: tags.after.get(row.id) ?? [],
+        },
+      });
+    }
+    return { ids, count: ids.length };
+  },
+});
+
+export const personDeleteMany = defineOperation({
+  name: "person.deleteMany",
+  description:
+    "Move many people to Trash at once (soft delete), like person.delete for each: their " +
+    `emails become free, and they can be restored one by one for ${TRASH_RETENTION_DAYS} ` +
+    `days. Fails, deleting none, if any id is not a live person. ${BATCH_NOTE}`,
+  input: z.object({ ids: batchIds }),
+  output: z.object({
+    ids: z.array(z.string()),
+    count: z.number(),
+    deletedAt: z.string(),
+    restorableUntil: z.string(),
+  }),
+  permission: "records:write",
+  risk: "destructive",
+  bulkSize: (input) => input.ids.length,
+  async handler(input, ctx) {
+    const ids = uniqueIds(input.ids);
+    await requireLivePeople(ctx.db, ids);
+    for (const part of chunk(ids)) {
+      ctx.write(
+        ctx.db
+          .updateTable("core_person")
+          .set({ deleted_at: ctx.now, deleted_by: ctx.user.id, updated_at: ctx.now })
+          .where("id", "in", part),
+      );
+    }
+    for (const id of ids) {
+      ctx.recordChange({
+        object: "person",
+        id,
+        action: "delete",
+        diff: { deletedAt: { before: null, after: ctx.now } },
+      });
+    }
+    return {
+      ids,
+      count: ids.length,
+      deletedAt: ctx.now,
+      restorableUntil: restorableUntil(ctx.now),
+    };
+  },
+});
+
+// --- Merge -------------------------------------------------------------------------------------
+
+const PERSON_MERGE_FIELDS = [
+  "displayName",
+  "givenName",
+  "familyName",
+  "location",
+  "timezone",
+  "avatarKey",
+  "ownerId",
+  "description",
+] as const;
+type PersonMergeField = (typeof PERSON_MERGE_FIELDS)[number];
+
+export const personMerge = defineOperation({
+  name: "person.merge",
+  description:
+    "Merge a duplicate person (mergedId) into another (survivorId). The survivor keeps its own " +
+    "values unless fields says to take the duplicate's (per field: 'survivor' or 'merged'); " +
+    "empty survivor fields are filled from the duplicate. Emails, phones, social profiles and " +
+    "tags are combined, and the duplicate's affiliations, activity links and task links move " +
+    "to the survivor (the survivor keeps its primary affiliation if it has one). The " +
+    "duplicate goes to Trash pointing at the survivor, and can be restored from there " +
+    "(without what moved). Returns the survivor.",
+  input: z.object({
+    survivorId: personId.describe("The person who remains"),
+    mergedId: personId.describe("The duplicate that is merged away into Trash"),
+    fields: z
+      .partialRecord(z.enum(PERSON_MERGE_FIELDS), z.enum(["survivor", "merged"]))
+      .default({})
+      .describe("Which record's value to keep for each field (default survivor)"),
+  }),
+  output: personSchema.extend({
+    moved: z.object({ affiliations: z.number(), activities: z.number(), tasks: z.number() }),
+  }),
+  permission: "records:write",
+  risk: "destructive",
+  async handler(input, ctx) {
+    if (input.survivorId === input.mergedId) {
+      throw new ValidationError("Cannot merge a person into themselves");
+    }
+    const survivor = await requirePerson(ctx.db, input.survivorId);
+    const merged = await requirePerson(ctx.db, input.mergedId);
+
+    const after: Person = { ...survivor, updatedAt: ctx.now };
+    for (const field of PERSON_MERGE_FIELDS) {
+      const choice = input.fields[field];
+      const take = choice === "merged" || (choice === undefined && survivor[field] === null);
+      if (take) (after as Record<PersonMergeField, unknown>)[field] = merged[field];
+    }
+    if (after.ownerId) await assertUserExists(ctx.db, after.ownerId);
+
+    const emailSet = new Set(survivor.emails.map((e) => e.email));
+    after.emails = [
+      ...survivor.emails,
+      ...merged.emails
+        .filter((e) => !emailSet.has(e.email))
+        .map((e) => ({ ...e, primary: survivor.emails.length ? false : e.primary })),
+    ];
+    const phoneSet = new Set(survivor.phones.map((p) => normalisePhoneNumber(p.number)));
+    after.phones = [
+      ...survivor.phones,
+      ...merged.phones
+        .filter((p) => !phoneSet.has(normalisePhoneNumber(p.number)))
+        .map((p) => ({ ...p, primary: survivor.phones.length ? false : p.primary })),
+    ];
+    const profileSet = new Set(survivor.socialProfiles.map((p) => p.url));
+    after.socialProfiles = [
+      ...survivor.socialProfiles,
+      ...merged.socialProfiles.filter((p) => !profileSet.has(p.url)),
+    ];
+
+    const [affiliations, links] = await Promise.all([
+      ctx.db
+        .selectFrom("core_affiliation")
+        .select((eb) => eb.fn.countAll<number>().as("n"))
+        .where("person_id", "=", merged.id)
+        .where("deleted_at", "is", null)
+        .executeTakeFirst(),
+      countLinks(ctx, "person", merged.id),
+    ]);
+
+    // The duplicate leaves first, so its emails stop being live before the survivor takes them.
+    ctx.write(
+      ctx.db
+        .updateTable("core_person")
+        .set({
+          deleted_at: ctx.now,
+          deleted_by: ctx.user.id,
+          merged_into_id: survivor.id,
+          updated_at: ctx.now,
+        })
+        .where("id", "=", merged.id),
+      ctx.db.deleteFrom("core_person_emails").where("person_id", "=", merged.id),
+      ctx.db.deleteFrom("core_person_phones").where("person_id", "=", merged.id),
+      ctx.db
+        .updateTable("core_person")
+        .set({ merged_into_id: survivor.id })
+        .where("merged_into_id", "=", merged.id),
+    );
+    // One primary affiliation per person: the survivor's wins.
+    if (survivor.primaryAffiliation) {
+      ctx.write(
+        ctx.db
+          .updateTable("core_affiliation")
+          .set({ is_primary: 0, updated_at: ctx.now })
+          .where("person_id", "=", merged.id)
+          .where("is_primary", "=", 1),
+      );
+    }
+    ctx.write(
+      ctx.db
+        .updateTable("core_affiliation")
+        .set({ person_id: survivor.id, updated_at: ctx.now })
+        .where("person_id", "=", merged.id),
+      ctx.db
+        .updateTable("core_person")
+        .set({
+          display_name: after.displayName,
+          given_name: after.givenName,
+          family_name: after.familyName,
+          location: after.location,
+          timezone: after.timezone,
+          avatar_key: after.avatarKey,
+          owner_id: after.ownerId,
+          description: after.description,
+          social_profiles: JSON.stringify(after.socialProfiles),
+          updated_at: ctx.now,
+        })
+        .where("id", "=", survivor.id),
+    );
+    queueEmails(ctx, survivor.id, after.emails);
+    queuePhones(ctx, survivor.id, after.phones);
+    after.tags = await queueSetTags(ctx, "person", survivor.id, [...survivor.tags, ...merged.tags]);
+    queueClearTags(ctx, "person", merged.id);
+    queueMoveLinks(ctx, "person", merged.id, survivor.id);
+
+    ctx.recordChange({
+      object: "person",
+      id: survivor.id,
+      action: "merge",
+      before: personSnapshot(survivor),
+      after: { ...personSnapshot(after), absorbedId: merged.id },
+    });
+    ctx.recordChange({
+      object: "person",
+      id: merged.id,
+      action: "merge",
+      before: { ...personSnapshot(merged), deletedAt: null, mergedIntoId: null },
+      after: { deletedAt: ctx.now, mergedIntoId: survivor.id },
+    });
+    ctx.postActivity({
+      subject: `Merged ${merged.displayName} into ${after.displayName}`,
+      payload: {
+        kind: "merge",
+        object: "person",
+        survivorId: survivor.id,
+        mergedId: merged.id,
+        mergedName: merged.displayName,
+      },
+      links: [
+        { object: "person", id: survivor.id },
+        { object: "person", id: merged.id },
+      ],
+    });
+    const moved = {
+      affiliations: Number(affiliations?.n ?? 0),
+      activities: links.activities,
+      tasks: links.tasks,
+    };
+    return ctx.afterCommit(async () => ({ ...(await requirePerson(ctx.db, survivor.id)), moved }));
+  },
+});
+
+// --- Erase -------------------------------------------------------------------------------------
+
+export const personErase = defineOperation({
+  name: "person.erase",
+  description:
+    "Permanently delete a person now, for GDPR erasure requests (admins only). Works on live " +
+    "people and people in Trash, and also erases anyone merged into them. Emails, phones, " +
+    "affiliations and tags go; activities and tasks linked only to them are deleted; system " +
+    "activities about them (field changes, job changes, merges) are removed from every " +
+    "timeline. Audit-log content that mentions them (their id, emails or phone numbers) is " +
+    'replaced with "[erased]"; who did what and when is kept. Cannot be undone; use ' +
+    "person.delete for a reversible delete.",
+  input: z.object({ id: personId }),
+  output: z.object({
+    id: z.string(),
+    erased: z.array(z.string()),
+    activitiesDeleted: z.number(),
+    tasksDeleted: z.number(),
+    auditRowsRedacted: z.number(),
+  }),
+  permission: "records:erase",
+  risk: "destructive",
+  mcp: { expose: false },
+  async handler(input, ctx) {
+    await requirePerson(ctx.db, input.id, { includeDeleted: true });
+    const ids = await withMergedRecords(ctx, "person", input.id);
+    const [emails, phones] = await Promise.all([
+      ctx.db
+        .selectFrom("core_person_emails")
+        .select("email")
+        .where("person_id", "in", ids)
+        .execute(),
+      ctx.db
+        .selectFrom("core_person_phones")
+        .select(["number", "number_normalised"])
+        .where("person_id", "in", ids)
+        .execute(),
+    ]);
+    const counts = await queueErase(ctx, {
+      object: "person",
+      recordId: input.id,
+      recordIds: ids,
+      terms: [
+        ...emails.map((e) => e.email),
+        ...phones.flatMap((p) => [p.number, p.number_normalised]),
+      ],
+    });
+    for (const id of ids) ctx.recordChange({ object: "person", id, action: "erase", diff: {} });
+    return ctx.afterCommit(async () => ({
+      id: input.id,
+      erased: ids,
+      activitiesDeleted: counts.activities,
+      tasksDeleted: counts.tasks,
+      auditRowsRedacted: await countRedactions(ctx.db, "person", input.id),
+    }));
   },
 });
 
@@ -626,4 +1123,9 @@ export const personOperations = [
   personList,
   personDelete,
   personRestore,
+  personChangeJob,
+  personUpdateMany,
+  personDeleteMany,
+  personMerge,
+  personErase,
 ] as const;
