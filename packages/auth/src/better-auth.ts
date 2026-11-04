@@ -1,4 +1,5 @@
 // Better Auth adapter (the default): email + password and Google sign-in, stored in core_* tables.
+import { newId } from "@crm/core";
 import { betterAuth } from "better-auth";
 import type { IdentityProvider, Principal } from "./principal.ts";
 
@@ -18,6 +19,14 @@ export interface BetterAuthOptions {
 
 export const BETTER_AUTH_BASE_PATH = "/api/auth";
 
+const ID_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+/** 32 random alphanumeric characters, like Better Auth's default ids. */
+function randomId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes, (byte) => ID_ALPHABET[byte % ID_ALPHABET.length]).join("");
+}
+
 const timestamps = { createdAt: "created_at", updatedAt: "updated_at" } as const;
 
 export function createBetterAuth(options: BetterAuthOptions) {
@@ -28,6 +37,15 @@ export function createBetterAuth(options: BetterAuthOptions) {
     ...(options.baseURL ? { baseURL: options.baseURL } : {}),
     basePath: BETTER_AUTH_BASE_PATH,
     telemetry: { enabled: false },
+    advanced: {
+      database: {
+        // Users get CRM ids (`usr_…`, ADR 0015) so audit rows, owners and assignees all use one id
+        // format. Sessions, accounts and verifications are Better Auth's own and keep its default
+        // shape (random, not time-ordered), which we generate here because a function replaces it.
+        generateId: ({ model }) =>
+          model === "user" || model === "core_user" ? newId("user") : randomId(),
+      },
+    },
     emailAndPassword: { enabled: true },
     socialProviders: options.google
       ? {

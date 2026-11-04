@@ -16,7 +16,7 @@ deploy.
 
 ## Configuration
 
-`IDENTITY_PROVIDER` and `AUTH_ALLOW_SIGNUP` are plain vars in `apps/app/wrangler.jsonc`: change them
+`IDENTITY_PROVIDER`, `AUTH_ALLOW_SIGNUP` and `APPROVAL_FLOOR` are plain vars in `apps/app/wrangler.jsonc`: change them
 there (in your fork) to switch adapter. Everything else is a **secret** on `crm-app`, set with
 `wrangler secret put <NAME> --name crm-app`, through the deploy script (below), or in the dashboard.
 `apps/app/.dev.vars.example` lists the same names for local development.
@@ -25,6 +25,7 @@ there (in your fork) to switch adapter. Everything else is a **secret** on `crm-
 | --- | --- | --- | --- |
 | `IDENTITY_PROVIDER` | var | always | `better-auth` (default) or `cloudflare-access` |
 | `AUTH_ALLOW_SIGNUP` | var | Better Auth | `false` (default): only the first user can sign up. `true`: open sign-up |
+| `APPROVAL_FLOOR` | var | optional | Approval-policy floor the org's preset can never loosen (ADR 0011/0018). JSON keyed by actor (`human`, `assistant`, `mcp`, `automation` or `*`) then risk class (or `*`), with `auto`, `review`, `deny` or `{"autoUpTo": n, "above": "review"}`. Example: `{"*":{"destructive":"review"}}`. Empty: no floor. Malformed: every operation is refused |
 | `BETTER_AUTH_SECRET` | secret, **required** | always | Signs sessions. At least 32 random characters: `openssl rand -hex 32` |
 | `BETTER_AUTH_URL` | secret | Better Auth, recommended | Public origin, e.g. `https://crm.example.com`. Inferred from requests when unset |
 | `GOOGLE_CLIENT_ID` | secret | Google sign-in | OAuth client; redirect URI `<origin>/api/auth/callback/google` |
@@ -34,6 +35,9 @@ there (in your fork) to switch adapter. Everything else is a **secret** on `crm-
 
 `BETTER_AUTH_SECRET` is declared in `secrets.required`, so wrangler refuses to deploy `crm-app`
 without it. Set it even with Cloudflare Access (any random value): it keeps the config uniform.
+
+The first user of a deployment (Better Auth sign-up, or the first Cloudflare Access user to load
+the app) becomes its admin; everyone after that is a member until an admin changes their role.
 
 `crm-runner` has no secrets. Its `DEV_ROUTES` var is `"false"`; only `.dev.vars` sets it to `true`
 locally.

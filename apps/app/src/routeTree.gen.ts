@@ -12,8 +12,20 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppActivityRouteImport } from './routes/_app/activity'
+import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppStatusRouteImport } from './routes/_app/status'
+import { Route as AppTasksRouteImport } from './routes/_app/tasks'
+import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as AppOrganisationsIndexRouteImport } from './routes/_app/organisations/index'
+import { Route as AppOrganisationsIdRouteImport } from './routes/_app/organisations/$id'
+import { Route as AppPeopleIndexRouteImport } from './routes/_app/people/index'
+import { Route as AppPeopleIdRouteImport } from './routes/_app/people/$id'
+import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
+import { Route as AppSettingsApprovalPolicyRouteImport } from './routes/_app/settings/approval-policy'
+import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
+import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const AppRoute = AppRouteImport.update({
@@ -30,15 +42,76 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppActivityRoute = AppActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImportRoute = AppImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppStatusRoute = AppStatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTasksRoute = AppTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTrashRoute = AppTrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
   getParentRoute: () => AppRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppOrganisationsIndexRoute = AppOrganisationsIndexRouteImport.update({
+  id: '/organisations/',
+  path: '/organisations/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrganisationsIdRoute = AppOrganisationsIdRouteImport.update({
+  id: '/organisations/$id',
+  path: '/organisations/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPeopleIndexRoute = AppPeopleIndexRouteImport.update({
+  id: '/people/',
+  path: '/people/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPeopleIdRoute = AppPeopleIdRouteImport.update({
+  id: '/people/$id',
+  path: '/people/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsApprovalPolicyRoute =
+  AppSettingsApprovalPolicyRouteImport.update({
+    id: '/settings/approval-policy',
+    path: '/settings/approval-policy',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppSettingsAuditRoute = AppSettingsAuditRouteImport.update({
+  id: '/settings/audit',
+  path: '/settings/audit',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsUsersRoute = AppSettingsUsersRouteImport.update({
+  id: '/settings/users',
+  path: '/settings/users',
+  getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -49,39 +122,121 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/sign-in': typeof SignInRoute
+  '/activity': typeof AppActivityRoute
+  '/import': typeof AppImportRoute
   '/status': typeof AppStatusRoute
+  '/tasks': typeof AppTasksRoute
+  '/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
+  '/organisations/$id': typeof AppOrganisationsIdRoute
+  '/people/$id': typeof AppPeopleIdRoute
+  '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/settings/audit': typeof AppSettingsAuditRoute
+  '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/organisations/': typeof AppOrganisationsIndexRoute
+  '/people/': typeof AppPeopleIndexRoute
+  '/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
+  '/activity': typeof AppActivityRoute
+  '/import': typeof AppImportRoute
   '/status': typeof AppStatusRoute
+  '/tasks': typeof AppTasksRoute
+  '/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
   '/': typeof AppIndexRoute
+  '/organisations/$id': typeof AppOrganisationsIdRoute
+  '/people/$id': typeof AppPeopleIdRoute
+  '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/settings/audit': typeof AppSettingsAuditRoute
+  '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/organisations': typeof AppOrganisationsIndexRoute
+  '/people': typeof AppPeopleIndexRoute
+  '/settings': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/sign-in': typeof SignInRoute
+  '/_app/activity': typeof AppActivityRoute
+  '/_app/import': typeof AppImportRoute
   '/_app/status': typeof AppStatusRoute
+  '/_app/tasks': typeof AppTasksRoute
+  '/_app/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/organisations/$id': typeof AppOrganisationsIdRoute
+  '/_app/people/$id': typeof AppPeopleIdRoute
+  '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/_app/settings/audit': typeof AppSettingsAuditRoute
+  '/_app/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/organisations/': typeof AppOrganisationsIndexRoute
+  '/_app/people/': typeof AppPeopleIndexRoute
+  '/_app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/status' | '/api/health' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/sign-in'
+    | '/activity'
+    | '/import'
+    | '/status'
+    | '/tasks'
+    | '/trash'
+    | '/api/health'
+    | '/organisations/$id'
+    | '/people/$id'
+    | '/settings/approval-policy'
+    | '/settings/audit'
+    | '/settings/users'
+    | '/api/auth/$'
+    | '/organisations/'
+    | '/people/'
+    | '/settings/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/sign-in' | '/status' | '/api/health' | '/' | '/api/auth/$'
+  to:
+    | '/sign-in'
+    | '/activity'
+    | '/import'
+    | '/status'
+    | '/tasks'
+    | '/trash'
+    | '/api/health'
+    | '/'
+    | '/organisations/$id'
+    | '/people/$id'
+    | '/settings/approval-policy'
+    | '/settings/audit'
+    | '/settings/users'
+    | '/api/auth/$'
+    | '/organisations'
+    | '/people'
+    | '/settings'
   id:
     | '__root__'
     | '/_app'
     | '/sign-in'
+    | '/_app/activity'
+    | '/_app/import'
     | '/_app/status'
+    | '/_app/tasks'
+    | '/_app/trash'
     | '/api/health'
     | '/_app/'
+    | '/_app/organisations/$id'
+    | '/_app/people/$id'
+    | '/_app/settings/approval-policy'
+    | '/_app/settings/audit'
+    | '/_app/settings/users'
     | '/api/auth/$'
+    | '/_app/organisations/'
+    | '/_app/people/'
+    | '/_app/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -114,11 +269,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/activity': {
+      id: '/_app/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AppActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/import': {
+      id: '/_app/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AppImportRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/status': {
       id: '/_app/status'
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof AppStatusRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/tasks': {
+      id: '/_app/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AppTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/trash': {
+      id: '/_app/trash'
+      path: '/trash'
+      fullPath: '/trash'
+      preLoaderRoute: typeof AppTrashRouteImport
       parentRoute: typeof AppRoute
     }
     '/api/health': {
@@ -127,6 +310,62 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/organisations/': {
+      id: '/_app/organisations/'
+      path: '/organisations'
+      fullPath: '/organisations/'
+      preLoaderRoute: typeof AppOrganisationsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/organisations/$id': {
+      id: '/_app/organisations/$id'
+      path: '/organisations/$id'
+      fullPath: '/organisations/$id'
+      preLoaderRoute: typeof AppOrganisationsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/people/': {
+      id: '/_app/people/'
+      path: '/people'
+      fullPath: '/people/'
+      preLoaderRoute: typeof AppPeopleIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/people/$id': {
+      id: '/_app/people/$id'
+      path: '/people/$id'
+      fullPath: '/people/$id'
+      preLoaderRoute: typeof AppPeopleIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/': {
+      id: '/_app/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/approval-policy': {
+      id: '/_app/settings/approval-policy'
+      path: '/settings/approval-policy'
+      fullPath: '/settings/approval-policy'
+      preLoaderRoute: typeof AppSettingsApprovalPolicyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/audit': {
+      id: '/_app/settings/audit'
+      path: '/settings/audit'
+      fullPath: '/settings/audit'
+      preLoaderRoute: typeof AppSettingsAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/users': {
+      id: '/_app/settings/users'
+      path: '/settings/users'
+      fullPath: '/settings/users'
+      preLoaderRoute: typeof AppSettingsUsersRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -139,13 +378,37 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppActivityRoute: typeof AppActivityRoute
+  AppImportRoute: typeof AppImportRoute
   AppStatusRoute: typeof AppStatusRoute
+  AppTasksRoute: typeof AppTasksRoute
+  AppTrashRoute: typeof AppTrashRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppOrganisationsIdRoute: typeof AppOrganisationsIdRoute
+  AppPeopleIdRoute: typeof AppPeopleIdRoute
+  AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
+  AppSettingsAuditRoute: typeof AppSettingsAuditRoute
+  AppSettingsUsersRoute: typeof AppSettingsUsersRoute
+  AppOrganisationsIndexRoute: typeof AppOrganisationsIndexRoute
+  AppPeopleIndexRoute: typeof AppPeopleIndexRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppActivityRoute: AppActivityRoute,
+  AppImportRoute: AppImportRoute,
   AppStatusRoute: AppStatusRoute,
+  AppTasksRoute: AppTasksRoute,
+  AppTrashRoute: AppTrashRoute,
   AppIndexRoute: AppIndexRoute,
+  AppOrganisationsIdRoute: AppOrganisationsIdRoute,
+  AppPeopleIdRoute: AppPeopleIdRoute,
+  AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
+  AppSettingsAuditRoute: AppSettingsAuditRoute,
+  AppSettingsUsersRoute: AppSettingsUsersRoute,
+  AppOrganisationsIndexRoute: AppOrganisationsIndexRoute,
+  AppPeopleIndexRoute: AppPeopleIndexRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
