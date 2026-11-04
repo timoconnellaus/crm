@@ -11,7 +11,6 @@ import type { ExtensionHost } from "./extensions/host.ts";
 import type { GateFloor } from "./gate.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
 import type { ModelRunner } from "./models.ts";
-import type { UpdaterRuntime } from "./updates.ts";
 import {
   ACTORS,
   type ActingUser,
@@ -22,6 +21,7 @@ import {
   RISK_CLASSES,
   type RiskClass,
 } from "./principals.ts";
+import type { UpdaterRuntime } from "./updates.ts";
 
 /** One record touched by an operation, recorded as field diffs in core_audit_changes. */
 export interface RecordChange {

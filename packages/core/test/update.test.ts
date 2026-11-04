@@ -3,7 +3,13 @@
 // audit, the release cache, and the CLI fallback without a token. The real runtime (download,
 // verification, Cloudflare API) is tested in crm-app and packages/release.
 import { env } from "cloudflare:workers";
-import type { Channel, DeploymentState, ReleaseManifest, RunRecord, UpdateOutcome } from "@crm/release";
+import type {
+  Channel,
+  DeploymentState,
+  ReleaseManifest,
+  RunRecord,
+  UpdateOutcome,
+} from "@crm/release";
 import { buildFixtureRelease } from "@crm/release/testing";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { type ActingUser, invokeByName, type UpdaterRuntime } from "../src/index.ts";
@@ -57,7 +63,13 @@ function runtime(overrides: Partial<UpdaterRuntime> = {}): UpdaterRuntime {
     async apply({ version, run, record }): Promise<UpdateOutcome> {
       calls.push(`apply:${version}`);
       await record({ ...run, step: "bookmark", bookmark: "bm-1" });
-      await record({ ...run, status: "succeeded", step: "done", bookmark: "bm-1", finished_at: new Date().toISOString() });
+      await record({
+        ...run,
+        status: "succeeded",
+        step: "done",
+        bookmark: "bm-1",
+        finished_at: new Date().toISOString(),
+      });
       return { status: "succeeded", from: "1.0.0", to: version, bookmark: "bm-1", migrations: [] };
     },
     async rollback({ run }) {
@@ -76,7 +88,9 @@ async function resetRuns() {
 beforeAll(async () => {
   admin = await createUser("admin");
   member = await createUser("member");
-  const applied = await env.DB.prepare("SELECT name FROM core_migrations ORDER BY id").all<{ name: string }>();
+  const applied = await env.DB.prepare("SELECT name FROM core_migrations ORDER BY id").all<{
+    name: string;
+  }>();
   for (const [version, contract] of [
     ["1.0.0", { version: 1, supported: [1] }],
     ["1.1.0", { version: 1, supported: [1] }],
@@ -88,7 +102,9 @@ beforeAll(async () => {
     manifest.migrations = applied.results.map((m) => ({ name: m.name, sha256: "" }));
     manifests.set(version, manifest);
   }
-  await env.DB.prepare("INSERT INTO core_install (key, value, updated_at) VALUES ('deployment', ?, ?)")
+  await env.DB.prepare(
+    "INSERT INTO core_install (key, value, updated_at) VALUES ('deployment', ?, ?)",
+  )
     .bind(JSON.stringify(STATE), new Date().toISOString())
     .run();
 });
@@ -115,14 +131,21 @@ describe("update.status and channels", () => {
 
   it("a stable deployment sees stable releases only; switching to beta shows betas", async () => {
     const ctx = context(admin, { updater: runtime() });
-    const stable = (await invokeByName("update.releases", {}, ctx)) as { releases: { version: string; newer: boolean }[] };
+    const stable = (await invokeByName("update.releases", {}, ctx)) as {
+      releases: { version: string; newer: boolean }[];
+    };
     expect(stable.releases.map((r) => r.version)).toEqual(["2.0.0", "1.1.0", "1.0.0"]);
     expect(stable.releases.find((r) => r.version === "1.0.0")?.newer).toBe(false);
     await invokeByName("update.setChannel", { channel: "beta" }, ctx);
-    const beta = (await invokeByName("update.releases", {}, ctx)) as { channel: string; releases: { version: string }[] };
+    const beta = (await invokeByName("update.releases", {}, ctx)) as {
+      channel: string;
+      releases: { version: string }[];
+    };
     expect(beta.channel).toBe("beta");
     expect(beta.releases.map((r) => r.version)).toContain("1.2.0-beta.1");
-    const stored = await env.DB.prepare("SELECT value FROM core_install").first<{ value: string }>();
+    const stored = await env.DB.prepare("SELECT value FROM core_install").first<{
+      value: string;
+    }>();
     expect(JSON.parse(stored?.value ?? "{}").channel).toBe("beta");
     await invokeByName("update.setChannel", { channel: "stable" }, ctx);
   });
@@ -138,7 +161,11 @@ describe("update.status and channels", () => {
 
   it("only a person can change the channel", async () => {
     await expect(
-      invokeByName("update.setChannel", { channel: "beta" }, context(admin, { actor: "mcp", updater: runtime() })),
+      invokeByName(
+        "update.setChannel",
+        { channel: "beta" },
+        context(admin, { actor: "mcp", updater: runtime() }),
+      ),
     ).rejects.toBeTruthy();
   });
 });
@@ -165,7 +192,9 @@ describe("preflight and apply", () => {
       });
       expect(calls).not.toContain("apply:2.0.0");
       // Compatible updates pass.
-      const ok = (await invokeByName("update.preflight", { version: "1.1.0" }, ctx)) as { ok: boolean };
+      const ok = (await invokeByName("update.preflight", { version: "1.1.0" }, ctx)) as {
+        ok: boolean;
+      };
       expect(ok.ok).toBe(true);
     } finally {
       await env.DB.prepare("DELETE FROM core_extensions WHERE id = 'scoring'").run();
@@ -177,7 +206,12 @@ describe("preflight and apply", () => {
     const result = await invokeByName("update.apply", { version: "1.1.0" }, ctx);
     expect(result).toMatchObject({ status: "succeeded", from: "1.0.0", to: "1.1.0" });
     const run = await env.DB.prepare("SELECT * FROM core_update_runs").first<RunRecord>();
-    expect(run).toMatchObject({ status: "succeeded", surface: "ui", started_by: admin.id, bookmark: "bm-1" });
+    expect(run).toMatchObject({
+      status: "succeeded",
+      surface: "ui",
+      started_by: admin.id,
+      bookmark: "bm-1",
+    });
     const audits = await auditRows("update.apply", admin.id);
     expect(audits.at(-1)).toMatchObject({ outcome: "ok" });
   });
@@ -185,7 +219,11 @@ describe("preflight and apply", () => {
   it("refuses AI and MCP callers and members", async () => {
     for (const actor of ["mcp", "assistant", "automation"] as const) {
       await expect(
-        invokeByName("update.apply", { version: "1.1.0" }, context(admin, { actor, updater: runtime() })),
+        invokeByName(
+          "update.apply",
+          { version: "1.1.0" },
+          context(admin, { actor, updater: runtime() }),
+        ),
       ).rejects.toBeTruthy();
     }
     await expect(
@@ -206,18 +244,26 @@ describe("preflight and apply", () => {
 
   it("rolls back only the latest successful update", async () => {
     const ctx = context(admin, { updater: runtime() });
-    const { runId } = (await invokeByName("update.apply", { version: "1.1.0" }, ctx)) as { runId: string };
-    const status = (await invokeByName("update.status", {}, ctx)) as { runs: { id: string; canRollBack: boolean }[] };
+    const { runId } = (await invokeByName("update.apply", { version: "1.1.0" }, ctx)) as {
+      runId: string;
+    };
+    const status = (await invokeByName("update.status", {}, ctx)) as {
+      runs: { id: string; canRollBack: boolean }[];
+    };
     expect(status.runs.find((r) => r.id === runId)?.canRollBack).toBe(true);
     await invokeByName("update.rollback", { runId }, ctx);
     expect(calls).toContain("rollback:1.0.0");
-    const runs = await env.DB.prepare("SELECT kind, status FROM core_update_runs ORDER BY started_at, kind DESC").all();
+    const runs = await env.DB.prepare(
+      "SELECT kind, status FROM core_update_runs ORDER BY started_at, kind DESC",
+    ).all();
     expect(runs.results).toEqual(
       expect.arrayContaining([
         { kind: "update", status: "rolled_back" },
         { kind: "rollback", status: "succeeded" },
       ]),
     );
-    await expect(invokeByName("update.rollback", { runId }, ctx)).rejects.toMatchObject({ code: "conflict" });
+    await expect(invokeByName("update.rollback", { runId }, ctx)).rejects.toMatchObject({
+      code: "conflict",
+    });
   });
 });

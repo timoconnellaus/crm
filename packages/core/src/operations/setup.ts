@@ -23,11 +23,18 @@ const setupOutput = z.object({
   data: z.record(z.string(), z.unknown()),
   /** True while the wizard should open on an admin's first visit. */
   open: z.boolean(),
-  sampleRecords: z.number().int().describe("Records 'Install sample data' created that still exist"),
+  sampleRecords: z
+    .number()
+    .int()
+    .describe("Records 'Install sample data' created that still exist"),
 });
 
 async function loadSetup(ctx: Pick<HandlerContext, "db">) {
-  const row = await ctx.db.selectFrom("core_setup").selectAll().where("id", "=", 1).executeTakeFirst();
+  const row = await ctx.db
+    .selectFrom("core_setup")
+    .selectAll()
+    .where("id", "=", 1)
+    .executeTakeFirst();
   const samples = await ctx.db
     .selectFrom("core_sample_records")
     .select((eb) => eb.fn.countAll<number>().as("n"))
@@ -37,7 +44,9 @@ async function loadSetup(ctx: Pick<HandlerContext, "db">) {
   try {
     data = row ? (JSON.parse(row.data) as Record<string, unknown>) : {};
   } catch {}
-  const step = (SETUP_STEPS as readonly string[]).includes(row?.step ?? "") ? (row?.step as SetupStep) : "admin";
+  const step = (SETUP_STEPS as readonly string[]).includes(row?.step ?? "")
+    ? (row?.step as SetupStep)
+    : "admin";
   return {
     status,
     step,
@@ -100,7 +109,8 @@ export const setupSave = defineOperation({
   async handler(input, ctx) {
     const before = await loadSetup(ctx);
     const data = { ...before.data, ...(input.data ?? {}) };
-    if (JSON.stringify(data).length > 20_000) throw new ConflictError("Setup answers are too large");
+    if (JSON.stringify(data).length > 20_000)
+      throw new ConflictError("Setup answers are too large");
     const status: z.infer<typeof statusSchema> =
       before.status === "completed" ? "completed" : "in_progress";
     writeSetup(ctx, { status, step: input.step, data });
@@ -153,9 +163,24 @@ export const setupRestart = defineOperation({
 // --- Sample data ---------------------------------------------------------------------------------
 
 const SAMPLE_ORGANISATIONS = [
-  { key: "acme", name: "Acme Robotics (sample)", domain: "acme-robotics.example", industry: "Manufacturing" },
-  { key: "globex", name: "Globex Logistics (sample)", domain: "globex.example", industry: "Logistics" },
-  { key: "initech", name: "Initech Software (sample)", domain: "initech.example", industry: "Software" },
+  {
+    key: "acme",
+    name: "Acme Robotics (sample)",
+    domain: "acme-robotics.example",
+    industry: "Manufacturing",
+  },
+  {
+    key: "globex",
+    name: "Globex Logistics (sample)",
+    domain: "globex.example",
+    industry: "Logistics",
+  },
+  {
+    key: "initech",
+    name: "Initech Software (sample)",
+    domain: "initech.example",
+    industry: "Software",
+  },
 ] as const;
 
 const SAMPLE_PEOPLE = [
@@ -225,7 +250,11 @@ export const sampleInstall = defineOperation({
       const due = new Date(today.getTime() + task.days * 86_400_000).toISOString().slice(0, 10);
       const result = (await ctx.pipeline.invoke(
         "task.create",
-        { title: task.title, dueAt: due, links: [{ object: "person", id: personIds[task.person] }] },
+        {
+          title: task.title,
+          dueAt: due,
+          links: [{ object: "person", id: personIds[task.person] }],
+        },
         nested,
       )) as { id: string };
       created.push({ object: "task", id: result.id });
@@ -270,7 +299,8 @@ export const sampleRemove = defineOperation({
           .select("deleted_at")
           .where("id", "=", row.record_id)
           .executeTakeFirst();
-        if (!task?.deleted_at) await ctx.pipeline.invoke("task.delete", { id: row.record_id }, nested);
+        if (!task?.deleted_at)
+          await ctx.pipeline.invoke("task.delete", { id: row.record_id }, nested);
         removed += 1;
       }
     }

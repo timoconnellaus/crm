@@ -58,11 +58,10 @@ export * from "./operations/retention.ts";
 export * from "./operations/search.ts";
 export { COMMON_CURRENCIES, MAX_LOGO_LENGTH } from "./operations/settings.ts";
 export * from "./operations/setup.ts";
-export * from "./operations/update.ts";
-export * from "./updates.ts";
 export * from "./operations/suggestions.ts";
 export * from "./operations/task.ts";
 export * from "./operations/trash.ts";
+export * from "./operations/update.ts";
 export * from "./operations/user.ts";
 export * from "./operations/view.ts";
 export {
@@ -101,5 +100,6 @@ export {
 } from "./settings.ts";
 export * from "./sync/ingest.ts";
 export * from "./sync/signals.ts";
+export * from "./updates.ts";
 export { type PrincipalLike, resolveActingUser, SYSTEM_USER } from "./users.ts";
 export * from "./views/spec.ts";

@@ -10,8 +10,8 @@
 // Everything that leaves the Worker goes through ctx.updater (src/server/updater.ts in crm-app).
 // No telemetry: the only outbound reads are public GitHub release pages (ADR 0166).
 import {
-  type Channel,
   CHANNELS,
+  type Channel,
   compareVersions,
   type DeploymentState,
   isVersion,
@@ -206,7 +206,9 @@ export const updateReleases = defineOperation({
         await ctx.db
           .insertInto("core_release_cache")
           .values({ channel, releases: value, fetched_at: ctx.now })
-          .onConflict((oc) => oc.column("channel").doUpdateSet({ releases: value, fetched_at: ctx.now }))
+          .onConflict((oc) =>
+            oc.column("channel").doUpdateSet({ releases: value, fetched_at: ctx.now }),
+          )
           .execute();
       } catch (e) {
         error = `Could not reach GitHub Releases: ${(e as Error).message}`;
@@ -246,7 +248,12 @@ export const updateSetChannel = defineOperation({
     ctx.write(
       ctx.db
         .insertInto("core_settings")
-        .values({ key: UPDATE_CHANNEL_SETTING, value, updated_at: ctx.now, updated_by: ctx.user.id })
+        .values({
+          key: UPDATE_CHANNEL_SETTING,
+          value,
+          updated_at: ctx.now,
+          updated_by: ctx.user.id,
+        })
         .onConflict((oc) =>
           oc.column("key").doUpdateSet({ value, updated_at: ctx.now, updated_by: ctx.user.id }),
         ),
@@ -292,7 +299,12 @@ const preflightSchema = z.object({
     changed: z.array(z.string()),
   }),
   secrets: z.array(
-    z.object({ worker: z.string(), name: z.string(), required: z.boolean(), set: z.boolean().nullable() }),
+    z.object({
+      worker: z.string(),
+      name: z.string(),
+      required: z.boolean(),
+      set: z.boolean().nullable(),
+    }),
   ),
   inputs: z.array(z.string()),
   cliCommand: z.string(),
@@ -307,7 +319,8 @@ async function runPreflight(
   const target = await updater.manifest(version);
   if (!target) throw new NotFoundError("release", version);
   const currentVersion = updater.currentVersion ?? state?.version ?? null;
-  const current = currentVersion && isVersion(currentVersion) ? await updater.manifest(currentVersion) : null;
+  const current =
+    currentVersion && isVersion(currentVersion) ? await updater.manifest(currentVersion) : null;
   const applied = await ctx.db.selectFrom("core_migrations").select("name").orderBy("id").execute();
   const extensions = await ctx.db
     .selectFrom("core_extensions")
@@ -321,7 +334,9 @@ async function runPreflight(
     extensions: extensions.map((e) => {
       let contractVersion = 0;
       try {
-        contractVersion = Number((JSON.parse(e.manifest) as { contractVersion?: number }).contractVersion ?? 0);
+        contractVersion = Number(
+          (JSON.parse(e.manifest) as { contractVersion?: number }).contractVersion ?? 0,
+        );
       } catch {}
       return { id: e.id, source: e.source, status: e.status, contractVersion };
     }),
@@ -343,7 +358,10 @@ export const updatePreflight = defineOperation({
   mcp: { expose: false },
   async handler(input, ctx) {
     const state = await loadDeploymentState(ctx);
-    return { ...(await runPreflight(ctx, input.version, state)), cliCommand: cliCommand(input.version) };
+    return {
+      ...(await runPreflight(ctx, input.version, state)),
+      cliCommand: cliCommand(input.version),
+    };
   },
 });
 
@@ -481,7 +499,12 @@ export const updateRollback = defineOperation({
     const latest = runs.find((r) => r.status !== "running");
     const run = runs.find((r) => r.id === input.runId);
     if (!run) throw new NotFoundError("update run", input.runId);
-    if (run !== latest || run.kind !== "update" || run.status !== "succeeded" || !run.from_version) {
+    if (
+      run !== latest ||
+      run.kind !== "update" ||
+      run.status !== "succeeded" ||
+      !run.from_version
+    ) {
       throw new ConflictError("Only the most recent successful update can be rolled back");
     }
     await updater.rollback({ run, state, automations: automationControlFor(ctx.db) });

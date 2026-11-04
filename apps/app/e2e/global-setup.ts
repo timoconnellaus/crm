@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { FullConfig } from "@playwright/test";
+import { chromium, type FullConfig } from "@playwright/test";
 import { TEST_USER } from "./test-user.ts";
 
 const STORAGE_STATE = join(dirname(fileURLToPath(import.meta.url)), ".auth/user.json");
@@ -44,4 +44,21 @@ export default async function globalSetup(config: FullConfig) {
   });
   mkdirSync(dirname(STORAGE_STATE), { recursive: true });
   writeFileSync(STORAGE_STATE, JSON.stringify({ cookies, origins: [] }, null, 2));
+
+  // The first-run setup wizard opens for the first admin (stage 8). Skip it once here so the other
+  // specs land where they navigate; setup-wizard.spec.ts reopens it from Settings → General.
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ baseURL, storageState: STORAGE_STATE });
+    const page = await context.newPage();
+    await page.goto("/setup");
+    await page.locator("html[data-hydrated]").waitFor({ state: "attached", timeout: 60_000 });
+    const skip = page.getByTestId("setup-skip");
+    if (await skip.isVisible().catch(() => false)) {
+      await skip.click();
+      await page.waitForURL((url) => url.pathname === "/", { timeout: 30_000 });
+    }
+  } finally {
+    await browser.close();
+  }
 }

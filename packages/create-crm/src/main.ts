@@ -7,6 +7,9 @@
 //   crm upgrade [--version X.Y.Z]       same steps as Settings → Updates
 //   crm rollback                        undo the last update (redeploy + restore the bookmark)
 //   crm status                          what is installed and what is available
+
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   appliedMigrationsViaApi,
   applyBundleMigrations,
@@ -30,17 +33,20 @@ import {
   locateDeployment,
   neededResources,
   newRunId,
+  openBundle,
   type PreflightResult,
   preflight,
   provisionResources,
   type ReleaseBundle,
   type RunRecord,
+  releaseAssetNames,
   rollbackTarget,
   runRollback,
   runsViaApi,
   runUpdate,
   saveRunViaApi,
   toHex,
+  verifyBundleBytes,
   workersDevHostname,
   writeDeploymentState,
 } from "@crm/release";
@@ -54,6 +60,7 @@ Usage
                                          switch all Workers, smoke check; rolls back on failure)
   crm rollback                           redeploy the previous release and restore its bookmark
   crm status                             installed version, channel, URL and available releases
+  crm uninstall                          delete the Workers, database, bucket and namespace (asks)
 
 Options
   --token <t>            Cloudflare API token (or CLOUDFLARE_API_TOKEN). Needs, on the account:
@@ -74,6 +81,8 @@ Options
   --no-gh                skip \`gh attestation verify\` even if gh is installed
   --require-gh           fail unless \`gh attestation verify\` passes (full Sigstore check)
   --wait                 after install, wait until /api/health answers
+  --bundle-dir <dir>     use crm-<version>.tar.gz and SHA256SUMS from <dir> instead of downloading
+                         (still verified against its build attestation)
   --yes                  don't ask; fail on anything that would need an answer
   -h, --help
 
@@ -108,6 +117,7 @@ export function parseArgs(argv: string[]): { command: string; flags: Flags } {
       "wait",
       "store-update-token",
       "json",
+      "unverified",
     ].includes(key);
     let value: string | boolean = true;
     if (takesValue) {
@@ -154,6 +164,10 @@ interface Session {
   github: GitHubOptions;
   repository: string;
   extra: ExtraVerifier | undefined;
+  /** Use bundles from this directory (crm-<version>.tar.gz + SHA256SUMS) instead of downloading. */
+  bundleDir?: string;
+  /** With bundleDir: skip the attestation check (local test builds only). */
+  unverified: boolean;
 }
 
 async function session(flags: Flags, deps: Deps): Promise<Session> {
@@ -195,15 +209,48 @@ async function session(flags: Flags, deps: Deps): Promise<Session> {
     ...(deps.fetch ? { fetch: deps.fetch } : {}),
     ...(env.GITHUB_TOKEN ? { token: env.GITHUB_TOKEN } : {}),
   };
+  const bundleDir = str(flags, "bundle-dir");
+  if (flags.unverified && !bundleDir)
+    throw new CliError("--unverified only applies to --bundle-dir");
   let extra: ExtraVerifier | undefined;
   if (!flags["no-gh"] && deps.ghVerifier) extra = deps.ghVerifier;
   if (flags["require-gh"] && !deps.ghVerifier) {
     throw new CliError("--require-gh: the GitHub CLI (gh) is not installed.");
   }
-  return { api, accountId, github, repository, extra };
+  return {
+    api,
+    accountId,
+    github,
+    repository,
+    extra,
+    ...(bundleDir ? { bundleDir } : {}),
+    unverified: Boolean(flags.unverified),
+  };
 }
 
 async function verified(s: Session, version: string, deps: Deps) {
+  const local = s.bundleDir ? join(s.bundleDir, releaseAssetNames(version).bundle) : null;
+  if (local && existsSync(local)) {
+    // A release built locally or in the release workflow before publishing (--bundle-dir).
+    deps.io.out(`Verifying the local bundle ${local}…`);
+    const bytes = new Uint8Array(readFileSync(local));
+    const sums = readFileSync(join(s.bundleDir as string, "SHA256SUMS"), "utf8");
+    if (s.unverified) deps.io.err("  WARNING: --unverified: skipping the build attestation check.");
+    const { digest } = await verifyBundleBytes({
+      bytes,
+      version,
+      sums,
+      repository: s.repository,
+      github: s.github,
+      skipProvenance: s.unverified,
+      ...(s.extra && !s.unverified ? { extra: s.extra } : {}),
+    });
+    const bundle = await openBundle(bytes);
+    if (bundle.manifest.version !== version) {
+      throw new CliError(`${local} holds ${bundle.manifest.version}, not ${version}`);
+    }
+    return { bundle, digest };
+  }
   deps.io.out(`Downloading crm ${version} and verifying it…`);
   const release = await fetchVerifiedRelease(version, {
     ...s.github,
@@ -671,6 +718,51 @@ async function status(flags: Flags, deps: Deps): Promise<number> {
   return 0;
 }
 
+// ---- uninstall ----------------------------------------------------------------------------------
+
+async function uninstall(flags: Flags, deps: Deps): Promise<number> {
+  const { io } = deps;
+  const s = await session(flags, deps);
+  const { state } = await locate(s);
+  if (!flags.yes) {
+    if (!io.interactive) throw new CliError("uninstall deletes everything; pass --yes");
+    const answer = await io.ask(
+      `This deletes the Workers, the database and every record of https://${state.hostname}. Type the hostname to confirm`,
+    );
+    if (answer !== state.hostname) return 1;
+  }
+  const names = ["crm-app", ...state.gatekeepers, "crm-runner"].map(
+    (n) => state.workerNames[n] ?? n,
+  );
+  const failures: string[] = [];
+  const attempt = async (label: string, action: () => Promise<unknown>) => {
+    try {
+      await action();
+      io.out(`  deleted ${label}`);
+    } catch (error) {
+      failures.push(`${label}: ${(error as Error).message}`);
+    }
+  };
+  for (const name of names)
+    await attempt(`Worker ${name}`, () => s.api.deleteScript(s.accountId, name));
+  for (const [key, value] of Object.entries(state.resources)) {
+    const kind = key.slice(0, key.indexOf("("));
+    if (kind === "D1_ID") await attempt(`D1 ${key}`, () => s.api.deleteD1(s.accountId, value));
+    if (kind === "KV_ID") await attempt(`KV ${key}`, () => s.api.deleteKv(s.accountId, value));
+    if (kind === "R2_NAME") await attempt(`R2 ${value}`, () => s.api.deleteR2(s.accountId, value));
+    if (kind === "VECTORIZE_NAME") {
+      await attempt(`Vectorize ${value}`, () => s.api.deleteVectorize(s.accountId, value));
+    }
+    if (kind === "QUEUE_NAME") {
+      const queue = (await s.api.listQueues(s.accountId)).find((q) => q.queue_name === value);
+      if (queue)
+        await attempt(`Queue ${value}`, () => s.api.deleteQueue(s.accountId, queue.queue_id));
+    }
+  }
+  for (const failure of failures) io.err(`  could not delete ${failure}`);
+  return failures.length ? 1 : 0;
+}
+
 export async function runCli(argv: string[], deps: Deps): Promise<number> {
   let parsed: ReturnType<typeof parseArgs>;
   try {
@@ -688,6 +780,7 @@ export async function runCli(argv: string[], deps: Deps): Promise<number> {
     upgrade,
     rollback,
     status,
+    uninstall,
   };
   const command = commands[parsed.command];
   if (!command) {

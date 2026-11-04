@@ -6,14 +6,14 @@
 import type { UpdaterRuntime } from "@crm/core";
 import {
   CloudflareClient,
+  DEFAULT_REPOSITORY,
   type DeploymentState,
   d1ApiMigrations,
   databaseIdOf,
-  DEFAULT_REPOSITORY,
   fetchReleaseManifest,
   fetchVerifiedRelease,
-  getRelease,
   type GitHubOptions,
+  getRelease,
   isVersion,
   listReleases,
   type ReleaseBundle,
@@ -71,7 +71,8 @@ async function defaultSmoke(env: UpdaterEnv, hostname: string, version: string) 
 
 export function updaterRuntimeFor(env: UpdaterEnv, deps: UpdaterDeps = {}): UpdaterRuntime {
   const repository = env.CRM_RELEASE_REPO || DEFAULT_REPOSITORY;
-  const currentVersion = env.CRM_RELEASE_VERSION && isVersion(env.CRM_RELEASE_VERSION) ? env.CRM_RELEASE_VERSION : null;
+  const currentVersion =
+    env.CRM_RELEASE_VERSION && isVersion(env.CRM_RELEASE_VERSION) ? env.CRM_RELEASE_VERSION : null;
   const github: GitHubOptions = {
     repository,
     ...(deps.githubApi ? { apiBase: deps.githubApi } : {}),
@@ -89,7 +90,8 @@ export function updaterRuntimeFor(env: UpdaterEnv, deps: UpdaterDeps = {}): Upda
     });
   };
   const verified = (version: string) => fetchVerifiedRelease(version, github);
-  const smoke = deps.smoke ?? ((hostname: string, version: string) => defaultSmoke(env, hostname, version));
+  const smoke =
+    deps.smoke ?? ((hostname: string, version: string) => defaultSmoke(env, hostname, version));
 
   return {
     currentVersion,
@@ -122,8 +124,21 @@ export function updaterRuntimeFor(env: UpdaterEnv, deps: UpdaterDeps = {}): Upda
         target = await verified(version);
       } catch (error) {
         const message = `Release ${version} failed verification: ${(error as Error).message}`;
-        await record({ ...run, status: "failed", step: "verify", error: message, finished_at: new Date().toISOString() });
-        return { status: "failed", from: run.from_version ?? state.version, to: version, bookmark: null, migrations: [], error: message };
+        await record({
+          ...run,
+          status: "failed",
+          step: "verify",
+          error: message,
+          finished_at: new Date().toISOString(),
+        });
+        return {
+          status: "failed",
+          from: run.from_version ?? state.version,
+          to: version,
+          bookmark: null,
+          migrations: [],
+          error: message,
+        };
       }
       const databaseId = databaseIdOf(target.bundle.manifest, state.resources);
       let previous: ReleaseBundle | null = null;

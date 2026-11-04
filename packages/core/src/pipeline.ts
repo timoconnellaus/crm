@@ -30,7 +30,6 @@ import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { findProvisionalIds, newId } from "./ids.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
-import type { UpdaterRuntime } from "./updates.ts";
 import type { ModelRunner } from "./models.ts";
 import {
   type AnyOperation,
@@ -54,6 +53,7 @@ import {
 } from "./principals.ts";
 import { resolveInputFilter } from "./relative.ts";
 import { loadApprovalPolicy } from "./settings.ts";
+import type { UpdaterRuntime } from "./updates.ts";
 
 /** Everything an adapter supplies for one call. */
 export interface InvocationContext {
