@@ -8,6 +8,7 @@ import {
   measureStorage,
   parseFloor,
   purgeIntegrationEvents,
+  purgeNotifications,
   purgeRunHistory,
   queueEventSink,
   runAuditPurge,
@@ -82,5 +83,8 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   const events = await step("integration events", () =>
     purgeIntegrationEvents(db, { now: clock?.() ?? new Date() }),
   );
-  return { purge, expired, audit, runs, compacted, storage, events };
+  // Notifications are kept 90 days (ADR 0132).
+  const notifications = await step("notifications", () => purgeNotifications(db.query, now));
+  if (notifications?.deleted) console.log(`notifications: ${notifications.deleted} purged`);
+  return { purge, expired, audit, runs, compacted, storage, events, notifications };
 }

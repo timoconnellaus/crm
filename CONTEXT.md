@@ -276,6 +276,47 @@ the caller's (invalid input, unknown tool) do not count.
 **Last-known-good**
 The most recent installed version (commit) of an extension that completed a run without failing.
 
+**Automation**
+Extension code declared with `defineAutomation`: a **trigger**, optional declarative conditions,
+declared **steps** (with intents: what they read, write, notify and wait for) and a `run` handler
+shaped like a Cloudflare Workflow. The host renders its plain-English **summary** and **step
+diagram** from the declarations, never from AI. Enabled, disabled (an admin's choice) or paused (a
+safety rail tripped). Id `<extension>.<key>`, e.g. `deals.wonOnboarding`.
+_Avoid_: workflow (that is the Cloudflare primitive a run executes on), rule, flow
+
+**Trigger**
+What starts an automation's runs: a record event (`created`, `updated`, `deleted`, `restored`), a
+field change (from / to), a `schedule` (cron in the automation timezone), `dateRelative` (N days
+before or after a date field, daily), `manual` (a record button or bulk action) or
+`approvalDecided`. Webhooks and sync events arrive in stage 6b.
+
+**Run**
+One execution of an automation, on a Cloudflare Workflow whose id derives from the run's
+idempotency key, so a duplicate event never runs twice. Statuses: queued, running, waiting (a
+sleep or wait), review (paused on a pending action), completed, failed, cancelled, expired,
+skipped. Kept 30 days (failures 90). Each `step.do` runs in a Dynamic Worker as actor `automation`.
+
+**Test mode**
+A dry run of an automation against a chosen record through the simulation overlay: nothing is
+written, waits are skipped and shown, and it reports the writes, notifications and approvals the
+real run would produce.
+
+**Cascade**
+Automation-caused changes triggering further automations. Events carry the cascade depth and chain;
+depth is capped at 3 (deeper events are dropped and logged) and an automation never retriggers
+itself on the same record within one cascade (cycle detection).
+
+**Kill switch**
+An org setting that pauses every automation at once: no new runs start and running ones stop at
+their next step. Only a human admin can engage or release it.
+_Avoid_: emergency stop, pause all
+
+**Notification**
+A typed message to one user in the in-app notification centre (the bell and inbox), with a link
+to a record, approval, automation or run, read or unread. Sent with `notification.send` by
+automations, approvals and the system. Its type lets stage 6b route it to email or Slack.
+_Avoid_: alert, message (when you mean the stored notification)
+
 **Host module**
 A `codemode:*` import that extension code can call, backed by trusted host code. Examples:
 `codemode:crm` (operations), `codemode:ai` (model roles), `codemode:<gatekeeper>`.
