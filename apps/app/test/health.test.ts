@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { CORE_SCHEMA_VERSION } from "@crm/db";
 import { describe, expect, it } from "vitest";
 import { getHealth, healthResponse } from "../src/server/health.ts";
 
@@ -12,7 +13,12 @@ describe("GET /api/health", () => {
       version: "0.0.0-test",
       commit: "test",
       identityProvider: "better-auth",
-      database: { ok: true, latest: "0001_init.sql", schemaVersion: 1, upToDate: true },
+      database: {
+        ok: true,
+        latest: env.TEST_MIGRATIONS.at(-1)?.name,
+        schemaVersion: CORE_SCHEMA_VERSION,
+        upToDate: true,
+      },
       runner: { ok: true, worker: "crm-runner" },
     });
   });

@@ -59,7 +59,11 @@ definition:
 | MCP tool | Claude and other MCP clients |
 | host module (`codemode:crm`) | extension code in dynamic workers |
 
-Every call passes through the **approval pipeline** before it takes effect.
+Every call passes through the **approval pipeline** before it takes effect. In code that is
+`invoke()` in `packages/core` (ADR 0018): validate → gate → role check → handler → one D1 batch
+holding the handler's writes, timeline activities and the audit row with field diffs. Handlers
+read with Kysely and queue writes; list operations take filter JSON validated against the **field
+registry** and compiled to parameterised SQL. `packages/core/README.md` shows how to add one.
 
 ### 3. Data
 
@@ -67,12 +71,17 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
 
 - **Core schema** (`core_*` tables): our versioned migrations, applied on deploy or upgrade. It covers
   the minimal core objects (People, Organisations, Activities, Tasks), users, settings, the approval
-  queue and the audit log.
+  queue and the audit log. Deletes are soft (Trash); a daily cron trigger on `crm-app` purges
+  people, organisations, activities and tasks after 30 days through the operations pipeline
+  (`trash.purge`), and admin erase redacts the append-only audit log through a sanctioned path
+  ([ADR 0019](adr/0019-audit-redaction-for-erasure.md)).
 - **Extension schema** (`x_<extension>_*` tables): declared in extension code (`defineObject`) and
   reconciled into D1 by the host, additive-first. Core migrations never touch `x_` tables.
-- **`crm.*` views**: generated read views with friendly names. They are what dashboard SQL and AI
-  queries run against.
-- **R2** holds attachments and imports.
+- **`crm.*` views**: generated read views with friendly names, spelled `crm_people`,
+  `crm_organisations`, … because D1 has no schemas (ADR 0015 amendment). They are what list
+  operations, dashboard SQL and AI queries run against.
+- **R2** holds attachments (and, later, large imports: stage-1 CSV imports arrive inline,
+  [ADR 0020](adr/0020-query-sql-validator-and-csv-import.md)).
 
 Core migrations are plain SQL in `packages/db/migrations`. Both Workers point their `DB` binding's
 `migrations_dir` there, so `wrangler d1 migrations apply` and the in-code runner (`applyMigrations`,
@@ -134,8 +143,10 @@ go through AI Gateway ([ADR 0009](adr/0009-model-roles.md)). Code asks for a rol
 ### 9. Dashboards and views
 
 A view spec rendered by our own shadcn/chart components. Widgets query with read-only SQL over the
-`crm.*` views: the SQL is parsed and allowlisted, takes bound params, and runs with row and time
-limits. Computed widgets are extension code. Extensions never ship UI
+`crm.*` views: the SQL is checked by a SQLite-faithful tokenizer validator (one SELECT/WITH,
+`crm_*` views only), takes bound params, and runs with row and time limits
+([ADR 0020](adr/0020-query-sql-validator-and-csv-import.md); `validateReadOnlySql` in `@crm/core`,
+used by `query.sql`). Computed widgets are extension code. Extensions never ship UI
 ([ADR 0010](adr/0010-dashboards-sql-views.md)).
 
 ## Repository layout

@@ -39,8 +39,16 @@ describe("better-auth adapter", () => {
     const principal = await provider.resolve(new Request(`${ORIGIN}/`, { headers: { cookie } }));
     expect(principal).toMatchObject({ email: "first@example.com", name: "Test User", roles: [] });
 
-    const row = await env.DB.prepare("SELECT email FROM core_user").first<{ email: string }>();
+    const row = await env.DB.prepare("SELECT id, email, role FROM core_user").first<{
+      id: string;
+      email: string;
+      role: string;
+    }>();
     expect(row?.email).toBe("first@example.com");
+    // CRM user ids, and the first user of a deployment is its admin.
+    expect(row?.id).toMatch(/^usr_[0-9A-Z]{26}$/);
+    expect(principal?.userId).toBe(row?.id);
+    expect(row?.role).toBe("admin");
   });
 
   it("returns no principal without a session", async () => {
@@ -61,6 +69,10 @@ describe("better-auth adapter", () => {
 
     const open = createIdentityProvider(authEnv({ AUTH_ALLOW_SIGNUP: "true" }));
     expect((await signUp(open, "third@example.com"))?.status).toBe(200);
+    const third = await env.DB.prepare("SELECT role FROM core_user WHERE email = ?")
+      .bind("third@example.com")
+      .first<{ role: string }>();
+    expect(third?.role).toBe("member");
   });
 
   it("ignores routes outside /api/auth", async () => {

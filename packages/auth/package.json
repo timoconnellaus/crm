@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@crm/core": "workspace:*",
     "better-auth": "1.7.16",
     "jose": "6.2.15"
   },

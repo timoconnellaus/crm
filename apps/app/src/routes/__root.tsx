@@ -1,7 +1,10 @@
+import { Toaster } from "@crm/ui/components/sonner";
 import { TooltipProvider } from "@crm/ui/components/tooltip";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-import type { ReactNode } from "react";
-import { THEME_INIT_SCRIPT, ThemeProvider } from "../components/theme.tsx";
+import { type ReactNode, useState } from "react";
+import { THEME_INIT_SCRIPT, ThemeProvider, useTheme } from "../components/theme.tsx";
+import { createQueryClient } from "../lib/query.ts";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
@@ -27,10 +30,24 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body className="min-h-svh font-sans antialiased">
         <ThemeProvider>
-          <TooltipProvider>{children}</TooltipProvider>
+          <QueryProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </QueryProvider>
+          <ThemedToaster />
         </ThemeProvider>
         <Scripts />
       </body>
     </html>
   );
+}
+
+/** One QueryClient per page load (and per server render). Data is fetched in the browser. */
+function QueryProvider({ children }: { children: ReactNode }) {
+  const [client] = useState(createQueryClient);
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
+
+function ThemedToaster() {
+  const { theme } = useTheme();
+  return <Toaster theme={theme} position="bottom-right" closeButton />;
 }
