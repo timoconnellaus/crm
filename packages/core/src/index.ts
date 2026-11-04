@@ -31,6 +31,7 @@ export * from "./ids.ts";
 export * from "./invoke.ts";
 export * from "./list.ts";
 export * from "./models.ts";
+export * from "./notifications/send.ts";
 export * from "./notifications/types.ts";
 export * from "./operation.ts";
 export * from "./operations/activity.ts";
