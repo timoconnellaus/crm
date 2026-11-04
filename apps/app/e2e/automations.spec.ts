@@ -187,3 +187,39 @@ test("bell → inbox → mark read", async ({ page }) => {
   await expect(page.getByText("No unread notifications")).toBeVisible();
   await expect(page.getByTestId("notification-count")).toHaveCount(0);
 });
+
+// Regression: arriving by client-side navigation with the list cached, VirtualFeed mounted in the
+// same commit as PageLayout, read a null scroll element and rendered no rows (the count still
+// showed). Loading /automations directly hid it, so these tests navigate the way people do.
+test.describe("the automations list survives history navigation", () => {
+  const rows = (page: Page) => page.getByTestId("automation-item");
+  async function openFromSidebar(page: Page) {
+    await open(page, "/");
+    await page.getByRole("link", { name: "Automations", exact: true }).first().click();
+    await expect(rows(page).first()).toBeVisible();
+  }
+
+  test("open one, then Back", async ({ page }) => {
+    await openFromSidebar(page);
+    const count = await rows(page).count();
+    await rows(page).first().getByRole("link").first().click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.goBack();
+    await expect(rows(page).first()).toBeVisible();
+    await expect(rows(page)).toHaveCount(count);
+  });
+
+  test("Back, then Forward", async ({ page }) => {
+    await openFromSidebar(page);
+    await page.goBack();
+    await page.goForward();
+    await expect(rows(page).first()).toBeVisible();
+  });
+
+  test("another page, then Back", async ({ page }) => {
+    await openFromSidebar(page);
+    await page.getByRole("link", { name: "People", exact: true }).first().click();
+    await page.goBack();
+    await expect(rows(page).first()).toBeVisible();
+  });
+});
