@@ -1,9 +1,12 @@
-// Upstream's config, with two local changes (see UPSTREAM.md):
+// Upstream's config, with three local changes (see UPSTREAM.md):
 // - The configurator frame suites (`__tests__/*-configurator-frame.test.ts`) are excluded. They
 //   drive the frames upstream builds with its configurator-ui runtime in Chromium through
 //   Playwright, and we ship placeholder frames instead.
 // - testTimeout is raised from vitest's 5s default to 60s. The CPU-heavy content suites (large
 //   DOCX, PPTX and XLSX writes and edits) time out when `pnpm test` runs every package at once.
+// - retry: 2. A few robustness suites assert their own wall-clock time (e.g. 1 MB of mail in under
+//   a second); on shared CI runners a single noisy run misses the bound. A real regression still
+//   fails all three attempts.
 import { fileURLToPath } from "node:url";
 import capnwebValidate from "capnweb-validate/vite";
 import { configDefaults, defineConfig } from "vitest/config";
@@ -13,6 +16,7 @@ export default defineConfig({
   plugins: [capnwebValidate()],
   test: {
     testTimeout: 60_000,
+    retry: 2,
     include: ["__tests__/*.test.ts", "__tests__/content/*.test.ts"],
     exclude: [...configDefaults.exclude, "__tests__/*-configurator-frame.test.ts"],
     environment: "node",

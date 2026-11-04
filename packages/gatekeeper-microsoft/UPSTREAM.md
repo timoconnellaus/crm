@@ -76,3 +76,5 @@ smoke 3 tests.
 Follow the procedure in [`../gatekeeper-kit/UPSTREAM.md`](../gatekeeper-kit/UPSTREAM.md#pulling-upstream-changes).
 Compare upstream's generated `wrangler.jsonc` and the bindings in its workerd vitest config with
 ours, by hand.
+
+- **Test retries (local change, 2026-11-04).** `vitest.config.ts` sets `retry: 2` because wall-clock assertions in `outlook-content.test.ts` and `content/pathological.test.ts` flake on shared CI runners. The test files are unchanged.
