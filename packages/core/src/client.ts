@@ -19,6 +19,7 @@ export {
   type GateFloor,
   type GateMatrix,
   type GateRule,
+  isLoosening,
   POLICY_PRESETS,
   type PolicyPreset,
   PRESET_MATRICES,
