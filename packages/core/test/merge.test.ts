@@ -6,56 +6,20 @@ import {
   type ActingUser,
   ForbiddenError,
   invoke,
-  newId,
   ReviewNotYetSupportedError,
   ValidationError,
 } from "../src/index.ts";
+import { insertActivity, insertTask } from "./fixtures.ts";
 import { auditChanges, context, createUser, setPreset, timeline, unique } from "./helpers.ts";
 
 let member: ActingUser;
 let viewer: ActingUser;
 const ctx = () => context(member);
-const NOW = new Date().toISOString();
 
 beforeAll(async () => {
   member = await createUser("member");
   viewer = await createUser("viewer");
 });
-
-/** Activities and tasks are another stage-1 slice; insert them directly for these tests. */
-async function insertActivity(subject: string, links: [string, string][]) {
-  const id = newId("activity");
-  await env.DB.prepare(
-    "INSERT INTO core_activity (id, type, subject, occurred_at, created_at, updated_at) VALUES (?, 'note', ?, ?, ?, ?)",
-  )
-    .bind(id, subject, NOW, NOW, NOW)
-    .run();
-  for (const [object, recordId] of links) {
-    await env.DB.prepare(
-      "INSERT INTO core_activity_links (activity_id, object_type, record_id) VALUES (?, ?, ?)",
-    )
-      .bind(id, object, recordId)
-      .run();
-  }
-  return id;
-}
-
-async function insertTask(title: string, links: [string, string][]) {
-  const id = newId("task");
-  await env.DB.prepare(
-    "INSERT INTO core_task (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-  )
-    .bind(id, title, NOW, NOW)
-    .run();
-  for (const [object, recordId] of links) {
-    await env.DB.prepare(
-      "INSERT INTO core_task_links (task_id, object_type, record_id) VALUES (?, ?, ?)",
-    )
-      .bind(id, object, recordId)
-      .run();
-  }
-  return id;
-}
 
 async function linkedTo(table: "activity" | "task", object: string, recordId: string) {
   const column = table === "activity" ? "activity_id" : "task_id";

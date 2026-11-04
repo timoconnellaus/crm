@@ -2,51 +2,17 @@
 // (ADR 0019). Ordinary updates and deletes of audit rows stay refused.
 import { env } from "cloudflare:workers";
 import { beforeAll, describe, expect, it } from "vitest";
-import { type ActingUser, ConflictError, ForbiddenError, invoke, newId } from "../src/index.ts";
+import { type ActingUser, ConflictError, ForbiddenError, invoke } from "../src/index.ts";
+import { insertActivity, insertTask } from "./fixtures.ts";
 import { auditChanges, context, createUser, timeline, unique } from "./helpers.ts";
 
 let admin: ActingUser;
 let member: ActingUser;
-const NOW = new Date().toISOString();
 
 beforeAll(async () => {
   admin = await createUser("admin");
   member = await createUser("member");
 });
-
-async function insertActivity(subject: string, links: [string, string][]) {
-  const id = newId("activity");
-  await env.DB.prepare(
-    "INSERT INTO core_activity (id, type, subject, body, occurred_at, created_at, updated_at) VALUES (?, 'note', ?, 'notes', ?, ?, ?)",
-  )
-    .bind(id, subject, NOW, NOW, NOW)
-    .run();
-  for (const [object, recordId] of links) {
-    await env.DB.prepare(
-      "INSERT INTO core_activity_links (activity_id, object_type, record_id) VALUES (?, ?, ?)",
-    )
-      .bind(id, object, recordId)
-      .run();
-  }
-  return id;
-}
-
-async function insertTask(title: string, links: [string, string][]) {
-  const id = newId("task");
-  await env.DB.prepare(
-    "INSERT INTO core_task (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-  )
-    .bind(id, title, NOW, NOW)
-    .run();
-  for (const [object, recordId] of links) {
-    await env.DB.prepare(
-      "INSERT INTO core_task_links (task_id, object_type, record_id) VALUES (?, ?, ?)",
-    )
-      .bind(id, object, recordId)
-      .run();
-  }
-  return id;
-}
 
 async function rowExists(table: string, id: string) {
   return (await env.DB.prepare(`SELECT 1 FROM ${table} WHERE id = ?`).bind(id).first()) !== null;

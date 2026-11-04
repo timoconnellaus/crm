@@ -1,6 +1,7 @@
-// Helpers shared by the record operations (person, organisation, affiliation, trash).
+// Helpers shared by the record operations (person, organisation, affiliation, trash, activity,
+// task, import).
 import type { CoreDatabase } from "@crm/db";
-import type { Kysely } from "kysely";
+import { type Kysely, type RawBuilder, sql } from "kysely";
 import { ValidationError } from "../errors.ts";
 
 /** How long a soft-deleted record stays restorable before the scheduled purge. */
@@ -30,6 +31,13 @@ export const BATCH_MAX = 100;
  * leave room for the statement's other parameters.
  */
 export const IN_LIST_CHUNK = 50;
+
+/** `(SELECT value FROM json_each(?))`: an IN-list of any length in one bound parameter. D1 caps
+ * bound parameters per statement at 100, so long lists must not be spread as `?, ?, ...`. Prefer
+ * it for reads; `chunk` is for writes that must stay one statement per bounded group. */
+export function jsonList<T extends string | number>(values: readonly T[]): RawBuilder<T> {
+  return sql<T>`(SELECT value FROM json_each(${JSON.stringify(values)}))`;
+}
 
 export function chunk<T>(items: readonly T[], size: number = IN_LIST_CHUNK): T[][] {
   const chunks: T[][] = [];

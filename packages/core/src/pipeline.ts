@@ -4,8 +4,8 @@
 //
 // The handler's queued writes, the timeline activities and the audit rows commit together in one
 // D1 batch (one transaction). Refusals (role, actor, gate) and failures are audited separately.
-import type { CrmDb } from "@crm/db";
-import type { Compilable } from "kysely";
+import type { AuditChangeAction, CrmDb } from "@crm/db";
+import { type Compilable, sql } from "kysely";
 import { diffRecords, type FieldDiff } from "./diff.ts";
 import {
   ForbiddenError,
@@ -116,6 +116,57 @@ function auditInsert(db: CrmDb, row: AuditRow): Compilable {
     outcome: row.outcome,
     error: row.error ? JSON.stringify(row.error.toJSON()) : null,
   });
+}
+
+/** Bytes of JSON per audit-changes statement; D1 caps one bound value at 2 MB. */
+const CHANGES_CHUNK_BYTES = 500_000;
+
+/**
+ * core_audit_changes rows as few statements as possible: each inserts a chunk from one JSON
+ * parameter via json_each, so bulk operations touching thousands of records stay within D1's
+ * statements-per-invocation and bound-parameter limits. Rows keep their order.
+ */
+function auditChangeInserts(
+  db: CrmDb,
+  auditId: string,
+  at: string,
+  rows: { o: string; r: string; a: string; d: string }[],
+): Compilable[] {
+  const statements: Compilable[] = [];
+  let chunk: typeof rows = [];
+  let bytes = 0;
+  const flush = () => {
+    if (!chunk.length) return;
+    const json = JSON.stringify(chunk);
+    statements.push(
+      db.query
+        .insertInto("core_audit_changes")
+        .columns(["audit_id", "object_type", "record_id", "action", "diff", "at"])
+        .expression(
+          db.query
+            .selectFrom(sql<{ value: string }>`json_each(${json})`.as("j"))
+            .select([
+              sql<string>`${auditId}`.as("audit_id"),
+              sql<string>`json_extract(j.value, '$.o')`.as("object_type"),
+              sql<string>`json_extract(j.value, '$.r')`.as("record_id"),
+              sql<AuditChangeAction>`json_extract(j.value, '$.a')`.as("action"),
+              sql<string>`json_extract(j.value, '$.d')`.as("diff"),
+              sql<string>`${at}`.as("at"),
+            ])
+            .orderBy(sql`j.key`),
+        ),
+    );
+    chunk = [];
+    bytes = 0;
+  };
+  for (const row of rows) {
+    const size = row.d.length + row.r.length + 64;
+    if (bytes + size > CHANGES_CHUNK_BYTES) flush();
+    chunk.push(row);
+    bytes += size;
+  }
+  flush();
+  return statements;
 }
 
 /** Writes a standalone audit row (refusals and failures). Never throws. */
@@ -305,21 +356,12 @@ export async function invokeOperation<O extends AnyOperation>(
   }
 
   const statements: Compilable[] = [...writes];
-  const changeRows: Compilable[] = [];
+  const changeRows: { o: string; r: string; a: string; d: string }[] = [];
   for (const change of changes) {
     const diff = change.diff ?? diffRecords(change.before, change.after);
     const timeline = timelineActivity(op.name, change, diff);
     if (timeline) handlerCtx.postActivity(timeline);
-    changeRows.push(
-      ctx.db.query.insertInto("core_audit_changes").values({
-        audit_id: auditId,
-        object_type: change.object,
-        record_id: change.id,
-        action: change.action,
-        diff: JSON.stringify(diff),
-        at: now,
-      }),
-    );
+    changeRows.push({ o: change.object, r: change.id, a: change.action, d: JSON.stringify(diff) });
   }
   statements.push(...activities);
 
@@ -330,7 +372,7 @@ export async function invokeOperation<O extends AnyOperation>(
         : defaultSummary(output, changes);
     statements.push(
       auditInsert(ctx.db, { ...base, gate: "auto", outcome: "ok", result: summary ?? null }),
-      ...changeRows,
+      ...auditChangeInserts(ctx.db, auditId, now, changeRows),
     );
   }
 

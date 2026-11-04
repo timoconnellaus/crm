@@ -5,6 +5,7 @@ import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { newId } from "../ids.ts";
 import type { HandlerContext } from "../operation.ts";
+import { jsonList } from "./common.ts";
 
 export const tagNameSchema = z.string().trim().min(1).max(50);
 export const tagsInputSchema = z
@@ -25,7 +26,7 @@ export async function loadTags(
     .innerJoin("core_tags as t", "t.id", "rt.tag_id")
     .select(["rt.record_id", "t.name"])
     .where("rt.object_type", "=", object)
-    .where("rt.record_id", "in", recordIds)
+    .where("rt.record_id", "in", jsonList(recordIds))
     .orderBy(sql`t.name COLLATE NOCASE`)
     .execute();
   for (const row of rows) result.get(row.record_id)?.push(row.name);

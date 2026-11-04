@@ -15,6 +15,7 @@ import {
   BATCH_MAX,
   blankToNull,
   chunk,
+  jsonList,
   restorableUntil,
   TRASH_RETENTION_DAYS,
   uniqueIds,
@@ -122,8 +123,20 @@ const ORGANISATION_LIST_FIELDS = Object.keys(organisationListItemSchema.shape);
 export async function loadOrganisation(
   db: Kysely<CoreDatabase>,
   id: string,
-  { includeDeleted = false } = {},
+  options: { includeDeleted?: boolean } = {},
 ): Promise<Organisation | null> {
+  return (await loadOrganisations(db, [id], options)).get(id) ?? null;
+}
+
+/** Organisations by id, in bulk (one query per child table, any number of ids). */
+export async function loadOrganisations(
+  db: Kysely<CoreDatabase>,
+  ids: readonly string[],
+  { includeDeleted = false } = {},
+): Promise<Map<string, Organisation>> {
+  const result = new Map<string, Organisation>();
+  if (!ids.length) return result;
+  const idList = jsonList([...new Set(ids)]);
   let query = db
     .selectFrom("core_organisation as o")
     .leftJoin("core_organisation as parent", (join) =>
@@ -131,55 +144,65 @@ export async function loadOrganisation(
     )
     .selectAll("o")
     .select("parent.name as parent_name")
-    .where("o.id", "=", id);
+    .where("o.id", "in", idList);
   if (!includeDeleted) query = query.where("o.deleted_at", "is", null);
-  const row = await query.executeTakeFirst();
-  if (!row) return null;
+  const rows = await query.execute();
+  if (!rows.length) return result;
 
+  const found = rows.map((r) => r.id);
   const [domains, addresses, tags] = await Promise.all([
     db
       .selectFrom("core_organisation_domains")
-      .select(["domain", "is_primary"])
-      .where("organisation_id", "=", id)
+      .select(["organisation_id", "domain", "is_primary"])
+      .where("organisation_id", "in", jsonList(found))
+      .orderBy("organisation_id")
       .orderBy("position")
       .execute(),
     db
       .selectFrom("core_organisation_addresses")
       .selectAll()
-      .where("organisation_id", "=", id)
+      .where("organisation_id", "in", jsonList(found))
+      .orderBy("organisation_id")
       .orderBy("position")
       .execute(),
-    loadTags(db, "organisation", [id]),
+    loadTags(db, "organisation", found),
   ]);
 
-  return {
-    id: row.id,
-    name: row.name,
-    domains: domains.map((d) => ({ domain: d.domain, primary: d.is_primary === 1 })),
-    website: row.website,
-    industry: row.industry,
-    addresses: addresses.map((a) => ({
-      label: a.label,
-      line1: a.line1,
-      line2: a.line2,
-      city: a.city,
-      region: a.region,
-      postalCode: a.postal_code,
-      country: a.country,
-      primary: a.is_primary === 1,
-    })),
-    parentId: row.parent_id,
-    parentName: row.parent_name,
-    avatarKey: row.avatar_key,
-    ownerId: row.owner_id,
-    description: row.description,
-    tags: tags.get(id) ?? [],
-    createdAt: row.created_at,
-    createdBy: row.created_by,
-    updatedAt: row.updated_at,
-    deletedAt: row.deleted_at,
-    mergedIntoId: row.merged_into_id,
-  };
+  for (const row of rows) {
+    result.set(row.id, {
+      id: row.id,
+      name: row.name,
+      domains: domains
+        .filter((d) => d.organisation_id === row.id)
+        .map((d) => ({ domain: d.domain, primary: d.is_primary === 1 })),
+      website: row.website,
+      industry: row.industry,
+      addresses: addresses
+        .filter((a) => a.organisation_id === row.id)
+        .map((a) => ({
+          label: a.label,
+          line1: a.line1,
+          line2: a.line2,
+          city: a.city,
+          region: a.region,
+          postalCode: a.postal_code,
+          country: a.country,
+          primary: a.is_primary === 1,
+        })),
+      parentId: row.parent_id,
+      parentName: row.parent_name,
+      avatarKey: row.avatar_key,
+      ownerId: row.owner_id,
+      description: row.description,
+      tags: tags.get(row.id) ?? [],
+      createdAt: row.created_at,
+      createdBy: row.created_by,
+      updatedAt: row.updated_at,
+      deletedAt: row.deleted_at,
+      mergedIntoId: row.merged_into_id,
+    });
+  }
+  return result;
 }
 
 async function requireOrganisation(
@@ -192,8 +215,27 @@ async function requireOrganisation(
   return organisation;
 }
 
-/** The fields audit diffs and timeline tracking compare (field-registry names). */
-export function organisationSnapshot(o: Organisation): Record<string, unknown> {
+/** What a snapshot reads: an Organisation, or the same fields assembled by a bulk writer. */
+export type OrganisationSnapshotSource = Pick<
+  Organisation,
+  | "name"
+  | "domains"
+  | "website"
+  | "industry"
+  | "addresses"
+  | "parentId"
+  | "avatarKey"
+  | "ownerId"
+  | "description"
+  | "tags"
+>;
+
+/**
+ * The fields audit diffs and timeline tracking compare (field-registry names). Every writer of
+ * organisations (organisation.*, import.csv.commit) records changes in this shape, so the History
+ * tab sees one format: `domains` is `{ domain, primary }[]`.
+ */
+export function organisationSnapshot(o: OrganisationSnapshotSource): Record<string, unknown> {
   return {
     name: o.name,
     domains: o.domains,
@@ -228,7 +270,23 @@ export function normaliseDomain(value: string): string {
   return domain;
 }
 
-function normaliseDomains(domains: z.output<typeof domainInputSchema>[]) {
+/** normaliseDomain, or null for a value that is not a domain (lenient callers such as import). */
+export function tryNormaliseDomain(value: string): string | null {
+  try {
+    return normaliseDomain(value);
+  } catch (error) {
+    if (error instanceof ValidationError) return null;
+    throw error;
+  }
+}
+
+/**
+ * Normalises a domain list: one primary (the flagged one, else the first) and no duplicates
+ * after normalisation. Throws ValidationError for a non-domain or a repeat.
+ */
+export function normaliseDomains(
+  domains: readonly { domain: string; primary?: boolean | undefined }[],
+): Organisation["domains"] {
   const list = withPrimary(domains, "domain").map((d) => ({
     domain: normaliseDomain(d.domain),
     primary: d.primary,
@@ -254,26 +312,37 @@ function normaliseAddresses(addresses: z.output<typeof addressInputSchema>[]): A
   }));
 }
 
+/** Live organisations owning any of `domains` (domains are unique across live organisations). */
+export async function loadDomainOwners(
+  db: Kysely<CoreDatabase>,
+  domains: readonly string[],
+): Promise<{ domain: string; organisationId: string; name: string }[]> {
+  if (!domains.length) return [];
+  const rows = await db
+    .selectFrom("core_organisation_domains as d")
+    .innerJoin("core_organisation as o", "o.id", "d.organisation_id")
+    .select(["d.domain", "d.organisation_id", "o.name"])
+    .where("d.live", "=", 1)
+    .where("d.domain", "in", jsonList([...new Set(domains)]))
+    .execute();
+  return rows.map((r) => ({ domain: r.domain, organisationId: r.organisation_id, name: r.name }));
+}
+
 /** Fails with ConflictError when any domain belongs to another live organisation. */
 async function assertDomainsFree(
   db: Kysely<CoreDatabase>,
   domains: readonly string[],
   exceptIds: readonly string[] = [],
 ): Promise<void> {
-  if (!domains.length) return;
-  let query = db
-    .selectFrom("core_organisation_domains")
-    .select(["domain", "organisation_id"])
-    .where("live", "=", 1)
-    .where("domain", "in", domains);
-  if (exceptIds.length) query = query.where("organisation_id", "not in", exceptIds);
-  const taken = await query.execute();
+  const taken = (await loadDomainOwners(db, domains)).filter(
+    (t) => !exceptIds.includes(t.organisationId),
+  );
   if (taken.length) {
     throw new ConflictError(
       `Domain already belongs to another organisation: ${taken.map((t) => t.domain).join(", ")}`,
       {
         field: "domains",
-        taken: taken.map((t) => ({ domain: t.domain, organisationId: t.organisation_id })),
+        taken: taken.map((t) => ({ domain: t.domain, organisationId: t.organisationId })),
       },
     );
   }

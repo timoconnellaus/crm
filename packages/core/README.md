@@ -9,6 +9,15 @@ src/
   operations/          one file per object; index.ts lists them all
     person.ts          the reference implementation — copy its shape (+ changeJob, merge, *Many, erase)
     organisation.ts    mirrors person; affiliation.ts, trash.ts (list + purge), user.ts, policy.ts
+    activity.ts        activity.log/get/update/delete/restore/listForRecord (typed payloads)
+    task.ts            task.create/get/update/complete/reopen/delete/restore/list/listMine
+    view.ts            view.create/update/delete/list (saved `table` view specs)
+    audit.ts           audit.list (admin), audit.listForRecord (History tab)
+    search.ts          search.global (FTS5 over core_search, prefix as-you-type)
+    query.ts           query.sql + validateReadOnlySql (ADR 0020)
+    import.ts          import.csv.preview/commit (reuses organisation.ts snapshots and domain
+                       helpers), CSV parse/format helpers
+    export.ts          export.csv
     index.ts           coreOperations = [...personOperations, ...]
   fields/              field registry per object (person, organisation, activity, task)
   operation.ts         defineOperation, HandlerContext, RecordChange
@@ -18,8 +27,10 @@ src/
   filter.ts list.ts    filter JSON → SQL; listInputSchema, runListQuery, selectFields
   records/tags.ts      loadTags / queueSetTags (shared by any taggable object)
   records/bulk-tags.ts queueBulkTags (add/remove tags on many records, for *.updateMany)
-  records/common.ts    TRASH_RETENTION_DAYS, BATCH_MAX, chunk (D1's 100-parameter limit), helpers
-  records/links.ts     move activity/task links (merge); activities/tasks an erase removes
+  records/common.ts    TRASH_RETENTION_DAYS, BATCH_MAX, chunk and jsonList (D1's 100-parameter
+                       limit), helpers
+  records/links.ts     activity/task links: LINK_TARGETS, assertLinkTargets, loadLinks; moving
+                       links (merge); the activities/tasks an erase removes
   records/erase.ts     queueErase: hard delete + audit redaction markers (ADR 0019)
   purge.ts             runTrashPurge: the scheduled purge, as an automation through invoke()
   ids.ts               newId("person") → per_01J…
@@ -84,7 +95,8 @@ src/
 
    **Batch operations** (`<object>.updateMany`, `.deleteMany`): risk `bulk-write` or
    `destructive`, `bulkSize: (input) => input.ids.length`, at most `BATCH_MAX` ids, and chunk
-   `IN (...)` lists with `chunk()` (D1 allows 100 bound parameters per statement). One call is one
+   write statements over groups of ids with `chunk()` (D1 allows 100 bound parameters per
+   statement); for reads prefer `jsonList` (below). One call is one
    batch, so it is atomic; say in the description that larger selections take several calls
    (ADR 0018 amendment).
 
@@ -99,6 +111,28 @@ src/
    viewer refusal and conflicts. `test/registry.test.ts` already fails if a definition is
    incomplete or its schemas can't become JSON Schema. Storage is shared within a test file, so use
    `unique()` for emails, domains and names.
+
+## Patterns worth reusing
+
+- **Long id lists**: D1 allows 100 bound parameters per statement, so never spread a list into
+  `IN (?, ?, …)`. Use `where("id", "in", jsonList(ids))` (`records/common.ts`), which binds the list
+  as one JSON parameter.
+- **Bulk writes**: for hundreds or thousands of rows, insert or update from one JSON parameter per
+  chunk with `json_each` (see `queueInsert` / `queueUpdate` in `operations/import.ts`) rather than
+  one statement per row. The pipeline does the same for audit diffs, so a bulk operation's whole
+  batch stays a few dozen statements.
+- **Links**: activities and tasks link to records by `{ object, id }`. Validate with
+  `assertLinkTargets` (known object, live record) and read with `loadLinks` (adds titles). Stage 3
+  adds extension objects to `LINK_TARGETS`.
+- **Merge and erase**: `queueMoveLinks` re-points links onto a survivor; `queueErase`
+  (`records/erase.ts`) hard-deletes, removes activities/tasks only the subject owns, and redacts
+  audit content through markers (ADR 0019).
+- **Organisation snapshots from bulk writers**: build an `OrganisationSnapshotSource` and pass it
+  to `organisationSnapshot` (as `import.csv.commit` does), and normalise domains with
+  `normaliseDomains` / `tryNormaliseDomain`, so every writer records the same diff shape.
+- **System activities** are posted by the pipeline (`ctx.postActivity`), never by `activity.log`.
+- **Timeline / audit cursors**: newest-first lists that are not registry lists encode
+  `{ f, d, v, id }` with `encodeCursor` and check them with `decodeCursor`, like `runListQuery`.
 
 ## Calling operations
 

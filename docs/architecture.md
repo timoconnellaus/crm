@@ -79,7 +79,8 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
 - **`crm.*` views**: generated read views with friendly names, spelled `crm_people`,
   `crm_organisations`, … because D1 has no schemas (ADR 0015 amendment). They are what list
   operations, dashboard SQL and AI queries run against.
-- **R2** holds attachments and imports.
+- **R2** holds attachments (and, later, large imports: stage-1 CSV imports arrive inline,
+  [ADR 0020](adr/0020-query-sql-validator-and-csv-import.md)).
 
 Core migrations are plain SQL in `packages/db/migrations`. Both Workers point their `DB` binding's
 `migrations_dir` there, so `wrangler d1 migrations apply` and the in-code runner (`applyMigrations`,
@@ -141,8 +142,10 @@ go through AI Gateway ([ADR 0009](adr/0009-model-roles.md)). Code asks for a rol
 ### 9. Dashboards and views
 
 A view spec rendered by our own shadcn/chart components. Widgets query with read-only SQL over the
-`crm.*` views: the SQL is parsed and allowlisted, takes bound params, and runs with row and time
-limits. Computed widgets are extension code. Extensions never ship UI
+`crm.*` views: the SQL is checked by a SQLite-faithful tokenizer validator (one SELECT/WITH,
+`crm_*` views only), takes bound params, and runs with row and time limits
+([ADR 0020](adr/0020-query-sql-validator-and-csv-import.md); `validateReadOnlySql` in `@crm/core`,
+used by `query.sql`). Computed widgets are extension code. Extensions never ship UI
 ([ADR 0010](adr/0010-dashboards-sql-views.md)).
 
 ## Repository layout
