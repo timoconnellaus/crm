@@ -34,6 +34,7 @@ import { Executor, type ExecutorOptions } from "./executor/executor.ts";
 import type { HelloOutput } from "./hello-workflow.ts";
 import { fakeProviderFetch } from "./integrations/fake.ts";
 import { availableVendors, integrationRuntime } from "./integrations/runtime.ts";
+import { runNotificationCron } from "./notifications/deliver.ts";
 import type { PingResult, RunnerRpc, WorkflowRunStatus } from "./rpc.ts";
 
 export {
@@ -247,6 +248,8 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
       ),
     );
     await minuteStep("integration events", () => pollIntegrationEvents(this.env, { now: at }));
+    // Notification delivery (ADR 0172): email / Slack per preferences, escalation, the digest.
+    await minuteStep("notifications", () => runNotificationCron(this.env, at));
   }
 
   override async fetch(_request: Request): Promise<Response> {

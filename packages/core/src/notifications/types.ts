@@ -37,9 +37,12 @@ export const notificationLinkSchema = z.discriminatedUnion("kind", [
 ]);
 export type NotificationLink = z.infer<typeof notificationLinkSchema>;
 
-/** Channels a notification can be delivered on. Stage 5: in-app only; 6b adds email, slack. */
-export const NOTIFICATION_CHANNELS = ["inApp"] as const;
-export type NotificationChannelId = (typeof NOTIFICATION_CHANNELS)[number] | "email" | "slack";
+/** Channels a notification can be delivered on. In-app is the row itself (always on). */
+export const NOTIFICATION_CHANNELS = ["inApp", "email", "slack"] as const;
+export type NotificationChannelId = (typeof NOTIFICATION_CHANNELS)[number];
+/** The external channels (stage 6b, ADR 0172): a person may choose them per type. */
+export const EXTERNAL_CHANNELS = ["email", "slack"] as const;
+export type ExternalChannelId = (typeof EXTERNAL_CHANNELS)[number];
 
 /** A stored notification (core_notifications row, parsed). */
 export interface NotificationRecord {
@@ -66,7 +69,20 @@ export interface NotificationChannel {
    * org `email-send` / `slack-post` connection through `context.callIntegration` (a system
    * caller): kind `email.internal` / `slack.dm`, an outbound action the approval queue gates.
    */
-  deliver(notification: NotificationRecord, context: NotificationDeliveryContext): Promise<void>;
+  deliver(
+    notification: NotificationRecord,
+    context: NotificationDeliveryContext,
+  ): Promise<DeliveryOutcome>;
+}
+
+/**
+ * What one external send came to: `sent` (applied, e.g. an auto-approved internal notice),
+ * `pending` (an outbound action waiting in the approvals inbox) or `skipped` (nothing to send,
+ * e.g. no address); a throw is `failed`.
+ */
+export interface DeliveryOutcome {
+  status: "sent" | "pending" | "skipped";
+  detail?: string;
 }
 
 /** What a channel gets besides the notification (6b fills it in after commit). */
@@ -87,7 +103,7 @@ export interface NotificationDeliveryContext {
 /** A user's per-type channel choices (6b stores these; stage 5 has none). */
 export type NotificationPreferences = Partial<Record<NotificationType, NotificationChannelId[]>>;
 
-/** The channels a notification of `type` goes to for a user. Stage 5: always in-app. */
+/** The channels a notification of `type` goes to for a user: in-app plus their choices. */
 export function routeNotification(
   type: NotificationType,
   preferences: NotificationPreferences = {},
