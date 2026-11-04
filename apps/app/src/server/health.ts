@@ -5,6 +5,8 @@ import { runner } from "./runner.ts";
 
 export interface HealthEnv {
   DB: D1Database;
+  /** The installed release (stage 8); empty for a source deploy. */
+  CRM_RELEASE_VERSION?: string;
   IDENTITY_PROVIDER?: string;
   RUNNER: Fetcher;
 }
@@ -51,7 +53,8 @@ export async function getHealth(env: HealthEnv): Promise<Health> {
 
   return {
     status: database.ok && runnerHealth.ok ? "ok" : "degraded",
-    version: VERSION,
+    // The release version when installed from a release, so smoke checks can see the switch.
+    version: env.CRM_RELEASE_VERSION || VERSION,
     commit: COMMIT,
     identityProvider,
     database,

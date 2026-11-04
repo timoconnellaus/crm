@@ -32,6 +32,8 @@ export default mergeConfig(
           BETTER_AUTH_SECRET: "test-secret-test-secret-test-secret-123",
         },
         serviceBindings: { RUNNER: "crm-runner" },
+        // The fake Cloudflare account's D1 database in the self-updater tests.
+        d1Databases: { UPDATER_FAKE_D1: "updater-fake-d1" },
         workers: [
           {
             name: "crm-runner",

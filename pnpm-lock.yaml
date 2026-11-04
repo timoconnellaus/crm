@@ -32,6 +32,9 @@ importers:
       '@crm/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@crm/release':
+        specifier: workspace:*
+        version: link:../../packages/release
       '@crm/ui':
         specifier: workspace:*
         version: link:../../packages/ui

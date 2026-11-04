@@ -19,6 +19,7 @@
     "@crm/auth": "workspace:*",
     "@crm/core": "workspace:*",
     "@crm/db": "workspace:*",
+    "@crm/release": "workspace:*",
     "@crm/ui": "workspace:*",
     "@modelcontextprotocol/server": "2.4.0",
     "@tanstack/react-query": "5.105.3",
