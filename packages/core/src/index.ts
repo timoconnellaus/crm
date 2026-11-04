@@ -2,6 +2,9 @@
 
 export { DEFAULT_APPROVAL_EXPIRY_DAYS } from "./approvals/queue.ts";
 export { isSimulatedRead } from "./approvals/simulation.ts";
+export * from "./automations/schemas.ts";
+export * from "./automations/summary.ts";
+export * from "./automations/types.ts";
 export * from "./dashboards/cache.ts";
 export * from "./dashboards/click-through.ts";
 export * from "./dashboards/describe.ts";
@@ -28,6 +31,7 @@ export * from "./ids.ts";
 export * from "./invoke.ts";
 export * from "./list.ts";
 export * from "./models.ts";
+export * from "./notifications/types.ts";
 export * from "./operation.ts";
 export * from "./operations/activity.ts";
 export * from "./operations/affiliation.ts";
