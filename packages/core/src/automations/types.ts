@@ -120,8 +120,12 @@ export interface ApprovalDecidedMessage {
 }
 
 /**
- * Stage 6b: inbound webhooks and sync events (core_integration_event). Declared here so the
- * consumer's dispatch is exhaustive; no source handles it in stage 5.
+ * Stage 6b: inbound webhooks and sync events. Stage 6a stores them in `core_integration_event`
+ * (migration 0110: source webhook | sync, connection_id, type, payload; read through
+ * core_integration_event_unconsumed_idx, then `consumed_at` is set). 6b turns each unconsumed row
+ * into this message (id = the row id) and hands it to the same dispatcher the queue consumer
+ * uses, with a TriggerSource for kind `integration`. Declared here so dispatch is exhaustive; no
+ * source handles it in stage 5.
  */
 export interface IntegrationEventMessage {
   v: 1;
