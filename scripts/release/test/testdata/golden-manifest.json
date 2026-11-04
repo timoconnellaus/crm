@@ -11,7 +11,9 @@
   "commit": "0123456789abcdef0123456789abcdef01234567",
   "coreSchemaVersion": 161,
   "extensionContract": {
-    "supported": [1],
+    "supported": [
+      1
+    ],
     "version": 1
   },
   "inputs": [
@@ -25,23 +27,36 @@
       "description": "Identity adapter: Better Auth (email and password) or Cloudflare Access",
       "kind": "var",
       "name": "IDENTITY_PROVIDER",
-      "options": ["better-auth", "cloudflare-access"],
-      "workers": ["crm-app"]
+      "options": [
+        "better-auth",
+        "cloudflare-access"
+      ],
+      "workers": [
+        "crm-app"
+      ]
     },
     {
       "default": "false",
       "description": "Let anyone sign up (true), or only the first user (false)",
       "kind": "var",
       "name": "AUTH_ALLOW_SIGNUP",
-      "options": ["false", "true"],
-      "workers": ["crm-app"]
+      "options": [
+        "false",
+        "true"
+      ],
+      "workers": [
+        "crm-app"
+      ]
     },
     {
       "default": "",
       "description": "Approval-policy floor no preset can loosen (JSON, ADR 0011)",
       "kind": "var",
       "name": "APPROVAL_FLOOR",
-      "workers": ["crm-app", "crm-runner"]
+      "workers": [
+        "crm-app",
+        "crm-runner"
+      ]
     }
   ],
   "manifestVersion": 1,
@@ -164,49 +179,64 @@
       "optional": false,
       "placeholder": "$D1_ID(crm)",
       "type": "d1",
-      "usedBy": ["crm-app", "crm-runner"]
+      "usedBy": [
+        "crm-app",
+        "crm-runner"
+      ]
     },
     {
       "implicit": true,
       "name": "crm-gatekeeper-webhook:WebhookEndpoint",
       "optional": true,
       "type": "durable_object",
-      "usedBy": ["crm-gatekeeper-webhook"]
+      "usedBy": [
+        "crm-gatekeeper-webhook"
+      ]
     },
     {
       "implicit": true,
       "name": "crm-runner:CodeModeGate",
       "optional": false,
       "type": "durable_object",
-      "usedBy": ["crm-runner"]
+      "usedBy": [
+        "crm-runner"
+      ]
     },
     {
       "implicit": true,
       "name": "crm-runner:ExtensionWorkspace",
       "optional": false,
       "type": "durable_object",
-      "usedBy": ["crm-runner"]
+      "usedBy": [
+        "crm-runner"
+      ]
     },
     {
       "implicit": true,
       "name": "crm-runner:FakeAccount",
       "optional": false,
       "type": "durable_object",
-      "usedBy": ["crm-runner"]
+      "usedBy": [
+        "crm-runner"
+      ]
     },
     {
       "implicit": true,
       "name": "crm-runner:FakeProvider",
       "optional": false,
       "type": "durable_object",
-      "usedBy": ["crm-runner"]
+      "usedBy": [
+        "crm-runner"
+      ]
     },
     {
       "implicit": true,
       "name": "crm-runner:IntegrationHost",
       "optional": false,
       "type": "durable_object",
-      "usedBy": ["crm-runner"]
+      "usedBy": [
+        "crm-runner"
+      ]
     },
     {
       "implicit": false,
@@ -214,7 +244,9 @@
       "optional": false,
       "placeholder": "$KV_ID(crm-app-oauth-kv)",
       "type": "kv",
-      "usedBy": ["crm-app"]
+      "usedBy": [
+        "crm-app"
+      ]
     },
     {
       "implicit": false,
@@ -222,14 +254,19 @@
       "optional": false,
       "placeholder": "$R2_NAME(crm-blobs)",
       "type": "r2",
-      "usedBy": ["crm-app", "crm-runner"]
+      "usedBy": [
+        "crm-app",
+        "crm-runner"
+      ]
     },
     {
       "implicit": true,
       "name": "crm-hello",
       "optional": false,
       "type": "workflow",
-      "usedBy": ["crm-runner"]
+      "usedBy": [
+        "crm-runner"
+      ]
     }
   ],
   "version": "1.0.0",
@@ -383,9 +420,15 @@
         }
       ],
       "compatibilityDate": "2026-10-01",
-      "compatibilityFlags": ["nodejs_compat"],
-      "crons": ["17 3 * * *"],
-      "dependsOn": ["crm-runner"],
+      "compatibilityFlags": [
+        "nodejs_compat"
+      ],
+      "crons": [
+        "17 3 * * *"
+      ],
+      "dependsOn": [
+        "crm-runner"
+      ],
       "durableObjectMigrations": [],
       "mainModule": "index.js",
       "modules": [
@@ -526,21 +569,32 @@
         }
       ],
       "compatibilityDate": "2026-10-01",
-      "compatibilityFlags": ["nodejs_compat", "allow_irrevocable_stub_storage"],
+      "compatibilityFlags": [
+        "nodejs_compat",
+        "allow_irrevocable_stub_storage"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
         {
-          "new_sqlite_classes": ["SpikeWorkspace"],
+          "new_sqlite_classes": [
+            "SpikeWorkspace"
+          ],
           "tag": "v1"
         },
         {
-          "deleted_classes": ["SpikeWorkspace"],
-          "new_sqlite_classes": ["ExtensionWorkspace"],
+          "deleted_classes": [
+            "SpikeWorkspace"
+          ],
+          "new_sqlite_classes": [
+            "ExtensionWorkspace"
+          ],
           "tag": "v2"
         },
         {
-          "new_sqlite_classes": ["CodeModeGate"],
+          "new_sqlite_classes": [
+            "CodeModeGate"
+          ],
           "tag": "v3"
         },
         {
@@ -581,12 +635,19 @@
     {
       "bindings": [],
       "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": ["allow_irrevocable_stub_storage", "nodejs_als"],
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage",
+        "nodejs_als"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
         {
-          "new_sqlite_classes": ["UserAccount", "EmailGatekeeperImpl", "EmailAddress"],
+          "new_sqlite_classes": [
+            "UserAccount",
+            "EmailGatekeeperImpl",
+            "EmailAddress"
+          ],
           "tag": "v0"
         }
       ],
@@ -634,12 +695,16 @@
         }
       ],
       "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": ["allow_irrevocable_stub_storage"],
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
         {
-          "new_sqlite_classes": ["EmailSendGatekeeper"],
+          "new_sqlite_classes": [
+            "EmailSendGatekeeper"
+          ],
           "tag": "v1"
         }
       ],
@@ -702,44 +767,67 @@
         }
       ],
       "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": ["allow_irrevocable_stub_storage", "nodejs_als"],
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage",
+        "nodejs_als"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
         {
-          "new_sqlite_classes": ["UserAccount", "GmailGatekeeperImpl"],
+          "new_sqlite_classes": [
+            "UserAccount",
+            "GmailGatekeeperImpl"
+          ],
           "tag": "v0"
         },
         {
-          "new_sqlite_classes": ["BigQueryGatekeeperImpl"],
+          "new_sqlite_classes": [
+            "BigQueryGatekeeperImpl"
+          ],
           "tag": "v1"
         },
         {
-          "new_sqlite_classes": ["GoogleCalendarGatekeeperImpl"],
+          "new_sqlite_classes": [
+            "GoogleCalendarGatekeeperImpl"
+          ],
           "tag": "v2"
         },
         {
-          "new_sqlite_classes": ["GoogleSheetsGatekeeperImpl"],
+          "new_sqlite_classes": [
+            "GoogleSheetsGatekeeperImpl"
+          ],
           "tag": "v3"
         },
         {
-          "new_sqlite_classes": ["GoogleDriveGatekeeperImpl", "GoogleDocGatekeeperImpl"],
+          "new_sqlite_classes": [
+            "GoogleDriveGatekeeperImpl",
+            "GoogleDocGatekeeperImpl"
+          ],
           "tag": "v4"
         },
         {
-          "new_sqlite_classes": ["GoogleChatGatekeeperImpl"],
+          "new_sqlite_classes": [
+            "GoogleChatGatekeeperImpl"
+          ],
           "tag": "v5"
         },
         {
-          "new_sqlite_classes": ["ChatHookDriver"],
+          "new_sqlite_classes": [
+            "ChatHookDriver"
+          ],
           "tag": "v6"
         },
         {
-          "new_sqlite_classes": ["GmailHookDriver"],
+          "new_sqlite_classes": [
+            "GmailHookDriver"
+          ],
           "tag": "v7"
         },
         {
-          "new_sqlite_classes": ["GoogleSlidesGatekeeperImpl"],
+          "new_sqlite_classes": [
+            "GoogleSlidesGatekeeperImpl"
+          ],
           "tag": "v8"
         }
       ],
@@ -809,12 +897,18 @@
         }
       ],
       "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": ["allow_irrevocable_stub_storage", "global_fetch_strictly_public"],
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage",
+        "global_fetch_strictly_public"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
         {
-          "new_sqlite_classes": ["McpAccount", "McpGatekeeperImpl"],
+          "new_sqlite_classes": [
+            "McpAccount",
+            "McpGatekeeperImpl"
+          ],
           "tag": "v0"
         }
       ],
@@ -862,7 +956,10 @@
         }
       ],
       "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": ["allow_irrevocable_stub_storage", "nodejs_als"],
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage",
+        "nodejs_als"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
@@ -930,7 +1027,9 @@
         }
       ],
       "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": ["allow_irrevocable_stub_storage"],
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
@@ -1005,12 +1104,17 @@
         }
       ],
       "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": ["allow_irrevocable_stub_storage"],
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
         {
-          "new_sqlite_classes": ["SlackPostUserAccount", "SlackPostGatekeeper"],
+          "new_sqlite_classes": [
+            "SlackPostUserAccount",
+            "SlackPostGatekeeper"
+          ],
           "tag": "v1"
         }
       ],
@@ -1067,12 +1171,17 @@
         }
       ],
       "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": ["allow_irrevocable_stub_storage"],
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
         {
-          "new_sqlite_classes": ["WebhookEndpoint", "WebhookEndpointGatekeeper"],
+          "new_sqlite_classes": [
+            "WebhookEndpoint",
+            "WebhookEndpointGatekeeper"
+          ],
           "tag": "v1"
         }
       ],
@@ -1110,12 +1219,16 @@
         }
       ],
       "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": ["allow_irrevocable_stub_storage"],
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
         {
-          "new_sqlite_classes": ["WebSearchGatekeeper"],
+          "new_sqlite_classes": [
+            "WebSearchGatekeeper"
+          ],
           "tag": "v1"
         }
       ],
@@ -1159,12 +1272,17 @@
         }
       ],
       "compatibilityDate": "2026-09-04",
-      "compatibilityFlags": ["allow_irrevocable_stub_storage"],
+      "compatibilityFlags": [
+        "allow_irrevocable_stub_storage"
+      ],
       "crons": [],
       "dependsOn": [],
       "durableObjectMigrations": [
         {
-          "new_sqlite_classes": ["UserAccount", "ZoomInfoGatekeeperImpl"],
+          "new_sqlite_classes": [
+            "UserAccount",
+            "ZoomInfoGatekeeperImpl"
+          ],
           "tag": "v0"
         }
       ],

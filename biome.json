@@ -17,6 +17,7 @@
       "!**/test-results",
       "!**/*.md",
       "!docs/stages/assets",
+      "!scripts/release/test/testdata",
       "!packages/gatekeeper-interface/src",
       "!packages/gatekeeper-interface/testing",
       "!packages/gatekeeper-observability/src",
