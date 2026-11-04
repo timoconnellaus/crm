@@ -28,6 +28,25 @@
   // OAuth 2.1 for /mcp (ADR 0021): clients, grants and hashed tokens. Provisioned by name on
   // first deploy, like the D1 database.
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  // Workers Rate Limiting (ADR 0056, docs/deploying.md). Limits are per Cloudflare location and
+  // approximate; change them here and redeploy. namespace_id must be an integer unique within
+  // the account: change these if another Worker in your account already uses them.
+  "ratelimits": [
+    // Every /mcp request, per connected app.
+    { "name": "MCP_RATE_LIMIT", "namespace_id": "4101", "simple": { "limit": 120, "period": 60 } },
+    // Non-read operations over MCP, per connected app.
+    {
+      "name": "MCP_WRITE_RATE_LIMIT",
+      "namespace_id": "4102",
+      "simple": { "limit": 30, "period": 60 }
+    },
+    // Code Mode runs, per user.
+    {
+      "name": "CODE_MODE_RATE_LIMIT",
+      "namespace_id": "4103",
+      "simple": { "limit": 10, "period": 60 }
+    }
+  ],
   "vars": {
     // better-auth (default) or cloudflare-access. See docs/deploying.md.
     "IDENTITY_PROVIDER": "better-auth",

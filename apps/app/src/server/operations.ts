@@ -11,9 +11,11 @@ import {
   invokeByName,
   modelRunnerFromEnv,
   parseFloor,
+  type RateLimitBinding,
   resolveActingUser,
   type SerializedOperationError,
   toOperationError,
+  withCodeModeRateLimit,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
 import { deleteGrantTokens } from "./mcp/handler.ts";
@@ -35,14 +37,39 @@ export interface OperationsEnv {
   AI_GATEWAY_ID?: string;
   /** "true": a deterministic stand-in for the build role when there is no AI binding (local/e2e). */
   AI_FAKE_MODEL?: string;
+  /** Code Mode runs per user (Workers Rate Limiting, ADR 0043). */
+  CODE_MODE_RATE_LIMIT?: RateLimitBinding;
 }
 
 /**
- * The extension runtime as seen from crm-app: crm-runner's RPC over the RUNNER service binding,
- * which forwards to the extension workspace Durable Object.
+ * The extension runtime as seen from crm-app: crm-runner's RPC over the RUNNER service binding
+ * (code runs in crm-runner's stateless entrypoint; git and builds in its workspace DO), with Code
+ * Mode's per-user rate limit applied here, where the binding lives.
  */
 export function extensionHostFor(env: OperationsEnv): ExtensionHost | undefined {
-  return env.RUNNER ? (runner({ RUNNER: env.RUNNER }) as unknown as ExtensionHost) : undefined;
+  if (!env.RUNNER) return undefined;
+  const host = runner({ RUNNER: env.RUNNER }) as unknown as ExtensionHost;
+  return withCodeModeRateLimit(rpcHost(host), env.CODE_MODE_RATE_LIMIT);
+}
+
+/** The RPC stub's methods as a plain object (an RPC stub cannot be spread). */
+function rpcHost(stub: ExtensionHost): ExtensionHost {
+  return {
+    commit: (input) => stub.commit(input),
+    shipped: () => stub.shipped(),
+    commitShipped: (id) => stub.commitShipped(id),
+    evaluate: (input) => stub.evaluate(input),
+    runTool: (input) => stub.runTool(input),
+    versions: (id) => stub.versions(id),
+    files: (id, commit) => stub.files(id, commit),
+    listWorkspace: () => stub.listWorkspace(),
+    workingCopy: (id, options) => stub.workingCopy(id, options),
+    writeFiles: (input) => stub.writeFiles(input),
+    commitWorkingCopy: (input) => stub.commitWorkingCopy(input),
+    eject: (id) => stub.eject(id),
+    runCode: (input) => stub.runCode(input),
+    describeChange: (input) => stub.describeChange(input),
+  };
 }
 
 let shippedInstall: Promise<void> | null = null;

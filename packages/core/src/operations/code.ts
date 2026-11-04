@@ -3,10 +3,16 @@
 // user's own actor (mcp), with their role and token scopes, through the same gate and simulation
 // as the tools: a bulk change still becomes one pending action, and reads see the session's
 // pending changes.
+//
+// Limits (ADR 0043): it needs `records:write` (a script can change records); one script per user at
+// a time (the runner's per-user gate answers `concurrency_limit`); and a per-user rate limit, which
+// crm-app applies by wrapping its host with `withCodeModeRateLimit`.
 import { z } from "zod";
-import { ForbiddenError } from "../errors.ts";
+import { ForbiddenError, RateLimitedError } from "../errors.ts";
+import type { ExtensionHost } from "../extensions/host.ts";
 import { requireHost } from "../extensions/install.ts";
 import { defineOperation } from "../operation.ts";
+import { type RateLimitBinding, rateLimit } from "../rate-limit.ts";
 
 export const CODE_MAX_BYTES = 50_000;
 
@@ -67,7 +73,8 @@ export const codeRun = defineOperation({
       .describe("Why: stored on any change the script queues for approval"),
   }),
   output: resultSchema,
-  permission: "records:read",
+  // A script can change records, so it needs write permission even when it only reads.
+  permission: "records:write",
   risk: "write",
   // Never queued itself: every operation the script calls goes through the gate on its own.
   bookkeeping: true,
@@ -85,7 +92,7 @@ export const codeRun = defineOperation({
       throw new ForbiddenError("Code Mode runs only for MCP clients and the assistant");
     }
     const reason = input.reason ?? ctx.reason;
-    return host.runCode({
+    const result = await host.runCode({
       code: input.code,
       caller: {
         actor: ctx.actor,
@@ -100,7 +107,35 @@ export const codeRun = defineOperation({
         ...(reason ? { reason } : {}),
       },
     });
+    if (!result.ok && result.error?.code === "concurrency_limit") {
+      throw new RateLimitedError(result.error.message, { limit: "concurrency", perUser: 1 });
+    }
+    return result;
   },
 });
+
+/**
+ * The host with Code Mode's per-user rate limit (the Workers Rate Limiting binding
+ * CODE_MODE_RATE_LIMIT in crm-app). Over the limit, `runCode` throws RateLimitedError before
+ * anything reaches the runner. A missing binding allows the call (see rateLimit).
+ */
+export function withCodeModeRateLimit(
+  host: ExtensionHost,
+  binding: RateLimitBinding | undefined,
+): ExtensionHost {
+  return {
+    ...host,
+    async runCode(input) {
+      const limited = await rateLimit(binding, `code:${input.caller.user.id}`);
+      if (!limited.ok) {
+        throw new RateLimitedError(
+          `Too many Code Mode runs; retry in ${limited.retryAfterSeconds}s`,
+          { retryAfterSeconds: limited.retryAfterSeconds },
+        );
+      }
+      return host.runCode(input);
+    },
+  };
+}
 
 export const codeOperations = [codeRun] as const;

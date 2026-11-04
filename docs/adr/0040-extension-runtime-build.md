@@ -113,3 +113,21 @@ operation, and crm-runner exposes it as `installShipped()` for deploy scripts.
   `installExtension` gained an `eject` option that lets an approved proposal turn a shipped
   extension into a runtime one. Install failures now name the first issue in the error message.
 - **Code Mode** runs in the same DO and backend (ADR 0042).
+
+## Amendment, 2026-11-04 (runtime rework, [ADR 0043](0043-extension-executor-and-stable-loader-ids.md))
+- **Runtime.** The per-run entry module and "executions are serialised so the current-run context
+  is unambiguous" are gone.
+  - A fixed entry module (`evaluateManifest`, `runTool`) is loaded with `LOADER.get(stableId)`.
+  - Each call gets its context as RPC arguments, through a per-run host `RpcTarget`.
+  - Runs execute in parallel from the stateless entrypoint.
+- **Builds.** Builds are no longer cached as files under `/build/<id>/<commit>/`. They are cached
+  in the workspace DO's storage by a content hash of the source (plus the runtime and checker
+  hashes), so a working-copy check and the proposal of the same files share one build.
+- **Type checking** moved out of the workspace DO and out of crm-runner's main bundle.
+  - **Where it runs:** its own Dynamic Worker, `tsc@<version>+<hash>`, loaded with `get()`. The
+    compiler, its declarations and the SDK bundle ship as Text modules.
+  - **Main module size:** 10,348 KiB before, 3,368 KiB after.
+  - **Timings:** cold 281 ms, including loading the compiler. Warm about 100–120 ms. A cache hit
+    takes 2 ms.
+- **The "Executions are serialised" consequence** no longer holds: 20 concurrent tool runs took
+  1,452 ms before and 82 ms after.

@@ -221,6 +221,10 @@ nothing from a formula reaches SQL verbatim.
 There is no network: `fetch` fails (`globalOutbound: null`). External services arrive as
 gatekeeper modules in stage 6. A module the extension did not declare is absent from `ctx`.
 
+One version of an extension may serve many runs from the same warm sandbox (ADR 0043), so
+module-scope variables can outlive a run. Keep per-call state inside the handler, and persist
+anything that must last in `ctx.storage`.
+
 ## Testing an extension
 
 `@crm/sdk/testing` runs tools with in-memory host modules and the host's permission rules:

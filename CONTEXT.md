@@ -148,7 +148,20 @@ _Avoid_: package (that means a pnpm workspace package), plugin, app
 
 **Extension workspace**
 The `@cloudflare/computer` Workspace (Durable Object filesystem + git) that holds runtime extension
-source. A commit is a version, approval reviews a diff, and rollback is a revert.
+source and the build cache. A commit is a version, approval reviews a diff, and rollback is a
+revert. It runs no code: the executor does.
+
+**Executor**
+What runs extension code, from crm-runner's stateless entrypoint (and from Workflow steps in stage
+5). Each run gets a Dynamic Worker from `LOADER.get` with a **stable loader id**, and its context
+arrives as RPC arguments.
+_Avoid_: sandbox host (for the DO)
+
+**Stable loader id**
+The deterministic Worker Loader id of code that runs more than once. For a tool it hashes the
+extension id, commit, host-module set, SDK and runtime hash, contract version and compatibility
+settings. The same inputs always mean the same code. Only throwaway code (Code Mode scripts) runs
+without one, through `load()`.
 
 **Extension object**
 A record type declared by an extension. It is stored in `x_<extension>_*` tables, which the host
@@ -181,9 +194,10 @@ objects, views and tools from another extension), never modified.
 _Avoid_: fork
 
 **Code Mode**
-The MCP `code` tool: a short ES module the client model writes runs in a sandbox as the connected
-user (actor `mcp`), calling operations through `codemode:crm` under the same gate and simulation
-as the other tools.
+The MCP `code` tool: a short ES module the client model writes runs in a throwaway sandbox as the
+connected user (actor `mcp`), calling operations through `codemode:crm` under the same gate and
+simulation as the other tools. It needs write permission, runs one script per user at a time, and
+is rate limited.
 
 **Extension tool**
 A function an extension declares with `defineTool`. It is an operation named `x.<extension>.<tool>`

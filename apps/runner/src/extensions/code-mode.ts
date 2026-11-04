@@ -1,8 +1,9 @@
-// Code Mode scripts (ADR 0042): a short ES module an MCP client model writes, run in a Dynamic Worker
-// like extension code (no network, read-only filesystem) but acting as the connected user. The
-// script may import only `codemode:crm`, which is rewritten to a small wrapper over the raw host
-// module so `crm.call` returns values and throws errors. The entry module captures console output
-// and returns the script's default export.
+// Code Mode scripts (ADR 0042, ADR 0043): a short ES module an MCP client model writes, run in a
+// throwaway Dynamic Worker (new code every time, so LOADER.load() with no id) with no network,
+// acting as the connected user. The script may import only `codemode:crm`, which is rewritten to a
+// small wrapper over the per-run host RpcTarget so `crm.call` returns values and throws errors.
+// The entry captures console output and returns the script's default export. Patching console is
+// fine here: the worker runs once and is thrown away.
 import { transform } from "sucrase";
 
 export const CODE_TIMEOUT_MS = 30_000;
@@ -55,8 +56,17 @@ export function buildScript(source: string): ScriptBuild {
   return { ok: true, script };
 }
 
-/** `crm.call` over the raw host module: returns the value, throws a CrmCallError on failure. */
-export const CRM_WRAPPER = `import * as host from "codemode:crm";
+/** Holds the run's host RpcTarget; only the entry and the wrapper import it. */
+export const CRM_HOST = `let host = null;
+export function bind(value) { host = value; }
+export function call(operation, input) {
+  if (!host) throw new Error("codemode:crm is not available until the script runs");
+  return host.call("crm", "call", [operation, input]);
+}
+`;
+
+/** `crm.call` over the host: returns the value, throws a CrmCallError on failure. */
+export const CRM_WRAPPER = `import * as host from "./crm-host.js";
 export class CrmCallError extends Error {
   constructor(error) {
     super(error.message);
@@ -74,11 +84,12 @@ export const crm = { call };
 export default crm;
 `;
 
-/** The per-run entry: console capture, then the script's default export (called if a function). */
-export function codeEntry(dir: string): string {
-  return `import * as script from "${dir}/script.js";
+/** The entry: console capture, then the script's default export (called if a function). */
+export const CODE_ENTRY = `import { WorkerEntrypoint } from "cloudflare:workers";
+import { bind } from "./crm-host.js";
+import * as script from "./script.js";
 const MAX_LOGS = ${CODE_MAX_LOGS};
-export default async () => {
+async function main() {
   const logs = [];
   let dropped = false;
   const show = (v) => {
@@ -104,6 +115,28 @@ export default async () => {
       dropped,
     };
   }
-};
+}
+export default class extends WorkerEntrypoint {
+  async run(host) {
+    bind(host);
+    return main();
+  }
+}
 `;
+
+/** The throwaway worker for one script: new code every run, so LOADER.load() with no id. */
+export function codeWorkerCode(script: string): WorkerLoaderWorkerCode {
+  return {
+    compatibilityDate: "2026-10-01",
+    mainModule: "entry.js",
+    modules: {
+      "entry.js": CODE_ENTRY,
+      "script.js": script,
+      "crm.js": CRM_WRAPPER,
+      "crm-host.js": CRM_HOST,
+    },
+    // No network (ADR 0025); the per-run host RpcTarget is the only way out.
+    globalOutbound: null,
+    env: {},
+  };
 }

@@ -26,11 +26,17 @@
       "class_name": "HelloWorkflow"
     }
   ],
-  // Worker Loader: mints the Dynamic Workers that run extension code (ADR 0006).
+  // Worker Loader: the Dynamic Workers that run extension code (ADR 0006). Repeat code (tools,
+  // manifest evaluation, the type checker) uses LOADER.get with a stable id; only Code Mode
+  // scripts use LOADER.load (ADR 0043).
   "worker_loaders": [{ "binding": "LOADER" }],
-  // The extension workspace (ADR 0025): extension source under git, and the sandbox host.
+  // The extension workspace (ADR 0025, ADR 0043): extension source under git and the build cache.
+  // It runs no code. CODE_MODE_GATE: one per user, Code Mode's concurrency limit of 1.
   "durable_objects": {
-    "bindings": [{ "name": "EXTENSION_WORKSPACE", "class_name": "ExtensionWorkspace" }]
+    "bindings": [
+      { "name": "EXTENSION_WORKSPACE", "class_name": "ExtensionWorkspace" },
+      { "name": "CODE_MODE_GATE", "class_name": "CodeModeGate" }
+    ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["SpikeWorkspace"] },
@@ -39,7 +45,9 @@
       "tag": "v2",
       "deleted_classes": ["SpikeWorkspace"],
       "new_sqlite_classes": ["ExtensionWorkspace"]
-    }
+    },
+    // ADR 0043: Code Mode's per-user concurrency gate.
+    { "tag": "v3", "new_sqlite_classes": ["CodeModeGate"] }
   ],
   "vars": {
     // Extension code calls operations here (codemode:crm), so the runner applies the same

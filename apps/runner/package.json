@@ -12,7 +12,7 @@
     "build": "node scripts/bundle.mjs && wrangler deploy --dry-run --outdir dist",
     "types": "wrangler types --strict-vars=false",
     "typecheck": "node scripts/bundle.mjs && wrangler types --strict-vars=false --check && tsc --noEmit",
-    "test": "node scripts/bundle.mjs && vitest run"
+    "test": "node scripts/bundle.mjs && vitest run && node scripts/bundle-budget.mjs"
   },
   "dependencies": {
     "@cloudflare/computer": "0.9.0",

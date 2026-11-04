@@ -134,8 +134,8 @@ export const extensionList = defineOperation({
   description:
     "List installed extensions (shipped and runtime) with version, status (active, disabled or " +
     "quarantined), declared permissions, objects and tools, plus `workspace`: every extension " +
-    "in the extension workspace with its working-copy files and whether it has uncommitted " +
-    "edits or is installed, and `shipped`: the shipped extension ids (extend them, don't " +
+    "directory in the extension workspace with whether it has uncommitted edits or is " +
+    "installed (extension.read lists its files), and `shipped`: the shipped extension ids (extend them, don't " +
     "modify them). Read-only.",
   input: z.object({}),
   output: z.object({
@@ -143,9 +143,7 @@ export const extensionList = defineOperation({
     workspace: z.array(
       z.object({
         id: z.string(),
-        head: z.string().nullable(),
-        files: z.array(z.string()),
-        changed: z.boolean(),
+        changed: z.boolean().describe("Edited since its last commit"),
         installed: z.boolean(),
         ejected: z.boolean(),
       }),
@@ -293,7 +291,7 @@ export const extensionCheck = defineOperation({
     if ("files" in input || "commit" in input) {
       target = input;
     } else {
-      const wc = await host.workingCopy(input.id);
+      const wc = await host.workingCopy(input.id, { status: false });
       if (!wc.exists || !Object.keys(wc.files).length) {
         throw new NotFoundError("extension in the workspace (write its files first)", input.id);
       }
