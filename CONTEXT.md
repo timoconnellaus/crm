@@ -15,6 +15,20 @@ A built-in record type with core tables and migrations: **Person**, **Organisati
 **Task**.
 _Avoid_: Contact (use Person), Company/Account (use Organisation)
 
+**Affiliation**
+A Person's link to an Organisation: title/role, start, end, `current`. One per person is primary.
+Ending one and starting another is a **job change**.
+_Avoid_: employment, membership
+
+**Timeline-worthy field**
+A field flagged `track: "timeline"`, whose changes post a `system` Activity on the record.
+
+**Saved view**
+A user's stored list configuration (`object`, filter, sort, columns): the simplest kind of view spec.
+
+**Trash**
+Soft-deleted records, restorable for 30 days before they are purged.
+
 **Activity**
 One entry on a record's timeline: a note, email, call, meeting or system event.
 
