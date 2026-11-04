@@ -7,7 +7,8 @@
 // A gate `review` dry-runs the handler and queues a pending action instead (approvals/queue.ts);
 // reads by an MCP session see its pending actions applied (approvals/simulation.ts).
 import type { AuditChangeAction, CrmDb } from "@crm/db";
-import { type Compilable, sql } from "kysely";
+import { checkGrant } from "@crm/sdk";
+import { type Compilable, type CompiledQuery, sql } from "kysely";
 import { type DryRunResult, prepareQueuedAction } from "./approvals/queue.ts";
 import { isSimulatedRead, loadSessionOverlay, overlayRead } from "./approvals/simulation.ts";
 import { diffRecords, type FieldDiff } from "./diff.ts";
@@ -21,13 +22,16 @@ import {
   UnknownOperationError,
   ValidationError,
 } from "./errors.ts";
-import { getObject } from "./fields/index.ts";
+import type { ExtensionHost } from "./extensions/host.ts";
+import { refreshSchemaRegistry } from "./extensions/schema.ts";
+import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { findProvisionalIds, newId } from "./ids.ts";
 import {
   type AnyOperation,
   type ApplyingApproval,
   afterCommit,
+  type ExtensionCaller,
   type HandlerContext,
   isAfterCommit,
   type OperationOutput,
@@ -69,6 +73,32 @@ export interface InvocationContext {
   approval?: ApplyingApproval | undefined;
   /** Looks up other operations by name, for approvals that re-run queued actions. */
   resolveOperation?: ((name: string) => AnyOperation | undefined) | undefined;
+  /** The extension runtime (extension.* and x.* operations need it). */
+  extensionHost?: ExtensionHost;
+  /** Actor `extension` only: the calling extension and its declared permissions (ADR 0025). */
+  extension?: ExtensionCaller;
+}
+
+/** The installed extension whose principal is `userId`, with its declared permissions. */
+async function loadExtensionCaller(db: CrmDb, userId: string): Promise<ExtensionCaller | null> {
+  const row = await db.query
+    .selectFrom("core_extensions")
+    .select(["id", "manifest", "status"])
+    .where("user_id", "=", userId)
+    .executeTakeFirst();
+  if (!row || row.status !== "active") return null;
+  const manifest = JSON.parse(row.manifest) as { permissions: ExtensionCaller["permissions"] };
+  return { id: row.id, permissions: manifest.permissions };
+}
+
+/** The object an operation reads or writes, for extension permission checks. */
+export function operationObject(op: AnyOperation, input: unknown): string | null {
+  if (op.name.startsWith("record.")) {
+    const object = (input as { object?: unknown } | null)?.object;
+    return typeof object === "string" ? object : null;
+  }
+  const prefix = op.name.split(".")[0] ?? "";
+  return isCoreObject(prefix) ? prefix : null;
 }
 
 type AuditOutcome = "ok" | "forbidden" | "denied" | "review" | "error";
@@ -217,7 +247,8 @@ function activityStatements(
       payload: JSON.stringify(activity.payload),
       occurred_at: activity.occurredAt ?? now,
       author_user_id: ctx.user.id,
-      author_actor: ctx.actor,
+      // core_activity.author_actor predates the extension actor; extension posts are `system`.
+      author_actor: ctx.actor === "extension" ? "system" : ctx.actor,
       created_at: now,
       updated_at: now,
     }),
@@ -325,6 +356,8 @@ export async function invokeOperation<O extends AnyOperation>(
     throw new ValidationError(`Invalid input for ${op.name}`, { issues: parsed.error.issues });
   }
   const input: unknown = parsed.data;
+  // Extension objects and fields join the field registry (ADR 0023); cheap when unchanged.
+  await refreshSchemaRegistry(ctx.db.query);
   const audited = isAudited(op, ctx.actor);
   const auditId = newId("audit");
   const pendingActionId = ctx.approval?.actionId ?? null;
@@ -353,6 +386,26 @@ export async function invokeOperation<O extends AnyOperation>(
     await auditAlone({ ...base, gate: decision, outcome: "forbidden", error });
     throw error;
   }
+  if (ctx.actor === "extension") {
+    // The runtime passes the caller; an approved pending action re-run by an admin does not, so
+    // it is loaded from the extension principal's installed manifest.
+    const caller = ctx.extension ?? (await loadExtensionCaller(ctx.db, ctx.user.id));
+    const grant = caller
+      ? checkGrant(caller.id, caller.permissions, {
+          operation: op.name,
+          risk: op.risk,
+          object: operationObject(op, input),
+        })
+      : { ok: false as const, reason: "Extension calls need the calling extension" };
+    if (!grant.ok) {
+      const error = new ForbiddenError(grant.reason, {
+        extension: caller?.id ?? null,
+        operation: op.name,
+      });
+      await auditAlone({ ...base, gate: decision, outcome: "forbidden", error });
+      throw error;
+    }
+  }
   if (!roleHasPermission(ctx.user.role, op.permission)) {
     const error = new ForbiddenError(`Your role (${ctx.user.role}) cannot ${op.name}`, {
       role: ctx.user.role,
@@ -376,7 +429,7 @@ export async function invokeOperation<O extends AnyOperation>(
     throw error;
   }
 
-  const writes: Compilable[] = [];
+  const writes: (Compilable | CompiledQuery)[] = [];
   const changes: RecordChange[] = [];
   const activities: Compilable[] = [];
   const handlerCtx: HandlerContext = {
@@ -399,6 +452,8 @@ export async function invokeOperation<O extends AnyOperation>(
       return id;
     },
     afterCommit,
+    ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
+    ...(ctx.extension ? { extension: ctx.extension } : {}),
     pipeline: {
       crm: ctx.db,
       invoke: (name, nestedInput, nested) => {
@@ -415,6 +470,7 @@ export async function invokeOperation<O extends AnyOperation>(
           origin: nested.origin,
           grantedPermissions: nested.grantedPermissions,
           approval: nested.approval,
+          ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
         });
       },
     },
@@ -549,7 +605,7 @@ export async function invokeOperation<O extends AnyOperation>(
     output = checked.data;
   }
 
-  const statements: Compilable[] = [...writes];
+  const statements: (Compilable | CompiledQuery)[] = [...writes];
   const changeRows: { o: string; r: string; a: string; d: string }[] = [];
   for (const change of changes) {
     const diff = change.diff ?? diffRecords(change.before, change.after);

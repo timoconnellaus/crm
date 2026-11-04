@@ -94,7 +94,7 @@ extension), saved per user or shared:
 - **"Describe a widget"**: an in-app box. A prompt plus the schema goes to the **`build` model role**,
   which returns SQL and a chart spec. The result is validated, previewed, and then saved or edited.
   If the full model registry (stage 7) doesn't exist yet, implement the minimal role → provider
-  mapping from ADR 0009 (Anthropic via AI Gateway, key as a Worker secret). It must fail gracefully
+  mapping from ADR 0009 (Workers AI by default, via AI Gateway if configured). It must fail gracefully
   when no key is configured.
 - A **manual widget editor** lets you pick a type, edit the SQL (with a schema sidebar), map columns
   and preview.

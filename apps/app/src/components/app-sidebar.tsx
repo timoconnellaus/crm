@@ -6,17 +6,28 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@crm/ui/components/sidebar";
 import { Link } from "@tanstack/react-router";
-import { ActivitySquareIcon } from "lucide-react";
+import {
+  ActivitySquareIcon,
+  BoxIcon,
+  BriefcaseIcon,
+  FolderKanbanIcon,
+  HandshakeIcon,
+  type LucideIcon,
+} from "lucide-react";
 import { MAIN_NAV, type NavItem, SETTINGS_NAV } from "#/lib/nav";
+import { useExtensionObjects } from "#/lib/schema";
+import { usePendingCount } from "./approvals/hooks.ts";
 
-function NavLink({ item }: { item: NavItem }) {
+function NavLink({ item, badge }: { item: NavItem; badge?: number | undefined }) {
   const { setOpenMobile } = useSidebar();
   return (
     <SidebarMenuItem>
@@ -31,12 +42,63 @@ function NavLink({ item }: { item: NavItem }) {
           <span>{item.label}</span>
         </Link>
       </SidebarMenuButton>
+      {badge ? (
+        <SidebarMenuBadge
+          className="rounded-full bg-primary text-primary-foreground peer-hover/menu-button:text-primary-foreground peer-data-[active=true]/menu-button:text-primary-foreground"
+          aria-label={`${badge} waiting for review`}
+          data-testid="approvals-count"
+        >
+          {badge > 99 ? "99+" : badge}
+        </SidebarMenuBadge>
+      ) : null}
     </SidebarMenuItem>
+  );
+}
+
+const OBJECT_ICONS: Record<string, LucideIcon> = {
+  "folder-kanban": FolderKanbanIcon,
+  briefcase: BriefcaseIcon,
+  handshake: HandshakeIcon,
+};
+
+/** Extension objects (from the field registry), each with a generic list page. */
+function ExtensionObjectsNav() {
+  const { setOpenMobile } = useSidebar();
+  const objects = useExtensionObjects();
+  if (!objects.length) return null;
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Extensions</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {objects.map((object) => {
+            const Icon = (object.icon && OBJECT_ICONS[object.icon]) || BoxIcon;
+            const label = object.plural ?? object.label;
+            return (
+              <SidebarMenuItem key={object.name}>
+                <SidebarMenuButton asChild tooltip={label}>
+                  <Link
+                    to="/x/$object"
+                    params={{ object: object.name }}
+                    activeProps={{ "data-active": true, "aria-current": "page" }}
+                    onClick={() => setOpenMobile(false)}
+                  >
+                    <Icon />
+                    <span>{label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 }
 
 export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
+  const pendingCount = usePendingCount();
   return (
     <Sidebar aria-label="Main navigation">
       <SidebarHeader>
@@ -47,15 +109,20 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {MAIN_NAV.map((item) => (
-                <NavLink key={item.to} item={item} />
+                <NavLink
+                  key={item.to}
+                  item={item}
+                  badge={item.to === "/approvals" ? pendingCount : undefined}
+                />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <ExtensionObjectsNav />
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          {SETTINGS_NAV.filter((item) => !item.adminOnly).map((item) => (
+          {SETTINGS_NAV.filter((item) => item.to === "/settings").map((item) => (
             <NavLink key={item.to} item={item} />
           ))}
           <SidebarMenuItem>

@@ -21,6 +21,8 @@ export async function resolveActingUser(db: CrmDb, principal: PrincipalLike): Pr
     db.query
       .selectFrom("core_user")
       .select(["id", "email", "name", "role"])
+      // Extension principals (migration 0020) are never a signed-in user.
+      .where("kind", "=", "human")
       .where((eb) =>
         eb.or([eb("id", "=", principal.userId), eb(eb.fn("lower", ["email"]), "=", email)]),
       )

@@ -22,6 +22,7 @@ const EXPECTED: Record<PolicyPreset, Record<Actor, string>> = {
     assistant: "a r r r r r r",
     mcp: "a r r r r r r",
     automation: "a a r r d d r",
+    extension: "a a r r d d r",
   },
   balanced: {
     human: "a a a a a a a",
@@ -29,12 +30,14 @@ const EXPECTED: Record<PolicyPreset, Record<Actor, string>> = {
     // Stage 2 (ADR 0018 amendment): every MCP bulk write is reviewed, whatever its size.
     mcp: "a a r r r r r",
     automation: "a a a/r r d d r",
+    extension: "a a a/r r d d r",
   },
   autonomous: {
     human: "a a a a a a a",
     assistant: "a a a a/r r r a",
     mcp: "a a a a/r r r a",
     automation: "a a a a/r d d a",
+    extension: "a a a a/r d d r",
   },
 };
 

@@ -2,9 +2,11 @@
 // model-facing description, a permission and a risk class. Adapters (server functions now, MCP in
 // stage 2, the `codemode:crm` host module in stage 3) are generated from these definitions.
 import type { AuditChangeAction, CoreDatabase, CrmDb } from "@crm/db";
-import type { Compilable, Kysely } from "kysely";
+import type { PermissionsManifest } from "@crm/sdk";
+import type { Compilable, CompiledQuery, Kysely } from "kysely";
 import type { z } from "zod";
 import type { FieldDiff } from "./diff.ts";
+import type { ExtensionHost } from "./extensions/host.ts";
 import type { GateFloor } from "./gate.ts";
 import {
   ACTORS,
@@ -84,7 +86,7 @@ export interface HandlerContext {
   /** The deploy-time approval floor (APPROVAL_FLOOR) the gate applied, for display. */
   readonly floor: GateFloor;
   /** Queues statements (Kysely insert/update/delete builders) for the commit batch, in order. */
-  write(...statements: Compilable[]): void;
+  write(...statements: (Compilable | CompiledQuery)[]): void;
   /**
    * Records a touched record for the audit log. For `update`s, changed fields flagged
    * `track: "timeline"` in the field registry also post a system activity on the record.
@@ -105,6 +107,16 @@ export interface HandlerContext {
    * the pipeline on approval. Other handlers never need it.
    */
   readonly pipeline: PipelineAccess;
+  /** The extension runtime, when the adapter provides one (extension.* and x.* operations). */
+  readonly extensionHost?: ExtensionHost;
+  /** For actor `extension`: the calling extension. */
+  readonly extension?: ExtensionCaller;
+}
+
+/** The extension an `extension`-actor call runs for, and its approved permissions. */
+export interface ExtensionCaller {
+  id: string;
+  permissions: PermissionsManifest;
 }
 
 /** A record as a session's pending actions would leave it (ADR 0022). */

@@ -172,7 +172,7 @@ For an extension change, the approvals inbox shows:
    labelled AI summary. Covered by Playwright.
 8. Code Mode tool: a script that tags 30 people produces one bulk-write pending action in the caller's
    change set, and simulation applies.
-9. **AI-authoring eval:** 10 prompts in `evals/extensions/` run through Claude via MCP, e.g. "add a
+9. **AI-authoring eval:** 10 prompts in `evals/extensions/` run through an MCP client model (Workers AI by default), e.g. "add a
    renewal date to organisations", "create a Projects object", "add a formula for days until
    renewal". Each must pass `check` and reach a proposable state. A report is committed, with a target
    of at least 8/10 and failures analysed. This feeds improvements to the SDK docs.

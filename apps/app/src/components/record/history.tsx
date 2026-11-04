@@ -4,7 +4,7 @@ import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
 import { Skeleton } from "@crm/ui/components/skeleton";
 import { HistoryIcon } from "lucide-react";
-import { formatDateTime, formatValue } from "#/lib/format";
+import { diffValue, formatDateTime } from "#/lib/format";
 import { errorMessage } from "#/lib/query";
 import { EmptyState } from "../empty-state.tsx";
 import type { HistoryEntry } from "./adapters.ts";
@@ -34,28 +34,10 @@ const ACTOR_LABEL: Record<HistoryEntry["actor"], string> = {
   assistant: "AI assistant",
   mcp: "MCP client",
   automation: "Automation",
+  extension: "Extension",
 };
 
-/** One value of a diff as display text (lists of emails/phones show their main value). */
-export function diffValue(value: unknown): string {
-  if (Array.isArray(value)) {
-    return (
-      value
-        .map((item) =>
-          item && typeof item === "object"
-            ? String(
-                (item as Record<string, unknown>).email ??
-                  (item as Record<string, unknown>).number ??
-                  (item as Record<string, unknown>).url ??
-                  JSON.stringify(item),
-              )
-            : formatValue(item),
-        )
-        .join(", ") || "empty"
-    );
-  }
-  return formatValue(value) || "empty";
-}
+export { diffValue };
 
 export function HistoryList({
   object,

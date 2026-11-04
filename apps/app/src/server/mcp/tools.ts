@@ -4,20 +4,24 @@
 // (non-read) call takes a required `reason`, stored on the pending action when it is queued.
 import {
   type AnyOperation,
-  CORE_OBJECTS,
   coreRegistry,
   type FieldDefinition,
   type InvocationContext,
   invokeByName,
+  listObjects,
+  listOperations,
   OperationError,
   PendingApprovalError,
   type Permission,
   RateLimitedError,
+  refreshSchemaRegistry,
+  resolveExtensionOperation,
   roleHasPermission,
   toOperationError,
   UnknownOperationError,
   ValidationError,
 } from "@crm/core";
+import type { CrmDb } from "@crm/db";
 import { McpServer, type StandardSchemaWithJSON } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
@@ -38,13 +42,18 @@ export function toolName(operation: string): string {
   return operation.replace(/\./g, "_");
 }
 
-/** Operations MCP can see at all. */
-export function mcpOperations(): AnyOperation[] {
+/** Core operations MCP can see at all (curated tools come from these). */
+export function coreMcpOperations(): AnyOperation[] {
   return coreRegistry.list().filter((op) => op.mcp?.expose !== false);
 }
 
-export function mcpOperation(name: string): AnyOperation | undefined {
-  const op = coreRegistry.get(name);
+/** Operations MCP can see: core ones plus installed extension tools (`x.<ext>.<tool>`). */
+export async function mcpOperations(db: CrmDb): Promise<AnyOperation[]> {
+  return (await listOperations(db.query)).filter((op) => op.mcp?.expose !== false);
+}
+
+export async function mcpOperation(name: string, db: CrmDb): Promise<AnyOperation | undefined> {
+  const op = coreRegistry.get(name) ?? (await resolveExtensionOperation(db.query, name));
   return op && op.mcp?.expose !== false ? op : undefined;
 }
 
@@ -165,7 +174,7 @@ export async function callForMcp(
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
   try {
-    const op = mcpOperation(name);
+    const op = await mcpOperation(name, caller.context.db);
     if (!op) throw new UnknownOperationError(name);
     const { reason, ...input } = args;
     if (requiresReason(op) && (typeof reason !== "string" || !reason.trim())) {
@@ -198,9 +207,11 @@ function allowedFor(op: AnyOperation, context: InvocationContext): boolean {
 }
 
 /** The crm://schema resource: objects and fields, operations and their risk classes. */
-export function schemaDocument(context?: InvocationContext) {
+export async function schemaDocument(context: InvocationContext) {
+  const operations = await mcpOperations(context.db);
+  await refreshSchemaRegistry(context.db.query);
   return {
-    objects: Object.values(CORE_OBJECTS).map((o) => ({
+    objects: listObjects().map((o) => ({
       name: o.name,
       label: o.label,
       view: o.source,
@@ -214,13 +225,13 @@ export function schemaDocument(context?: InvocationContext) {
         ...(f.track ? { track: f.track } : {}),
       })),
     })),
-    operations: mcpOperations().map((op) => ({
+    operations: operations.map((op) => ({
       name: op.name,
       tool: op.mcp?.curated ? toolName(op.name) : null,
       risk: op.risk,
       permission: op.permission as Permission,
       requiresReason: requiresReason(op),
-      ...(context ? { allowed: allowedFor(op, context) } : {}),
+      allowed: allowedFor(op, context),
     })),
     riskClasses: {
       read: "never changes anything",
@@ -266,7 +277,7 @@ export function createCrmMcpServer(caller: McpCaller, version: string): McpServe
     { instructions: SERVER_INSTRUCTIONS },
   );
 
-  for (const op of mcpOperations().filter((o) => o.mcp?.curated)) {
+  for (const op of coreMcpOperations().filter((o) => o.mcp?.curated)) {
     const reviewable = requiresReason(op);
     server.registerTool(
       toolName(op.name),
@@ -303,7 +314,7 @@ export function createCrmMcpServer(caller: McpCaller, version: string): McpServe
     },
     async (args) => {
       const words = (args.query ?? "").toLowerCase().split(/\s+/).filter(Boolean);
-      const ops = mcpOperations().filter((op) => {
+      const ops = (await mcpOperations(caller.context.db)).filter((op) => {
         if (args.names && !args.names.includes(op.name)) return false;
         if (args.object && !op.name.startsWith(`${args.object}.`)) return false;
         const hay = `${op.name} ${op.description}`.toLowerCase();
@@ -359,7 +370,7 @@ export function createCrmMcpServer(caller: McpCaller, version: string): McpServe
         {
           uri: uri.href,
           mimeType: "application/json",
-          text: JSON.stringify(schemaDocument(caller.context), null, 2),
+          text: JSON.stringify(await schemaDocument(caller.context), null, 2),
         },
       ],
     }),

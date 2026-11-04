@@ -33,7 +33,7 @@ describe("crm-runner RPC", () => {
     expect((await getMigrationLevel(env.DB)).upToDate).toBe(true);
   });
 
-  it("hides dev routes unless DEV_ROUTES is true", async () => {
+  it("serves nothing over HTTP (it is reached over RPC)", async () => {
     const response = await exports.default.fetch("http://runner/anything");
     expect(response.status).toBe(404);
   });

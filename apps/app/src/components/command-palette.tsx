@@ -20,6 +20,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  BoxIcon,
   Building2Icon,
   CheckSquareIcon,
   KeyboardIcon,
@@ -80,7 +81,7 @@ function matches(command: PaletteCommand, query: string): boolean {
   );
 }
 
-const HIT_ICON: Record<SearchHit["object"], LucideIcon> = {
+const HIT_ICON: Record<string, LucideIcon> = {
   person: UserIcon,
   organisation: Building2Icon,
   activity: MessageSquareTextIcon,
@@ -110,7 +111,7 @@ export function Highlighted({ segments }: { segments: HighlightSegment[] }) {
 }
 
 function SearchHitItem({ hit, onSelect }: { hit: SearchHit; onSelect: () => void }) {
-  const Icon = HIT_ICON[hit.object];
+  const Icon = HIT_ICON[hit.object] ?? BoxIcon;
   return (
     <CommandItem value={`${hit.object}:${hit.id}`} onSelect={onSelect} className="items-start">
       <Icon className="mt-0.5" />

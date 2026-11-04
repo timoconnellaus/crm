@@ -2,6 +2,7 @@
 // approval-policy presets. It never pulls in operation handlers or the database package, so the
 // UI bundle stays small and cannot reach D1. Import it as `@crm/core/client`.
 export type { FieldDiff } from "./diff.ts";
+export * from "./fields/field-types.ts";
 export * from "./fields/index.ts";
 export {
   FILTER_LIMITS,

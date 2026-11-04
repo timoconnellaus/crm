@@ -46,7 +46,8 @@ _Avoid_: dedupe (that is finding duplicates), combine
 An admin-only hard delete for GDPR requests (`person.erase`, `organisation.erase`). Unlike a purge
 it also **redacts** the audit log: content that mentions the record becomes `"[erased]"` (ADR 0019).
 Activities and tasks only about the record are deleted; shared ones are scrubbed of its emails,
-phone numbers and id, and the search index is purged of it.
+phone numbers and id, and the search index is purged of it. Pending actions that touch or mention
+it are redacted, and rejected if still waiting.
 _Avoid_: purge (that is retention), delete (that is soft)
 
 **Activity**
@@ -60,7 +61,7 @@ _Avoid_: endpoint, action (an "action" is a gatekeeper term, below)
 
 **Permission**
 What an operation requires of the caller's role: `records:read`, `records:write`, `records:erase`,
-`audit:read`, `users:manage`, `policy:manage`. Viewers have read; members read and write; admins all.
+`audit:read`, `users:manage`, `policy:manage`, `extensions:manage`. Viewers have read; members read and write; admins all.
 
 **Field registry**
 Per-object field definitions (name, type, filterable, sortable, `track`). Filters, sorts and
@@ -72,7 +73,7 @@ How dangerous an operation is: `read`, `write`, `bulk-write`, `destructive`, `sc
 
 **Actor**
 Who initiated an operation: `human`, `assistant` (in-app AI), `mcp` (an external MCP client),
-`automation`.
+`automation`, `extension` (extension code through `codemode:crm`).
 
 **Approval pipeline**
 Gate → adjudicator → human queue, configured per org. It decides whether an operation applies
@@ -95,8 +96,12 @@ _Avoid_: draft, proposal, request
 **Change set**
 The pending actions a person reviews together. By default one per MCP session; Claude can open a
 titled one with `changeset.begin` and finish it with `changeset.commit`. It is approved or
-rejected whole or item by item in the Approvals inbox.
+rejected whole or item by item in the **Approvals inbox** (`/approvals`).
 _Avoid_: batch (that is a `*Many` operation), transaction
+
+**Pending-change badge**
+The badge on a record's header and list row while a pending action would change it. Its popover
+lists the actions and links to their change set. The record itself still shows real data.
 
 **Provisional ID**
 The id a pending create gives its record (`per_pending_…`) so later pending actions in the same
@@ -126,6 +131,27 @@ source. A commit is a version, approval reviews a diff, and rollback is a revert
 **Extension object**
 A record type declared by an extension. It is stored in `x_<extension>_*` tables, which the host
 reconciles from the declaration.
+
+**Extension principal**
+The identity an extension's code acts as: `extension:<id>`, a `core_user` row of kind `extension`
+that never signs in. Its calls go through the gate as actor `extension`, limited to the extension's
+declared permissions (objects it may read or write, operations, host modules).
+
+**Extension tool**
+A function an extension declares with `defineTool`. It is an operation named `x.<extension>.<tool>`
+and runs in the sandbox.
+
+**Formula field**
+An extension field computed from other fields of the same record by a small typed expression
+(`coalesce(budget, 0) - coalesce(spent, 0)`). It is compiled to SQL in the `crm_*` view, so it can
+be filtered and sorted, and it is never written.
+
+**Quarantine**
+What happens to an extension after 3 consecutive failed runs: it is disabled, admins see it on
+Settings → Extensions, and its last-known-good version is offered for rollback.
+
+**Last-known-good**
+The most recent installed version (commit) of an extension that completed a run without failing.
 
 **Host module**
 A `codemode:*` import that extension code can call, backed by trusted host code. Examples:

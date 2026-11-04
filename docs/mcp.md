@@ -4,8 +4,8 @@ Claude (Claude Desktop, claude.ai and Claude Code) can work in the CRM over the 
 Protocol. It signs in as you, sees what your role allows, and anything risky waits for a person to
 approve it.
 
-> Screenshots pending the UI pass. The consent page is deliberately plain server-rendered HTML for
-> now; the Approvals inbox and Settings → Connected apps pages arrive with the stage 2 UI.
+> Screenshots marked `TODO(screenshot)` are still to be captured against a real deployment with
+> Claude Desktop and claude.ai (see the [walkthrough](#walkthrough-connect-claude-desktop-or-claudeai)).
 
 ## What it is
 
@@ -64,6 +64,58 @@ the MCP session. That has two consequences:
   Pending actions from the old session stay in the Approvals inbox, but its simulated state is no
   longer visible to Claude.
 
+## Walkthrough: connect Claude Desktop or claude.ai
+
+From a fresh deployment to Claude doing CRM work, end to end. It takes about five minutes.
+
+1. **Find the MCP address.** In the CRM, open **Settings → Connected apps**. The **MCP server
+   address** box shows `https://<your-deployment>/mcp`; copy it.
+
+   `TODO(screenshot): Settings → Connected apps, MCP server address box (empty list)`
+
+2. **Add the connector in Claude.** In Claude Desktop or claude.ai, open **Customize →
+   Connectors**, choose **+ Add → Add custom connector**, name it `CRM` and paste the address.
+   Keep OAuth sign-in with **Register automatically**, then **Add**.
+
+   `TODO(screenshot): Claude "Add custom connector" dialog with the /mcp URL filled in`
+
+3. **Sign in.** Claude opens the CRM in your browser. If you are not signed in, sign in as usual
+   (Better Auth, or your Cloudflare Access portal).
+
+4. **Consent.** The CRM asks **Connect Claude to the CRM?**, shows who you are signed in as and
+   which scopes to grant. Leave **Read** and **Write** ticked (admins also see **Admin**) and
+   choose **Allow**. You are sent back to Claude.
+
+   `TODO(screenshot): consent page, light theme, desktop width`
+   `TODO(screenshot): consent page, dark theme, phone width`
+
+5. **Turn it on and list the tools.** In a new conversation, use **+ → Connectors** and switch on
+   **CRM**. Ask "What CRM tools do you have?": Claude lists `search_global`, `person_create`,
+   `approval_status`, `describe_operations` and the rest.
+
+   `TODO(screenshot): Claude conversation with the CRM connector enabled and its tool list`
+
+6. **Do some work.** Ask, for example, "Find Ada Lovelace and tag her and Grace Hopper
+   `sydney-2026`". Under the default Balanced policy the single-record reads and writes apply at
+   once; the bulk tag comes back as **pending approval**, and Claude says so.
+
+   `TODO(screenshot): Claude reply reporting a change pending approval`
+
+7. **Approve it.** In the CRM, the sidebar's **Approvals** item shows a count. Open it: the change
+   set is listed under Claude's name with the reason Claude gave and a diff of what will change.
+   Choose **Approve** (or untick items and approve some). Ask Claude to check with
+   `approval_status`: the action is `applied`.
+
+   `TODO(screenshot): Approvals inbox with Claude's change set (desktop)`
+   `TODO(screenshot): Approvals inbox on a phone`
+
+8. **See the connection.** **Settings → Connected apps** lists Claude with its scopes, when it
+   connected and when it was last used. **Revoke** disconnects it at once.
+
+   `TODO(screenshot): Settings → Connected apps with Claude listed`
+
+The sections below give the details for each client and each step.
+
 ## Connecting
 
 You need the deployment's public URL, for example `https://crm-app.<your-subdomain>.workers.dev`.
@@ -88,7 +140,7 @@ Claude Desktop.
    [consent step](#the-consent-step).
 6. In a conversation, use **+ → Connectors** to turn the connector on.
 
-<!-- screenshot: Claude "Add custom connector" dialog with the /mcp URL -->
+`TODO(screenshot): Claude "Add custom connector" dialog with the /mcp URL`
 
 ### claude.ai (Team, Enterprise)
 
@@ -127,7 +179,8 @@ it in Settings → Connected apps.
 
 ## The consent step
 
-After sign-in, the CRM shows **Connect <app> to the CRM?** with:
+After sign-in, the CRM shows **Connect <app> to the CRM?**, styled like the rest of the app
+(light or dark, following your theme choice in the app, and usable on a phone), with:
 
 - who you are signed in as, and your role: the app will act as you;
 - the app's name (marked "not verified" when it is only what the app said about itself);
@@ -135,7 +188,7 @@ After sign-in, the CRM shows **Connect <app> to the CRM?** with:
   Claude Code);
 - a scope checkbox per scope your role may grant.
 
-<!-- screenshot: consent page -->
+`TODO(screenshot): consent page`
 
 | Scope | Allows | Offered to |
 | --- | --- | --- |
@@ -199,10 +252,24 @@ The server instructions tell Claude to say plainly that the change is waiting fo
 
 ### Approving
 
-People approve or reject in the **Approvals inbox** (`/approvals`, part of the UI pass): whole
-Change sets or item by item, with the client name, the agent's reason, a risk badge and a diff.
-Each approved action re-runs as the original user, through the same pipeline, and its audit row
-links back to the approval.
+People approve or reject in the **Approvals inbox** (`/approvals`; the sidebar item shows how
+many actions are waiting):
+
+- Each Change set shows the client app, its title, whose connection it came from, its counts and
+  its age and expiry.
+- Each Pending action shows what it does ("Update 38 people"), a risk badge, the agent's reason and
+  the diff: added, removed and changed fields by their labels. A bulk change lists its records
+  under **show list**; **View** shows the raw input, and for admins a link to the audit rows.
+- Tick or untick items, then **Approve** or **Reject** them, or the whole set. The result is shown
+  on the set: dependent actions rejected along with an item ("Rejecting this also rejected 2
+  dependent actions"), and any action that failed or was skipped, with the reason. Approving an
+  item before something it depends on is refused with an explanation.
+- **History** lists decided Change sets.
+
+Records with something pending show a **pending changes** badge on their page header and on list
+rows; its popover lists the actions and links to their Change set. Each approved action re-runs as
+the original user, through the same pipeline. In the audit log the queued request and the applied
+result link to each other.
 
 Pending actions expire after `APPROVAL_EXPIRY_DAYS` (default 7). The daily cron marks them
 `expired`; they read as expired as soon as the time passes.
@@ -277,6 +344,20 @@ Calls:
       in a minute returns `rate_limited` with "Retry in Ns".
 - [ ] Revoke the app in Settings → Connected apps; the next Inspector call gets 401
       `invalid_token` ("This app was disconnected. Connect it again."), and refreshing fails.
+
+In the CRM (with the Inspector's queued changes from the Cautious checks):
+
+- [ ] The sidebar's Approvals count matches the number of pending actions.
+- [ ] `/approvals` lists the Inspector's Change set under its client name, with the reasons given
+      and a readable diff per action; the person page of a record it touches shows a pending
+      badge.
+- [ ] Rejecting the queued `person_create` also rejects an activity logged on its
+      `per_pending_…` id, and the inbox says so; `approval_status` reports both `rejected`.
+- [ ] Approving a queued create: `approval_status` reports `applied` with `bindings` to the real
+      id, and the Audit log links the request to the applied row.
+- [ ] Settings → Connected apps lists the Inspector with its scopes and a recent "last used".
+
+Record each run (date, deployment, Inspector version, pass/fail per line) in the release PR.
 
 ## Troubleshooting
 

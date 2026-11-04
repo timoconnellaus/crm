@@ -4,7 +4,10 @@ import {
   Building2Icon,
   CheckSquareIcon,
   HomeIcon,
+  InboxIcon,
   type LucideIcon,
+  PlugIcon,
+  PuzzleIcon,
   ScrollTextIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -20,11 +23,14 @@ export interface NavItem {
     | "/organisations"
     | "/tasks"
     | "/activity"
+    | "/approvals"
     | "/trash"
     | "/settings"
     | "/settings/approval-policy"
     | "/settings/users"
-    | "/settings/audit";
+    | "/settings/audit"
+    | "/settings/connected-apps"
+    | "/settings/extensions";
   label: string;
   icon: LucideIcon;
   /** Extra words the palette matches on. */
@@ -37,12 +43,24 @@ export const MAIN_NAV: NavItem[] = [
   { to: "/people", label: "People", icon: UsersIcon, keywords: ["contacts", "persons"] },
   { to: "/organisations", label: "Organisations", icon: Building2Icon, keywords: ["companies"] },
   { to: "/tasks", label: "Tasks", icon: CheckSquareIcon, keywords: ["todo"] },
+  {
+    to: "/approvals",
+    label: "Approvals",
+    icon: InboxIcon,
+    keywords: ["review", "pending", "change sets", "inbox", "approve"],
+  },
   { to: "/activity", label: "Activity", icon: ActivityIcon, keywords: ["timeline", "notes"] },
   { to: "/trash", label: "Trash", icon: Trash2Icon, keywords: ["deleted", "restore"] },
 ];
 
 export const SETTINGS_NAV: NavItem[] = [
   { to: "/settings", label: "Settings", icon: SettingsIcon },
+  {
+    to: "/settings/connected-apps",
+    label: "Connected apps",
+    icon: PlugIcon,
+    keywords: ["mcp", "claude", "oauth", "revoke", "settings"],
+  },
   {
     to: "/settings/approval-policy",
     label: "Approval policy",
@@ -62,6 +80,13 @@ export const SETTINGS_NAV: NavItem[] = [
     label: "Audit log",
     icon: ScrollTextIcon,
     keywords: ["history", "changes", "log", "settings"],
+    adminOnly: true,
+  },
+  {
+    to: "/settings/extensions",
+    label: "Extensions",
+    icon: PuzzleIcon,
+    keywords: ["objects", "fields", "tools", "quarantine", "rollback", "settings"],
     adminOnly: true,
   },
 ];

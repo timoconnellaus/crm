@@ -137,3 +137,9 @@ Carry these into stage 3 (extension runtime) and stage 5 (automations):
 3. Plan execution sharding (or a pool of executor DOs) so record-change automations don't
    serialise behind one extension-workspace DO.
 4. Keep `@platformatic/vfs` alongside `@cloudflare/computer` and pin both (UPSTREAMS.md).
+
+## Note, 2026-11-04 (stage 3a)
+The spike code (`SpikeWorkspace`, `/dev/spike/*`, `scripts/spike-bench.mjs`) was replaced by the
+real extension workspace (`apps/runner/src/extensions/`, ADR 0040). The findings above still hold;
+executions are serialised in one Durable Object as predicted, and recommendation 3 (sharding) is
+open for stage 5.

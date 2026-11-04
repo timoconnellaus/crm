@@ -35,7 +35,9 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAppCommands } from "#/components/app-commands";
+import { PendingChangesBadge } from "#/components/approvals/pending-badge";
 import { EmptyState } from "#/components/empty-state";
+import { ExtensionFieldsCards } from "#/components/fields/fields-card";
 import { useMergeAction } from "#/components/merge/merge-action";
 import { faviconUrl } from "#/components/organisations/config";
 import { OrganisationDetailsCard } from "#/components/organisations/organisation-details-card";
@@ -216,6 +218,7 @@ function OrganisationRecord({
         Organisations
       </Link>
       <RecordLayout
+        badge={<PendingChangesBadge object="organisation" id={org.id} />}
         title={org.name}
         subtitle={org.industry || primaryDomain ? subtitle : undefined}
         avatarUrl={faviconUrl(primaryDomain)}
@@ -319,6 +322,7 @@ function OrganisationRecord({
         side={
           <>
             <OrganisationDetailsCard organisation={org} readOnly={deleted} />
+            <ExtensionFieldsCards object="organisation" id={org.id} readOnly={deleted} />
             <OrganisationPeopleCard
               affiliations={people.data}
               isPending={people.isPending}

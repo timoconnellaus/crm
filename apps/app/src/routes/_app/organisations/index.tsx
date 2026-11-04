@@ -94,6 +94,7 @@ function OrganisationsPage() {
         sort={view.state.sort}
         onSortChange={view.setSort}
         filter={view.state.filter}
+        pendingObject="organisation"
         onOpen={(row) => navigate({ to: "/organisations/$id", params: { id: row.id } })}
         renderCell={{
           name: (row) => (

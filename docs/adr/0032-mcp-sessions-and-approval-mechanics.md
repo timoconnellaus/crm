@@ -81,5 +81,24 @@ approved application unambiguously.
   names, which every core writer already does. Extension objects need a loader in
   `SIMULATED_OBJECTS` to appear in simulated reads (stage 3).
 - A deny-all floor can now block approved actions at apply time; they fail with the gate's reason.
-- Pending action inputs and reasons are stored unredacted; `*.erase` does not yet scrub them.
-  Revisit with the stage-7 adjudicator or the next erase change.
+- Pending action inputs and reasons are stored unredacted. (`*.erase` scrubs them: see the
+  amendment below.)
+
+## Amendment, 2026-11-04 (stage 2 UI pass): erase scrubs the approval queue
+`*.erase` (ADR 0019) now also redacts pending actions, in the erase's own batch
+(`queueRedactPending` in `packages/core/src/records/erase.ts`):
+- **Which:** any pending action (whatever its status) that touches an erased record
+  (`core_pending_action_records`) or whose stored `input`, `reason`, `preview`, `simulated`,
+  `error`, `status_reason` or `result` mentions an erased id, email or phone number (the same
+  case-insensitive 6+ character terms as audit redaction).
+- **What:** `input` becomes `"[erased]"`, `reason` `[erased]`, `preview` `[]`, `simulated` empty,
+  `result` `"[erased]"` and `error` `{ code, message: "[erased]" }`. The row, its operation, risk,
+  status and links to the audit log stay, so the queue still shows that something was asked and
+  what happened to it.
+- **Still pending:** such actions are rejected ("a record it mentions was erased"), and pending
+  actions depending on them are rejected with them: they could never apply.
+- The erased records leave `core_pending_action_records` (no more record badges), and change set
+  titles lose exact mentions of the subject.
+
+Like audit redaction this is over-inclusive: an action that mentions the subject loses its whole
+input. Free-text names are not matched (ADR 0019).

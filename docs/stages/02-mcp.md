@@ -127,7 +127,7 @@ bulk.
    Playwright covers approving and rejecting a change set at desktop and phone widths.
 9. Rate limits are enforced per token and tested.
 10. MCP Inspector checklist in `docs/mcp.md` passes.
-11. **Eval set:** 20 natural-language CRM tasks in `evals/mcp/`, run through Claude against a seeded
+11. **Eval set:** 20 natural-language CRM tasks in `evals/mcp/`, run through an MCP client model (Workers AI by default) against a seeded
     deployment, checking tool choice and outcome. A runner script produces a pass/fail report, and
     the first report is committed. The target is at least 17/20, with failures analysed.
 12. `pnpm lint typecheck test` and e2e pass in CI. ADRs, `CONTEXT.md` (Change set, Pending action,

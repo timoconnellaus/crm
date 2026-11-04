@@ -25,7 +25,7 @@ there (in your fork) to switch adapter. Everything else is a **secret** on `crm-
 | --- | --- | --- | --- |
 | `IDENTITY_PROVIDER` | var | always | `better-auth` (default) or `cloudflare-access` |
 | `AUTH_ALLOW_SIGNUP` | var | Better Auth | `false` (default): only the first user can sign up. `true`: open sign-up |
-| `APPROVAL_FLOOR` | var | optional | Approval-policy floor the org's preset can never loosen (ADR 0011/0018). JSON keyed by actor (`human`, `assistant`, `mcp`, `automation` or `*`) then risk class (or `*`), with `auto`, `review`, `deny` or `{"autoUpTo": n, "above": "review"}`. Example: `{"*":{"destructive":"review"}}`. Empty: no floor. Malformed: every operation is refused |
+| `APPROVAL_FLOOR` | var | optional | Approval-policy floor the org's preset can never loosen (ADR 0011/0018). JSON keyed by actor (`human`, `assistant`, `mcp`, `automation`, `extension` or `*`) then risk class (or `*`), with `auto`, `review`, `deny` or `{"autoUpTo": n, "above": "review"}`. Example: `{"*":{"destructive":"review"}}`. Empty: no floor. Malformed: every operation is refused |
 | `APPROVAL_EXPIRY_DAYS` | var | optional | Days before a pending action (an AI change waiting for approval) expires. Default `7` |
 | `MCP_RATE_LIMIT_REQUESTS` | var | optional | Requests per minute per connected app on `/mcp`. Default `120` |
 | `MCP_RATE_LIMIT_WRITES` | var | optional | Changes per minute per connected app. Default `30` |
@@ -48,8 +48,12 @@ the app) becomes its admin; everyone after that is a member until an admin chang
 tokens. Like the D1 database, wrangler provisions it by name on the first deploy. Connecting
 Claude is described in [`mcp.md`](mcp.md).
 
-`crm-runner` has no secrets. Its `DEV_ROUTES` var is `"false"`; only `.dev.vars` sets it to `true`
-locally.
+`crm-runner` has no secrets. It runs extension code, which calls operations there, so set its
+`APPROVAL_FLOOR` var (in `apps/runner/wrangler.jsonc`) to the same value as crm-app's. Extensions
+that use `codemode:ai` need Workers AI: add `"ai": { "binding": "AI" }` to `apps/runner/wrangler.jsonc`
+and, optionally, set `AI_GATEWAY_ID` to route calls through AI Gateway. Without the binding those
+calls fail with a "not configured" error and nothing else changes. Shipped extensions (`extensions/`)
+are installed through `extension.install` on the first request after a deploy.
 
 ## Option 1: Deploy to Cloudflare button
 
