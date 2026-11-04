@@ -29,6 +29,14 @@ export {
 } from "./gate.ts";
 export { LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT, type Sort, sortSchema } from "./list.ts";
 export {
+  ACTORS,
+  type Actor,
+  RISK_CLASSES,
+  type RiskClass,
+  ROLES,
+  type Role,
+} from "./principals.ts";
+export {
   type BoardViewSpec,
   boardViewSpecSchema,
   CALENDAR_MODES,
@@ -50,11 +58,3 @@ export {
   type ViewSpec,
   type ViewType,
 } from "./views/spec.ts";
-export {
-  ACTORS,
-  type Actor,
-  RISK_CLASSES,
-  type RiskClass,
-  ROLES,
-  type Role,
-} from "./principals.ts";

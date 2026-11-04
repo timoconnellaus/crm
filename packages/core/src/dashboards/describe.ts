@@ -12,7 +12,10 @@ export function schemaSummary(): string {
   for (const object of listObjects()) {
     const columns = object.fields
       .filter((f) => f.column)
-      .map((f) => `${f.column} (${f.fieldType ?? f.type}${f.enumValues ? `: ${f.enumValues.join("|")}` : ""})`);
+      .map(
+        (f) =>
+          `${f.column} (${f.fieldType ?? f.type}${f.enumValues ? `: ${f.enumValues.join("|")}` : ""})`,
+      );
     lines.push(`${object.source} -- ${object.label} records: ${columns.join(", ")}`);
   }
   lines.push(
@@ -25,7 +28,10 @@ export function schemaSummary(): string {
   return lines.join("\n");
 }
 
-export function describePrompt(prompt: string, filters: readonly DashboardFilter[]): ModelMessage[] {
+export function describePrompt(
+  prompt: string,
+  filters: readonly DashboardFilter[],
+): ModelMessage[] {
   const params = allowedParamNames(filters);
   const system = [
     "You write one dashboard widget for a CRM as a single JSON object, and nothing else.",
@@ -114,7 +120,10 @@ const FAKE_WIDGETS: FakeWidget[] = [
       title: "Tasks by status",
       sql: "SELECT status AS label, COUNT(*) AS value FROM crm_tasks GROUP BY status ORDER BY status",
       mapping: { x: "label", y: "value" },
-      clickThrough: { object: "task", filter: { field: "status", op: "eq", value: { $row: "label" } } },
+      clickThrough: {
+        object: "task",
+        filter: { field: "status", op: "eq", value: { $row: "label" } },
+      },
     },
   },
   {

@@ -63,16 +63,26 @@ export function GalleryView({ info, spec }: { info: ObjectInfo; spec: GallerySpe
   return (
     <div ref={ref} className="px-4 pt-4 pb-6 sm:px-6" data-testid="gallery">
       {query.isPending ? (
-        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))` }}>
+        <div
+          className="grid gap-3"
+          style={{ gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))` }}
+        >
           {Array.from({ length: perRow * 2 }, (_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: placeholders.
             <Skeleton key={i} className="h-28" />
           ))}
         </div>
       ) : query.isError ? (
-        <ErrorState title="Could not load the gallery" error={query.error} onRetry={() => void query.refetch()} />
+        <ErrorState
+          title="Could not load the gallery"
+          error={query.error}
+          onRetry={() => void query.refetch()}
+        />
       ) : !rows.length ? (
-        <EmptyState icon={LayoutGridIcon} title={`No ${(info.plural ?? info.label).toLowerCase()} here`} />
+        <EmptyState
+          icon={LayoutGridIcon}
+          title={`No ${(info.plural ?? info.label).toLowerCase()} here`}
+        />
       ) : (
         <VirtualFeed
           items={rows}

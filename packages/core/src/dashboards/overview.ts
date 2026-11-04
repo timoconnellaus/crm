@@ -231,7 +231,7 @@ export const OVERVIEW_DASHBOARD: {
         sql: [
           "SELECT t.id AS id, t.title AS title, t.due_at AS due, u.name AS assignee",
           "FROM crm_tasks t LEFT JOIN crm_users u ON u.id = t.assignee_id",
-          "WHERE t.status = 'open' AND t.due_at >= " + MIN,
+          `WHERE t.status = 'open' AND t.due_at >= ${MIN}`,
           "  AND (:owner IS NULL OR t.assignee_id = :owner)",
           "ORDER BY t.due_at, t.id",
         ].join("\n"),

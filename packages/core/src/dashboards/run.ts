@@ -8,12 +8,7 @@ import { getObject } from "../fields/index.ts";
 import type { Filter } from "../filter.ts";
 import type { HandlerContext } from "../operation.ts";
 import { runReadOnlySql, schemaObjectNames, validateReadOnlySql } from "../operations/query.ts";
-import {
-  cacheApiWidgetCache,
-  visibilityScope,
-  type WidgetCache,
-  widgetCacheKey,
-} from "./cache.ts";
+import { cacheApiWidgetCache, visibilityScope, type WidgetCache, widgetCacheKey } from "./cache.ts";
 import { bindNamedParams, type ParamValues, resolveParams } from "./params.ts";
 import {
   allowedParamNames,
@@ -68,7 +63,8 @@ function maxRowsFor(widget: WidgetSpec): number {
 /** True when the SQL reads one of the dashboard's date-range params. */
 function usesDateRange(names: readonly string[], filters: readonly DashboardFilter[]): boolean {
   return filters.some(
-    (f) => f.type === "dateRange" && (names.includes(`${f.id}_from`) || names.includes(`${f.id}_to`)),
+    (f) =>
+      f.type === "dateRange" && (names.includes(`${f.id}_from`) || names.includes(`${f.id}_to`)),
   );
 }
 

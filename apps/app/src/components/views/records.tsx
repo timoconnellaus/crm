@@ -33,7 +33,13 @@ export function viewKey(object: string, ...parts: unknown[]): unknown[] {
 /** A list read of any object's records, with the fields the view shows. */
 export async function fetchRecords(
   object: string,
-  input: { filter?: Filter | undefined; sort?: Sort | undefined; cursor?: string; limit?: number; fields: string[] },
+  input: {
+    filter?: Filter | undefined;
+    sort?: Sort | undefined;
+    cursor?: string;
+    limit?: number;
+    fields: string[];
+  },
 ): Promise<{ items: ViewRecord[]; nextCursor: string | null }> {
   const page = await callOp("record.list", {
     object,
@@ -162,7 +168,8 @@ export function CardValue({ field, value }: { field: FieldInfo; value: unknown }
   }
   if (field.type === "datetime") return formatDateTime(String(value));
   if (field.type === "date") return formatDate(String(value));
-  if (field.type === "enum") return <Badge variant="secondary">{choiceLabel(field, String(value))}</Badge>;
+  if (field.type === "enum")
+    return <Badge variant="secondary">{choiceLabel(field, String(value))}</Badge>;
   if (field.type === "id" && /(owner|assignee|author|user|createdBy)/i.test(field.name)) {
     return userLabel(String(value)) || String(value);
   }

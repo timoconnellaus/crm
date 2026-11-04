@@ -143,7 +143,12 @@ function TasksPage() {
       ) : view.state.type === "table" ? (
         <AllTasks state={all} total={allCount.data} />
       ) : (
-        info && <ObjectViewBody info={info} view={{ ...view, state: { ...view.state, filter: all.combined } }} />
+        info && (
+          <ObjectViewBody
+            info={info}
+            view={{ ...view, state: { ...view.state, filter: all.combined } }}
+          />
+        )
       )}
     </PageLayout>
   );

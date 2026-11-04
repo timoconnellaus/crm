@@ -134,55 +134,55 @@ function PeoplePage() {
       {type !== "table" ? (
         info && <ObjectViewBody info={info} view={view} />
       ) : (
-      <DataTable<PersonRow>
-        object={personObject}
-        label="People"
-        queryKey={QUERY_KEY}
-        fetchPage={fetchPeople}
-        columns={view.state.columns}
-        availableColumns={PERSON_COLUMNS}
-        extraFields={EXTRA_FIELDS}
-        sort={view.state.sort}
-        onSortChange={view.setSort}
-        filter={view.state.filter}
-        total={count.data}
-        pendingObject="person"
-        onOpen={(row) => navigate({ to: "/people/$id", params: { id: row.id } })}
-        renderCell={{
-          displayName: (row) => (
-            <Link
-              to="/people/$id"
-              params={{ id: row.id }}
-              className="inline-flex min-w-0 items-center gap-2 font-medium hover:underline"
-            >
-              <Avatar className="size-6">
-                <AvatarFallback className="text-[10px]">
-                  {initials(row.displayName ?? "")}
-                </AvatarFallback>
-              </Avatar>
-              <span className="truncate">{row.displayName}</span>
-            </Link>
-          ),
-          ownerId: (row) =>
-            userLabel(row.ownerId) || <span className="text-muted-foreground">—</span>,
-        }}
-        bulkActions={({ ids, clear }) => (
-          <BulkActions object="person" selected={ids.map((id) => ({ id }))} onDone={clear} />
-        )}
-        empty={
-          <EmptyState
-            icon={UsersIcon}
-            title="No people yet"
-            description="Add the first person to start building your CRM."
-            action={
-              <Button onClick={() => create("person")}>
-                <UserPlusIcon />
-                New person
-              </Button>
-            }
-          />
-        }
-      />
+        <DataTable<PersonRow>
+          object={personObject}
+          label="People"
+          queryKey={QUERY_KEY}
+          fetchPage={fetchPeople}
+          columns={view.state.columns}
+          availableColumns={PERSON_COLUMNS}
+          extraFields={EXTRA_FIELDS}
+          sort={view.state.sort}
+          onSortChange={view.setSort}
+          filter={view.state.filter}
+          total={count.data}
+          pendingObject="person"
+          onOpen={(row) => navigate({ to: "/people/$id", params: { id: row.id } })}
+          renderCell={{
+            displayName: (row) => (
+              <Link
+                to="/people/$id"
+                params={{ id: row.id }}
+                className="inline-flex min-w-0 items-center gap-2 font-medium hover:underline"
+              >
+                <Avatar className="size-6">
+                  <AvatarFallback className="text-[10px]">
+                    {initials(row.displayName ?? "")}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="truncate">{row.displayName}</span>
+              </Link>
+            ),
+            ownerId: (row) =>
+              userLabel(row.ownerId) || <span className="text-muted-foreground">—</span>,
+          }}
+          bulkActions={({ ids, clear }) => (
+            <BulkActions object="person" selected={ids.map((id) => ({ id }))} onDone={clear} />
+          )}
+          empty={
+            <EmptyState
+              icon={UsersIcon}
+              title="No people yet"
+              description="Add the first person to start building your CRM."
+              action={
+                <Button onClick={() => create("person")}>
+                  <UserPlusIcon />
+                  New person
+                </Button>
+              }
+            />
+          }
+        />
       )}
     </PageLayout>
   );

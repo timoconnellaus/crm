@@ -145,7 +145,13 @@ describe("view specs", () => {
       .bind(
         id,
         bob.id,
-        JSON.stringify({ type: "table", object: "task", filter: null, sort: null, columns: ["title"] }),
+        JSON.stringify({
+          type: "table",
+          object: "task",
+          filter: null,
+          sort: null,
+          columns: ["title"],
+        }),
         now,
         now,
       )
@@ -172,7 +178,9 @@ describe("personal and shared views", () => {
     expect(shared).toMatchObject({ shared: true, canEdit: true, ownerId: alice.id });
 
     for (const user of [bob, viewer, admin]) {
-      const ids = (await invoke("view.list", { object: "task" }, context(user))).items.map((v) => v.id);
+      const ids = (await invoke("view.list", { object: "task" }, context(user))).items.map(
+        (v) => v.id,
+      );
       expect(ids).toContain(shared.id);
       expect(ids).not.toContain(personal.id);
     }
@@ -239,7 +247,11 @@ describe("board data", () => {
     await expect(
       invoke("record.groups", { object: "task", groupBy: "title" }, context(alice)),
     ).rejects.toBeInstanceOf(ValidationError);
-    const tasks = await invoke("record.groups", { object: "task", groupBy: "status" }, context(alice));
+    const tasks = await invoke(
+      "record.groups",
+      { object: "task", groupBy: "status" },
+      context(alice),
+    );
     expect(tasks.groups.every((g) => g.sum === null)).toBe(true);
   });
 

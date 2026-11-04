@@ -34,7 +34,9 @@ export function resolveDateWindow(value: FilterValue | undefined, now: Date): Da
     const from = Date.parse(`${value.from}T00:00:00.000Z`);
     const to = Date.parse(`${value.to}T00:00:00.000Z`) + DAY;
     if (Number.isNaN(from) || Number.isNaN(to) || to <= from) {
-      throw new ValidationError("A date range must end on or after its start", { field: "filters" });
+      throw new ValidationError("A date range must end on or after its start", {
+        field: "filters",
+      });
     }
     return { from: iso(from), to: iso(to) };
   }
@@ -76,10 +78,7 @@ export function resolveDateWindow(value: FilterValue | undefined, now: Date): Da
  * The window just before `window`: calendar presets step back one unit (this month → last
  * month), rolling and custom ranges step back by their own length.
  */
-export function previousWindow(
-  value: FilterValue | undefined,
-  window: DateWindow,
-): DateWindow {
+export function previousWindow(value: FilterValue | undefined, window: DateWindow): DateWindow {
   const from = new Date(window.from);
   const y = from.getUTCFullYear();
   const m = from.getUTCMonth();

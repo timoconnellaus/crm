@@ -76,7 +76,11 @@ function overview(homeId: string | null): Dashboard {
   };
 }
 
-function fromRow(row: DashboardRow, ctx: Pick<HandlerContext, "user">, homeId: string | null): Dashboard {
+function fromRow(
+  row: DashboardRow,
+  ctx: Pick<HandlerContext, "user">,
+  homeId: string | null,
+): Dashboard {
   const spec = dashboardSpecSchema.parse(JSON.parse(row.spec));
   const owner = row.owner_id === ctx.user.id;
   return {
@@ -143,7 +147,9 @@ async function requireEditable(ctx: HandlerContext, id: string): Promise<Dashboa
   return dashboard;
 }
 
-const snapshot = (d: Pick<Dashboard, "title" | "description" | "shared" | "filters" | "widgets">) => ({
+const snapshot = (
+  d: Pick<Dashboard, "title" | "description" | "shared" | "filters" | "widgets">,
+) => ({
   title: d.title,
   description: d.description,
   shared: d.shared,
@@ -350,7 +356,12 @@ export const dashboardDelete = defineOperation({
       ctx.db.deleteFrom("core_dashboards").where("id", "=", input.id),
       ctx.db.deleteFrom("core_user_home").where("dashboard_id", "=", input.id),
     );
-    ctx.recordChange({ object: "dashboard", id: input.id, action: "delete", before: snapshot(before) });
+    ctx.recordChange({
+      object: "dashboard",
+      id: input.id,
+      action: "delete",
+      before: snapshot(before),
+    });
     return { id: input.id, deleted: true as const };
   },
 });
@@ -375,7 +386,9 @@ export const dashboardSetHome = defineOperation({
         .insertInto("core_user_home")
         .values({ user_id: ctx.user.id, dashboard_id: input.id, updated_at: ctx.now })
         .onConflict((oc) =>
-          oc.column("user_id").doUpdateSet({ dashboard_id: input.id as string, updated_at: ctx.now }),
+          oc
+            .column("user_id")
+            .doUpdateSet({ dashboard_id: input.id as string, updated_at: ctx.now }),
         ),
     );
     return { homeId: input.id };
@@ -462,7 +475,10 @@ export const widgetPreview = defineOperation({
   risk: "read",
   mcp: { idempotent: true },
   async handler(input, ctx) {
-    await validateDashboardSpec(ctx.db, { filters: input.dashboardFilters, widgets: [input.widget] });
+    await validateDashboardSpec(ctx.db, {
+      filters: input.dashboardFilters,
+      widgets: [input.widget],
+    });
     return runWidget(ctx, {
       widget: input.widget,
       filters: input.dashboardFilters,
@@ -519,7 +535,7 @@ function parseAnswer(text: string): { widget: WidgetSpec } | { error: string } {
 export const widgetDescribe = defineOperation({
   name: "widget.describe",
   description:
-    "Turn a plain-language description (\"tasks by status as a bar chart\") into a widget spec " +
+    'Turn a plain-language description ("tasks by status as a bar chart") into a widget spec ' +
     "with the `build` model role, then validate and preview it. Nothing is saved. Says the AI " +
     "is not configured when the deployment has no model.",
   input: z.object({
@@ -571,7 +587,13 @@ export const widgetDescribe = defineOperation({
             filters: input.dashboardFilters,
             values: input.filters,
           });
-          return { status: "ok" as const, widget: parsed.widget, preview, model, attempts: attempt };
+          return {
+            status: "ok" as const,
+            widget: parsed.widget,
+            preview,
+            model,
+            attempts: attempt,
+          };
         } catch (error) {
           if (!(error instanceof OperationError)) throw error;
           lastError = error.message;

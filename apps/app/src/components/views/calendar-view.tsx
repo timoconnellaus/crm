@@ -72,7 +72,11 @@ export function moveToDay(value: unknown, key: string, fieldType: string): strin
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const monthTitle = new Intl.DateTimeFormat("en", { month: "long", year: "numeric" });
-const dayTitle = new Intl.DateTimeFormat("en", { weekday: "short", day: "numeric", month: "short" });
+const dayTitle = new Intl.DateTimeFormat("en", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
 
 /** The [from, to) bound values a range filter on the field compares with. */
 function rangeFilter(field: string, type: string, from: Date, to: Date): Filter {
@@ -182,7 +186,13 @@ export function CalendarView({
   );
 }
 
-function useRangeRecords(info: ObjectInfo, spec: CalendarSpec, from: Date, to: Date, fieldType: string) {
+function useRangeRecords(
+  info: ObjectInfo,
+  spec: CalendarSpec,
+  from: Date,
+  to: Date,
+  fieldType: string,
+) {
   const filter = andFilters(spec.filter, rangeFilter(spec.dateField, fieldType, from, to));
   const fields = [spec.dateField, ...spec.cardFields];
   return useQuery({
@@ -242,9 +252,12 @@ function Grid({
 
   return (
     <div className="overflow-x-auto">
-      <div className="grid min-w-[42rem] grid-cols-7 overflow-hidden rounded-lg border" role="grid">
+      <div className="grid min-w-[42rem] grid-cols-7 overflow-hidden rounded-lg border">
         {WEEKDAYS.map((d) => (
-          <div key={d} className="border-b bg-muted/40 px-2 py-1 text-xs font-medium text-muted-foreground">
+          <div
+            key={d}
+            className="border-b bg-muted/40 px-2 py-1 text-xs font-medium text-muted-foreground"
+          >
             {d}
           </div>
         ))}
@@ -254,9 +267,8 @@ function Grid({
           const shown = week ? items : items.slice(0, 3);
           const outside = month !== null && day.getMonth() !== month;
           return (
-            <div
+            <section
               key={key}
-              role="gridcell"
               aria-label={dayTitle.format(day)}
               data-testid={`calendar-day-${key}`}
               className={cn(
@@ -304,7 +316,7 @@ function Grid({
               {!week && items.length > shown.length && (
                 <MoreEvents info={info} spec={spec} items={items} day={day} onMove={onMove} />
               )}
-            </div>
+            </section>
           );
         })}
       </div>
@@ -412,7 +424,14 @@ function MoreEvents({
       <PopoverContent className="grid max-h-80 w-64 gap-1 overflow-y-auto">
         <p className="text-xs font-medium">{dayTitle.format(day)}</p>
         {items.map((record) => (
-          <CalendarEvent key={record.id} info={info} record={record} spec={spec} compact onMove={onMove} />
+          <CalendarEvent
+            key={record.id}
+            info={info}
+            record={record}
+            spec={spec}
+            compact
+            onMove={onMove}
+          />
         ))}
       </PopoverContent>
     </Popover>
@@ -470,7 +489,11 @@ function Agenda({
     );
   }
   if (!groups.length) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Nothing scheduled from here on.</p>;
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Nothing scheduled from here on.
+      </p>
+    );
   }
   return (
     <div className="grid gap-4" data-testid="calendar-agenda">
@@ -483,7 +506,13 @@ function Agenda({
           {items.map((record) => (
             <div key={record.id} className="flex items-center gap-2">
               <div className="min-w-0 flex-1">
-                <CalendarEvent info={info} record={record} spec={spec} compact={false} onMove={onMove} />
+                <CalendarEvent
+                  info={info}
+                  record={record}
+                  spec={spec}
+                  compact={false}
+                  onMove={onMove}
+                />
               </div>
             </div>
           ))}

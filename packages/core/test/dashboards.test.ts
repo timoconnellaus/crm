@@ -7,12 +7,12 @@ import {
   ALL_TIME,
   bindNamedParams,
   type DashboardSpecInput,
-  fakeBuildModel,
   type Filter,
   ForbiddenError,
+  fakeBuildModel,
   invoke,
-  memoryWidgetCache,
   type ModelRunner,
+  memoryWidgetCache,
   NotFoundError,
   OVERVIEW_DASHBOARD,
   OVERVIEW_DASHBOARD_ID,
@@ -146,7 +146,10 @@ describe("widget SQL guard", () => {
     ["pragma", "PRAGMA table_info(crm_people)"],
     ["unknown params", "SELECT :secret AS value"],
     ["positional params", "SELECT ? AS value"],
-    ["recursion", "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM r) SELECT n FROM r"],
+    [
+      "recursion",
+      "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM r) SELECT n FROM r",
+    ],
   ])("refuses %s", async (_name, sql) => {
     await expect(preview(sql)).rejects.toBeInstanceOf(ValidationError);
   });
@@ -166,7 +169,14 @@ describe("widget SQL guard", () => {
 
   it("binds a field filter as a named param", async () => {
     const result = await preview("SELECT COUNT(*) AS value FROM crm_tasks WHERE status = :status", [
-      { type: "field", id: "status", label: "Status", object: "task", field: "status", default: "done" },
+      {
+        type: "field",
+        id: "status",
+        label: "Status",
+        object: "task",
+        field: "status",
+        default: "done",
+      },
     ]);
     expect(result.params.status).toBe("done");
   });
@@ -213,8 +223,14 @@ describe("Overview click-through", () => {
     ] as const) {
       await invoke(
         "activity.log",
-        // biome-ignore lint/suspicious/noExplicitAny: each type's payload is optional.
-        { type, subject: unique("Act"), body: "Notes", occurredAt: when, links: [{ object: "person", id: anchor.id }] } as any,
+        {
+          type,
+          subject: unique("Act"),
+          body: "Notes",
+          occurredAt: when,
+          links: [{ object: "person", id: anchor.id }],
+          // biome-ignore lint/suspicious/noExplicitAny: each type's payload is optional.
+        } as any,
         context(owner),
       );
     }
@@ -328,7 +344,11 @@ describe("Overview click-through", () => {
   it("follows the owner filter, and drops unset filters from click-throughs", async () => {
     const result = await invoke(
       "widget.run",
-      { dashboardId: OVERVIEW_DASHBOARD_ID, widgetId: "people-added", filters: { date: values.date } },
+      {
+        dashboardId: OVERVIEW_DASHBOARD_ID,
+        widgetId: "people-added",
+        filters: { date: values.date },
+      },
       context(owner, { clock, widgetCache: memoryWidgetCache() }),
     );
     expect(Number(result.rows[0]?.value)).toBeGreaterThanOrEqual(4);
@@ -360,7 +380,11 @@ describe("widget result cache", () => {
 
     const first = await run(member);
     expect(first.cached).toBe(false);
-    await invoke("person.create", { displayName: unique("Cached"), ownerId: member.id }, context(member));
+    await invoke(
+      "person.create",
+      { displayName: unique("Cached"), ownerId: member.id },
+      context(member),
+    );
     const second = await run(member);
     expect(second.cached).toBe(true);
     expect(second.rows).toEqual(first.rows);
@@ -439,7 +463,9 @@ describe("dashboards: ownership and Home", () => {
     // Members view shared dashboards; only the owner and admins edit them.
     const asBob = await invoke("dashboard.get", { id: team.id }, context(bob));
     expect(asBob.canEdit).toBe(false);
-    expect((await invoke("widget.run", { dashboardId: team.id, widgetId: "count" }, context(bob))).rows).toHaveLength(1);
+    expect(
+      (await invoke("widget.run", { dashboardId: team.id, widgetId: "count" }, context(bob))).rows,
+    ).toHaveLength(1);
     await expect(
       invoke("dashboard.update", { id: team.id, title: "Bob's" }, context(bob)),
     ).rejects.toBeInstanceOf(ForbiddenError);
@@ -562,7 +588,11 @@ describe("widget.describe", () => {
         return { text: answers.shift() ?? "", model: "test" };
       },
     };
-    const result = await invoke("widget.describe", { prompt: "count people" }, context(user, { models }));
+    const result = await invoke(
+      "widget.describe",
+      { prompt: "count people" },
+      context(user, { models }),
+    );
     expect(result).toMatchObject({ status: "ok", attempts: 2 });
     expect(seen[1]).toMatch(/core_person is not readable/);
   });

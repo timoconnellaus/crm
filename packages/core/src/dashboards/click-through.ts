@@ -35,11 +35,7 @@ function resolveValue(
   return value;
 }
 
-function resolveFilter(
-  filter: Filter,
-  row: Row,
-  params: Record<string, unknown>,
-): Filter | null {
+function resolveFilter(filter: Filter, row: Row, params: Record<string, unknown>): Filter | null {
   if ("and" in filter || "or" in filter) {
     const key = "and" in filter ? "and" : "or";
     const parts = ((filter as Record<string, Filter[]>)[key] ?? [])

@@ -92,7 +92,13 @@ export function BoardView({ info, spec }: { info: ObjectInfo; spec: BoardSpec })
   const [missing, setMissing] = useState<MissingField | null>(null);
 
   const groups = useQuery({
-    queryKey: viewKey(info.name, "groups", spec.groupBy, spec.sumField ?? null, spec.filter ?? null),
+    queryKey: viewKey(
+      info.name,
+      "groups",
+      spec.groupBy,
+      spec.sumField ?? null,
+      spec.filter ?? null,
+    ),
     queryFn: () =>
       callOp("record.groups", {
         object: info.name,
@@ -126,7 +132,12 @@ export function BoardView({ info, spec }: { info: ObjectInfo; spec: BoardSpec })
   const stats = (value: string) =>
     groups.data?.groups.find((g) => (g.value ?? NONE) === value) ?? { count: 0, sum: null };
 
-  async function move(record: ViewRecord, from: string, to: string, extra: Record<string, unknown> = {}) {
+  async function move(
+    record: ViewRecord,
+    from: string,
+    to: string,
+    extra: Record<string, unknown> = {},
+  ) {
     if (from === to && !Object.keys(extra).length) return;
     const entry = { record, from, to };
     setPending((list) => [...list.filter((p) => p.record.id !== record.id), entry]);
@@ -237,7 +248,11 @@ function BoardColumn({
     const kept = loaded.filter((r) => !movedAway.has(r.id) && !arriving.some((a) => a.id === r.id));
     return [...arriving, ...kept];
   }, [query.data, movedAway, arriving]);
-  const shownCount = count - movedAway.size + arriving.filter((a) => !query.data?.pages.some((p) => p.items.some((i) => i.id === a.id))).length;
+  const shownCount =
+    count -
+    movedAway.size +
+    arriving.filter((a) => !query.data?.pages.some((p) => p.items.some((i) => i.id === a.id)))
+      .length;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -288,12 +303,19 @@ function BoardColumn({
           {countPending ? "…" : Math.max(0, shownCount)}
         </Badge>
         {sum !== null && (
-          <span className="ml-auto truncate text-xs text-muted-foreground" title={sumLabel} data-testid="board-column-sum">
+          <span
+            className="ml-auto truncate text-xs text-muted-foreground"
+            title={sumLabel}
+            data-testid="board-column-sum"
+          >
             {sum}
           </span>
         )}
       </header>
-      <div ref={scrollRef} className="min-h-24 flex-1 overflow-y-auto overscroll-y-contain px-2 pb-2">
+      <div
+        ref={scrollRef}
+        className="min-h-24 flex-1 overflow-y-auto overscroll-y-contain px-2 pb-2"
+      >
         {query.isPending ? (
           <div className="grid gap-2">
             <Skeleton className="h-20" />
@@ -377,7 +399,9 @@ export function MissingFieldDialog({
   onCancel: () => void;
   onSubmit: (value: unknown) => Promise<void>;
 }) {
-  const [value, setValue] = useState<unknown>(missing.move.record.values[missing.field.name] ?? null);
+  const [value, setValue] = useState<unknown>(
+    missing.move.record.values[missing.field.name] ?? null,
+  );
   const [saving, setSaving] = useState(false);
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -401,7 +425,12 @@ export function MissingFieldDialog({
           </DialogHeader>
           <div className="grid gap-1.5">
             <Label htmlFor="missing-field">{missing.field.label}</Label>
-            <FieldEditor id="missing-field" field={missing.field} value={value} onChange={setValue} />
+            <FieldEditor
+              id="missing-field"
+              field={missing.field}
+              value={value}
+              onChange={setValue}
+            />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onCancel}>

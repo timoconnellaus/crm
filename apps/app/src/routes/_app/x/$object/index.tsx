@@ -166,36 +166,36 @@ function ObjectList({ info }: { info: ObjectInfo }) {
       {type !== "table" ? (
         <ObjectViewBody info={info} view={view} />
       ) : (
-      <DataTable<Row>
-        object={definition}
-        label={plural}
-        queryKey={["op", "record.list", info.name]}
-        fetchPage={fetchPage}
-        columns={view.state.columns}
-        availableColumns={available}
-        extraFields={[titleField]}
-        sort={view.state.sort}
-        onSortChange={view.setSort}
-        filter={view.state.filter}
-        total={count.data}
-        onOpen={(row) =>
-          navigate({ to: "/x/$object/$id", params: { object: info.name, id: row.id } })
-        }
-        renderCell={renderCell}
-        empty={
-          <EmptyState
-            icon={BoxIcon}
-            title={`No ${plural.toLowerCase()} yet`}
-            description={info.description ?? undefined}
-            action={
-              <Button onClick={() => setCreating(true)}>
-                <PlusIcon />
-                New {info.label.toLowerCase()}
-              </Button>
-            }
-          />
-        }
-      />
+        <DataTable<Row>
+          object={definition}
+          label={plural}
+          queryKey={["op", "record.list", info.name]}
+          fetchPage={fetchPage}
+          columns={view.state.columns}
+          availableColumns={available}
+          extraFields={[titleField]}
+          sort={view.state.sort}
+          onSortChange={view.setSort}
+          filter={view.state.filter}
+          total={count.data}
+          onOpen={(row) =>
+            navigate({ to: "/x/$object/$id", params: { object: info.name, id: row.id } })
+          }
+          renderCell={renderCell}
+          empty={
+            <EmptyState
+              icon={BoxIcon}
+              title={`No ${plural.toLowerCase()} yet`}
+              description={info.description ?? undefined}
+              action={
+                <Button onClick={() => setCreating(true)}>
+                  <PlusIcon />
+                  New {info.label.toLowerCase()}
+                </Button>
+              }
+            />
+          }
+        />
       )}
       <CreateRecordDialog
         object={info}

@@ -29,8 +29,8 @@ export {
   type TableViewSpec,
   tableViewSpecSchema,
   type ViewSpec,
-  viewSpecSchema,
   validateViewSpec,
+  viewSpecSchema,
 } from "../views/spec.ts";
 
 const viewId = z.string().startsWith("vw_").max(64).describe("Saved view id (vw_…)");
@@ -86,7 +86,8 @@ async function requireVisibleView(
   id: string,
 ): Promise<SavedView> {
   const row = await db.selectFrom("core_views").selectAll().where("id", "=", id).executeTakeFirst();
-  if (!row || (row.user_id !== ctx.user.id && row.shared !== 1)) throw new NotFoundError("view", id);
+  if (!row || (row.user_id !== ctx.user.id && row.shared !== 1))
+    throw new NotFoundError("view", id);
   return toView(row, ctx);
 }
 
@@ -235,7 +236,8 @@ export const viewDelete = defineOperation({
 
 export const viewGet = defineOperation({
   name: "view.get",
-  description: "Get one saved view you can see (your own or a shared one) with its spec. Read-only.",
+  description:
+    "Get one saved view you can see (your own or a shared one) with its spec. Read-only.",
   input: z.object({ id: viewId }),
   output: savedViewSchema,
   permission: "records:read",

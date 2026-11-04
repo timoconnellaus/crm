@@ -68,9 +68,12 @@ function toRecordView(
     const object = getObject(entry.view.object);
     if (!object) throw new ValidationError(`Unknown object ${entry.view.object}`);
     if (!object.fields.some((f) => f.name === entry.view.relation && f.filterable)) {
-      throw new ValidationError(`${entry.view.object} has no filterable field ${entry.view.relation}`);
+      throw new ValidationError(
+        `${entry.view.object} has no filterable field ${entry.view.relation}`,
+      );
     }
-    const titleField = object.titleField ?? object.fields.find((f) => f.name !== "id")?.name ?? "id";
+    const titleField =
+      object.titleField ?? object.fields.find((f) => f.name !== "id")?.name ?? "id";
     const system = new Set(["id", "createdAt", "updatedAt", "createdBy", entry.view.relation]);
     const shown = object.fields
       .filter((f) => !system.has(f.name) && f.column && (!object.extension || f.extension))
@@ -119,7 +122,10 @@ export const viewRecordViews = defineOperation({
 });
 
 /** The filter a record view lists with: its own filter AND relation = the record's id. */
-export function recordViewFilter(view: Pick<RecordView, "relation" | "spec">, recordId: string): Filter {
+export function recordViewFilter(
+  view: Pick<RecordView, "relation" | "spec">,
+  recordId: string,
+): Filter {
   const own = view.spec?.filter;
   const match: Filter = { field: view.relation, op: "eq", value: recordId };
   return own ? { and: [match, own] } : match;
@@ -236,7 +242,8 @@ export const extensionSettingsUpdate = defineOperation({
   risk: "write",
   async handler(input, ctx) {
     const ext = (await activeManifests(ctx)).find((e) => e.id === input.extension);
-    if (!ext) throw new ValidationError(`No active extension ${input.extension}`, { field: "extension" });
+    if (!ext)
+      throw new ValidationError(`No active extension ${input.extension}`, { field: "extension" });
     const declared = ext.manifest.settings ?? {};
     const stored = (await storedSettings(ctx, [ext.id])).get(ext.id);
     const next: Record<string, unknown> = { ...(stored?.value ?? {}) };

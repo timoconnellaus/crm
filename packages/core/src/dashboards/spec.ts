@@ -116,7 +116,11 @@ export const widgetMappingSchema = z
       .max(80)
       .optional()
       .describe("A column whose values split rows into series (long format, bar/line)"),
-    label: z.string().max(80).optional().describe("Segment or row label column (donut, leaderboard)"),
+    label: z
+      .string()
+      .max(80)
+      .optional()
+      .describe("Segment or row label column (donut, leaderboard)"),
     value: z.string().max(80).optional().describe("Value column (kpi, donut, funnel, leaderboard)"),
     columns: z.array(z.string().max(80)).max(20).optional().describe("Columns shown (table)"),
   })
@@ -130,7 +134,10 @@ export const widgetOptionsSchema = z
     area: z.boolean().optional().describe("line: fill as an area chart"),
     pie: z.boolean().optional().describe("donut: a full pie instead of a ring"),
     format: z.enum(["number", "currency", "percent"]).optional(),
-    currency: z.string().regex(/^[A-Z]{3}$/).optional(),
+    currency: z
+      .string()
+      .regex(/^[A-Z]{3}$/)
+      .optional(),
     compare: z
       .boolean()
       .optional()

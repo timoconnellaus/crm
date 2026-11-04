@@ -15,7 +15,10 @@ describe("example extension (test host)", () => {
       on: "organisation",
       view: { type: "table", object: "example.project", relation: "organisation" },
     });
-    expect(host.manifest.settings.defaultStatus).toMatchObject({ type: "select", default: "planned" });
+    expect(host.manifest.settings.defaultStatus).toMatchObject({
+      type: "select",
+      default: "planned",
+    });
     expect(
       host.manifest.objects.project?.fields.status?.options?.find((o) => o.value === "done"),
     ).toMatchObject({ requires: ["spent"] });

@@ -215,8 +215,12 @@ export function assertChoiceRequirements(
       .filter((f): f is FieldDefinition => Boolean(f))
       .filter((f) => {
         const value = values[f.name];
-        return value === null || value === undefined || value === "" ||
-          (Array.isArray(value) && value.length === 0);
+        return (
+          value === null ||
+          value === undefined ||
+          value === "" ||
+          (Array.isArray(value) && value.length === 0)
+        );
       });
     const first = missing[0];
     if (first) {

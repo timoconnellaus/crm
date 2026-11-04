@@ -34,10 +34,16 @@ export const groupableFields = (info: ObjectInfo) =>
 export const summableFields = (info: ObjectInfo) =>
   info.fields.filter((f) => f.type === "number" && !f.multi && f.sortable);
 export const dateFields = (info: ObjectInfo) =>
-  info.fields.filter((f) => (f.type === "date" || f.type === "datetime") && !f.multi && f.filterable);
+  info.fields.filter(
+    (f) => (f.type === "date" || f.type === "datetime") && !f.multi && f.filterable,
+  );
 const SYSTEM_DATES = new Set(["createdAt", "updatedAt", "completedAt", "deletedAt"]);
 const imageFields = (info: ObjectInfo) =>
-  info.fields.filter((f) => f.fieldType === "url" || (f.type === "text" && /image|logo|photo|avatar/i.test(f.name) && f.filterable));
+  info.fields.filter(
+    (f) =>
+      f.fieldType === "url" ||
+      (f.type === "text" && /image|logo|photo|avatar/i.test(f.name) && f.filterable),
+  );
 const cardCandidates = (info: ObjectInfo) =>
   info.fields.filter(
     (f) => f.name !== "id" && f.name !== info.titleField && !f.multi && f.type !== "json",
@@ -60,7 +66,8 @@ export function defaultLayout(
   const cards = (current.cardFields ?? columns.filter((c) => c !== info.titleField)).slice(0, 4);
   switch (type) {
     case "board": {
-      const group = groupableFields(info).find((f) => f.name === current.groupBy) ?? groupableFields(info)[0];
+      const group =
+        groupableFields(info).find((f) => f.name === current.groupBy) ?? groupableFields(info)[0];
       if (!group) return null;
       return {
         groupBy: group.name,
@@ -87,17 +94,15 @@ export function defaultLayout(
   }
 }
 
-export function ViewTypeSwitcher({
-  info,
-  view,
-}: {
-  info: ObjectInfo;
-  view: ViewStateApi;
-}) {
+export function ViewTypeSwitcher({ info, view }: { info: ObjectInfo; view: ViewStateApi }) {
   const current = view.state.type;
   return (
     <div className="flex items-center gap-1">
-      <div className="flex items-center rounded-md border p-0.5" role="radiogroup" aria-label="View type">
+      <div
+        className="flex items-center rounded-md border p-0.5"
+        role="radiogroup"
+        aria-label="View type"
+      >
         {TYPES.map(({ type, label, icon: Icon }) => {
           const layout = defaultLayout(info, type, view.state.layout, view.state.columns);
           const disabled = layout === null;

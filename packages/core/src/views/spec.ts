@@ -120,7 +120,8 @@ export type ViewSpec = z.infer<typeof viewSpecSchema>;
 /** Reads a stored spec: stage-1 specs are tables; a spec without `type` is read as a table. */
 export function parseStoredViewSpec(json: string): ObjectViewSpec {
   const raw = JSON.parse(json) as Record<string, unknown>;
-  const withType = raw && typeof raw === "object" && !("type" in raw) ? { ...raw, type: "table" } : raw;
+  const withType =
+    raw && typeof raw === "object" && !("type" in raw) ? { ...raw, type: "table" } : raw;
   const parsed = objectViewSpecSchema.safeParse(withType);
   // A spec that no longer parses (hand-edited row) still loads as a table of its columns.
   if (parsed.success) return parsed.data;
@@ -251,9 +252,12 @@ export function validateViewSpec(spec: ObjectViewSpec): ObjectViewSpec {
       if (spec.imageField) {
         const image = requireField(object, spec.imageField, "imageField");
         if (image.type !== "text" || image.related) {
-          throw new ValidationError(`imageField: ${spec.object}.${spec.imageField} is not a text or URL field`, {
-            field: "imageField",
-          });
+          throw new ValidationError(
+            `imageField: ${spec.object}.${spec.imageField} is not a text or URL field`,
+            {
+              field: "imageField",
+            },
+          );
         }
       }
       checkCardFields(object, spec.cardFields);

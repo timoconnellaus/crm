@@ -113,7 +113,10 @@ function ChartTooltipContent({
   indicator?: "line" | "dot" | "dashed";
   hideLabel?: boolean;
   hideIndicator?: boolean;
-  labelFormatter?: (label: React.ReactNode, payload: readonly TooltipPayloadItem[]) => React.ReactNode;
+  labelFormatter?: (
+    label: React.ReactNode,
+    payload: readonly TooltipPayloadItem[],
+  ) => React.ReactNode;
   formatter?: (value: unknown, name: string, item: TooltipPayloadItem) => React.ReactNode;
   nameKey?: string;
   labelKey?: string;
@@ -155,6 +158,7 @@ function ChartTooltipContent({
           const indicatorColor = item.payload?.fill ?? item.color;
           return (
             <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: tooltip rows have no stable id.
               key={`${String(item.dataKey)}-${index}`}
               className={cn(
                 "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",

@@ -121,7 +121,14 @@ export function toStoredSpec(
         cardFields,
       };
     case "gallery":
-      return { type: "gallery", object, filter, sort, imageField: layout.imageField ?? null, cardFields };
+      return {
+        type: "gallery",
+        object,
+        filter,
+        sort,
+        imageField: layout.imageField ?? null,
+        cardFields,
+      };
     default:
       return {
         type: "table",
@@ -140,7 +147,11 @@ export const operationSavedViews: SavedViewsAdapter = {
   },
   async create({ object, name, spec, shared }) {
     return fromStored(
-      await callOp("view.create", { name, spec: toStoredSpec(object, spec), shared: shared ?? false }),
+      await callOp("view.create", {
+        name,
+        spec: toStoredSpec(object, spec),
+        shared: shared ?? false,
+      }),
     );
   },
   async update(id, { name, spec }) {

@@ -68,7 +68,12 @@ function uiManifest(): ExtensionManifest {
       spend: {
         label: "Spend",
         on: "organisation",
-        view: { type: "gallery", object: `${id}.project`, relation: "organisation", cardFields: ["spent"] },
+        view: {
+          type: "gallery",
+          object: `${id}.project`,
+          relation: "organisation",
+          cardFields: ["spent"],
+        },
         order: 100,
       },
     },
@@ -120,7 +125,12 @@ describe("manifest checks", () => {
         },
       },
       settings: {
-        level: { type: "select", label: "Level", options: [{ value: "a", label: "A" }], default: "b" },
+        level: {
+          type: "select",
+          label: "Level",
+          options: [{ value: "a", label: "A" }],
+          default: "b",
+        },
         count: { type: "number", label: "Count", default: "three" },
       },
     };
@@ -202,10 +212,14 @@ describe("view.recordViews", () => {
   });
 
   it("hides views of disabled extensions", async () => {
-    await env.DB.prepare("UPDATE core_extensions SET status = 'disabled' WHERE id = ?").bind(id).run();
+    await env.DB.prepare("UPDATE core_extensions SET status = 'disabled' WHERE id = ?")
+      .bind(id)
+      .run();
     const views = await invoke("view.recordViews", { object: "organisation" }, context(member));
     expect(views.tabs.some((t) => t.extension === id)).toBe(false);
-    await env.DB.prepare("UPDATE core_extensions SET status = 'active' WHERE id = ?").bind(id).run();
+    await env.DB.prepare("UPDATE core_extensions SET status = 'active' WHERE id = ?")
+      .bind(id)
+      .run();
   });
 });
 

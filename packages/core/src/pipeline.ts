@@ -11,6 +11,7 @@ import { checkGrant } from "@crm/sdk";
 import { type Compilable, type CompiledQuery, sql } from "kysely";
 import { type DryRunResult, prepareQueuedAction } from "./approvals/queue.ts";
 import { isSimulatedRead, loadSessionOverlay, overlayRead } from "./approvals/simulation.ts";
+import type { WidgetCache } from "./dashboards/cache.ts";
 import { diffRecords, type FieldDiff } from "./diff.ts";
 import {
   ConflictError,
@@ -23,12 +24,11 @@ import {
   ValidationError,
 } from "./errors.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
-import type { WidgetCache } from "./dashboards/cache.ts";
 import { refreshSchemaRegistry } from "./extensions/schema.ts";
-import type { ModelRunner } from "./models.ts";
 import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { findProvisionalIds, newId } from "./ids.ts";
+import type { ModelRunner } from "./models.ts";
 import {
   type AnyOperation,
   type ApplyingApproval,

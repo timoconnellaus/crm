@@ -52,7 +52,6 @@ export * from "./operations/task.ts";
 export * from "./operations/trash.ts";
 export * from "./operations/user.ts";
 export * from "./operations/view.ts";
-export * from "./views/spec.ts";
 export {
   type InvocationContext,
   invokeOperation,
@@ -77,3 +76,4 @@ export * from "./records/tags.ts";
 export * from "./registry.ts";
 export { loadApprovalPolicy } from "./settings.ts";
 export { type PrincipalLike, resolveActingUser, SYSTEM_USER } from "./users.ts";
+export * from "./views/spec.ts";

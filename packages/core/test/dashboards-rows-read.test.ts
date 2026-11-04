@@ -99,7 +99,11 @@ async function plan(sql: string): Promise<string[]> {
     now: NOW,
     userId: member.id,
   });
-  const bound = bindNamedParams(sql, resolved.values, widgetParamNames(OVERVIEW_DASHBOARD.spec.filters));
+  const bound = bindNamedParams(
+    sql,
+    resolved.values,
+    widgetParamNames(OVERVIEW_DASHBOARD.spec.filters),
+  );
   const { results } = await env.DB.prepare(`EXPLAIN QUERY PLAN ${bound.sql}`)
     .bind(...bound.params)
     .all<{ detail: string }>();
@@ -112,7 +116,9 @@ describe("Overview dashboard cost", () => {
     async (_id, sql) => {
       const lines = await plan(sql);
       const fullScans = lines.filter(
-        (line) => /^SCAN (core_|person|organisation|activity|task)/.test(line) && !/USING (COVERING )?INDEX/.test(line),
+        (line) =>
+          /^SCAN (core_|person|organisation|activity|task)/.test(line) &&
+          !/USING (COVERING )?INDEX/.test(line),
       );
       expect(fullScans, lines.join("\n")).toEqual([]);
     },
@@ -142,7 +148,14 @@ describe("Overview dashboard cost", () => {
   it("a narrow date window reads only what is in it", async () => {
     // A window before every seeded record: the index range is empty.
     const filters = { date: { from: "2024-06-01", to: "2024-06-30" } };
-    for (const id of ["people-added", "organisations-added", "activities-logged", "added-over-time", "activities-by-type", "top-owners"]) {
+    for (const id of [
+      "people-added",
+      "organisations-added",
+      "activities-logged",
+      "added-over-time",
+      "activities-by-type",
+      "top-owners",
+    ]) {
       expect(await run(id, filters), id).toBeLessThan(20);
     }
   });
