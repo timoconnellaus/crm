@@ -1,12 +1,14 @@
 // The app's sections, shared by the sidebar and the command palette.
 import {
   ActivityIcon,
+  BellIcon,
   Building2Icon,
   CheckSquareIcon,
   HomeIcon,
   InboxIcon,
   LayoutDashboardIcon,
   type LucideIcon,
+  OctagonXIcon,
   PlugIcon,
   PlugZapIcon,
   PuzzleIcon,
@@ -17,6 +19,7 @@ import {
   UserCogIcon,
   UserPlusIcon,
   UsersIcon,
+  WorkflowIcon,
 } from "lucide-react";
 
 export interface NavItem {
@@ -26,6 +29,8 @@ export interface NavItem {
     | "/people"
     | "/organisations"
     | "/tasks"
+    | "/automations"
+    | "/notifications"
     | "/activity"
     | "/approvals"
     | "/suggested-contacts"
@@ -36,6 +41,7 @@ export interface NavItem {
     | "/settings/audit"
     | "/settings/connected-apps"
     | "/settings/extensions"
+    | "/settings/automations"
     | "/settings/integrations";
   label: string;
   icon: LucideIcon;
@@ -55,6 +61,12 @@ export const MAIN_NAV: NavItem[] = [
   { to: "/people", label: "People", icon: UsersIcon, keywords: ["contacts", "persons"] },
   { to: "/organisations", label: "Organisations", icon: Building2Icon, keywords: ["companies"] },
   { to: "/tasks", label: "Tasks", icon: CheckSquareIcon, keywords: ["todo"] },
+  {
+    to: "/automations",
+    label: "Automations",
+    icon: WorkflowIcon,
+    keywords: ["workflows", "triggers", "runs", "rules"],
+  },
   {
     to: "/approvals",
     label: "Approvals",
@@ -126,4 +138,18 @@ export const SETTINGS_NAV: NavItem[] = [
     keywords: ["objects", "fields", "tools", "quarantine", "rollback", "settings"],
     adminOnly: true,
   },
+  {
+    to: "/settings/automations",
+    label: "Automation settings",
+    icon: OctagonXIcon,
+    keywords: ["kill switch", "timezone", "debounce", "schedule", "settings"],
+  },
 ];
+
+/** Not in the sidebar (the header bell opens it), but in the command palette. */
+export const NOTIFICATIONS_NAV: NavItem = {
+  to: "/notifications",
+  label: "Notifications",
+  icon: BellIcon,
+  keywords: ["inbox", "unread", "bell", "alerts"],
+};

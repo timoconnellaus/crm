@@ -50,6 +50,17 @@ export interface QueuedAction {
   statements: Compilable[];
   actionId: string;
   pending: PendingApproval;
+  /** True when this action opened a new change set (pending-approval notices, ADR 0130). */
+  changeSetCreated: boolean;
+  /** The records as the action would leave them (test mode adds them to its overlay). */
+  records: { object: string; id: string; state: "live" | "deleted"; record: Rec | null }[];
+  /** The diff preview, with provisional ids. */
+  preview: { object: string; id: string; action: string; diff: FieldDiff }[];
+}
+
+/** The change-set session key of an automation run: one change set per run (ADR 0130). */
+export function runSessionKey(runId: string): string {
+  return `run:${runId}`;
 }
 
 const OBJECT_BY_PREFIX = new Map<string, string>(
@@ -211,8 +222,10 @@ function dependencies(
 /** Finds or creates the change set new actions from this caller go into. */
 export async function targetChangeSet(
   req: Pick<QueueRequest, "db" | "origin" | "user" | "actor" | "now">,
-): Promise<{ id: string; statements: Compilable[] }> {
-  const sessionId = req.origin.sessionId ?? null;
+): Promise<{ id: string; statements: Compilable[]; created: boolean }> {
+  // An automation run's actions share one change set per run (keyed like a session).
+  const sessionId =
+    req.origin.sessionId ?? (req.origin.runId ? runSessionKey(req.origin.runId) : null);
   let query = req.db.query
     .selectFrom("core_change_set")
     .select(["id"])
@@ -226,6 +239,7 @@ export async function targetChangeSet(
   if (open) {
     return {
       id: open.id,
+      created: false,
       statements: [
         req.db.query
           .updateTable("core_change_set")
@@ -237,6 +251,7 @@ export async function targetChangeSet(
   const id = newId("changeSet");
   return {
     id,
+    created: true,
     statements: [
       req.db.query.insertInto("core_change_set").values({
         id,
@@ -425,6 +440,9 @@ export async function prepareQueuedAction(req: QueueRequest): Promise<QueuedActi
   return {
     statements,
     actionId,
+    changeSetCreated: changeSet.created,
+    records,
+    preview,
     pending: {
       status: "pending_approval",
       changeSetId: changeSet.id,

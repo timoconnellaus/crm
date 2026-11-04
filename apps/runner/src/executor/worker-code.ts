@@ -76,11 +76,13 @@ export function moduleSet(modules: readonly string[]): HostModule[] {
 /**
  * The fixed entry module. `runTool(request, host)`: `request` is { tool, input, version }, `host`
  * is the per-run RpcTarget whose `call(module, method, args)` serves the declared modules only.
+ * `runAutomation(request, host)` (ADR 0130): `request` is an AutomationRunRequest (one advance,
+ * or a whole test run); same worker, same stable id as the extension's tools.
  */
 export function entryModule(modules: readonly HostModule[]): string {
   const methods = Object.fromEntries(modules.map((m) => [m, HOST_METHODS[m]]));
   return `import { WorkerEntrypoint } from "cloudflare:workers";
-import { isExtension, runExtension } from "./${SDK_MODULE}";
+import { isExtension, runAutomation, runExtension } from "./${SDK_MODULE}";
 import extension from "./${EXT_DIR}/index.js";
 const METHODS = ${JSON.stringify(methods)};
 const NOT_AN_EXTENSION = { ok: false, error: { code: "entry", message: "index.ts must export default defineExtension({...})" } };
@@ -105,6 +107,10 @@ export default class extends WorkerEntrypoint {
       { kind: "tool", tool: request.tool, input: request.input, version: request.version },
       hostModules(host),
     );
+  }
+  async runAutomation(request, host) {
+    if (!isExtension(extension)) return NOT_AN_EXTENSION;
+    return runAutomation(extension, request, hostModules(host));
   }
 }
 `;

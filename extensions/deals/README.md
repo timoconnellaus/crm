@@ -42,6 +42,27 @@ multi-select of deal fields.
   average days in it; for won deals, the count, average days from entering the pipeline to winning
   and the value won. It reads `crm_stage_history` through `query.sql`.
 
+## Automations (stage 5, ADR 0028)
+
+Shipped in `automations.ts`, run as actor `automation` under `extension:deals`. Each one appears
+under Automations and can be turned off on its page (Pause) or with
+`automation.disable { id: "deals.<key>" }` (`automation.enable` turns it back on); the kill switch
+in Settings → Automations stops all of them.
+
+| Key | Label | Trigger | What it does |
+|---|---|---|---|
+| `stalledDeal` | Stalled deal follow-up | schedule `0 8 * * *` (automation timezone) | Open deals with no change and no timeline activity for 14 days, and no open "Follow up:" task, get a task "Follow up: &lt;deal&gt;" for their owner, due that day, linked to the deal (at most 100 a day, oldest first). |
+| `wonOnboarding` | Won deal → onboarding | `stage` changes to a won stage | Creates Kick-off call, Send welcome pack and Set up account for the owner, linked to the deal; notifies the owner ("Deal won 🎉 onboarding tasks created"); after 3 days, if any of those tasks are still open, notifies the owner's manager ("Onboarding not started for &lt;deal&gt;"). |
+| `closeDatePassed` | Close date passed | 1 day after `expectedClose`, open deals only | Notifies the owner to update the date or close the deal. |
+
+**Manager field.** Core users have no manager field, so "the owner's manager" resolves to the
+**admins** (the notification records the note "Users have no manager field: sent to the admins
+instead"). When a manager field exists, only recipient resolution changes.
+
+Permissions this adds: write `task`, read `activity`, and the operation `notification.send`.
+The daily scans are indexed: deals by `(status, updatedAt)` and `(status, expectedClose)`, task
+and activity links by record.
+
 ## Views, tabs, settings and dashboards
 
 - **Saved views** (shared, read-only, in the Deals views menu): My open deals (owner = you),
@@ -70,6 +91,8 @@ installed the extension (start the app once, then seed).
 ## Tests
 
 - `test/deals.test.ts`: contract, formula and behaviour checks, seeds, the tool against the test host.
+- `test/automations.test.ts`: the three automations run in memory (`host.runAutomation`): steps,
+  tasks, notifications, waits, conditions, dedupe keys.
 - `apps/runner/test/deals.test.ts`: install through the executor, stage rules for every actor,
   history and velocity on a fixed-clock dataset.
 - `packages/core/test/deals.test.ts`: reconciler seeds and indexes, base currency, CSV import and

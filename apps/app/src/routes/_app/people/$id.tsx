@@ -33,6 +33,10 @@ import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { useAppCommands } from "#/components/app-commands";
 import { PendingChangesBadge } from "#/components/approvals/pending-badge";
+import {
+  ManualAutomationButtons,
+  RecordAutomationsCard,
+} from "#/components/automations/record-automations";
 import { EmptyState } from "#/components/empty-state";
 import { ExtensionFieldsCards } from "#/components/fields/fields-card";
 import { useEnrichAction } from "#/components/integrations/enrich-action";
@@ -212,6 +216,7 @@ function PersonRecord({
         subtitle={subtitle || person.emails.find((e) => e.primary)?.email}
         actions={
           <>
+            {!deleted && <ManualAutomationButtons object="person" id={person.id} />}
             <DisabledAction
               label="Ask AI"
               icon={<SparklesIcon />}
@@ -301,6 +306,7 @@ function PersonRecord({
           <>
             <PersonDetailsCard person={person} readOnly={deleted} />
             {recordViews.panels}
+            <RecordAutomationsCard object={"person"} id={person.id} />
             <ExtensionFieldsCards object="person" id={person.id} readOnly={deleted} />
             <AffiliationsCard
               object="person"

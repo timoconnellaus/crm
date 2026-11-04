@@ -24,6 +24,40 @@
       "binding": "HELLO_WORKFLOW",
       "name": "crm-hello",
       "class_name": "HelloWorkflow"
+    },
+    // Stage 5 (ADR 0130): every automation run is one instance; its id is derived from the run's
+    // idempotency key, so a duplicate event never starts a second run.
+    {
+      "binding": "AUTOMATION_WORKFLOW",
+      "name": "crm-automation",
+      "class_name": "AutomationWorkflow"
+    }
+  ],
+  // Automation events (ADR 0130): crm-app and this Worker produce committed record changes and
+  // approval decisions; this Worker consumes them and starts runs. Failed batches retry, then go
+  // to the dead-letter queue.
+  "queues": {
+    "producers": [{ "binding": "AUTOMATION_EVENTS", "queue": "crm-automation-events" }],
+    "consumers": [
+      {
+        "queue": "crm-automation-events",
+        "max_batch_size": 100,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "crm-automation-events-dlq"
+      }
+    ]
+  },
+  // Schedules and date-relative triggers (ADR 0130): every minute, evaluated in the automation
+  // timezone (Settings → Automations). Cron triggers themselves are UTC.
+  "triggers": { "crons": ["* * * * *"] },
+  // Automation runs per minute, per automation (ADR 0130). Above it the automation auto-pauses
+  // and admins are notified. namespace_id must be unique within the account.
+  "ratelimits": [
+    {
+      "name": "AUTOMATION_RATE_LIMIT",
+      "namespace_id": "4201",
+      "simple": { "limit": 60, "period": 60 }
     }
   ],
   // Worker Loader: the Dynamic Workers that run extension code (ADR 0006). Repeat code (tools,

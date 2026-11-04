@@ -8,7 +8,9 @@ import {
   measureStorage,
   parseFloor,
   purgeIntegrationEvents,
+  purgeNotifications,
   purgeRunHistory,
+  queueEventSink,
   runAuditPurge,
   runTrashPurge,
 } from "@crm/core";
@@ -20,6 +22,8 @@ export interface PurgeEnv {
   APPROVAL_FLOOR?: string;
   /** crm-runner: expired outbound items are dropped on their gatekeepers. */
   RUNNER?: Fetcher;
+  /** Expired approvals wake the automation runs waiting on them (ADR 0130). */
+  AUTOMATION_EVENTS?: Queue;
 }
 
 export async function runScheduledPurge(env: PurgeEnv, clock?: () => Date) {
@@ -43,7 +47,12 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   const purge = await runScheduledPurge(env, clock);
   const db = createCrmDb(env.DB);
   const now = (clock?.() ?? new Date()).toISOString();
-  const expired = await expirePendingActions(db.query, now, integrationRuntimeFor(env));
+  const expired = await expirePendingActions(
+    db.query,
+    now,
+    integrationRuntimeFor(env),
+    env.AUTOMATION_EVENTS ? queueEventSink(env.AUTOMATION_EVENTS) : undefined,
+  );
   if (expired) console.log(`approvals: ${expired} pending action(s) expired`);
 
   const step = async <T>(name: string, run: () => Promise<T>): Promise<T | null> => {
@@ -74,5 +83,8 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   const events = await step("integration events", () =>
     purgeIntegrationEvents(db, { now: clock?.() ?? new Date() }),
   );
-  return { purge, expired, audit, runs, compacted, storage, events };
+  // Notifications are kept 90 days (ADR 0132).
+  const notifications = await step("notifications", () => purgeNotifications(db.query, now));
+  if (notifications?.deleted) console.log(`notifications: ${notifications.deleted} purged`);
+  return { purge, expired, audit, runs, compacted, storage, events, notifications };
 }

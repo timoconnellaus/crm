@@ -516,6 +516,94 @@ export interface CoreExtensionRunsTable {
   operations: ColumnType<string, string | undefined, string>;
 }
 
+/** Migration 0130 (ADR 0130): an installed extension's automation. */
+export interface CoreAutomationsTable {
+  id: string;
+  extension_id: string;
+  key: string;
+  label: string;
+  trigger_type: string;
+  trigger_object: string | null;
+  spec: string;
+  commit_oid: string | null;
+  enabled: ColumnType<number, number | undefined, number>;
+  paused_reason: string | null;
+  paused_at: string | null;
+  removed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AutomationRunStatus =
+  | "queued"
+  | "running"
+  | "waiting"
+  | "review"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "expired"
+  | "skipped";
+
+/** Migration 0130: one automation run (or test run). */
+export interface CoreAutomationRunsTable {
+  id: string;
+  automation_id: string;
+  extension_id: string;
+  commit_oid: string | null;
+  workflow_id: string | null;
+  trigger: string;
+  record_object: string | null;
+  record_id: string | null;
+  status: AutomationRunStatus;
+  status_reason: string | null;
+  test: ColumnType<number, number | undefined, number>;
+  depth: ColumnType<number, number | undefined, number>;
+  root_event_id: string | null;
+  steps: ColumnType<string, string | undefined, string>;
+  writes: ColumnType<number, number | undefined, number>;
+  change_set_id: string | null;
+  wait_until: string | null;
+  retry_of: string | null;
+  replay_of: string | null;
+  report: string | null;
+  error: string | null;
+  started_at: string;
+  updated_at: string;
+  finished_at: string | null;
+}
+
+/** Migration 0130: records an automation run touched. */
+export interface CoreAutomationRunRecordsTable {
+  object_type: string;
+  record_id: string;
+  run_id: string;
+  role: string;
+  at: string;
+}
+
+/** Migration 0130: per-automation run and write counts per UTC hour (rails). */
+export interface CoreAutomationCountersTable {
+  automation_id: string;
+  hour: string;
+  runs: ColumnType<number, number | undefined, number>;
+  writes: ColumnType<number, number | undefined, number>;
+}
+
+/** Migration 0131 (ADR 0132): the in-app notification centre. */
+export interface CoreNotificationsTable {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  source: ColumnType<string, string | undefined, string>;
+  dedupe_key: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
 export interface CoreExtensionKvTable {
   extension_id: string;
   key: string;
@@ -885,6 +973,11 @@ export interface CoreDatabase {
   core_extension_objects: CoreExtensionObjectsTable;
   core_extension_fields: CoreExtensionFieldsTable;
   core_stage_history: CoreStageHistoryTable;
+  core_automations: CoreAutomationsTable;
+  core_automation_runs: CoreAutomationRunsTable;
+  core_automation_run_records: CoreAutomationRunRecordsTable;
+  core_automation_counters: CoreAutomationCountersTable;
+  core_notifications: CoreNotificationsTable;
   crm_stage_history: CrmStageHistoryView;
   crm_users: CrmUsersView;
   crm_people: CrmPeopleView;

@@ -77,6 +77,25 @@ and, optionally, set `AI_GATEWAY_ID` to route calls through AI Gateway. Without 
 calls fail with a "not configured" error and nothing else changes. Shipped extensions (`extensions/`)
 are installed through `extension.install` on the first request after a deploy.
 
+### Automations
+
+Automations (stage 5, ADR 0130) need these bindings, all declared in the wrangler files and
+provisioned by name on deploy:
+
+| Binding | Worker | Purpose |
+| --- | --- | --- |
+| `AUTOMATION_EVENTS` (queue producer) | crm-app, crm-runner | Committed record changes and approval decisions, queue `crm-automation-events` |
+| queue consumer | crm-runner | Starts runs: batches of up to 100, 5 s, 5 retries, then the dead-letter queue `crm-automation-events-dlq` |
+| `AUTOMATION_WORKFLOW` | crm-runner | Workflow `crm-automation` (class `AutomationWorkflow`), one instance per run |
+| `AUTOMATION_RATE_LIMIT` | crm-runner | Runs per minute per automation (default 60 per 60 s, `namespace_id` 4201); above it the automation auto-pauses and admins are notified |
+| cron `* * * * *` | crm-runner | Schedule triggers and the daily date-relative scan |
+
+Create the queues once per account before the first deploy (`wrangler queues create
+crm-automation-events` and `wrangler queues create crm-automation-events-dlq`); Workflows need no
+setup. Queues and Workflows are billed per use (see ADR 0130). The kill switch, the automation
+timezone and the debounce window are in Settings → Automations; only human admins can engage the
+kill switch.
+
 "Describe a widget" on dashboards (stage 4a) uses the `build` model role from `crm-app`: add
 `"ai": { "binding": "AI" }` to `apps/app/wrangler.jsonc` too, and optionally set its
 `AI_GATEWAY_ID`. Workers AI is the default provider; no third-party key is needed. Without the

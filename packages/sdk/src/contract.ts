@@ -2,6 +2,7 @@
 // `defineExtension({...})`. Everything here is plain data plus tool/automation handlers, so the host
 // can turn it into a JSON manifest, validate it, diff it and reconcile it to tables.
 import type { z } from "zod";
+import type { AutomationSpec } from "./automation.ts";
 import type { FieldTypeName } from "./field-types.ts";
 
 /** The contract version this SDK writes. The host accepts this and the previous version. */
@@ -359,7 +360,7 @@ export interface ExtensionContext {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Tools and automations
+// Tools (automations are in automation.ts)
 
 export interface ToolSpec<In extends z.ZodType = z.ZodType, Out extends z.ZodType = z.ZodType> {
   /** For a model: what it does, when to use it, side effects. At least 20 characters. */
@@ -375,21 +376,6 @@ export function defineTool<In extends z.ZodType, Out extends z.ZodType>(
   tool: ToolSpec<In, Out>,
 ): ToolSpec<In, Out> {
   return tool;
-}
-
-export type AutomationTrigger =
-  | { type: "record.created" | "record.updated" | "record.deleted"; object: string }
-  | { type: "schedule"; cron: string };
-
-/** Typed and validated now; triggers fire from stage 5. */
-export interface AutomationSpec {
-  description: string;
-  trigger: AutomationTrigger;
-  handler(event: unknown, ctx: ExtensionContext): Promise<void> | void;
-}
-
-export function defineAutomation(automation: AutomationSpec): AutomationSpec {
-  return automation;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -458,7 +444,8 @@ export interface ExtensionSpec {
   settings?: Record<string, SettingSpec>;
   // biome-ignore lint/suspicious/noExplicitAny: tools of any input/output schema.
   tools?: Record<string, ToolSpec<any, any>>;
-  automations?: Record<string, AutomationSpec>;
+  // biome-ignore lint/suspicious/noExplicitAny: automations of any trigger type.
+  automations?: Record<string, AutomationSpec<any>>;
 }
 
 const EXTENSION = Symbol.for("crm.extension");
