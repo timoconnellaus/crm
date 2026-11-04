@@ -19,6 +19,8 @@ import { Route as AppStatusRouteImport } from './routes/_app/status'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ConnectHandoffRouteImport } from './routes/connect.handoff'
+import { Route as GatekeeperSplatRouteImport } from './routes/gatekeeper/$'
 import { Route as AppOrganisationsIndexRouteImport } from './routes/_app/organisations/index'
 import { Route as AppOrganisationsIdRouteImport } from './routes/_app/organisations/$id'
 import { Route as AppPeopleIndexRouteImport } from './routes/_app/people/index'
@@ -81,6 +83,16 @@ const AppTrashRoute = AppTrashRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectHandoffRoute = ConnectHandoffRouteImport.update({
+  id: '/connect/handoff',
+  path: '/connect/handoff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GatekeeperSplatRoute = GatekeeperSplatRouteImport.update({
+  id: '/gatekeeper/$',
+  path: '/gatekeeper/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppOrganisationsIndexRoute = AppOrganisationsIndexRouteImport.update({
@@ -166,6 +178,8 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof AppTasksRoute
   '/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
+  '/connect/handoff': typeof ConnectHandoffRoute
+  '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
@@ -190,6 +204,8 @@ export interface FileRoutesByTo {
   '/tasks': typeof AppTasksRoute
   '/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
+  '/connect/handoff': typeof ConnectHandoffRoute
+  '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/': typeof AppIndexRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
@@ -217,6 +233,8 @@ export interface FileRoutesById {
   '/_app/tasks': typeof AppTasksRoute
   '/_app/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
+  '/connect/handoff': typeof ConnectHandoffRoute
+  '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/_app/': typeof AppIndexRoute
   '/_app/organisations/$id': typeof AppOrganisationsIdRoute
   '/_app/people/$id': typeof AppPeopleIdRoute
@@ -245,6 +263,8 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/trash'
     | '/api/health'
+    | '/connect/handoff'
+    | '/gatekeeper/$'
     | '/organisations/$id'
     | '/people/$id'
     | '/settings/approval-policy'
@@ -269,6 +289,8 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/trash'
     | '/api/health'
+    | '/connect/handoff'
+    | '/gatekeeper/$'
     | '/'
     | '/organisations/$id'
     | '/people/$id'
@@ -295,6 +317,8 @@ export interface FileRouteTypes {
     | '/_app/tasks'
     | '/_app/trash'
     | '/api/health'
+    | '/connect/handoff'
+    | '/gatekeeper/$'
     | '/_app/'
     | '/_app/organisations/$id'
     | '/_app/people/$id'
@@ -316,6 +340,8 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   SignInRoute: typeof SignInRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ConnectHandoffRoute: typeof ConnectHandoffRoute
+  GatekeeperSplatRoute: typeof GatekeeperSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -389,6 +415,20 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connect/handoff': {
+      id: '/connect/handoff'
+      path: '/connect/handoff'
+      fullPath: '/connect/handoff'
+      preLoaderRoute: typeof ConnectHandoffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gatekeeper/$': {
+      id: '/gatekeeper/$'
+      path: '/gatekeeper/$'
+      fullPath: '/gatekeeper/$'
+      preLoaderRoute: typeof GatekeeperSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/organisations/': {
@@ -544,6 +584,8 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   SignInRoute: SignInRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ConnectHandoffRoute: ConnectHandoffRoute,
+  GatekeeperSplatRoute: GatekeeperSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

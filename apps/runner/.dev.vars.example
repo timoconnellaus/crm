@@ -1,3 +1,6 @@
 # Copied to .dev.vars by `pnpm dev` when missing. Local development only.
 # Optional: an AI Gateway id for codemode:ai (which also needs an `ai` binding, see docs/deploying.md).
 # AI_GATEWAY_ID=
+# Stage 6a: offer the fake OAuth provider and gatekeeper (development and e2e only, never in
+# production). Settings → Integrations then lists "Fake provider (development)".
+INTEGRATIONS_FAKE_PROVIDER=true

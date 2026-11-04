@@ -25,6 +25,8 @@
   // .dev.vars.example and docs/deploying.md.
   "secrets": { "required": ["BETTER_AUTH_SECRET"] },
   "services": [{ "binding": "RUNNER", "service": "crm-runner" }],
+  // Synced email bodies (ADR 0112), shared with crm-runner: D1 keeps a snippet only.
+  "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "crm-blobs" }],
   // OAuth 2.1 for /mcp (ADR 0021): clients, grants and hashed tokens. Provisioned by name on
   // first deploy, like the D1 database.
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],

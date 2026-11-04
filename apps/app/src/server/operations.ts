@@ -16,6 +16,7 @@ import {
   withCodeModeRateLimit,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
+import { blobStoreFor, integrationRuntimeFor } from "./integrations.ts";
 import { deleteGrantTokens } from "./mcp/handler.ts";
 import { runner } from "./runner.ts";
 
@@ -31,6 +32,8 @@ export interface OperationsEnv {
   RUNNER?: Fetcher;
   /** Code Mode runs per user (Workers Rate Limiting, ADR 0043). */
   CODE_MODE_RATE_LIMIT?: RateLimitBinding;
+  /** Synced email bodies (R2, ADR 0112). */
+  BLOBS?: R2Bucket;
 }
 
 /**
@@ -122,6 +125,8 @@ export async function runOperation(
   env: OperationsEnv,
   principal: Principal | null,
   call: OperationCall,
+  /** The request's origin: where integration connect popups are handed back. */
+  appOrigin?: string,
 ): Promise<OperationResult> {
   if (!principal) {
     return { ok: false, error: { code: "forbidden", message: "Sign in to continue" } };
@@ -130,7 +135,11 @@ export async function runOperation(
     await ensureShippedExtensions(env);
     const db = createCrmDb(env.DB);
     const extensionHost = extensionHostFor(env);
+    const integrations = integrationRuntimeFor(env, appOrigin);
+    const blobs = blobStoreFor(env);
     const ctx: InvocationContext = {
+      ...(integrations ? { integrations } : {}),
+      ...(blobs ? { blobs } : {}),
       actor: "human",
       user: await resolveActingUser(db, principal),
       origin: { surface: "ui" },
