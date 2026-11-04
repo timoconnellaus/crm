@@ -2,9 +2,8 @@
 // which handles every other request; the cron trigger in wrangler.jsonc runs the scheduled
 // Trash purge and expires pending approvals; a 10-minute one catches up embeddings.
 
-import { createCrmDb } from "@crm/db";
 import handler from "@tanstack/react-start/server-entry";
-import { runEmbeddingCatchUp } from "./server/ai.ts";
+import { runEmbeddingCron } from "./server/ai.ts";
 import { createAppHandler } from "./server/mcp/handler.ts";
 import { runScheduledMaintenance } from "./server/purge.ts";
 
@@ -17,11 +16,7 @@ export default {
   fetch: (request, env, ctx) => app.fetch(request, env, ctx),
   scheduled(controller, env, ctx) {
     if (controller.cron === EMBEDDING_CRON) {
-      ctx.waitUntil(
-        runEmbeddingCatchUp(env, createCrmDb(env.DB)).catch((error: unknown) =>
-          console.error("embedding catch-up failed", error),
-        ),
-      );
+      ctx.waitUntil(runEmbeddingCron(env));
       return;
     }
     ctx.waitUntil(runScheduledMaintenance(env));

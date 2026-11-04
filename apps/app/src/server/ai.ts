@@ -23,7 +23,7 @@ import {
   type VectorStore,
   vectorizeStore,
 } from "@crm/core";
-import type { CrmDb } from "@crm/db";
+import { type CrmDb, createCrmDb } from "@crm/db";
 
 export interface AiAppEnv extends AiEnv {
   /** Vectorize index for record embeddings (optional; docs/deploying.md). */
@@ -126,6 +126,23 @@ export async function runEmbeddingCatchUp(env: AiAppEnv, db: CrmDb, now = new Da
   const backfill = await backfillEmbeddingQueue(db, now.toISOString());
   const drained = await drainAllEmbeddings({ db, models, vectors }, 20);
   return { backfill, drained };
+}
+
+/** The 10-minute cron's entry: the catch-up over this Worker's D1. Never throws. */
+export async function runEmbeddingCron(env: AiAppEnv & { DB: D1Database }) {
+  try {
+    const result = await runEmbeddingCatchUp(env, createCrmDb(env.DB));
+    if (result?.drained.taken || result?.backfill.queued) {
+      console.log(
+        `embeddings: backfill queued ${result.backfill.queued}, embedded ${result.drained.embedded}, ` +
+          `deleted ${result.drained.deleted}, unchanged ${result.drained.unchanged}`,
+      );
+    }
+    return result;
+  } catch (error) {
+    console.error("embedding catch-up failed", error);
+    return null;
+  }
 }
 
 /** The AI part of an InvocationContext. */
