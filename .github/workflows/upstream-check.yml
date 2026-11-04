@@ -1,0 +1,28 @@
+name: Upstream check
+
+# Informational: reports what changed in cloudflare/cloudflare-os since the commit each vendored
+# gatekeeper package records (scripts/upstream-sync-check.mjs). It never blocks anything; read the
+# job summary and port changes deliberately (packages/gatekeeper-kit/UPSTREAM.md).
+on:
+  schedule:
+    # Mondays, 06:00 UTC.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upstream-check:
+    name: Upstream sync check (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      # The script needs only Node and git, so no install step.
+      # An explicit `shell: bash` runs with pipefail, so a failed check still shows as failed.
+      - run: node scripts/upstream-sync-check.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+        shell: bash

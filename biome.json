@@ -29,7 +29,14 @@
       "!packages/gatekeeper-mcp/src",
       "!packages/gatekeeper-mcp/__tests__",
       "!packages/gatekeeper-google/src",
-      "!packages/gatekeeper-google/__tests__"
+      "!packages/gatekeeper-google/__tests__",
+      "!packages/gatekeeper-microsoft/src",
+      "!packages/gatekeeper-microsoft/__tests__",
+      "!packages/gatekeeper-slack/src",
+      "!packages/gatekeeper-email/src",
+      "!packages/gatekeeper-zoominfo/src",
+      "!packages/gatekeeper-websearch/src",
+      "!packages/gatekeeper-websearch/__tests__"
     ]
   },
   "overrides": [

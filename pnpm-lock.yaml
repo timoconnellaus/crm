@@ -325,6 +325,49 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  packages/gatekeeper-email:
+    dependencies:
+      '@crm/gatekeeper-configurator-ui':
+        specifier: workspace:*
+        version: link:../gatekeeper-configurator-ui
+      '@crm/gatekeeper-interface':
+        specifier: workspace:*
+        version: link:../gatekeeper-interface
+      '@crm/gatekeeper-kit':
+        specifier: workspace:*
+        version: link:../gatekeeper-kit
+      '@crm/gatekeeper-observability':
+        specifier: workspace:*
+        version: link:../gatekeeper-observability
+      capnweb:
+        specifier: 0.12.0
+        version: 0.12.0
+      capnweb-validate:
+        specifier: 0.3.0
+        version: 0.3.0(capnweb@0.12.0)(esbuild@0.28.2)(rolldown@1.2.16)(rollup@4.67.4)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+      postal-mime:
+        specifier: 4.0.11
+        version: 4.0.11
+    devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 1.5.1
+        version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
+      '@crm/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: 7.3.6
+        version: 7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+      wrangler:
+        specifier: 4.157.0
+        version: 4.157.0(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)
+
   packages/gatekeeper-google:
     dependencies:
       '@crm/gatekeeper-configurator-ui':
@@ -475,6 +518,49 @@ importers:
         specifier: 4.157.0
         version: 4.157.0(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)
 
+  packages/gatekeeper-microsoft:
+    dependencies:
+      '@crm/gatekeeper-configurator-ui':
+        specifier: workspace:*
+        version: link:../gatekeeper-configurator-ui
+      '@crm/gatekeeper-interface':
+        specifier: workspace:*
+        version: link:../gatekeeper-interface
+      '@crm/gatekeeper-kit':
+        specifier: workspace:*
+        version: link:../gatekeeper-kit
+      '@crm/gatekeeper-observability':
+        specifier: workspace:*
+        version: link:../gatekeeper-observability
+      capnweb:
+        specifier: 0.12.0
+        version: 0.12.0
+      capnweb-validate:
+        specifier: 0.3.0
+        version: 0.3.0(capnweb@0.12.0)(esbuild@0.28.2)(rolldown@1.2.16)(rollup@4.67.4)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+    devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 1.5.1
+        version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
+      '@crm/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: 7.3.6
+        version: 7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+      wrangler:
+        specifier: 4.157.0
+        version: 4.157.0(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)
+
   packages/gatekeeper-observability:
     devDependencies:
       '@cloudflare/vitest-plugin':
@@ -495,6 +581,117 @@ importers:
       vitest:
         specifier: 5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/gatekeeper-slack:
+    dependencies:
+      '@crm/gatekeeper-configurator-ui':
+        specifier: workspace:*
+        version: link:../gatekeeper-configurator-ui
+      '@crm/gatekeeper-interface':
+        specifier: workspace:*
+        version: link:../gatekeeper-interface
+      '@crm/gatekeeper-kit':
+        specifier: workspace:*
+        version: link:../gatekeeper-kit
+      capnweb:
+        specifier: 0.12.0
+        version: 0.12.0
+      capnweb-validate:
+        specifier: 0.3.0
+        version: 0.3.0(capnweb@0.12.0)(esbuild@0.28.2)(rolldown@1.2.16)(rollup@4.67.4)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+    devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 1.5.1
+        version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
+      '@crm/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: 7.3.6
+        version: 7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+      wrangler:
+        specifier: 4.157.0
+        version: 4.157.0(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)
+
+  packages/gatekeeper-websearch:
+    dependencies:
+      '@crm/gatekeeper-interface':
+        specifier: workspace:*
+        version: link:../gatekeeper-interface
+      '@crm/gatekeeper-kit':
+        specifier: workspace:*
+        version: link:../gatekeeper-kit
+      capnweb:
+        specifier: 0.12.0
+        version: 0.12.0
+      capnweb-validate:
+        specifier: 0.3.0
+        version: 0.3.0(capnweb@0.12.0)(esbuild@0.28.2)(rolldown@1.2.16)(rollup@4.67.4)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 1.5.1
+        version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
+      '@crm/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: 7.3.6
+        version: 7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+      wrangler:
+        specifier: 4.157.0
+        version: 4.157.0(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)
+
+  packages/gatekeeper-zoominfo:
+    dependencies:
+      '@crm/gatekeeper-configurator-ui':
+        specifier: workspace:*
+        version: link:../gatekeeper-configurator-ui
+      '@crm/gatekeeper-interface':
+        specifier: workspace:*
+        version: link:../gatekeeper-interface
+      '@crm/gatekeeper-kit':
+        specifier: workspace:*
+        version: link:../gatekeeper-kit
+      capnweb:
+        specifier: 0.12.0
+        version: 0.12.0
+      capnweb-validate:
+        specifier: 0.3.0
+        version: 0.3.0(capnweb@0.12.0)(esbuild@0.28.2)(rolldown@1.2.16)(rollup@4.67.4)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+    devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 1.5.1
+        version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
+      '@crm/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: 7.3.6
+        version: 7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+      wrangler:
+        specifier: 4.157.0
+        version: 4.157.0(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)
 
   packages/mcp-shared:
     dependencies:

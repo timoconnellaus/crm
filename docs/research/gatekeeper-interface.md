@@ -181,6 +181,99 @@ agent-chat or sharing machinery.
   moves fast (`overseer.ts` is very active). Keep the runner's adapter narrow so upstream pulls
   stay cheap.
 
+## The other stage-6 gatekeepers
+
+Vendored after PR #10, at the same commit (`packages/gatekeeper-{microsoft,slack,email,zoominfo,websearch}`).
+Three of them don't do what the stage-6 spec assumes. Those gaps are flagged in bold below.
+
+| Gatekeeper | Resources | Action kinds (`autoApprovable` in bold) | Hooks |
+| --- | --- | --- | --- |
+| Microsoft 365 | SharePoint/OneDrive `https://*.sharepoint.com/*`; Outlook mailbox `https://outlook.office.com/*`; Calendar `https://outlook.office.com/calendar/*` | **`sharepoint.files.create`**, **`.files.edit`**, **`.files.organize`**, `.files.delete`, **`.lists.edit`**, `.lists.delete`; **`outlook.organize`**, **`outlook.drafts`**, `outlook.send`, `outlook.settings`; **`calendar.events`**, `calendar.invitations`, `calendar.responses`, `calendar.shared-events` | Outlook new message (`NewMessageHook`) |
+| Slack | Workspace `https://*`; conversation `https://app.slack.com/client/:teamId/:conversationId`; thread `https://*.slack.com/archives/:conversationId/:messageId` | none: read-only | none |
+| Email | Mailbox `${BASE_URL}/mailbox/:user` (an address `<user>@<host>`) | none | Inbound email (`EmailHook`) |
+| ZoomInfo | Whole account `https://*` | Paid enrichments, with no `actionKind`, so never auto-approvable | none |
+| Web search | none (an account singleton) | none: searches are observations | none |
+
+### Microsoft 365
+
+- **Close to Google.** It has OAuth popup connect, `UserAccount` DOs, kit-journalled actions with
+  simulation, and observers. Organizing, drafts and own-calendar edits are auto-approvable. Anything
+  that reaches another person is not: `outlook.send`, `calendar.invitations`,
+  `calendar.responses` and `calendar.shared-events`. Neither is `outlook.settings` or a delete.
+  `getAutoApprovableActions()` also filters by the binding's access level, so the kinds a host may
+  offer vary per facet. Ask the facet, don't hard-code the list.
+- **Mail push, but no calendar push.** `OutlookHookDriver` subscribes to Graph change notifications
+  at `POST {BASE_URL}/outlook/notifications/{driver}` when `BASE_URL` is public https. Otherwise it
+  polls on an alarm. It delivers new messages only, not edits or deletes. ADR 0052 sync therefore
+  needs:
+  - `crm-app` to proxy that route
+  - our own catch-up reads for updates and deletes
+  - polling `listEvents` for meetings, since Calendar has no hook
+- **One tenant per deployment.** `MICROSOFT_TENANT_ID` must be a tenant GUID. `organizations` also
+  needs `MICROSOFT_ALLOWED_TENANT_IDS`, and `common`/`consumers` are refused. Each connection is
+  pinned to `(tenantId, objectId)`.
+- **Deployment ceilings.** `MICROSOFT_{SHAREPOINT,OUTLOOK,CALENDAR}_ACCESS` cap every binding. We
+  could map them to an admin setting later. For now they are Worker vars, so they are env-only.
+- **Observers check access per person**, through the owner's `calendarPermissions` and SharePoint
+  access units (site, drive, item, list, page), since inheritance can break at any level. A
+  colleague who lacks access to one unit fails `verifyObserverAccess` for reads that touched it.
+
+### Slack
+
+- **Read-only upstream.** It covers channels, DMs, threads, members and search, using a *user* token
+  (`user_scope`, with rotation). It has no actions (`applyAction` is unreachable) and no hooks.
+  **Stage 6's Slack notifications, "share to channel", Slack DMs and org channel notifications
+  can't be built on it as vendored.** We need a local extension or a small gatekeeper of our own.
+  That would use a bot token with `chat:write`, with a `slack.post` kind. Decide which, and whether
+  posts as the bot are auto-approvable.
+- Observers need workspace membership, and conversation reads set `excludeObservers` for members
+  who can't see the conversation. The workspace resource pattern `https://*` matches any URL, so it
+  must stay last in the host's resource matching.
+
+### Email
+
+- **Inbound only.** It is a Cloudflare Email Worker. Email Routing delivers to its `email` handler,
+  which parses the message with postal-mime and calls the `EmailHook` bound for that local part.
+  The session has only `getAddress()` and `subscribe()` (a `bindHook`). Each firing records an
+  observation through `startHook()`'s queue. **It can't send mail.** For notifications and digests
+  we need one of these instead:
+  - a Cloudflare `send_email` binding on `crm-runner` (system mail, not a user's account)
+  - Gmail or `outlook.send` through the sender's own connection, which is per user and never
+    auto-approvable
+  - a new sending gatekeeper
+- **Addresses are claimed first come, first served**, and claims are permanent (`EmailAddress` DO).
+  Any collaborator may observe. A connect flow exists but has no OAuth: visiting the link completes
+  it. It is useful for "email in" triggers (forward to an address and an automation runs) but not
+  for mailbox sync.
+- Senders are not authenticated beyond what Email Routing accepts, so treat `from` as untrusted.
+
+### ZoomInfo
+
+- Lookups and searches are free observations. Enrichments (`enrich*`) spend credits, so each is
+  submitted with `awaitDecision: true` and `implementsRevert: false`. They have no `actionKind`, so
+  they can never auto-approve. Results come back later through `getEnrichmentResult(ticket)`,
+  without simulation.
+- **There are no hooks or change feed**, so nothing reports job changes. Feeding `person.changeJob`
+  means polling enrichments, and each poll spends credits and needs an approval. An automation
+  doing this would block on a human every time. We need a policy for this, or a host-side
+  exception for a pre-approved budget.
+- `addObserver` always throws: only the owner may observe ZoomInfo data. Writing enriched fields
+  into shared CRM records is exactly the disclosure finding 4 describes. That needs an explicit
+  decision, probably an org connection whose owner accepts the licence terms.
+
+### Web search
+
+- **Auto-provisioned.** `GatekeeperVendor.describe()` sets `autoProvisionsAccount`, the host mints
+  accounts with `createAccount()`, and the account's `describe()` declares
+  `singleton: { tsType: "WebSearchSession" }`. The host installs
+  `getSingletonGatekeeperClass()` as a facet and exposes it everywhere, as `WEB_SEARCH`. **Duty 13's
+  "ignore singletons" no longer holds.** The integration host needs the singleton path, and
+  enabling web search needs an admin mode (off, optional or on).
+- Searches are observations, not actions: they are recorded before the query is sent, with
+  `subresources: []`, and every observer is admitted. Nothing needs approval. Every query is billed
+  to the account's AI Gateway (`CF_AI_GATEWAY`, default `default`) through the `AI` binding,
+  outside our model spend limits.
+
 ## Questions for the stage-6 interview
 
 1. What is our "workspace": what keys a gatekeeper facet, and so who sees simulated state?
@@ -195,3 +288,8 @@ agent-chat or sharing machinery.
 6. Resource pickers: vendor the configurator runtime, or render the specs in shadcn?
 7. Which other gatekeepers ship in stage 6 (Microsoft, email, Slack), and is email/calendar sync
    onto the timeline a hook-driven automation or a built-in?
+8. Upstream's Slack gatekeeper is read-only and `gatekeeper-email` only receives mail. How do Slack
+   posts and notification email get sent: by extending the vendored packages, by writing our own
+   small gatekeepers, or with a `send_email` binding outside the gatekeeper model?
+9. How does ZoomInfo job-change detection work, when every enrichment costs credits and needs an
+   approval?

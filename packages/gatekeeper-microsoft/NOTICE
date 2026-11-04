@@ -1,0 +1,6 @@
+This package contains code from Cloudflare OS (https://github.com/cloudflare/cloudflare-os),
+copyright the Cloudflare OS authors, licensed under the Apache License, Version 2.0 (see LICENSE in
+this directory). Upstream ships no NOTICE file of its own.
+
+The CRM project has modified it. UPSTREAM.md in this directory records the upstream commit and
+every local change; vendored source files that differ from upstream start with a comment saying so.
