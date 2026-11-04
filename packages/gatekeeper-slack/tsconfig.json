@@ -1,0 +1,11 @@
+{
+  "extends": "@crm/config/tsconfig.vendored.json",
+  "compilerOptions": {
+    // Configurator modules (src/configurator/*.tsx) use the authoring API's `h`.
+    "jsx": "react",
+    "jsxFactory": "h",
+    "types": ["./worker-configuration.d.ts"]
+  },
+  // Upstream's tests live in src/ and are type-checked with it, as upstream's tsconfig does.
+  "include": ["src"]
+}

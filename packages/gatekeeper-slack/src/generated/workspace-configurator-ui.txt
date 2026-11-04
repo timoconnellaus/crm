@@ -1,0 +1,18 @@
+<!doctype html>
+<!--
+  SHIM (crm, not from upstream). Stands in for the frame cloudflare-os generates from the matching
+  src/configurator/<name>-ui.tsx module with its configurator sandbox runtime (Kumo + Preact +
+  Tailwind, built by scripts/build-gatekeeper-configurator.ts and packages/configurator-ui). We do
+  not vendor that runtime or build. Stage 6 replaces this file with a shadcn renderer of the
+  configurator specs (docs/stages/06-integrations.md, "Resource pickers"); until then
+  startResourceConfigurator() returns this inert page. See UPSTREAM.md in this package.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Configurator unavailable</title>
+  </head>
+  <body>
+    <p>This connection's resource configurator is not available in this build.</p>
+  </body>
+</html>

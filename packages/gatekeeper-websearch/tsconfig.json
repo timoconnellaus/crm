@@ -1,0 +1,9 @@
+// Source and tests in one program, as upstream's tsconfig (__tests__/env.d.ts brings in the Worker
+// pool's types).
+{
+  "extends": "@crm/config/tsconfig.vendored.json",
+  "compilerOptions": {
+    "types": ["./worker-configuration.d.ts"]
+  },
+  "include": ["src", "__tests__", "test"]
+}
