@@ -1,10 +1,11 @@
-// MCP tool definitions → Anthropic tool definitions. MCP input schemas are JSON Schema objects; the
-// Messages API wants the same, except that it refuses anyOf / oneOf / allOf at the top level of
-// input_schema. Union inputs (activity_log's per-type variants) are flattened into one object:
+// MCP tool definitions → OpenAI-style function tools for chat completions. MCP input schemas are
+// JSON Schema objects and so are function `parameters`, but OpenAI's function calling and many
+// compatible servers refuse or mishandle anyOf / oneOf / allOf at the top level. Union inputs
+// (activity_log's per-type variants) are flattened into one object:
 // every property any variant has, required only when every variant requires it, and the exact
 // variants appended to the description so the model still sees which combinations are valid.
-import type Anthropic from "@anthropic-ai/sdk";
 import type { ToolInfo } from "./mcp.ts";
+import type { ChatTool } from "./model.ts";
 
 type JsonSchema = Record<string, unknown>;
 
@@ -53,7 +54,7 @@ export function flattenTopLevelUnion(
   };
 }
 
-export function toAnthropicTool(tool: ToolInfo): Anthropic.Tool {
+export function toOpenAiTool(tool: ToolInfo): ChatTool {
   const raw: JsonSchema = { ...(tool.inputSchema ?? {}) };
   delete raw.$schema;
   const flattened = flattenTopLevelUnion(raw);
@@ -66,12 +67,11 @@ export function toAnthropicTool(tool: ToolInfo): Anthropic.Tool {
       `(JSON Schema): ${JSON.stringify(flattened.variants)}`;
   }
   return {
-    name: tool.name,
-    description,
-    input_schema: { ...schema, type: "object" } as Anthropic.Tool.InputSchema,
+    type: "function",
+    function: { name: tool.name, description, parameters: { ...schema, type: "object" } },
   };
 }
 
-export function toAnthropicTools(tools: ToolInfo[]): Anthropic.Tool[] {
-  return tools.map(toAnthropicTool);
+export function toOpenAiTools(tools: ToolInfo[]): ChatTool[] {
+  return tools.map(toOpenAiTool);
 }

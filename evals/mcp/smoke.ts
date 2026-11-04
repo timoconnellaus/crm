@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Smoke-tests the harness against a running deployment without calling Claude: sign-in, OAuth,
+// Smoke-tests the harness against a running deployment without calling a model: sign-in, OAuth,
 // MCP, tool conversion, every task's fixture setup, and each outcome check run against the
 // untouched fixture (most should fail, since nobody did the task). Useful after changing the
-// server or the tasks; needs no API key.
+// server or the tasks; needs no model credentials.
 //
 //   node evals/mcp/smoke.ts --base-url http://localhost:5173
 import { parseArgs } from "node:util";
 import type { AgentRun } from "./lib/agent.ts";
-import { toAnthropicTools } from "./lib/convert.ts";
+import { toOpenAiTools } from "./lib/convert.ts";
 import {
   type CheckContext,
   type Fixture,
@@ -32,10 +32,14 @@ const open = async (name: string) =>
   openMcpSession(baseUrl, await authorize(baseUrl, cookie, name), name);
 
 const probe = await open("MCP eval smoke");
-const tools = toAnthropicTools(await probe.listTools());
-console.log(`${tools.length} tools: ${tools.map((t) => t.name).join(", ")}`);
-const unions = tools.filter((t) => "anyOf" in t.input_schema || "oneOf" in t.input_schema);
-if (unions.length) throw new Error(`top-level unions left in ${unions.map((t) => t.name)}`);
+const tools = toOpenAiTools(await probe.listTools());
+console.log(`${tools.length} tools: ${tools.map((t) => t.function.name).join(", ")}`);
+const unions = tools.filter(
+  (t) => "anyOf" in t.function.parameters || "oneOf" in t.function.parameters,
+);
+if (unions.length) {
+  throw new Error(`top-level unions left in ${unions.map((t) => t.function.name)}`);
+}
 console.log(`instructions: ${probe.instructions?.slice(0, 60)}…`);
 await probe.close();
 
@@ -43,7 +47,7 @@ const emptyRun: AgentRun = {
   calls: [],
   replies: [""],
   finalText: "",
-  stopReason: "end_turn",
+  stopReason: "stop",
   turns: 0,
   usage: { inputTokens: 0, outputTokens: 0 },
 };

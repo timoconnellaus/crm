@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./lib/*": "./lib/*"
+  },
   "scripts": {
     "eval": "node runner.ts",
     "smoke": "node smoke.ts",
@@ -10,7 +13,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "1.4.0",
     "@modelcontextprotocol/client": "2.4.0"
   },
   "devDependencies": {

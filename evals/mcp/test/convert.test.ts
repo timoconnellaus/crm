@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { toAnthropicTool, toAnthropicTools } from "../lib/convert.ts";
+import { toOpenAiTool, toOpenAiTools } from "../lib/convert.ts";
 
-describe("MCP → Anthropic tool conversion", () => {
-  it("keeps name, description and an object input schema", () => {
-    const tool = toAnthropicTool({
+describe("MCP → OpenAI function tool conversion", () => {
+  it("keeps name, description and an object parameters schema", () => {
+    const tool = toOpenAiTool({
       name: "person_get",
       description: "Get one person by id. Read-only.",
       inputSchema: {
@@ -15,19 +15,22 @@ describe("MCP → Anthropic tool conversion", () => {
       annotations: { readOnlyHint: true },
     });
     expect(tool).toEqual({
-      name: "person_get",
-      description: "Get one person by id. Read-only.",
-      input_schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+      type: "function",
+      function: {
+        name: "person_get",
+        description: "Get one person by id. Read-only.",
+        parameters: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+      },
     });
   });
 
   it("gives schemas without a type an object type", () => {
-    const [tool] = toAnthropicTools([{ name: "approval_status", inputSchema: {} }]);
-    expect(tool?.input_schema).toEqual({ type: "object" });
-    expect(tool?.description).toBe("");
+    const [tool] = toOpenAiTools([{ name: "approval_status", inputSchema: {} }]);
+    expect(tool?.function.parameters).toEqual({ type: "object" });
+    expect(tool?.function.description).toBe("");
   });
 
-  it("flattens a top-level union, which the Messages API refuses", () => {
+  it("flattens a top-level union, which function calling refuses", () => {
     const variants = [
       {
         type: "object",
@@ -50,12 +53,12 @@ describe("MCP → Anthropic tool conversion", () => {
         required: ["type", "links", "reason"],
       },
     ];
-    const tool = toAnthropicTool({
+    const tool = toOpenAiTool({
       name: "activity_log",
       description: "Log an activity.",
       inputSchema: { type: "object", anyOf: variants },
     });
-    const schema = tool.input_schema as Record<string, unknown>;
+    const schema = tool.function.parameters;
     expect(schema.anyOf).toBeUndefined();
     expect(schema.oneOf).toBeUndefined();
     expect(schema.type).toBe("object");
@@ -67,12 +70,12 @@ describe("MCP → Anthropic tool conversion", () => {
       payload: { type: "object", properties: { durationSeconds: { type: "number" } } },
     });
     expect(schema.required).toEqual(["type", "links", "reason"]);
-    expect(tool.description).toContain("exactly one of these 2 shapes");
-    expect(tool.description).toContain('"const":"note"');
+    expect(tool.function.description).toContain("exactly one of these 2 shapes");
+    expect(tool.function.description).toContain('"const":"note"');
   });
 
   it("keeps differing property schemas as a nested anyOf", () => {
-    const tool = toAnthropicTool({
+    const tool = toOpenAiTool({
       name: "x",
       inputSchema: {
         oneOf: [
@@ -81,9 +84,9 @@ describe("MCP → Anthropic tool conversion", () => {
         ],
       },
     });
-    expect((tool.input_schema.properties as Record<string, unknown>).payload).toEqual({
+    expect((tool.function.parameters.properties as Record<string, unknown>).payload).toEqual({
       anyOf: [{ type: "object" }, { type: "string" }],
     });
-    expect(tool.input_schema.required).toBeUndefined();
+    expect(tool.function.parameters.required).toBeUndefined();
   });
 });
