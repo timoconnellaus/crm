@@ -10,8 +10,29 @@ export const CONTRACT_VERSION = 1;
 /** Contract versions a host built with this SDK runs (current and previous, ADR 0005). */
 export const SUPPORTED_CONTRACT_VERSIONS: readonly number[] = [CONTRACT_VERSION];
 
+/**
+ * Gatekeepers code can reach as `codemode:<gatekeeper>` host modules (stage 6a, ADR 0050): the
+ * only way out to an external service. Calls go through the integration host as the caller,
+ * reads are observations and side effects are outbound actions under the approval gate.
+ */
+export const GATEKEEPER_MODULES = [
+  "google",
+  "microsoft",
+  "slack",
+  "slack-post",
+  "mcp",
+  "email",
+  "email-send",
+  "zoominfo",
+  "websearch",
+  "webhook",
+  // The fake provider: development and tests only (it answers only when turned on).
+  "fake",
+] as const;
+export type GatekeeperModuleName = (typeof GATEKEEPER_MODULES)[number];
+
 /** Host modules an extension can ask for (ADR 0025). There is no HTTP module. */
-export const HOST_MODULES = ["crm", "storage", "log", "ai"] as const;
+export const HOST_MODULES = ["crm", "storage", "log", "ai", ...GATEKEEPER_MODULES] as const;
 export type HostModuleName = (typeof HOST_MODULES)[number];
 
 /** Risk classes an extension tool may declare (schema and extension risks are host-only). */
@@ -304,12 +325,38 @@ export interface AiModule {
   classify(text: string, labels: string[]): Promise<{ label: string }>;
 }
 
+/** A connected gatekeeper (`codemode:<gatekeeper>`), reached through its connections. */
+export interface GatekeeperModule {
+  /** Connections of this gatekeeper the caller may use, with their bound resources. */
+  connections(): Promise<
+    {
+      id: string;
+      title: string;
+      resources: { key: string; bindingName: string; tsType: string }[];
+    }[]
+  >;
+  /**
+   * Calls a top-level session method of a bound resource. Side effects come back as pending
+   * outbound actions (in `pending`) until a person approves them.
+   */
+  call(
+    connectionId: string,
+    resource: string,
+    method: string,
+    ...args: unknown[]
+  ): Promise<{ value: unknown; pending: unknown[]; applied: unknown[] }>;
+  /** The session's TypeScript declarations. */
+  types(connectionId: string, resource: string): Promise<string>;
+}
+
 export interface ExtensionContext {
   extension: { id: string; version: string };
   crm: CrmModule;
   storage: StorageModule;
   log: LogModule;
   ai: AiModule;
+  /** A gatekeeper declared in permissions.modules, e.g. `ctx.gatekeeper("email-send")`. */
+  gatekeeper(name: GatekeeperModuleName): GatekeeperModule;
 }
 
 // ---------------------------------------------------------------------------------------------

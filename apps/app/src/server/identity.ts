@@ -5,7 +5,9 @@ import { createIdentityProvider, type IdentityEnv, type Principal } from "@crm/a
 
 /** Paths anyone may load. Everything else needs a Principal. */
 const PUBLIC_PATHS = new Set(["/sign-in", "/api/health"]);
-const PUBLIC_PREFIXES = ["/api/auth/"];
+// /gatekeeper/: OAuth redirects, connect pages and provider pushes (stage 6a); each gatekeeper
+// authenticates its own routes with nonces and signatures.
+const PUBLIC_PREFIXES = ["/api/auth/", "/gatekeeper/"];
 
 /**
  * Server functions callable without a Principal live in files named `*.public.ts`. Every other

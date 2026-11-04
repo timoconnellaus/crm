@@ -7,11 +7,11 @@
   "type": "module",
   "main": "./src/microsoft.ts",
   "scripts": {
-    "build": "wrangler deploy --dry-run --outdir dist",
+    "build": "node ../../scripts/gatekeeper-configurator-frames.mjs && wrangler deploy --dry-run --outdir dist",
     "types": "node ../../scripts/gatekeeper-worker-types.mjs",
-    "typecheck": "node ../../scripts/gatekeeper-worker-types.mjs --check && tsc --noEmit",
-    "test": "vitest run && vitest run -c vitest.worker.config.ts && vitest run -c vitest.smoke.config.ts",
-    "test:timing": "TIMING_TESTS=1 vitest run"
+    "typecheck": "node ../../scripts/gatekeeper-configurator-frames.mjs && node ../../scripts/gatekeeper-worker-types.mjs --check && tsc --noEmit",
+    "test": "node ../../scripts/gatekeeper-configurator-frames.mjs && vitest run && vitest run -c vitest.worker.config.ts && vitest run -c vitest.smoke.config.ts",
+    "test:timing": "node ../../scripts/gatekeeper-configurator-frames.mjs && TIMING_TESTS=1 vitest run"
   },
   "dependencies": {
     "@crm/gatekeeper-configurator-ui": "workspace:*",

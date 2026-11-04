@@ -29,6 +29,7 @@ import { refreshSchemaRegistry } from "./extensions/schema.ts";
 import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { findProvisionalIds, newId } from "./ids.ts";
+import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
 import type { ModelRunner } from "./models.ts";
 import {
   type AnyOperation,
@@ -79,6 +80,10 @@ export interface InvocationContext {
   resolveOperation?: ((name: string) => AnyOperation | undefined) | undefined;
   /** The extension runtime (extension.* and x.* operations need it). */
   extensionHost?: ExtensionHost;
+  /** The integration host (connection.*, integration.*, outbound approvals). */
+  integrations?: IntegrationRuntime;
+  /** Blob storage (R2) for email bodies. */
+  blobs?: BlobStore;
   /** Actor `extension` only: the calling extension and its declared permissions (ADR 0025). */
   extension?: ExtensionCaller;
   /** Model roles (ADR 0009); absent when the deployment has no AI binding. */
@@ -94,7 +99,7 @@ async function loadExtensionCaller(db: CrmDb, userId: string): Promise<Extension
     .select(["id", "manifest", "status"])
     .where("user_id", "=", userId)
     .executeTakeFirst();
-  if (!row || row.status !== "active") return null;
+  if (row?.status !== "active") return null;
   const manifest = JSON.parse(row.manifest) as { permissions: ExtensionCaller["permissions"] };
   return { id: row.id, permissions: manifest.permissions };
 }
@@ -524,6 +529,8 @@ export async function invokeOperation<O extends AnyOperation>(
     },
     afterCommit,
     ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
+    ...(ctx.integrations ? { integrations: ctx.integrations } : {}),
+    ...(ctx.blobs ? { blobs: ctx.blobs } : {}),
     ...(ctx.extension ? { extension: ctx.extension } : {}),
     ...(ctx.models ? { models: ctx.models } : {}),
     ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
@@ -545,6 +552,8 @@ export async function invokeOperation<O extends AnyOperation>(
           approval: nested.approval,
           reason: nested.reason,
           ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
+          ...(ctx.integrations ? { integrations: ctx.integrations } : {}),
+          ...(ctx.blobs ? { blobs: ctx.blobs } : {}),
           ...(ctx.models ? { models: ctx.models } : {}),
           ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
         });

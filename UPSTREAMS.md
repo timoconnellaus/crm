@@ -49,10 +49,14 @@ Local changes, in summary:
   `worker-configuration.d.ts`. Not taken: the rest of `workshop-shared`, observability's error
   reporting, metrics and tracing, configurator-ui's runtime and build, and `@gadgets/scripts`
   (except `assert-workerd.ts`).
-- **Shim:** placeholder configurator frames in
-  `packages/gatekeeper-{mcp,google,microsoft,slack,email,zoominfo}/src/generated/*.txt` (16 files)
-  stand in for the frames upstream builds with the configurator-ui runtime, which we don't vendor.
-  Stage 6 replaces them with a shadcn renderer of the configurator specs.
+- **Configurator frames:** we don't vendor upstream's configurator-ui runtime. The CRM renders the
+  configurator specs (`src/configurator/*-configurator-ui.tsx`, unchanged) natively with its own
+  shadcn runtime (`apps/app/src/components/integrations/configurator`) and drives each gatekeeper's
+  `ui` capability through the server. The frames the vendored sources still import,
+  `packages/gatekeeper-{mcp,google,microsoft,slack,email,zoominfo}/src/generated/*.txt` (16 files),
+  are generated and git-ignored: `scripts/gatekeeper-configurator-frames.mjs` writes a tiny
+  document naming each spec, run by those packages' `typecheck`, `test` and `build` and by
+  `scripts/dev-setup.mjs`.
 - **Tests:** upstream's suites run unchanged (Node and workerd), except Microsoft's configurator
   frame suites, which drive upstream's built frames in Chromium (we ship placeholders), and its
   opt-in live-tenant suite. The gatekeeper Workers pin `vite` 7.3.6 for their tests because Vite 8
@@ -63,6 +67,40 @@ Local changes, in summary:
   commit. CI runs it weekly as the informational `upstream-check` job.
 - **Lint:** Biome skips the vendored `src`, `__tests__` and `testing` directories so upstream diffs
   stay portable. Our own files in those packages are linted.
+
+## Our own gatekeepers (not vendored)
+
+Written for this CRM on the vendored `gatekeeper-kit` and `gatekeeper-interface` (stage 6a,
+ADR 0114). They have no `UPSTREAM.md`, are linted normally, and use no capnweb-validate decorators.
+
+| Package | Worker | What it does |
+| --- | --- | --- |
+| [`@crm/gatekeeper-email-send`](packages/gatekeeper-email-send/README.md) | `crm-gatekeeper-email-send` | Sends email with Cloudflare Email Service (`email.send`, `email.internal`) |
+| [`@crm/gatekeeper-slack-post`](packages/gatekeeper-slack-post/README.md) | `crm-gatekeeper-slack-post` | Posts to Slack and sends DMs as the bot of the same Slack app as the vendored read-only gatekeeper (`slack.post`, `slack.dm`) |
+| [`@crm/gatekeeper-webhook`](packages/gatekeeper-webhook/README.md) | `crm-gatekeeper-webhook` | Receives signed webhooks and delivers typed events (ADR 0113) |
+
+## Proposed upstream changes
+
+Found in the Cloudflare cost audit (`docs/research/cloudflare-cost-audit.md`, section 5). They can
+only be fixed inside vendored code, so we propose them upstream instead of patching locally:
+
+- **V1, Gmail watch label filter** (`gatekeeper-google/src/google-api.ts`, `watch()`): send
+  `labelIds: ["INBOX"]` with `labelFilterBehavior: "include"` in the `users.watch` body, so reads,
+  label changes and drafts stop triggering pushes (300–1,000 a mailbox a day today), and skip the
+  second `getProfile` when the history is empty. Our sync does not depend on it: catch-up and
+  ingest dedupe make extra pushes harmless, only wasteful.
+- **V2, token caching in hook drivers** (`gatekeeper-google/src/gmail-hooks.ts`, `chat-hooks.ts`):
+  wrap the drivers' access-token fetches in `AccessTokenCache`, as the facets already do, saving
+  about three DO requests a sync. Our own gatekeepers (`gatekeeper-slack-post`) cache tokens per
+  facet already.
+- **V3, delete feeds for mail and calendar sync** (found in stage 6a): the sessions expose no way
+  to learn what was deleted. Proposed: on `GmailScopedSession`, a `listChanges(sinceHistoryId)`
+  over Gmail `users.history.list` returning `messageAdded` and `messageDeleted` ids plus the next
+  history id (the hook driver already tracks history ids); on the Outlook session, a
+  `listChanges(deltaToken)` over Graph `messages/delta` returning changed ids and `@removed` ids;
+  the same for Outlook Calendar (`events/delta`) and Google Calendar (`events.list` with
+  `syncToken`, which returns cancelled items). Until then the CRM reconciles deletes by listing
+  windows (ADR 0112), which is complete but slower (hours, not seconds).
 
 ## Local changes to vendored code
 

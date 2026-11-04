@@ -28,6 +28,10 @@ export * from "./fields/index.ts";
 export * from "./filter.ts";
 export * from "./gate.ts";
 export * from "./ids.ts";
+export * from "./integrations/catalogue.ts";
+export * from "./integrations/events.ts";
+export * from "./integrations/outbound.ts";
+export * from "./integrations/runtime.ts";
 export * from "./invoke.ts";
 export * from "./list.ts";
 export * from "./models.ts";
@@ -43,12 +47,14 @@ export * from "./operations/code.ts";
 export * from "./operations/connected-app.ts";
 export * from "./operations/count.ts";
 export * from "./operations/dashboard.ts";
+export * from "./operations/enrichment.ts";
 export * from "./operations/export.ts";
 export * from "./operations/extension.ts";
 export * from "./operations/extension-authoring.ts";
 export * from "./operations/extension-ui.ts";
 export * from "./operations/import.ts";
 export { coreOperations } from "./operations/index.ts";
+export * from "./operations/integration.ts";
 export * from "./operations/notification.ts";
 export * from "./operations/organisation.ts";
 export * from "./operations/person.ts";
@@ -58,6 +64,7 @@ export * from "./operations/record.ts";
 export * from "./operations/retention.ts";
 export * from "./operations/search.ts";
 export { COMMON_CURRENCIES } from "./operations/settings.ts";
+export * from "./operations/suggestions.ts";
 export * from "./operations/task.ts";
 export * from "./operations/trash.ts";
 export * from "./operations/user.ts";
@@ -66,6 +73,7 @@ export {
   type InvocationContext,
   invokeOperation,
   operationObject,
+  readCountHour,
   redactInput,
 } from "./pipeline.ts";
 export * from "./principals.ts";
@@ -89,5 +97,7 @@ export * from "./registry.ts";
 export * from "./relative.ts";
 export * from "./retention.ts";
 export { BASE_CURRENCY_SETTING, loadApprovalPolicy, loadGeneralSettings } from "./settings.ts";
+export * from "./sync/ingest.ts";
+export * from "./sync/signals.ts";
 export { type PrincipalLike, resolveActingUser, SYSTEM_USER } from "./users.ts";
 export * from "./views/spec.ts";

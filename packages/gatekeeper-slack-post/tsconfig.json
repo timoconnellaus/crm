@@ -1,0 +1,12 @@
+{
+  "extends": "@crm/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    // tsc checks the vendored @crm/gatekeeper-interface and gatekeeper-kit sources we import (they
+    // ship .ts, so skipLibCheck does not cover them), and upstream does not index-check. Our own
+    // code is otherwise held to the full base config.
+    "noUncheckedIndexedAccess": false,
+    "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-plugin/types"]
+  },
+  "include": ["src", "test", "worker-configuration.d.ts"]
+}
