@@ -5,6 +5,7 @@ import { activityOperations } from "./activity.ts";
 import { auditOperations } from "./audit.ts";
 import { personOperations } from "./person.ts";
 import { policyOperations } from "./policy.ts";
+import { queryOperations } from "./query.ts";
 import { searchOperations } from "./search.ts";
 import { taskOperations } from "./task.ts";
 import { viewOperations } from "./view.ts";
@@ -18,4 +19,5 @@ export const coreOperations = [
   ...viewOperations,
   ...auditOperations,
   ...searchOperations,
+  ...queryOperations,
 ] as const;

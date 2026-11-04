@@ -11,6 +11,7 @@ export type OperationErrorCode =
   | "not_found"
   | "conflict"
   | "config"
+  | "timeout"
   | "internal";
 
 export class OperationError extends Error {
