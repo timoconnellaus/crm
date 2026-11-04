@@ -71,22 +71,69 @@ since bindings that share a namespace share counters. If a binding is missing, r
 limited and the Worker logs a warning. Rate-limited requests show up in Workers Logs as 429s.
 
 `crm-runner` has no secrets. It runs extension code, which calls operations there, so set its
-`APPROVAL_FLOOR` var (in `apps/runner/wrangler.jsonc`) to the same value as crm-app's. Extensions
-that use `codemode:ai` need Workers AI: add `"ai": { "binding": "AI" }` to `apps/runner/wrangler.jsonc`
-and, optionally, set `AI_GATEWAY_ID` to route calls through AI Gateway. Without the binding those
-calls fail with a "not configured" error and nothing else changes. Shipped extensions (`extensions/`)
-are installed through `extension.install` on the first request after a deploy.
-
-"Describe a widget" on dashboards (stage 4a) uses the `build` model role from `crm-app`: add
-`"ai": { "binding": "AI" }` to `apps/app/wrangler.jsonc` too, and optionally set its
-`AI_GATEWAY_ID`. Workers AI is the default provider; no third-party key is needed. Without the
-binding the box says AI is not configured and the manual widget editor still works.
-`AI_FAKE_MODEL` (a deterministic stand-in for local development and e2e tests, set in
-`.dev.vars` by `pnpm dev`) must stay empty in production.
+`APPROVAL_FLOOR` var (in `apps/runner/wrangler.jsonc`) to the same value as crm-app's. Shipped
+extensions (`extensions/`) are installed through `extension.install` on the first request after a
+deploy. AI (model roles for `codemode:ai`, "Describe a widget", summaries and semantic search) is
+described in [In-app AI](#in-app-ai) below.
 
 Dashboard widget results are cached for 60 seconds in the Workers Cache API (ADR 0057). The Cache
 API does nothing on `*.workers.dev` hostnames, so put crm-app on a custom domain to get the cache;
 without it every widget view runs its query.
+
+## In-app AI
+
+Model roles (ADR 0009, ADR 0150), summaries (ADR 0153) and semantic search (ADR 0154, ADR 0155).
+Everything works without AI; each feature then says "AI is not configured".
+
+**Bindings.** Workers AI (`"ai": { "binding": "AI" }`, on crm-app and crm-runner) and Vectorize
+(`"vectorize": [{ "binding": "VECTORIZE", "index_name": "crm-records" }]`, on crm-app) are
+remote-only, so the committed `wrangler.jsonc` files leave them out (local development and tests
+use stand-ins, ADR 0156) and `pnpm run deploy` adds them. To do it by hand:
+
+```sh
+pnpm exec wrangler vectorize create crm-records --dimensions=384 --metric=cosine
+pnpm exec wrangler vectorize create-metadata-index crm-records --property-name=object --type=string
+# then add the two bindings above to apps/app/wrangler.jsonc and the `ai` one to apps/runner/wrangler.jsonc
+```
+
+The index's dimensions must match the `embed` role's model (384 for the shipped
+`@cf/baai/bge-small-en-v1.5`) and the `VECTORIZE_DIMENSIONS` var. A model of another size needs a
+new index. Existing records are embedded by the 10-minute cron after the first deploy (a one-time
+backfill), new and changed ones right after each write.
+
+**Variables** (in `apps/app/wrangler.jsonc`, and the model ones also in `apps/runner/wrangler.jsonc`):
+
+| Name | Kind | Purpose |
+| --- | --- | --- |
+| `AI_GATEWAY_ID` | var | Send every model call through this AI Gateway (needed for usage and spend per role, and BYOK) |
+| `CLOUDFLARE_ACCOUNT_ID` | var | Your account id: AI Gateway URLs for non-Workers-AI providers, and Settings → AI's Cloudflare API calls |
+| `AI_MODEL_ROLES` | var | Deploy-config layer of the registry: JSON, e.g. `{"summarise":{"provider":"openai","model":"gpt-4.1-mini"}}`. Admin overrides in Settings → AI win over it |
+| `AI_PROVIDERS` | var | Base URLs for `jev` and `openai-compatible`: `{"openai-compatible":{"baseURL":"https://…/v1"}}` |
+| `VECTORIZE_DIMENSIONS` | var | The Vectorize index's size. Default `384` |
+| `AI_SECRET_SCRIPTS` | var | Workers that Settings → AI stores provider keys on. Default `crm-app,crm-runner` |
+| `CLOUDFLARE_API_TOKEN` | secret (crm-app) | Settings → AI's token (deploy script: set `CRM_AI_ADMIN_TOKEN`). See permissions below |
+| `AI_GATEWAY_TOKEN` | secret | An authenticated gateway's token, sent as `cf-aig-authorization` |
+| `AI_KEY_OPENAI`, `AI_KEY_GOOGLE`, `AI_KEY_OPENROUTER`, `AI_KEY_ANTHROPIC`, `AI_KEY_JEV`, `AI_KEY_CUSTOM` | secrets (both Workers) | Provider keys. Set from Settings → AI, or with `wrangler secret put` on both Workers. Never stored in D1 |
+| `AI_FAKE_MODEL` | var | Local development and e2e only (`.dev.vars`): deterministic stand-ins for every role and in-memory vectors when there is no `ai` binding. Never set it in production |
+
+**Settings → AI's API token** (`CLOUDFLARE_API_TOKEN` on crm-app). Create a custom token scoped
+to your account with:
+
+- Account → **Workers Scripts → Edit**: store provider keys as Workers secrets (each save creates
+  a new version of crm-app and crm-runner with the secret);
+- Account → **AI Gateway → Edit** and Account → **Secrets Store → Edit**: store keys in AI Gateway
+  (BYOK) instead;
+- Account → **AI Gateway → Read**: usage and spend per role.
+
+Leave it unset and Settings → AI shows these instructions instead of the key form; keys can still
+be set with `wrangler secret put AI_KEY_OPENAI --name crm-app` (and `--name crm-runner`).
+No role defaults to a third-party provider: every shipped default is a Workers AI model, so a
+deployment needs no third-party key.
+
+**Real-model checks.** The semantic search relevance set runs against the real embedding model
+with `CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… pnpm --filter @crm/core relevance:real`
+(a token with Workers AI Read). The eval harnesses in `evals/` take their default model from the
+registry's `assistant` role.
 
 ## Option 1: Deploy to Cloudflare button
 
@@ -114,9 +161,13 @@ never reaches our script.
 
 `scripts/deploy.mjs` runs, in order:
 
-1. `wrangler deploy` for `crm-runner` (creates the `crm` D1 database on a fresh account);
-2. `wrangler d1 migrations apply DB --remote` (core migrations, tracked in `core_migrations`);
-3. `vite build` and `wrangler deploy` for `crm-app`, passing any of the secrets above that are set
+1. with AI on (the default; `CRM_AI=off` skips it): `wrangler vectorize create crm-records
+   --dimensions=384 --metric=cosine` and its `object` metadata index, if the index does not exist
+   yet, and a generated `wrangler.deploy.jsonc` for each Worker that adds the `ai` binding (both)
+   and the `vectorize` binding (crm-app) (see [In-app AI](#in-app-ai));
+2. `wrangler deploy` for `crm-runner` (creates the `crm` D1 database on a fresh account);
+3. `wrangler d1 migrations apply DB --remote` (core migrations, tracked in `core_migrations`);
+4. `vite build` and `wrangler deploy` for `crm-app`, passing any of the secrets above that are set
    in the environment with `--secrets-file`. A first deploy needs at least `BETTER_AUTH_SECRET`;
    later deploys keep the secrets already set.
 

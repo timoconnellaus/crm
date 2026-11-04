@@ -10,7 +10,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "relevance:real": "RELEVANCE_REAL=1 vitest run test/ai-relevance.test.ts --silent=false"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",

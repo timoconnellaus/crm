@@ -49,7 +49,7 @@ const appVars = join(root, "apps/app/.dev.vars");
 if (existsSync(appVars) && !/^AI_FAKE_MODEL=/m.test(readFileSync(appVars, "utf8"))) {
   writeFileSync(
     appVars,
-    `${readFileSync(appVars, "utf8").trimEnd()}\n\n# Local only: a stand-in for the build model role (no AI binding locally).\nAI_FAKE_MODEL=true\n`,
+    `${readFileSync(appVars, "utf8").trimEnd()}\n\n# Local only: stand-ins for every model role and in-memory vectors (no AI or Vectorize locally).\nAI_FAKE_MODEL=true\n`,
   );
 }
 
