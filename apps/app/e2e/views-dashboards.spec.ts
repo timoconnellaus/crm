@@ -19,8 +19,13 @@ const q = (value: unknown) => encodeURIComponent(JSON.stringify(value));
 /** Drags `source` onto `target`; on phones (touch) uses the card's own "Move to" menu instead. */
 async function moveCard(page: Page, source: Locator, target: Locator, menuChoice: string) {
   if (isPhone(page)) {
-    await source.getByRole("button", { name: /^Move / }).click();
-    await page.getByRole("menuitem", { name: menuChoice }).click();
+    // The menu can re-render while the board settles; reopen it until the choice takes.
+    await expect(async () => {
+      if (!(await page.getByRole("menuitem", { name: menuChoice }).isVisible())) {
+        await source.getByRole("button", { name: /^Move / }).click();
+      }
+      await page.getByRole("menuitem", { name: menuChoice }).click({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
     return;
   }
   await source.dragTo(target);
@@ -133,6 +138,10 @@ test("the Overview Home renders, follows its filters and clicks through", async 
   await page.getByRole("option", { name: "All time" }).click();
   await expect(page).toHaveURL(/filters=/);
   await expect(kpi.getByTestId("kpi-change")).toHaveCount(0);
+  // Results are cached for 60 s; refresh so the count includes people other specs just added.
+  await kpi.getByRole("button", { name: /actions$/ }).click();
+  await page.getByRole("menuitem", { name: "Refresh" }).click();
+  await expect(kpi.getByText("cached")).toHaveCount(0);
   const counted = (await kpi.getByTestId("kpi-value").innerText()).trim();
 
   // Clicking the KPI opens People filtered to exactly those records.

@@ -63,7 +63,8 @@ export function DashboardPage({
     setLocal(next);
     try {
       await callOp("dashboard.update", { id: dashboard.id, widgets: next });
-      await invalidateOps(client, "dashboard.");
+      // A new widget may have run before the save landed (and failed): run it again.
+      await Promise.all([invalidateOps(client, "dashboard."), invalidateOps(client, "widget.")]);
       setLocal(null);
     } catch (error) {
       setLocal(before === dashboard.widgets ? null : before);

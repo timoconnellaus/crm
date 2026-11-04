@@ -241,8 +241,14 @@ function BoardColumn({
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
-  const movedAway = new Set(pending.filter((p) => p.from === value).map((p) => p.record.id));
-  const arriving = pending.filter((p) => p.to === value).map((p) => p.record);
+  const movedAway = useMemo(
+    () => new Set(pending.filter((p) => p.from === value).map((p) => p.record.id)),
+    [pending, value],
+  );
+  const arriving = useMemo(
+    () => pending.filter((p) => p.to === value).map((p) => p.record),
+    [pending, value],
+  );
   const cards = useMemo(() => {
     const loaded = query.data?.pages.flatMap((p) => p.items) ?? [];
     const kept = loaded.filter((r) => !movedAway.has(r.id) && !arriving.some((a) => a.id === r.id));
