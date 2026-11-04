@@ -31,13 +31,19 @@ export function connectionCard(page: Page, address: string): Locator {
 }
 
 /**
- * Connects a personal fake connection through the real popup: Connect, the provider's consent
- * page (mailbox address, Allow), /connect/handoff, and back. Returns its card, active.
+ * Connects a fake connection (personal, or for the org: admins) through the real popup: Connect,
+ * the provider's consent page (mailbox address, Allow), /connect/handoff, and back. Returns its
+ * card, active.
  */
-export async function connectFake(page: Page, address: string): Promise<Locator> {
+export async function connectFake(
+  page: Page,
+  address: string,
+  scope: "personal" | "org" = "personal",
+): Promise<Locator> {
   const card = page.locator('[data-testid=catalogue-item][data-vendor="fake"]');
   const popupOpened = page.waitForEvent("popup");
-  await card.getByRole("button", { name: `Connect: ${FAKE_TITLE}` }).click();
+  const label = scope === "org" ? "Connect for the org" : "Connect";
+  await card.getByRole("button", { name: `${label}: ${FAKE_TITLE}` }).click();
   const popup = await popupOpened;
   await popup.getByLabel("Mailbox address").fill(address);
   const closed = popup.waitForEvent("close", { timeout: 30_000 });
@@ -117,6 +123,8 @@ export const WEBHOOK_TITLE = "Inbound webhooks";
 
 interface MinuteTick {
   integrationEvents: { consumed: number; dispatched: number; runIds: string[] } | null;
+  /** Notification delivery: one result per send attempted (`n:<notificationId>:<channel>`). */
+  notifications: { notifications: { key: string; status: string }[] } | null;
 }
 
 /**

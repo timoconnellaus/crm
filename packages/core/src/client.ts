@@ -31,6 +31,8 @@ export {
 // Gatekeeper titles and companions (Slack posting rides on the Slack connection), for pickers.
 export { CATALOGUE, type CatalogueEntry, catalogueEntry } from "./integrations/catalogue.ts";
 export { LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT, type Sort, sortSchema } from "./list.ts";
+// Which org connections can carry notification email / Slack (Settings → Notifications).
+export { CHANNEL_RESOURCE_PATTERNS, CHANNEL_VENDORS } from "./notifications/channels.ts";
 export {
   ACTORS,
   type Actor,

@@ -79,7 +79,7 @@ test("a signed webhook delivery runs the automation it triggers", async ({
   await open(page, `/automations/${automationId}`);
   await expect(page.getByTestId("automation-status")).toHaveText("Active");
   await expect(page.getByTestId("automation-summary")).toContainText(
-    `When the ${endpointId} webhook receives a invoice.paid event`,
+    `When the ${endpointId} webhook receives an invoice.paid event`,
   );
   const trigger = page.getByTestId("diagram-node").first();
   await expect(trigger).toHaveAttribute("data-kind", "trigger");

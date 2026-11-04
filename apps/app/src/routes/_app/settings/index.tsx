@@ -2,6 +2,7 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+  BellIcon,
   ChevronRightIcon,
   CoinsIcon,
   DatabaseIcon,
@@ -37,6 +38,7 @@ function Section({
     | "/settings/connected-apps"
     | "/settings/extensions"
     | "/settings/integrations"
+    | "/settings/notifications"
     | "/settings/storage"
     | "/settings/ai"
     | "/settings/general"
@@ -144,6 +146,16 @@ function SettingsPage() {
                 : "Connect your mailbox, calendar and other services, and choose what syncs."
             }
             to="/settings/integrations"
+          />
+          <Section
+            icon={<BellIcon className="size-5" />}
+            title="Notifications"
+            description={
+              isAdmin
+                ? "Which notifications reach you by email or Slack, the daily digest, and how the org delivers them."
+                : "Which notifications reach you by email or Slack, and the daily digest."
+            }
+            to="/settings/notifications"
           />
           <Section
             icon={<PlugIcon className="size-5" />}
