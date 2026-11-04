@@ -26,6 +26,9 @@
     // better-auth (default) or cloudflare-access. See docs/deploying.md.
     "IDENTITY_PROVIDER": "better-auth",
     // Only the first user may sign up unless this is "true".
-    "AUTH_ALLOW_SIGNUP": "false"
+    "AUTH_ALLOW_SIGNUP": "false",
+    // Approval-policy floor (ADR 0011): JSON rules the org's preset can never loosen, e.g.
+    // {"*":{"destructive":"review"}}. Empty means no floor. See docs/deploying.md.
+    "APPROVAL_FLOOR": ""
   }
 }

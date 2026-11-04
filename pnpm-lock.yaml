@@ -23,6 +23,9 @@ importers:
       '@crm/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@crm/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@crm/db':
         specifier: workspace:*
         version: link:../../packages/db

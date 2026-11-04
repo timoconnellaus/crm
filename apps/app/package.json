@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@crm/auth": "workspace:*",
+    "@crm/core": "workspace:*",
     "@crm/db": "workspace:*",
     "@crm/ui": "workspace:*",
     "@tanstack/react-router": "1.170.46",
