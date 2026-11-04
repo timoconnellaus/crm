@@ -1,0 +1,148 @@
+# Stage 5: Automations
+
+Read first: [`AGENTS.md`](../../AGENTS.md), [`docs/architecture.md`](../architecture.md),
+[`CONTEXT.md`](../../CONTEXT.md), ADRs [0006](../adr/0006-dynamic-runtime-cloudflare-computer.md),
+[0011](../adr/0011-approval-pipeline.md), [0022](../adr/0022-approval-queue-and-simulation.md),
+[0023](../adr/0023-extension-contract.md), [0025](../adr/0025-extension-authority-and-runtime.md),
+[0026](../adr/0026-deals-extension.md), [0028](../adr/0028-automations.md),
+[0029](../adr/0029-notifications.md).
+
+**Reference design**: [`assets/05-automation-page.html`](assets/05-automation-page.html), the
+automation page approved in the interview.
+
+Builds on Stages 3–4: the extension runtime, the Deals extension, and simulation from stage 2.
+
+## Goal
+
+Business users describe an automation and Claude writes it as extension code. The host shows a
+plain-English summary and a step diagram, and lets you test it against a real record with nothing
+written. Approved automations run durably on Cloudflare Workflows, within safety rails that stop
+runaways.
+
+## Scope
+
+### Contract: `defineAutomation` (ADR 0028)
+- It lives in an extension's `automations`. It declares:
+  - `trigger`
+  - optional `conditions` (declarative where possible, so the summary can render them)
+  - `steps` / a handler
+  - `onRejected` behaviour
+- **Trigger types:**
+  - record events (`created`, `updated`, `deleted`, `restored`) on any core or extension object
+  - `fieldChanged` with `from` / `to` conditions, e.g. stage type → `won`
+  - `schedule`: cron in the deployment timezone, which becomes a setting
+  - `dateRelative`: N days before or after a date field, evaluated daily
+  - `manual`: a button on a record page or a bulk action on lists
+  - `approvalDecided`
+  - Inbound webhooks wait for gatekeepers (stage 6).
+- The handler API is shaped like Workflow steps: `step.do(name, fn)`, `step.sleep(name, duration)` and
+  `step.waitForEvent`. Each `step.do` runs extension code in a dynamic worker with the extension's
+  host modules, as actor `automation` under the extension principal.
+- Steps declare their intent where possible, e.g. `step.do("create onboarding tasks", { writes:
+  ["task"] }, fn)`. The host can then render the step diagram and the impact summary statically.
+  Undeclared effects are still gated at run time.
+
+### Execution
+- **Events:** the pipeline emits record events after commit (`ctx.afterCommit`) to a **Queue**. The
+  consumer in `crm-runner` matches enabled automations and starts runs.
+- **Runs:** every run is a **Cloudflare Workflow** instance. Its id is derived from the idempotency
+  key (event id + automation id), so duplicate deliveries never double-run. Steps are retried with
+  backoff and are durable across redeploys.
+- **Schedules and date-relative triggers:** a cron in `crm-runner` evaluates schedules and daily
+  date-relative matches, using idempotency keys per period.
+- **Review pauses:** if an action's gate decision is `review`, it becomes a pending action (stage 2
+  queue) in a change set for the run. The Workflow waits for the decision via `waitForEvent`.
+  Approval resumes the run; rejection follows `onRejected`. Expiry follows the pending item (7 days
+  by default).
+- **Safety rails:**
+  - **cascade depth:** automation-caused changes can trigger others up to depth 3; deeper events are
+    dropped and logged
+  - **cycle detection:** an automation can't retrigger itself on the same record within one cascade
+  - **rate limits** per automation (runs per minute, writes per hour), with auto-pause and an admin
+    notification
+  - **per-record debounce:** multiple updates within N seconds coalesce into one `updated` event
+  - an admin **kill switch** that pauses all automations instantly
+  - stage-3 quarantine still applies
+
+### Observability and control
+- **Run history** per automation, kept for 30 days:
+  - trigger and record
+  - steps with timings and outcomes
+  - operations called
+  - logs
+  - waiting, paused or failed state
+- Retry a failed run, or replay a run against current data.
+- **Test mode:** dry-run an automation against a chosen record using the stage-2 simulation overlay,
+  so nothing is written. Waits are skipped and shown. It shows exactly what the automation would do
+  and which approvals it would need under the current policy. Test mode is available to Claude as
+  an operation and MCP tool.
+- A per-record **Automations** section listing runs that touched the record.
+- Enable or disable per automation. Versions and rollback come from the extension's git history.
+- Operations (all MCP-exposed where safe):
+  - `automation.list`, `automation.get` (summary, steps, permissions, rails)
+  - `automation.test`
+  - `automation.enable` / `automation.disable`
+  - `automation.runs`, `automation.retry`, `automation.replay`
+  - `automation.killSwitch` (admin, human-only)
+
+### Plain-English summary and step diagram
+- The summary is **generated by the host** from the declared trigger, conditions and steps,
+  deterministically and without AI. It is shown on the automation page and in the approval screen
+  for an automation change.
+- An optional AI explanation is available, labelled as AI-written.
+- The step diagram is rendered from the same declarations, as in the reference design.
+
+### Notifications (ADR 0029)
+- An in-app **notification centre**: a bell with an unread count, and an inbox listing notifications
+  per user. Each links to a record, approval or automation run, and can be marked read.
+- `notification.send` operation (risk `write`). Automations, approvals and the system use it.
+  Pending approvals created while nobody is looking notify the relevant user.
+- Notification types are typed, so stage 6 can add user preferences routing each type to email or
+  Slack through gatekeepers. No external delivery in this stage.
+
+### Deals automations (shipped, each can be disabled)
+- **Stalled deal:** an open deal with no activity for 14 days creates a task for the owner. Schedule
+  trigger, daily.
+- **Deal won → onboarding:** creates onboarding tasks for the owner and notifies them. After 3 days,
+  if tasks are still open, notifies the owner's manager. If there's no manager field, notify admins,
+  and note this in the extension README. This is the reference design's example.
+- **Close date passed:** an open deal whose expected close date has passed notifies the owner to
+  update it. Date-relative trigger.
+
+### UI
+- An **Automations** page listing every automation with status, last run and error counts.
+- An automation page in exactly the reference design's layout: header actions (Test on a record…,
+  Pause, Ask the assistant), the What it does summary, Steps diagram, test mode result,
+  permissions, safety rails and recent runs. Tabs: Overview, Runs, Code, Versions.
+- **Manual triggers:** buttons on record pages and bulk actions on lists.
+- The notification bell and inbox.
+- In settings, the kill switch, schedule timezone and debounce window.
+
+## Out of scope
+- inbound webhooks
+- email or Slack delivery (stage 6)
+- a visual flow builder
+- in-app build chat (stage 7)
+
+## Acceptance criteria
+1. Trigger tests per type: record event, field change from/to, schedule, date-relative, manual, and
+   approval decided.
+2. **Durability:** a run with `step.sleep` survives a redeploy (or a simulated restart in tests) and
+   resumes. Steps retry on transient failure.
+3. **Safety rails:** tests for depth limit, cycle detection, rate-limit auto-pause with admin
+   notification, debounce, and the kill switch.
+4. **Idempotency:** duplicate queue delivery of the same event never produces a second run.
+5. **Review pause:** an automation's bulk write pauses the run. Approval resumes it, rejection
+   follows `onRejected`, and expiry ends it cleanly.
+6. Test mode on a seeded deal reports exactly the tasks, notifications and approvals the real run
+   then produces. Nothing is written during the test.
+7. The host-generated summary and step diagram are deterministic and cover every trigger type and
+   declared step type. Snapshot tests.
+8. The three Deals automations work end to end. Playwright (desktop + phone):
+   - mark a deal won, see the onboarding tasks and the notification
+   - open the automation page (matching the reference design), run test mode, pause and resume
+9. **AI eval:** 10 "automate this…" prompts in `evals/automations/` via MCP. Each must pass `check`,
+   its test-mode output must be correct, and its host summary must match the stated intent (judged
+   by a rubric). A report is committed, with a target of at least 8/10.
+10. `pnpm lint typecheck test` and e2e pass in CI. ADRs, `CONTEXT.md` (Automation, Trigger, Run,
+    Cascade, Kill switch, Notification), `docs/architecture.md` and the SDK README are updated.
