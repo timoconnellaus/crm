@@ -10,8 +10,8 @@ import {
   clearQueryEmbeddingCache,
   drainAllEmbeddings,
   invoke,
-  memoryVectorStore,
   type ModelRunner,
+  memoryVectorStore,
   SHIPPED_ROLES,
 } from "../src/index.ts";
 import { testRunner } from "./ai-helpers.ts";
@@ -36,7 +36,10 @@ function realEmbedder(): ModelRunner {
         `https://api.cloudflare.com/client/v4/accounts/${realEnv.RELEVANCE_ACCOUNT_ID}/ai/run/${model}`,
         {
           method: "POST",
-          headers: { authorization: `Bearer ${realEnv.RELEVANCE_API_TOKEN}`, "content-type": "application/json" },
+          headers: {
+            authorization: `Bearer ${realEnv.RELEVANCE_API_TOKEN}`,
+            "content-type": "application/json",
+          },
           body: JSON.stringify({ text: texts }),
         },
       );
@@ -56,13 +59,21 @@ beforeAll(async () => {
   member = await createUser("member");
   const ctx = context(member);
   for (const o of ORGS) {
-    const org = await invoke("organisation.create", { name: o.name, industry: o.industry, description: o.description }, ctx);
+    const org = await invoke(
+      "organisation.create",
+      { name: o.name, industry: o.industry, description: o.description },
+      ctx,
+    );
     ids.set(o.key, org.id);
   }
   for (const p of PEOPLE) {
     const person = await invoke(
       "person.create",
-      { displayName: p.name, description: p.description, ...(p.location ? { location: p.location } : {}) },
+      {
+        displayName: p.name,
+        description: p.description,
+        ...(p.location ? { location: p.location } : {}),
+      },
       ctx,
     );
     ids.set(p.key, person.id);
@@ -70,7 +81,11 @@ beforeAll(async () => {
   for (const n of NOTES) {
     const about = ids.get(n.about) as string;
     const object = ORGS.some((o) => o.key === n.about) ? "organisation" : "person";
-    const note = await invoke("activity.log", { type: "note", body: n.body, links: [{ object, id: about }] }, ctx);
+    const note = await invoke(
+      "activity.log",
+      { type: "note", body: n.body, links: [{ object, id: about }] },
+      ctx,
+    );
     ids.set(n.key, note.id);
   }
   for (const t of TASKS) {
@@ -87,15 +102,24 @@ describe("hybrid search relevance", () => {
     const report: string[] = [];
     let found = 0;
     for (const q of QUERIES) {
-      const out = await invoke("search.hybrid", { query: q.query, limit: 5 }, context(member, { models, vectors }));
+      const out = await invoke(
+        "search.hybrid",
+        { query: q.query, limit: 5 },
+        context(member, { models, vectors }),
+      );
       expect(out.semantic).toBe(true);
       const rank = out.hits.findIndex((h) => h.id === ids.get(q.expect));
       if (rank >= 0) found += 1;
       report.push(
-        `${rank >= 0 ? `#${rank + 1}` : "miss"}  ${q.query}  →  ${out.hits.map((h) => h.title).slice(0, 5).join(" | ")}`,
+        `${rank >= 0 ? `#${rank + 1}` : "miss"}  ${q.query}  →  ${out.hits
+          .map((h) => h.title)
+          .slice(0, 5)
+          .join(" | ")}`,
       );
     }
-    console.log(`relevance (${REAL ? SHIPPED_ROLES.embed.model : "fake embedder"}): ${found}/20 in the top 5\n${report.join("\n")}`);
+    console.log(
+      `relevance (${REAL ? SHIPPED_ROLES.embed.model : "fake embedder"}): ${found}/20 in the top 5\n${report.join("\n")}`,
+    );
     expect(found).toBeGreaterThanOrEqual(17);
   });
 
@@ -109,7 +133,11 @@ describe("hybrid search relevance", () => {
   });
 
   it("falls back to text ranking without AI", async () => {
-    const out = await invoke("search.hybrid", { query: "copper kettle", limit: 5 }, context(member));
+    const out = await invoke(
+      "search.hybrid",
+      { query: "copper kettle", limit: 5 },
+      context(member),
+    );
     expect(out.semantic).toBe(false);
     expect(out.hits[0]?.id).toBe(ids.get("brewco"));
   });

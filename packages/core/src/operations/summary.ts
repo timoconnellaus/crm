@@ -18,7 +18,7 @@ import {
   summaryMessages,
 } from "../ai/summaries.ts";
 import { ConfigError, OperationError } from "../errors.ts";
-import { type HandlerContext, defineOperation } from "../operation.ts";
+import { defineOperation, type HandlerContext } from "../operation.ts";
 import { searchHitSchema } from "./search.ts";
 
 const subjectSchema = z.discriminatedUnion("kind", [
@@ -27,8 +27,14 @@ const subjectSchema = z.discriminatedUnion("kind", [
     object: z.enum(["person", "organisation", "deals.deal"]),
     id: z.string().min(1).max(80),
   }),
-  z.object({ kind: z.literal("meeting"), id: z.string().min(1).max(80).describe("A meeting activity") }),
-  z.object({ kind: z.literal("changeset"), id: z.string().min(1).max(80).describe("A change set id") }),
+  z.object({
+    kind: z.literal("meeting"),
+    id: z.string().min(1).max(80).describe("A meeting activity"),
+  }),
+  z.object({
+    kind: z.literal("changeset"),
+    id: z.string().min(1).max(80).describe("A change set id"),
+  }),
 ]);
 type Subject = z.infer<typeof subjectSchema>;
 
@@ -127,7 +133,9 @@ export const summaryGenerate = defineOperation({
       );
     }
     if (!answer.text) throw new OperationError("config", "The summarise model returned nothing");
-    ctx.write(await storeSummaryStatement(ctx.db, summary, hashModel, answer, ctx.now, ctx.user.id));
+    ctx.write(
+      await storeSummaryStatement(ctx.db, summary, hashModel, answer, ctx.now, ctx.user.id),
+    );
     return {
       status: "fresh" as const,
       text: answer.text,
@@ -148,7 +156,11 @@ export const summaryActivityLines = defineOperation({
     "`missing` lists long activities with no fresh line yet (generate them with " +
     "summary.activities). Short, private and system activities have none. Read-only.",
   input: z.object({ ids: z.array(z.string().min(1).max(80)).max(50) }),
-  output: z.object({ lines: z.array(lineSchema), missing: z.array(z.string()), available: z.boolean() }),
+  output: z.object({
+    lines: z.array(lineSchema),
+    missing: z.array(z.string()),
+    available: z.boolean(),
+  }),
   permission: "records:read",
   risk: "read",
   mcp: { expose: false },
@@ -197,20 +209,32 @@ export const summaryActivities = defineOperation({
         continue;
       }
       work.push(
-        models.run("summarise", summaryMessages(summary), { maxTokens: 80 }).then(async (answer) => {
-          const text = answer.text.split("\n")[0]?.trim() ?? "";
-          if (!text) return;
-          lines.push({ id, text, fresh: true });
-          ctx.write(
-            await storeSummaryStatement(ctx.db, summary, hashModel, { ...answer, text }, ctx.now, ctx.user.id),
-          );
-        }),
+        models
+          .run("summarise", summaryMessages(summary), { maxTokens: 80 })
+          .then(async (answer) => {
+            const text = answer.text.split("\n")[0]?.trim() ?? "";
+            if (!text) return;
+            lines.push({ id, text, fresh: true });
+            ctx.write(
+              await storeSummaryStatement(
+                ctx.db,
+                summary,
+                hashModel,
+                { ...answer, text },
+                ctx.now,
+                ctx.user.id,
+              ),
+            );
+          }),
       );
     }
     const settled = await Promise.allSettled(work);
     const failed = settled.find((s) => s.status === "rejected");
     if (failed && !lines.length) {
-      throw new OperationError("config", `The summarise model failed: ${String((failed as PromiseRejectedResult).reason)}`);
+      throw new OperationError(
+        "config",
+        `The summarise model failed: ${String((failed as PromiseRejectedResult).reason)}`,
+      );
     }
     return { lines: input.ids.flatMap((id) => lines.filter((l) => l.id === id)) };
   },

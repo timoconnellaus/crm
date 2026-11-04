@@ -3,8 +3,8 @@
 // config → Settings → AI overrides, through AI Gateway when AI_GATEWAY_ID is set. Without any
 // configured model the module fails with a clear error rather than reaching any network.
 import {
-  AiNotConfiguredError,
   type AiEnv,
+  AiNotConfiguredError,
   loadAiSettings,
   type ModelRunner,
   modelRunnerFromEnv,

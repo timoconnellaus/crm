@@ -199,13 +199,18 @@ export const aiSettingsGet = defineOperation({
   },
 });
 
-async function saveSettings(ctx: Parameters<typeof aiSettingsGet.handler>[1], next: AiAdminSettings) {
+async function saveSettings(
+  ctx: Parameters<typeof aiSettingsGet.handler>[1],
+  next: AiAdminSettings,
+) {
   const value = JSON.stringify(next);
   ctx.write(
     ctx.db
       .insertInto("core_settings")
       .values({ key: AI_SETTINGS, value, updated_at: ctx.now, updated_by: ctx.user.id })
-      .onConflict((oc) => oc.column("key").doUpdateSet({ value, updated_at: ctx.now, updated_by: ctx.user.id })),
+      .onConflict((oc) =>
+        oc.column("key").doUpdateSet({ value, updated_at: ctx.now, updated_by: ctx.user.id }),
+      ),
   );
 }
 
@@ -230,7 +235,12 @@ export const aiUpdateRole = defineOperation({
       .optional(),
     fallback: modelRefSchema.nullable().optional(),
   }),
-  output: z.object({ role: roleSchema, provider: z.string(), model: z.string(), source: z.string() }),
+  output: z.object({
+    role: roleSchema,
+    provider: z.string(),
+    model: z.string(),
+    source: z.string(),
+  }),
   permission: "settings:manage",
   risk: "write",
   actors: ["human"],
@@ -258,10 +268,13 @@ export const aiUpdateRole = defineOperation({
         }
       }
       if (problems.length) {
-        throw new ValidationError(`The ${input.role} role cannot use that model: ${problems.join("; ")}`, {
-          role: input.role,
-          problems,
-        });
+        throw new ValidationError(
+          `The ${input.role} role cannot use that model: ${problems.join("; ")}`,
+          {
+            role: input.role,
+            problems,
+          },
+        );
       }
       roles[input.role] = {
         ...ref,
@@ -279,7 +292,12 @@ export const aiUpdateRole = defineOperation({
       after: { config: roles[input.role] ?? null },
     });
     const resolved = resolveRoles({ admin: roles })[input.role];
-    return { role: input.role, provider: resolved.provider, model: resolved.model, source: resolved.source };
+    return {
+      role: input.role,
+      provider: resolved.provider,
+      model: resolved.model,
+      source: resolved.source,
+    };
   },
 });
 
@@ -353,16 +371,24 @@ export const aiSetProviderKey = defineOperation({
     apiKey: z.string().trim().min(8).max(4096),
     mode: z.enum(["secret", "byok"]).default("secret"),
   }),
-  output: z.object({ provider: z.string(), stored: z.enum(["secret", "byok"]), targets: z.array(z.string()) }),
+  output: z.object({
+    provider: z.string(),
+    stored: z.enum(["secret", "byok"]),
+    targets: z.array(z.string()),
+  }),
   permission: "settings:manage",
   risk: "write",
   actors: ["human"],
   // `apiKey` already matches the pipeline's secret-name redaction; listed to be explicit.
   redact: ["apiKey"],
   mcp: { expose: false },
-  auditSummary: (output) => ({ provider: output.provider, stored: output.stored, targets: output.targets }),
+  auditSummary: (output) => ({
+    provider: output.provider,
+    stored: output.stored,
+    targets: output.targets,
+  }),
   async handler(input, ctx) {
-    if (!ctx.aiAdmin || !ctx.aiAdmin.status().keyModes.includes(input.mode)) {
+    if (!ctx.aiAdmin?.status().keyModes.includes(input.mode)) {
       throw new ConfigError(
         input.mode === "byok"
           ? "BYOK needs CLOUDFLARE_ACCOUNT_ID, the CLOUDFLARE_API_TOKEN secret and AI_GATEWAY_ID (docs/deploying.md)"

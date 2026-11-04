@@ -31,10 +31,11 @@ function hash(text: string): number {
   return h >>> 0;
 }
 
-const STOP = new Set([
-  "the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "at", "by", "is", "are",
-  "was", "be", "it", "this", "that", "from", "as", "who", "what", "about", "we", "our", "their",
-]);
+const STOP = new Set(
+  "the a an and or of to in on for with at by is are was be it this that from as who what about we our their".split(
+    " ",
+  ),
+);
 
 /**
  * A deterministic text embedding: feature-hashed word stems (weight 1) and character trigrams

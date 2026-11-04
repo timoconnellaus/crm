@@ -15,9 +15,9 @@ import {
   ftsQuery,
   highlight,
   loadDisplays,
+  type SearchHit,
   SNIPPET_CLOSE,
   SNIPPET_OPEN,
-  type SearchHit,
   searchTerms,
   snippetSegments,
 } from "../operations/search.ts";
@@ -62,7 +62,8 @@ async function embedQuery(models: ModelRunner, query: string): Promise<number[] 
   const vector = vectors[0];
   if (!vector) return null;
   queryCache.set(key, vector);
-  if (queryCache.size > QUERY_CACHE_SIZE) queryCache.delete(queryCache.keys().next().value as string);
+  if (queryCache.size > QUERY_CACHE_SIZE)
+    queryCache.delete(queryCache.keys().next().value as string);
   return vector;
 }
 
@@ -108,22 +109,39 @@ export interface HybridResult {
   semantic: boolean;
 }
 
-export async function hybridSearch(deps: HybridDeps, options: HybridOptions): Promise<HybridResult> {
+export async function hybridSearch(
+  deps: HybridDeps,
+  options: HybridOptions,
+): Promise<HybridResult> {
   const terms = searchTerms(options.query);
   const objects = options.objects?.length ? [...options.objects] : listObjects().map((o) => o.name);
   const lists: { weight: number; source: MatchSource; items: Ranked[] }[] = [];
   if (terms.length) {
-    lists.push({ weight: WEIGHTS.all, source: "text", items: await lexical(deps.db, ftsQuery(terms), objects) });
+    lists.push({
+      weight: WEIGHTS.all,
+      source: "text",
+      items: await lexical(deps.db, ftsQuery(terms), objects),
+    });
     if (terms.length > 1) {
       const any = terms
         .filter((t) => t.length >= 3)
         .map((t) => `"${t}"*`)
         .join(" OR ");
-      if (any) lists.push({ weight: WEIGHTS.any, source: "text", items: await lexical(deps.db, any, objects) });
+      if (any)
+        lists.push({
+          weight: WEIGHTS.any,
+          source: "text",
+          items: await lexical(deps.db, any, objects),
+        });
     }
   }
   let semantic = false;
-  if (options.semantic !== false && deps.models?.embed && deps.vectors && options.query.trim().length >= 3) {
+  if (
+    options.semantic !== false &&
+    deps.models?.embed &&
+    deps.vectors &&
+    options.query.trim().length >= 3
+  ) {
     try {
       const vector = await embedQuery(deps.models, options.query);
       if (vector) {
@@ -152,11 +170,20 @@ async function fuse(
   terms: string[],
   options: Pick<HybridOptions, "limit" | "withText">,
 ): Promise<HybridHit[]> {
-  const scored = new Map<string, { object: string; id: string; score: number; by: Set<MatchSource>; snip: string | null }>();
+  const scored = new Map<
+    string,
+    { object: string; id: string; score: number; by: Set<MatchSource>; snip: string | null }
+  >();
   for (const list of lists) {
     list.items.forEach((item, rank) => {
       const key = `${item.object}\u0000${item.id}`;
-      const entry = scored.get(key) ?? { object: item.object, id: item.id, score: 0, by: new Set(), snip: null };
+      const entry = scored.get(key) ?? {
+        object: item.object,
+        id: item.id,
+        score: 0,
+        by: new Set(),
+        snip: null,
+      };
       entry.score += list.weight / (RRF_K + rank + 1);
       entry.by.add(list.source);
       entry.snip ??= item.snip ?? null;
@@ -174,7 +201,8 @@ async function fuse(
   const texts = new Map<string, string>();
   if (options.withText) {
     for (const [object, list] of ids) {
-      for (const [id, text] of await embeddingTexts(db, object, list)) texts.set(`${object}\u0000${id}`, text);
+      for (const [id, text] of await embeddingTexts(db, object, list))
+        texts.set(`${object}\u0000${id}`, text);
     }
   }
   const hits: HybridHit[] = [];
@@ -209,7 +237,10 @@ export async function similarRecords(
   options: { object: string; id: string; limit: number; objects?: readonly string[] | undefined },
 ): Promise<SimilarResult> {
   if (!deps.vectors) {
-    return { status: "unavailable", message: "Semantic search is not configured (no Vectorize index)" };
+    return {
+      status: "unavailable",
+      message: "Semantic search is not configured (no Vectorize index)",
+    };
   }
   const state = await deps.db
     .selectFrom("core_embedding")
@@ -217,7 +248,9 @@ export async function similarRecords(
     .where("object_type", "=", options.object)
     .where("record_id", "=", options.id)
     .executeTakeFirst();
-  const vector = await deps.vectors.getVector(state?.vector_id ?? (await vectorId(options.object, options.id)));
+  const vector = await deps.vectors.getVector(
+    state?.vector_id ?? (await vectorId(options.object, options.id)),
+  );
   if (!vector) return { status: "not_indexed" };
   const objects = options.objects?.length ? options.objects.filter(isEmbeddable) : undefined;
   const matches = await deps.vectors.query(vector, {
@@ -225,7 +258,9 @@ export async function similarRecords(
     ...(objects ? { objects } : {}),
   });
   const items = matches.filter((m) => !(m.object === options.object && m.id === options.id));
-  const hits = await fuse(deps.db, [{ weight: 1, source: "meaning", items }], [], { limit: options.limit });
+  const hits = await fuse(deps.db, [{ weight: 1, source: "meaning", items }], [], {
+    limit: options.limit,
+  });
   return { status: "ok", hits };
 }
 

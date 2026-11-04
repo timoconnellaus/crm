@@ -8,7 +8,7 @@
 //   AI Gateway BYOK: POST /accounts/{account}/ai-gateway/gateways/{gateway}/provider_configs
 //                    (AI Gateway Edit + Secrets Store Write)
 //   Usage:           GET  /accounts/{account}/ai-gateway/gateways/{gateway}/logs  (AI Gateway Read)
-import { PROVIDER_INFO, type ProviderId, isModelRole, type ModelRole } from "./roles.ts";
+import { isModelRole, type ModelRole, PROVIDER_INFO, type ProviderId } from "./roles.ts";
 
 export interface AiAdminEnv {
   CLOUDFLARE_ACCOUNT_ID?: string;
@@ -57,7 +57,11 @@ export interface UsageReport {
 
 export interface AiAdmin {
   status(): AiAdminStatus;
-  setProviderKey(provider: ProviderId, key: string, mode: KeyMode): Promise<{ stored: KeyMode; targets: string[] }>;
+  setProviderKey(
+    provider: ProviderId,
+    key: string,
+    mode: KeyMode,
+  ): Promise<{ stored: KeyMode; targets: string[] }>;
   deleteProviderKey(provider: ProviderId, mode: KeyMode): Promise<void>;
   usage(days: number): Promise<UsageReport>;
 }
@@ -125,7 +129,10 @@ export function cloudflareAiAdmin(
     } | null;
     if (!response.ok || json?.success === false) {
       // Never echo the request (it may hold a key); the API's own message is safe.
-      const message = json?.errors?.map((e) => e.message).filter(Boolean).join("; ");
+      const message = json?.errors
+        ?.map((e) => e.message)
+        .filter(Boolean)
+        .join("; ");
       throw new AiAdminError(`Cloudflare API ${response.status}${message ? `: ${message}` : ""}`);
     }
     return json;

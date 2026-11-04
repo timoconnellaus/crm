@@ -5,14 +5,14 @@ import type { AuditChangeAction, CoreDatabase, CrmDb } from "@crm/db";
 import type { PermissionsManifest } from "@crm/sdk";
 import type { Compilable, CompiledQuery, Kysely } from "kysely";
 import type { z } from "zod";
+import type { AiAdmin } from "./ai/admin.ts";
+import type { AiEnv } from "./ai/client.ts";
+import type { VectorStore } from "./ai/vectors.ts";
 import type { WidgetCache } from "./dashboards/cache.ts";
 import type { FieldDiff } from "./diff.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
 import type { GateFloor } from "./gate.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
-import type { AiAdmin } from "./ai/admin.ts";
-import type { AiEnv } from "./ai/client.ts";
-import type { VectorStore } from "./ai/vectors.ts";
 import type { ModelRunner } from "./models.ts";
 import {
   ACTORS,

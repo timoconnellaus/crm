@@ -11,8 +11,8 @@ import {
   drainEmbeddingQueue,
   EMBEDDING_BACKFILL_SETTING,
   invoke,
-  memoryVectorStore,
   type ModelRunner,
+  memoryVectorStore,
   newId,
   vectorId,
 } from "../src/index.ts";
@@ -46,12 +46,20 @@ beforeEach(async () => {
 
 const deps = () => ({ db, models, vectors });
 const queued = async () =>
-  (await env.DB.prepare("SELECT object_type, record_id FROM core_embedding_queue").all<{ object_type: string; record_id: string }>())
-    .results;
+  (
+    await env.DB.prepare("SELECT object_type, record_id FROM core_embedding_queue").all<{
+      object_type: string;
+      record_id: string;
+    }>()
+  ).results;
 
 describe("the queue and the hash", () => {
   it("queues a created record in the same batch and embeds it once", async () => {
-    const person = await invoke("person.create", { displayName: `Queue ${unique()}`, location: "Oslo" }, context(member));
+    const person = await invoke(
+      "person.create",
+      { displayName: `Queue ${unique()}`, location: "Oslo" },
+      context(member),
+    );
     expect(await queued()).toContainEqual({ object_type: "person", record_id: person.id });
     const first = await drainEmbeddingQueue(deps());
     expect(first).toMatchObject({ embedded: 1, deleted: 0, failed: 0 });
@@ -60,7 +68,11 @@ describe("the queue and the hash", () => {
   });
 
   it("does not re-embed when the text is unchanged, and does when it changes", async () => {
-    const person = await invoke("person.create", { displayName: `Hash ${unique()}` }, context(member));
+    const person = await invoke(
+      "person.create",
+      { displayName: `Hash ${unique()}` },
+      context(member),
+    );
     await drainEmbeddingQueue(deps());
     expect(embedCalls).toHaveLength(1);
 
@@ -86,10 +98,22 @@ describe("the queue and the hash", () => {
   });
 
   it("re-embeds a person when their job changes through an affiliation", async () => {
-    const person = await invoke("person.create", { displayName: `Job ${unique()}` }, context(member));
-    const org = await invoke("organisation.create", { name: `Initech ${unique()}` }, context(member));
+    const person = await invoke(
+      "person.create",
+      { displayName: `Job ${unique()}` },
+      context(member),
+    );
+    const org = await invoke(
+      "organisation.create",
+      { name: `Initech ${unique()}` },
+      context(member),
+    );
     await drainAllEmbeddings(deps());
-    await invoke("affiliation.create", { personId: person.id, organisationId: org.id, title: "Engineer" }, context(member));
+    await invoke(
+      "affiliation.create",
+      { personId: person.id, organisationId: org.id, title: "Engineer" },
+      context(member),
+    );
     expect(await queued()).toContainEqual({ object_type: "person", record_id: person.id });
     await drainAllEmbeddings(deps());
     expect(embedCalls.at(-1)).toMatch(/Title: Engineer[\s\S]*Organisation: Initech/);
@@ -103,23 +127,33 @@ describe("the queue and the hash", () => {
     const out = await drainEmbeddingQueue(deps());
     expect(out.deleted).toBe(1);
     expect(vectors.ids()).not.toContain(await vectorId("task", task.id));
-    const state = await env.DB.prepare("SELECT 1 FROM core_embedding WHERE record_id = ?").bind(task.id).first();
+    const state = await env.DB.prepare("SELECT 1 FROM core_embedding WHERE record_id = ?")
+      .bind(task.id)
+      .first();
     expect(state).toBeNull();
   });
 
   it("leaves rows queued with one more attempt when the model fails", async () => {
     await invoke("person.create", { displayName: `Fail ${unique()}` }, context(member));
-    const failing: ModelRunner = { ...models, embed: async () => Promise.reject(new Error("model down")) };
+    const failing: ModelRunner = {
+      ...models,
+      embed: async () => Promise.reject(new Error("model down")),
+    };
     const out = await drainEmbeddingQueue({ db, models: failing, vectors });
     expect(out.failed).toBe(1);
-    const row = await env.DB.prepare("SELECT attempts FROM core_embedding_queue").first<{ attempts: number }>();
+    const row = await env.DB.prepare("SELECT attempts FROM core_embedding_queue").first<{
+      attempts: number;
+    }>();
     expect(row?.attempts).toBe(1);
     expect((await drainEmbeddingQueue(deps())).embedded).toBe(1);
   });
 });
 
 describe("restricted and private content", () => {
-  async function syncedActivity(overrides: { private_to?: string | null; disclosure?: string | null }) {
+  async function syncedActivity(overrides: {
+    private_to?: string | null;
+    disclosure?: string | null;
+  }) {
     const id = newId("activity");
     const now = new Date().toISOString();
     await env.DB.prepare(
@@ -127,9 +161,19 @@ describe("restricted and private content", () => {
          created_at, updated_at, private_to, disclosure)
        VALUES (?, 'email', 'Confidential offer', 'Salary details for the candidate', '{}', ?, ?, 'human', ?, ?, ?, ?)`,
     )
-      .bind(id, now, member.id, now, now, overrides.private_to ?? null, overrides.disclosure ?? null)
+      .bind(
+        id,
+        now,
+        member.id,
+        now,
+        now,
+        overrides.private_to ?? null,
+        overrides.disclosure ?? null,
+      )
       .run();
-    await env.DB.prepare("INSERT INTO core_embedding_queue (object_type, record_id, queued_at) VALUES ('activity', ?, ?)")
+    await env.DB.prepare(
+      "INSERT INTO core_embedding_queue (object_type, record_id, queued_at) VALUES ('activity', ?, ?)",
+    )
       .bind(id, now)
       .run();
     return id;
@@ -151,8 +195,12 @@ describe("restricted and private content", () => {
     const id = await syncedActivity({ disclosure: "full" });
     await drainEmbeddingQueue(deps());
     expect(vectors.size).toBe(1);
-    await env.DB.prepare("UPDATE core_activity SET private_to = ? WHERE id = ?").bind(member.id, id).run();
-    await env.DB.prepare("INSERT INTO core_embedding_queue (object_type, record_id, queued_at) VALUES ('activity', ?, ?)")
+    await env.DB.prepare("UPDATE core_activity SET private_to = ? WHERE id = ?")
+      .bind(member.id, id)
+      .run();
+    await env.DB.prepare(
+      "INSERT INTO core_embedding_queue (object_type, record_id, queued_at) VALUES ('activity', ?, ?)",
+    )
       .bind(id, new Date().toISOString())
       .run();
     expect((await drainEmbeddingQueue(deps())).deleted).toBe(1);
@@ -168,7 +216,9 @@ describe("restricted and private content", () => {
     )
       .bind(id, now, member.id, now, now)
       .run();
-    await env.DB.prepare("INSERT INTO core_embedding_queue (object_type, record_id, queued_at) VALUES ('activity', ?, ?)")
+    await env.DB.prepare(
+      "INSERT INTO core_embedding_queue (object_type, record_id, queued_at) VALUES ('activity', ?, ?)",
+    )
       .bind(id, now)
       .run();
     await drainEmbeddingQueue(deps());
@@ -185,23 +235,38 @@ describe("erase (ADR 0019)", () => {
     );
     const note = await invoke(
       "activity.log",
-      { type: "note", body: "Private medical leave until March.", links: [{ object: "person", id: person.id }] },
+      {
+        type: "note",
+        body: "Private medical leave until March.",
+        links: [{ object: "person", id: person.id }],
+      },
       context(member),
     );
     await drainAllEmbeddings(deps());
     expect(vectors.ids()).toEqual(
-      expect.arrayContaining([await vectorId("person", person.id), await vectorId("activity", note.id)]),
+      expect.arrayContaining([
+        await vectorId("person", person.id),
+        await vectorId("activity", note.id),
+      ]),
     );
     await invoke(
       "summary.generate",
       { subject: { kind: "record", object: "person", id: person.id } },
       context(member, { models }),
     );
-    expect(await env.DB.prepare("SELECT 1 FROM core_ai_summary WHERE subject_id = ?").bind(person.id).first()).not.toBeNull();
+    expect(
+      await env.DB.prepare("SELECT 1 FROM core_ai_summary WHERE subject_id = ?")
+        .bind(person.id)
+        .first(),
+    ).not.toBeNull();
 
     // The post-commit hook is how crm-app drains right after the erase.
     const events: CommitEvent[] = [];
-    await invoke("person.erase", { id: person.id }, context(admin, { onCommitted: (e) => events.push(e) }));
+    await invoke(
+      "person.erase",
+      { id: person.id },
+      context(admin, { onCommitted: (e) => events.push(e) }),
+    );
     expect(events.at(-1)).toMatchObject({ operation: "person.erase", embeddingsQueued: true });
     await drainAllEmbeddings(deps());
     expect(vectors.ids()).not.toContain(await vectorId("person", person.id));
@@ -225,14 +290,20 @@ describe("post-commit hook and backfill", () => {
   it("reports queued embeddings after a write, not after a read", async () => {
     const events: CommitEvent[] = [];
     const onCommitted = (e: CommitEvent) => events.push(e);
-    const person = await invoke("person.create", { displayName: `Hook ${unique()}` }, context(member, { onCommitted }));
+    const person = await invoke(
+      "person.create",
+      { displayName: `Hook ${unique()}` },
+      context(member, { onCommitted }),
+    );
     await invoke("person.get", { id: person.id }, context(member, { onCommitted }));
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ operation: "person.create", embeddingsQueued: true });
   });
 
   it("walks existing records once, queueing the ones never embedded", async () => {
-    await env.DB.prepare("DELETE FROM core_settings WHERE key = ?").bind(EMBEDDING_BACKFILL_SETTING).run();
+    await env.DB.prepare("DELETE FROM core_settings WHERE key = ?")
+      .bind(EMBEDDING_BACKFILL_SETTING)
+      .run();
     await env.DB.prepare("DELETE FROM core_embedding").run();
     let total = 0;
     for (let i = 0; i < 50; i++) {
@@ -248,9 +319,21 @@ describe("post-commit hook and backfill", () => {
 describe("similar records", () => {
   it("finds records close in meaning, not the record itself", async () => {
     const tag = unique();
-    const a = await invoke("organisation.create", { name: `Solar Panels Co ${tag}`, industry: "Renewable energy" }, context(member));
-    const b = await invoke("organisation.create", { name: `Sunny Solar ${tag}`, industry: "Renewable energy" }, context(member));
-    await invoke("organisation.create", { name: `Bakery ${tag}`, industry: "Food" }, context(member));
+    const a = await invoke(
+      "organisation.create",
+      { name: `Solar Panels Co ${tag}`, industry: "Renewable energy" },
+      context(member),
+    );
+    const b = await invoke(
+      "organisation.create",
+      { name: `Sunny Solar ${tag}`, industry: "Renewable energy" },
+      context(member),
+    );
+    await invoke(
+      "organisation.create",
+      { name: `Bakery ${tag}`, industry: "Food" },
+      context(member),
+    );
     await drainAllEmbeddings(deps());
     const out = await invoke(
       "record.similar",
@@ -264,7 +347,11 @@ describe("similar records", () => {
       await invoke("record.similar", { object: "organisation", id: a.id }, context(member)),
     ).toMatchObject({ status: "unavailable" });
     expect(
-      await invoke("record.similar", { object: "organisation", id: "org_missing" }, context(member, { models, vectors })),
+      await invoke(
+        "record.similar",
+        { object: "organisation", id: "org_missing" },
+        context(member, { models, vectors }),
+      ),
     ).toMatchObject({ status: "not_indexed" });
   });
 });

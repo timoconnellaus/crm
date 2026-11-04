@@ -3,7 +3,13 @@
 // or the response holds it afterwards. Usage per role comes from AI Gateway's logs.
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { AI_SETTINGS, cloudflareAiAdmin, ConfigError, invoke, loadAiSettings } from "../src/index.ts";
+import {
+  AI_SETTINGS,
+  ConfigError,
+  cloudflareAiAdmin,
+  invoke,
+  loadAiSettings,
+} from "../src/index.ts";
 import { context, createUser } from "./helpers.ts";
 
 const KEY = "sk-live-NEVER-IN-D1-7f3a9c1e5b2d";
@@ -18,7 +24,11 @@ function fakeCloudflareApi(logs: unknown[] = []) {
   const calls: ApiCall[] = [];
   const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    calls.push({ method: init?.method ?? "GET", url, body: init?.body ? JSON.parse(String(init.body)) : null });
+    calls.push({
+      method: init?.method ?? "GET",
+      url,
+      body: init?.body ? JSON.parse(String(init.body)) : null,
+    });
     if (url.includes("/logs")) {
       const page = Number(new URL(url).searchParams.get("page"));
       return Response.json({ success: true, result: page === 1 ? logs : [] });
@@ -41,7 +51,11 @@ async function everyStoredValue(): Promise<string> {
   return parts.join("\n");
 }
 
-const adminEnv = { CLOUDFLARE_ACCOUNT_ID: "acct", CLOUDFLARE_API_TOKEN: "cf-token", AI_GATEWAY_ID: "gw" };
+const adminEnv = {
+  CLOUDFLARE_ACCOUNT_ID: "acct",
+  CLOUDFLARE_API_TOKEN: "cf-token",
+  AI_GATEWAY_ID: "gw",
+};
 
 describe("provider keys", () => {
   it("are stored as Workers secrets through the Cloudflare API and never written to D1", async () => {
@@ -53,7 +67,11 @@ describe("provider keys", () => {
       { provider: "openai", apiKey: KEY, mode: "secret" },
       context(admin, { aiAdmin }),
     );
-    expect(out).toEqual({ provider: "openai", stored: "secret", targets: ["crm-app", "crm-runner"] });
+    expect(out).toEqual({
+      provider: "openai",
+      stored: "secret",
+      targets: ["crm-app", "crm-runner"],
+    });
     expect(api.calls.map((c) => `${c.method} ${c.url}`)).toEqual([
       "PUT https://api.cloudflare.com/client/v4/accounts/acct/workers/scripts/crm-app/secrets",
       "PUT https://api.cloudflare.com/client/v4/accounts/acct/workers/scripts/crm-runner/secrets",
@@ -69,21 +87,37 @@ describe("provider keys", () => {
     )
       .bind(admin.id)
       .first<{ input: string; result: string }>();
-    expect(JSON.parse(audit?.input ?? "{}")).toMatchObject({ provider: "openai", apiKey: "[redacted]" });
+    expect(JSON.parse(audit?.input ?? "{}")).toMatchObject({
+      provider: "openai",
+      apiKey: "[redacted]",
+    });
   });
 
   it("go to AI Gateway BYOK when asked; D1 holds only the flag", async () => {
     const admin = await createUser("admin");
     const api = fakeCloudflareApi();
     const aiAdmin = cloudflareAiAdmin(adminEnv, { fetch: api.fetch, cache: null });
-    await invoke("ai.setProviderKey", { provider: "google", apiKey: KEY, mode: "byok" }, context(admin, { aiAdmin }));
+    await invoke(
+      "ai.setProviderKey",
+      { provider: "google", apiKey: KEY, mode: "byok" },
+      context(admin, { aiAdmin }),
+    );
     expect(api.calls[0]).toMatchObject({
       method: "POST",
       url: "https://api.cloudflare.com/client/v4/accounts/acct/ai-gateway/gateways/gw/provider_configs",
-      body: { alias: "default", default_config: true, provider_slug: "google-ai-studio", secret: KEY },
+      body: {
+        alias: "default",
+        default_config: true,
+        provider_slug: "google-ai-studio",
+        secret: KEY,
+      },
     });
-    expect((await loadAiSettings((await import("./helpers.ts")).db.query)).byok).toContain("google");
-    const row = await env.DB.prepare("SELECT value FROM core_settings WHERE key = ?").bind(AI_SETTINGS).first<{ value: string }>();
+    expect((await loadAiSettings((await import("./helpers.ts")).db.query)).byok).toContain(
+      "google",
+    );
+    const row = await env.DB.prepare("SELECT value FROM core_settings WHERE key = ?")
+      .bind(AI_SETTINGS)
+      .first<{ value: string }>();
     expect(row?.value).not.toContain(KEY);
     expect(await everyStoredValue()).not.toContain(KEY);
   });
@@ -108,7 +142,11 @@ describe("provider keys", () => {
     ).rejects.toThrow(/cannot ai.setProviderKey/);
     const admin = await createUser("admin");
     await expect(
-      invoke("ai.setProviderKey", { provider: "openai", apiKey: KEY }, context(admin, { actor: "assistant" })),
+      invoke(
+        "ai.setProviderKey",
+        { provider: "openai", apiKey: KEY },
+        context(admin, { actor: "assistant" }),
+      ),
     ).rejects.toThrow(/cannot be called by assistant/);
     expect(await everyStoredValue()).not.toContain(KEY);
   });
@@ -118,8 +156,20 @@ describe("usage and spend per role", () => {
   it("aggregates AI Gateway logs by the role metadata and caches the report", async () => {
     const admin = await createUser("admin");
     const api = fakeCloudflareApi([
-      { metadata: '{"role":"summarise"}', tokens_in: 100, tokens_out: 20, cost: 0.001, success: true },
-      { metadata: '{"role":"summarise"}', tokens_in: 50, tokens_out: 10, cost: 0.0005, cached: true },
+      {
+        metadata: '{"role":"summarise"}',
+        tokens_in: 100,
+        tokens_out: 20,
+        cost: 0.001,
+        success: true,
+      },
+      {
+        metadata: '{"role":"summarise"}',
+        tokens_in: 50,
+        tokens_out: 10,
+        cost: 0.0005,
+        cached: true,
+      },
       { metadata: { role: "embed" }, tokens_in: 30, tokens_out: 0, cost: 0.0001 },
       { metadata: null, tokens_in: 1, tokens_out: 1, cost: 0, success: false },
     ]);

@@ -75,8 +75,12 @@ async function measure(name: string, input: unknown): Promise<number> {
 beforeAll(async () => {
   member = await createUser("member");
   await seedDatabase(env.DB, { people: PEOPLE, organisations: 600, activities: 600, tasks: 400 });
-  const person = await env.DB.prepare("SELECT id FROM core_person WHERE deleted_at IS NULL LIMIT 1").first<{ id: string }>();
-  const org = await env.DB.prepare("SELECT id FROM core_organisation WHERE deleted_at IS NULL LIMIT 1").first<{ id: string }>();
+  const person = await env.DB.prepare(
+    "SELECT id FROM core_person WHERE deleted_at IS NULL LIMIT 1",
+  ).first<{ id: string }>();
+  const org = await env.DB.prepare(
+    "SELECT id FROM core_organisation WHERE deleted_at IS NULL LIMIT 1",
+  ).first<{ id: string }>();
   personId = person?.id as string;
   orgId = org?.id as string;
   activityIds = (
@@ -91,9 +95,13 @@ beforeAll(async () => {
 
 describe("rows read on the AI paths", () => {
   it("summary.get reads the record, its links and the cache row by key", async () => {
-    expect(await measure("summary.get", { subject: { kind: "record", object: "person", id: personId } })).toBeLessThan(400);
     expect(
-      await measure("summary.get", { subject: { kind: "record", object: "organisation", id: orgId } }),
+      await measure("summary.get", { subject: { kind: "record", object: "person", id: personId } }),
+    ).toBeLessThan(400);
+    expect(
+      await measure("summary.get", {
+        subject: { kind: "record", object: "organisation", id: orgId },
+      }),
     ).toBeLessThan(1_500);
   });
 
@@ -106,7 +114,9 @@ describe("rows read on the AI paths", () => {
   });
 
   it("similar records reads the embedding row and hydrates hits by key", async () => {
-    expect(await measure("record.similar", { object: "organisation", id: orgId })).toBeLessThan(200);
+    expect(await measure("record.similar", { object: "organisation", id: orgId })).toBeLessThan(
+      200,
+    );
   });
 
   it("a write adds one queue row, and a drain round reads its batch by key", async () => {

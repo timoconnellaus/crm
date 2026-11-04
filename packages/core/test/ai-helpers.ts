@@ -17,7 +17,9 @@ export interface BindingCall {
 }
 
 /** A Workers AI binding: chat models answer `answer(model, input)`, bge models embed. */
-export function fakeAiBinding(answer: (model: string, input: Record<string, unknown>) => string = (m) => `OK from ${m}`) {
+export function fakeAiBinding(
+  answer: (model: string, input: Record<string, unknown>) => string = (m) => `OK from ${m}`,
+) {
   const calls: BindingCall[] = [];
   return {
     calls,
@@ -28,7 +30,10 @@ export function fakeAiBinding(answer: (model: string, input: Record<string, unkn
           const texts = (Array.isArray(input.text) ? input.text : [input.text]) as string[];
           return { shape: [texts.length, 384], data: texts.map((t) => fakeEmbed(t)) };
         }
-        return { response: answer(model, input), usage: { prompt_tokens: 10, completion_tokens: 5 } };
+        return {
+          response: answer(model, input),
+          usage: { prompt_tokens: 10, completion_tokens: 5 },
+        };
       },
     },
   };
@@ -41,7 +46,9 @@ export interface FetchCall {
 }
 
 /** An OpenAI-compatible server: chat completions answer `reply(body)`; embeddings use fakeEmbed. */
-export function fakeOpenAiServer(reply: (body: Record<string, unknown>) => string = () => "Fake summary.") {
+export function fakeOpenAiServer(
+  reply: (body: Record<string, unknown>) => string = () => "Fake summary.",
+) {
   const calls: FetchCall[] = [];
   const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
@@ -73,7 +80,9 @@ export function fakeOpenAiServer(reply: (body: Record<string, unknown>) => strin
 
 /** A registry-backed runner over the fake binding (and optional extra options). */
 export function testRunner(
-  options: Partial<ModelRunnerOptions> & { answer?: (model: string, input: Record<string, unknown>) => string } = {},
+  options: Partial<ModelRunnerOptions> & {
+    answer?: (model: string, input: Record<string, unknown>) => string;
+  } = {},
 ): { models: ModelRunner; binding: ReturnType<typeof fakeAiBinding> } {
   const binding = fakeAiBinding(options.answer);
   const { answer: _answer, env, ...rest } = options;

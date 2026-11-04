@@ -19,6 +19,7 @@ import type { CoreDatabase, CrmDb } from "@crm/db";
 import { type Compilable, type CompiledQuery, type Kysely, sql } from "kysely";
 
 type Statement = Compilable | CompiledQuery;
+
 import { getObject, isCoreObject, listObjects } from "../fields/index.ts";
 import type { RecordChange } from "../operation.ts";
 import { jsonList } from "../records/common.ts";
@@ -49,7 +50,16 @@ const ACTIVITY_TYPES = ["note", "email", "call", "meeting"];
 
 /** Fields whose change can change a record's embedding text, per core object. */
 const TEXT_FIELDS: Record<string, readonly string[]> = {
-  person: ["displayName", "givenName", "familyName", "jobTitle", "organisationId", "location", "description", "tags"],
+  person: [
+    "displayName",
+    "givenName",
+    "familyName",
+    "jobTitle",
+    "organisationId",
+    "location",
+    "description",
+    "tags",
+  ],
   organisation: ["name", "industry", "description", "domains", "primaryDomain", "tags"],
   activity: ["subject", "body", "type", "private", "privateTo", "disclosure"],
   task: ["title", "notes"],
@@ -83,9 +93,9 @@ export function changeAffectsEmbedding(change: RecordChange): boolean {
   if (!fields) return false;
   const keys = change.diff
     ? Object.keys(change.diff)
-    : [...new Set([...Object.keys(change.before ?? {}), ...Object.keys(change.after ?? {})])].filter(
-        (k) => JSON.stringify(change.before?.[k]) !== JSON.stringify(change.after?.[k]),
-      );
+    : [
+        ...new Set([...Object.keys(change.before ?? {}), ...Object.keys(change.after ?? {})]),
+      ].filter((k) => JSON.stringify(change.before?.[k]) !== JSON.stringify(change.after?.[k]));
   return keys.some((k) => fields.includes(k));
 }
 
@@ -98,7 +108,11 @@ export interface EmbeddingRef {
  * One INSERT queueing `refs` (deduplicated, `json_each` so any number fits one statement).
  * Re-queueing a queued record moves it to the back and resets its attempts.
  */
-export function enqueueEmbeddings(db: Kysely<CoreDatabase>, refs: readonly EmbeddingRef[], now: string): Statement | null {
+export function enqueueEmbeddings(
+  db: Kysely<CoreDatabase>,
+  refs: readonly EmbeddingRef[],
+  now: string,
+): Statement | null {
   const unique = [...new Map(refs.map((r) => [`${r.object}\u0000${r.id}`, r])).values()];
   if (!unique.length) return null;
   const json = JSON.stringify(unique.map((r) => [r.object, r.id]));
@@ -197,7 +211,12 @@ export async function embeddingTexts(
     }
   } else if (object === "activity") {
     // core_activity directly, so the private / disclosure rules are explicit here.
-    const rows = await sql<{ id: string; type: string; subject: string | null; body: string | null }>`
+    const rows = await sql<{
+      id: string;
+      type: string;
+      subject: string | null;
+      body: string | null;
+    }>`
       SELECT id, type, subject, body FROM core_activity
       WHERE id IN ${list} AND deleted_at IS NULL AND private_to IS NULL
         AND (disclosure IS NULL OR disclosure = 'full')
@@ -272,17 +291,30 @@ export async function drainEmbeddingQueue(deps: EmbeddingDeps): Promise<DrainRes
     .execute();
   const more = queued.length > DRAIN_BATCH;
   const rows = queued.slice(0, DRAIN_BATCH);
-  const result: DrainResult = { taken: rows.length, embedded: 0, unchanged: 0, deleted: 0, failed: 0, more };
+  const result: DrainResult = {
+    taken: rows.length,
+    embedded: 0,
+    unchanged: 0,
+    deleted: 0,
+    failed: 0,
+    more,
+  };
   if (!rows.length) return result;
 
   const byObject = new Map<string, string[]>();
-  for (const r of rows) byObject.set(r.object_type, [...(byObject.get(r.object_type) ?? []), r.record_id]);
+  for (const r of rows)
+    byObject.set(r.object_type, [...(byObject.get(r.object_type) ?? []), r.record_id]);
   const texts = new Map<string, string>();
   for (const [object, ids] of byObject) {
     const found = isEmbeddable(object) ? await embeddingTexts(db.query, object, ids) : new Map();
     for (const [id, text] of found) texts.set(`${object}\u0000${id}`, text);
   }
-  const existing = await sql<{ object_type: string; record_id: string; text_hash: string; vector_id: string }>`
+  const existing = await sql<{
+    object_type: string;
+    record_id: string;
+    text_hash: string;
+    vector_id: string;
+  }>`
     SELECT e.object_type, e.record_id, e.text_hash, e.vector_id FROM core_embedding e
     JOIN json_each(${JSON.stringify(rows.map((r) => [r.object_type, r.record_id]))}) j
       ON e.object_type = json_extract(j.value, '$[0]') AND e.record_id = json_extract(j.value, '$[1]')
@@ -292,7 +324,14 @@ export async function drainEmbeddingQueue(deps: EmbeddingDeps): Promise<DrainRes
   // The model id is part of the hash: switching the embed role re-embeds everything once.
   const roles = await deps.models.roles?.();
   const model = roles ? `${roles.embed.provider}:${roles.embed.model}` : "embed";
-  const toEmbed: { key: string; object: string; id: string; text: string; hash: string; vectorId: string }[] = [];
+  const toEmbed: {
+    key: string;
+    object: string;
+    id: string;
+    text: string;
+    hash: string;
+    vectorId: string;
+  }[] = [];
   const toDelete: { object: string; id: string; vectorId: string }[] = [];
   for (const r of rows) {
     const key = `${r.object_type}\u0000${r.record_id}`;
@@ -311,7 +350,9 @@ export async function drainEmbeddingQueue(deps: EmbeddingDeps): Promise<DrainRes
   }
 
   const statements: Statement[] = [];
-  const dequeue = (list: readonly { object_type: string; record_id: string; queued_at: string }[]) => {
+  const dequeue = (
+    list: readonly { object_type: string; record_id: string; queued_at: string }[],
+  ) => {
     if (!list.length) return;
     // Only rows not re-queued meanwhile (queued_at unchanged).
     statements.push(
@@ -380,7 +421,15 @@ export async function drainAllEmbeddings(
   deps: EmbeddingDeps,
   maxRounds = 20,
 ): Promise<DrainResult & { rounds: number }> {
-  const total = { taken: 0, embedded: 0, unchanged: 0, deleted: 0, failed: 0, more: false, rounds: 0 };
+  const total = {
+    taken: 0,
+    embedded: 0,
+    unchanged: 0,
+    deleted: 0,
+    failed: 0,
+    more: false,
+    rounds: 0,
+  };
   for (let round = 0; round < maxRounds; round++) {
     const r = await drainEmbeddingQueue(deps);
     total.rounds += 1;
@@ -413,7 +462,9 @@ export async function backfillEmbeddingQueue(
     .select("value")
     .where("key", "=", EMBEDDING_BACKFILL_SETTING)
     .executeTakeFirst();
-  const state = setting ? (JSON.parse(setting.value) as { after: number; done: boolean }) : { after: 0, done: false };
+  const state = setting
+    ? (JSON.parse(setting.value) as { after: number; done: boolean })
+    : { after: 0, done: false };
   if (state.done) return { queued: 0, done: true };
   const objects = listObjects()
     .map((o) => o.name)

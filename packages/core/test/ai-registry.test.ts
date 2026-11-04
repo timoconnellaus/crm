@@ -6,6 +6,7 @@ import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   AI_SETTINGS,
+  assertCapable,
   capabilityProblems,
   createModelRunner,
   fakeModels,
@@ -13,7 +14,6 @@ import {
   loadAiSettings,
   MODEL_ROLES,
   ModelCapabilityError,
-  assertCapable,
   resolveRoles,
   SHIPPED_ROLES,
   ValidationError,
@@ -50,9 +50,15 @@ describe("capability checks", () => {
   it("reject models that lack what the role needs", () => {
     const embedding = { provider: "workers-ai" as const, model: "@cf/baai/bge-small-en-v1.5" };
     expect(capabilityProblems("summarise", embedding).join()).toMatch(/embedding model/);
-    const noTools = { provider: "workers-ai" as const, model: "@cf/qwen/qwen2.5-coder-32b-instruct" };
+    const noTools = {
+      provider: "workers-ai" as const,
+      model: "@cf/qwen/qwen2.5-coder-32b-instruct",
+    };
     expect(capabilityProblems("assistant", noTools).join()).toMatch(/tool use/);
-    const small = { provider: "workers-ai" as const, model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" };
+    const small = {
+      provider: "workers-ai" as const,
+      model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    };
     expect(capabilityProblems("assistant", small).join()).toMatch(/24,000-token context/);
     const noVision = { provider: "workers-ai" as const, model: "@cf/openai/gpt-oss-20b" };
     expect(capabilityProblems("vision", noVision).join()).toMatch(/cannot read images/);
@@ -65,7 +71,11 @@ describe("capability checks", () => {
     const unknown = { provider: "openai-compatible" as const, model: "mystery" };
     expect(capabilityProblems("summarise", unknown).join()).toMatch(/declare its capabilities/);
     expect(
-      capabilityProblems("summarise", { provider: "jev", model: "j1", capabilities: { ...FAKE_CAPS, judgement: true } }).join(),
+      capabilityProblems("summarise", {
+        provider: "jev",
+        model: "j1",
+        capabilities: { ...FAKE_CAPS, judgement: true },
+      }).join(),
     ).toMatch(/review role only/);
     expect(() => assertCapable("summarise", embedding)).toThrow(ModelCapabilityError);
   });
@@ -78,7 +88,11 @@ describe("capability checks", () => {
     expect(roles.summarise.model).toBe(SHIPPED_ROLES.summarise.model);
     expect(roles.summarise.source).toBe("shipped");
     expect(roles.summarise.ignored[0]?.layer).toBe("deploy");
-    expect(roles.classify).toMatchObject({ provider: "openai", model: "gpt-4.1-mini", source: "admin" });
+    expect(roles.classify).toMatchObject({
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      source: "admin",
+    });
   });
 
   it("ai.updateRole refuses an unsuitable model and its fallback", async () => {
@@ -113,7 +127,12 @@ describe("capability checks", () => {
     const admin = await createUser("admin");
     const out = await invoke(
       "ai.updateRole",
-      { role: "summarise", provider: "workers-ai", model: "@cf/openai/gpt-oss-20b", params: { maxTokens: 300 } },
+      {
+        role: "summarise",
+        provider: "workers-ai",
+        model: "@cf/openai/gpt-oss-20b",
+        params: { maxTokens: 300 },
+      },
       context(admin),
     );
     expect(out).toMatchObject({ model: "@cf/openai/gpt-oss-20b", source: "admin" });
@@ -129,8 +148,13 @@ describe("running roles", () => {
   it("calls Workers AI through the binding and AI Gateway with the role as metadata", async () => {
     const { models, binding } = testRunner({ env: { AI_GATEWAY_ID: "crm-gw" } });
     const answer = await models.run("summarise", [{ role: "user", content: "Summarise this" }]);
-    expect(answer).toMatchObject({ text: `OK from ${SHIPPED_ROLES.summarise.model}`, provider: "workers-ai" });
-    expect(binding.calls[0]?.options).toMatchObject({ gateway: { id: "crm-gw", metadata: { role: "summarise" } } });
+    expect(answer).toMatchObject({
+      text: `OK from ${SHIPPED_ROLES.summarise.model}`,
+      provider: "workers-ai",
+    });
+    expect(binding.calls[0]?.options).toMatchObject({
+      gateway: { id: "crm-gw", metadata: { role: "summarise" } },
+    });
     const embedded = await models.embed?.(["hello world", "another"]);
     expect(embedded?.vectors).toHaveLength(2);
     expect(embedded?.dimensions).toBe(384);
@@ -150,14 +174,21 @@ describe("running roles", () => {
 
   it("says AI is not configured without a binding or provider", async () => {
     const models = createModelRunner({ env: {} });
-    await expect(models.run("summarise", [{ role: "user", content: "x" }])).rejects.toThrow(/not configured/);
+    await expect(models.run("summarise", [{ role: "user", content: "x" }])).rejects.toThrow(
+      /not configured/,
+    );
   });
 
   it("uses the deterministic stand-ins only when AI_FAKE_MODEL is set and there is no binding", async () => {
     const models = createModelRunner({ env: { AI_FAKE_MODEL: "true" }, fakes: fakeModels() });
-    expect((await models.run("summarise", [{ role: "user", content: "Facts:\n- One.\n- Two." }])).model).toBe("fake");
+    expect(
+      (await models.run("summarise", [{ role: "user", content: "Facts:\n- One.\n- Two." }])).model,
+    ).toBe("fake");
     const real = fakeAiBinding();
-    const withBinding = createModelRunner({ env: { AI_FAKE_MODEL: "true", AI: real.binding }, fakes: fakeModels() });
+    const withBinding = createModelRunner({
+      env: { AI_FAKE_MODEL: "true", AI: real.binding },
+      fakes: fakeModels(),
+    });
     await withBinding.run("summarise", [{ role: "user", content: "x" }]);
     expect(real.calls).toHaveLength(1);
   });
@@ -166,10 +197,18 @@ describe("running roles", () => {
 describe("model-role swap (stage 7 AC 1)", () => {
   async function seedPerson() {
     const member = await createUser("member");
-    const person = await invoke("person.create", { displayName: `Swap ${unique()}` }, context(member));
+    const person = await invoke(
+      "person.create",
+      { displayName: `Swap ${unique()}` },
+      context(member),
+    );
     await invoke(
       "activity.log",
-      { type: "note", body: "Discussed the renewal and next quarter's budget.", links: [{ object: "person", id: person.id }] },
+      {
+        type: "note",
+        body: "Discussed the renewal and next quarter's budget.",
+        links: [{ object: "person", id: person.id }],
+      },
       context(member),
     );
     return { member, person };
@@ -180,9 +219,15 @@ describe("model-role swap (stage 7 AC 1)", () => {
     const { models, binding } = testRunner({
       env: {
         AI_MODEL_ROLES: JSON.stringify({
-          summarise: { provider: "openai-compatible", model: "fake-summariser", capabilities: FAKE_CAPS },
+          summarise: {
+            provider: "openai-compatible",
+            model: "fake-summariser",
+            capabilities: FAKE_CAPS,
+          },
         }),
-        AI_PROVIDERS: JSON.stringify({ "openai-compatible": { baseURL: "https://llm.example/v1" } }),
+        AI_PROVIDERS: JSON.stringify({
+          "openai-compatible": { baseURL: "https://llm.example/v1" },
+        }),
         AI_KEY_CUSTOM: "sk-test-custom",
       },
       fetch: server.fetch,
@@ -193,7 +238,11 @@ describe("model-role swap (stage 7 AC 1)", () => {
       { subject: { kind: "record", object: "person", id: person.id } },
       context(member, { models }),
     );
-    expect(summary).toMatchObject({ status: "fresh", text: "Swapped summary.", model: "fake-summariser" });
+    expect(summary).toMatchObject({
+      status: "fresh",
+      text: "Swapped summary.",
+      model: "fake-summariser",
+    });
     expect(server.calls[0]?.url).toBe("https://llm.example/v1/chat/completions");
     expect(server.calls[0]?.headers.authorization).toBe("Bearer sk-test-custom");
     expect(server.calls[0]?.body.model).toBe("fake-summariser");
@@ -205,12 +254,19 @@ describe("model-role swap (stage 7 AC 1)", () => {
     const admin = await createUser("admin");
     await invoke(
       "ai.updateRole",
-      { role: "summarise", provider: "openai-compatible", model: "admin-fake", capabilities: FAKE_CAPS },
+      {
+        role: "summarise",
+        provider: "openai-compatible",
+        model: "admin-fake",
+        capabilities: FAKE_CAPS,
+      },
       context(admin),
     );
     const viaAdmin = testRunner({
       env: {
-        AI_PROVIDERS: JSON.stringify({ "openai-compatible": { baseURL: "https://llm.example/v1" } }),
+        AI_PROVIDERS: JSON.stringify({
+          "openai-compatible": { baseURL: "https://llm.example/v1" },
+        }),
         AI_KEY_CUSTOM: "sk-test-custom",
       },
       fetch: server.fetch,
@@ -228,7 +284,9 @@ describe("model-role swap (stage 7 AC 1)", () => {
     const server = fakeOpenAiServer();
     const { models } = testRunner({
       env: {
-        AI_MODEL_ROLES: JSON.stringify({ summarise: { provider: "openai", model: "gpt-4.1-mini" } }),
+        AI_MODEL_ROLES: JSON.stringify({
+          summarise: { provider: "openai", model: "gpt-4.1-mini" },
+        }),
         AI_GATEWAY_ID: "gw",
         CLOUDFLARE_ACCOUNT_ID: "acct",
         AI_GATEWAY_TOKEN: "aig-token",

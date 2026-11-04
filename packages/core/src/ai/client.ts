@@ -167,12 +167,15 @@ export function providerStatus(
   }
   const info = PROVIDER_INFO[provider];
   const base = providerConfig(env)[provider]?.baseURL ?? info.baseURL;
-  const viaGateway = Boolean(env.AI_GATEWAY_ID && env.CLOUDFLARE_ACCOUNT_ID && GATEWAY_PATHS[provider]);
+  const viaGateway = Boolean(
+    env.AI_GATEWAY_ID && env.CLOUDFLARE_ACCOUNT_ID && GATEWAY_PATHS[provider],
+  );
   if (!base && !viaGateway) {
     return { ready: false, reason: `No base URL: set AI_PROVIDERS.${provider}.baseURL` };
   }
   if (settings.byok.includes(provider)) {
-    if (!viaGateway) return { ready: false, reason: "BYOK needs AI_GATEWAY_ID and CLOUDFLARE_ACCOUNT_ID" };
+    if (!viaGateway)
+      return { ready: false, reason: "BYOK needs AI_GATEWAY_ID and CLOUDFLARE_ACCOUNT_ID" };
     return { ready: true, keySource: "byok" };
   }
   const secret = keyFromEnv(env, info.secretName);
@@ -205,9 +208,7 @@ function openAiCompatible(
       ? `https://gateway.ai.cloudflare.com/v1/${env.CLOUDFLARE_ACCOUNT_ID}/${env.AI_GATEWAY_ID}/${gatewayPath}`
       : ((providerConfig(env)[provider]?.baseURL ?? info.baseURL) as string);
   const key =
-    status.keySource === "secret" && info.secretName
-      ? keyFromEnv(env, info.secretName)
-      : undefined;
+    status.keySource === "secret" && info.secretName ? keyFromEnv(env, info.secretName) : undefined;
   return createOpenAICompatible({
     name: provider,
     baseURL: baseURL.replace(/\/+$/, ""),
@@ -236,11 +237,7 @@ function languageModel(
   return openAiCompatible(options, settings, ref.provider, role).chatModel(ref.model);
 }
 
-function embeddingModel(
-  options: ModelRunnerOptions,
-  settings: AiAdminSettings,
-  ref: ModelRef,
-) {
+function embeddingModel(options: ModelRunnerOptions, settings: AiAdminSettings, ref: ModelRef) {
   if (ref.provider === "workers-ai") return workersAi(options, "embed").textEmbedding(ref.model);
   return openAiCompatible(options, settings, ref.provider, "embed").textEmbeddingModel(ref.model);
 }

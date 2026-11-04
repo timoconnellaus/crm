@@ -9,6 +9,10 @@
 import type { AuditChangeAction, CrmDb } from "@crm/db";
 import { checkGrant } from "@crm/sdk";
 import { type Compilable, type CompiledQuery, sql } from "kysely";
+import type { AiAdmin } from "./ai/admin.ts";
+import type { AiEnv } from "./ai/client.ts";
+import { embeddingQueueStatement, SELF_ENQUEUEING } from "./ai/embedding.ts";
+import type { VectorStore } from "./ai/vectors.ts";
 import { matchesPreviewValue } from "./approvals/caps.ts";
 import { type DryRunResult, prepareQueuedAction } from "./approvals/queue.ts";
 import { isSimulatedRead, loadSessionOverlay, overlayRead } from "./approvals/simulation.ts";
@@ -29,11 +33,7 @@ import { refreshSchemaRegistry } from "./extensions/schema.ts";
 import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { findProvisionalIds, newId } from "./ids.ts";
-import type { AiAdmin } from "./ai/admin.ts";
-import type { AiEnv } from "./ai/client.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
-import { embeddingQueueStatement, SELF_ENQUEUEING } from "./ai/embedding.ts";
-import type { VectorStore } from "./ai/vectors.ts";
 import type { ModelRunner } from "./models.ts";
 import {
   type AnyOperation,

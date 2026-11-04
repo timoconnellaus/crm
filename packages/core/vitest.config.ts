@@ -7,7 +7,9 @@ const migrationsDir = fileURLToPath(new URL("../db/migrations", import.meta.url)
 // `pnpm relevance:real` (RELEVANCE_REAL=1) runs the semantic search relevance set against the real
 // Workers AI embedding model with the caller's Cloudflare credentials (ADR 0155). Never in CI.
 const realRelevance =
-  process.env.RELEVANCE_REAL === "1" && process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN
+  process.env.RELEVANCE_REAL === "1" &&
+  process.env.CLOUDFLARE_ACCOUNT_ID &&
+  process.env.CLOUDFLARE_API_TOKEN
     ? {
         RELEVANCE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
         RELEVANCE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,

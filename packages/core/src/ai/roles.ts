@@ -52,7 +52,12 @@ export interface ProviderInfo {
 }
 
 export const PROVIDER_INFO: Record<ProviderId, ProviderInfo> = {
-  "workers-ai": { id: "workers-ai", label: "Workers AI", needsKey: false, gatewaySlug: "workers-ai" },
+  "workers-ai": {
+    id: "workers-ai",
+    label: "Workers AI",
+    needsKey: false,
+    gatewaySlug: "workers-ai",
+  },
   openai: {
     id: "openai",
     label: "OpenAI",

@@ -33,10 +33,18 @@ beforeAll(async () => {
 const ctx = (overrides = {}) => context(member, { models, ...overrides });
 
 async function personWithNote() {
-  const person = await invoke("person.create", { displayName: `Ada ${unique()}`, location: "London" }, ctx());
+  const person = await invoke(
+    "person.create",
+    { displayName: `Ada ${unique()}`, location: "London" },
+    ctx(),
+  );
   await invoke(
     "activity.log",
-    { type: "note", body: "Asked about the enterprise plan.", links: [{ object: "person", id: person.id }] },
+    {
+      type: "note",
+      body: "Asked about the enterprise plan.",
+      links: [{ object: "person", id: person.id }],
+    },
     ctx(),
   );
   return person;
@@ -55,7 +63,10 @@ describe("record summaries", () => {
     const first = await invoke("summary.generate", { subject }, ctx());
     expect(first).toMatchObject({ status: "fresh", aiGenerated: true });
     expect(calls).toBe(before + 1);
-    expect(await invoke("summary.get", { subject }, ctx())).toMatchObject({ status: "fresh", text: first.text });
+    expect(await invoke("summary.get", { subject }, ctx())).toMatchObject({
+      status: "fresh",
+      text: first.text,
+    });
 
     // Fresh: generating again returns the cache without a model call.
     await invoke("summary.generate", { subject }, ctx());
@@ -64,10 +75,17 @@ describe("record summaries", () => {
     // A new note makes it stale; the old text is still shown until regenerated.
     await invoke(
       "activity.log",
-      { type: "note", body: "Signed the order form.", links: [{ object: "person", id: person.id }] },
+      {
+        type: "note",
+        body: "Signed the order form.",
+        links: [{ object: "person", id: person.id }],
+      },
       ctx(),
     );
-    expect(await invoke("summary.get", { subject }, ctx())).toMatchObject({ status: "stale", text: first.text });
+    expect(await invoke("summary.get", { subject }, ctx())).toMatchObject({
+      status: "stale",
+      text: first.text,
+    });
     const second = await invoke("summary.generate", { subject }, ctx());
     expect(calls).toBe(before + 2);
     expect(second.text).not.toBe(first.text);
@@ -88,29 +106,49 @@ describe("record summaries", () => {
       context(admin),
     );
     const fresh = testRunner();
-    expect((await invoke("summary.get", { subject }, context(member, { models: fresh.models }))).status).toBe(
-      "stale",
-    );
+    expect(
+      (await invoke("summary.get", { subject }, context(member, { models: fresh.models }))).status,
+    ).toBe("stale");
     await invoke("ai.updateRole", { role: "summarise", reset: true }, context(admin));
   });
 
   it("cover organisations and deals, and say when AI is not configured", async () => {
     const org = await invoke("organisation.create", { name: `Acme ${unique()}` }, ctx());
-    const out = await invoke("summary.generate", { subject: { kind: "record", object: "organisation", id: org.id } }, ctx());
+    const out = await invoke(
+      "summary.generate",
+      { subject: { kind: "record", object: "organisation", id: org.id } },
+      ctx(),
+    );
     expect(out.status).toBe("fresh");
     expect(
-      await invoke("summary.get", { subject: { kind: "record", object: "organisation", id: org.id } }, ctx()),
+      await invoke(
+        "summary.get",
+        { subject: { kind: "record", object: "organisation", id: org.id } },
+        ctx(),
+      ),
     ).toMatchObject({ status: "fresh" });
     // Without AI the cached text is still shown, marked unavailable for refresh.
     expect(
-      await invoke("summary.get", { subject: { kind: "record", object: "organisation", id: org.id } }, context(member)),
+      await invoke(
+        "summary.get",
+        { subject: { kind: "record", object: "organisation", id: org.id } },
+        context(member),
+      ),
     ).toMatchObject({ status: "unavailable", text: out.text });
     const other = await invoke("organisation.create", { name: `Other ${unique()}` }, ctx());
     expect(
-      await invoke("summary.get", { subject: { kind: "record", object: "organisation", id: other.id } }, context(member)),
+      await invoke(
+        "summary.get",
+        { subject: { kind: "record", object: "organisation", id: other.id } },
+        context(member),
+      ),
     ).toMatchObject({ status: "unavailable" });
     await expect(
-      invoke("summary.generate", { subject: { kind: "record", object: "organisation", id: other.id } }, context(member)),
+      invoke(
+        "summary.generate",
+        { subject: { kind: "record", object: "organisation", id: other.id } },
+        context(member),
+      ),
     ).rejects.toThrow(/not configured/);
   });
 });
@@ -119,7 +157,11 @@ describe("meeting prep", () => {
   it("covers attendees, their organisation and recent history, and goes stale with a new note", async () => {
     const org = await invoke("organisation.create", { name: `Globex ${unique()}` }, ctx());
     const person = await invoke("person.create", { displayName: `Hank ${unique()}` }, ctx());
-    await invoke("affiliation.create", { personId: person.id, organisationId: org.id, title: "VP Sales" }, ctx());
+    await invoke(
+      "affiliation.create",
+      { personId: person.id, organisationId: org.id, title: "VP Sales" },
+      ctx(),
+    );
     const meeting = await invoke(
       "activity.log",
       {
@@ -180,7 +222,9 @@ describe("activity one-liners", () => {
       missing: [],
     });
     await invoke("activity.update", { id: long.id, body: `${long.body} One more thing.` }, ctx());
-    expect((await invoke("summary.activityLines", { ids: [long.id] }, ctx())).missing).toEqual([long.id]);
+    expect((await invoke("summary.activityLines", { ids: [long.id] }, ctx())).missing).toEqual([
+      long.id,
+    ]);
   });
 });
 
@@ -193,7 +237,11 @@ describe("change-set summaries", () => {
       await invoke(
         "person.update",
         { id: person.id, location: "Arlington" },
-        context(member, { actor: "mcp", origin: { surface: "mcp", sessionId: `cap_${unique()}` }, reason: "Promotion" }),
+        context(member, {
+          actor: "mcp",
+          origin: { surface: "mcp", sessionId: `cap_${unique()}` },
+          reason: "Promotion",
+        }),
       );
     } catch (error) {
       if (!(error instanceof PendingApprovalError)) throw error;
@@ -202,8 +250,14 @@ describe("change-set summaries", () => {
     expect(changeSetId).not.toBe("");
     const { changeSetSummaryInput } = await import("../src/index.ts");
     const input = await changeSetSummaryInput((await import("./helpers.ts")).db.query, changeSetId);
-    expect(input.facts[0]).toMatch(/person.update \[pending\] because "Promotion": update person \(location: null → "Arlington"\)/);
-    const out = await invoke("summary.generate", { subject: { kind: "changeset", id: changeSetId } }, ctx());
+    expect(input.facts[0]).toMatch(
+      /person.update \[pending\] because "Promotion": update person \(location: null → "Arlington"\)/,
+    );
+    const out = await invoke(
+      "summary.generate",
+      { subject: { kind: "changeset", id: changeSetId } },
+      ctx(),
+    );
     expect(out).toMatchObject({ status: "fresh", aiGenerated: true });
   });
 });

@@ -66,12 +66,20 @@ async function titles(
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return out;
   if (object === "person") {
-    const rows = await db.selectFrom("crm_people").select(["id", "display_name"]).where("id", "in", jsonList(unique)).execute();
+    const rows = await db
+      .selectFrom("crm_people")
+      .select(["id", "display_name"])
+      .where("id", "in", jsonList(unique))
+      .execute();
     for (const r of rows) out.set(r.id, r.display_name);
     return out;
   }
   if (object === "organisation") {
-    const rows = await db.selectFrom("crm_organisations").select(["id", "name"]).where("id", "in", jsonList(unique)).execute();
+    const rows = await db
+      .selectFrom("crm_organisations")
+      .select(["id", "name"])
+      .where("id", "in", jsonList(unique))
+      .execute();
     for (const r of rows) out.set(r.id, r.name);
     return out;
   }
@@ -79,12 +87,23 @@ async function titles(
   const column = def?.fields.find((f) => f.name === def.titleField)?.column;
   if (!def?.extension || !column) return out;
   const rows = await sql<{ id: string; title: string | null }>`
-    SELECT id, ${sql.ref(column)} AS title FROM ${sql.table(def.source)} WHERE id IN ${jsonList(unique)}`.execute(db);
+    SELECT id, ${sql.ref(column)} AS title FROM ${sql.table(def.source)} WHERE id IN ${jsonList(unique)}`.execute(
+    db,
+  );
   for (const r of rows.rows) out.set(r.id, r.title ?? "(untitled)");
   return out;
 }
 
-const SKIP_FIELDS = new Set(["id", "avatarKey", "createdAt", "updatedAt", "socialProfiles", "addresses", "ownerId", "probabilityOverridden"]);
+const SKIP_FIELDS = new Set([
+  "id",
+  "avatarKey",
+  "createdAt",
+  "updatedAt",
+  "socialProfiles",
+  "addresses",
+  "ownerId",
+  "probabilityOverridden",
+]);
 
 /** "Label: value" facts for one record, relation ids resolved to titles. */
 async function recordFacts(
@@ -119,7 +138,8 @@ async function recordFacts(
         // not JSON; keep the text
       }
     }
-    if (f.name === def.titleField || f.name === "displayName" || f.name === "name") title ||= String(value);
+    if (f.name === def.titleField || f.name === "displayName" || f.name === "name")
+      title ||= String(value);
     facts.push(`${f.label}: ${String(value)}`);
   }
   if (object === "person" || object === "organisation") {
@@ -148,7 +168,13 @@ async function timelineFacts(
   limit: number,
 ): Promise<{ facts: string[]; ids: string[] }> {
   if (!refs.length) return { facts: [], ids: [] };
-  const rows = await sql<{ id: string; type: string; subject: string | null; body: string | null; occurred_at: string }>`
+  const rows = await sql<{
+    id: string;
+    type: string;
+    subject: string | null;
+    body: string | null;
+    occurred_at: string;
+  }>`
     SELECT DISTINCT a.id, a.type, a.subject, a.body, a.occurred_at
     FROM crm_activity_links l JOIN crm_activities a ON a.id = l.activity_id
     WHERE ${linkedTo(refs)}
@@ -171,7 +197,9 @@ async function openTaskFacts(
     WHERE t.status = 'open' AND ${linkedTo(refs)}
     ORDER BY t.due_at IS NULL, t.due_at LIMIT 5`.execute(db);
   return {
-    facts: rows.rows.map((t) => fact(`Open task: ${t.title}${t.due_at ? ` (due ${day(t.due_at)})` : ""}`)),
+    facts: rows.rows.map((t) =>
+      fact(`Open task: ${t.title}${t.due_at ? ` (due ${day(t.due_at)})` : ""}`),
+    ),
     ids: rows.rows.map((t) => t.id),
   };
 }
@@ -194,7 +222,9 @@ async function relatedFacts(
     for (const field of def.fields) {
       if (field.options?.to !== object || !field.column) continue;
       const rows = await sql<{ id: string }>`
-        SELECT id FROM ${sql.table(def.source)} WHERE ${sql.ref(field.column)} = ${id} LIMIT 5`.execute(db);
+        SELECT id FROM ${sql.table(def.source)} WHERE ${sql.ref(field.column)} = ${id} LIMIT 5`.execute(
+        db,
+      );
       for (const r of rows.rows) {
         const found = await recordFacts(db, def.name, r.id);
         if (!found) continue;
@@ -227,31 +257,34 @@ export async function recordSummaryInput(
     kind: "record",
     subjectType: object,
     subjectId: id,
-    facts: [
-      ...record.facts.map(fact),
-      ...related.facts,
-      ...tasks.facts,
-      ...timeline.facts,
-    ],
+    facts: [...record.facts.map(fact), ...related.facts, ...tasks.facts, ...timeline.facts],
     sources: [id, ...related.ids, ...tasks.ids, ...timeline.ids],
   };
 }
 
 /** Facts for meeting prep: the meeting, its people and their organisations, open deals, history. */
-export async function meetingPrepInput(db: Kysely<CoreDatabase>, activityId: string): Promise<SummaryInput> {
+export async function meetingPrepInput(
+  db: Kysely<CoreDatabase>,
+  activityId: string,
+): Promise<SummaryInput> {
   const meeting = await db
     .selectFrom("crm_activities")
     .select(["id", "type", "subject", "body", "occurred_at", "payload"])
     .where("id", "=", activityId)
     .executeTakeFirst();
   if (!meeting) throw new NotFoundError("activity", activityId);
-  if (meeting.type !== "meeting") throw new ValidationError("Meeting prep is for meeting activities");
+  if (meeting.type !== "meeting")
+    throw new ValidationError("Meeting prep is for meeting activities");
   const links = await db
     .selectFrom("crm_activity_links")
     .select(["object_type", "record_id"])
     .where("activity_id", "=", activityId)
     .execute();
-  const facts = [fact(`Meeting ${day(meeting.occurred_at)}: ${meeting.subject ?? ""}${meeting.body ? ` — ${meeting.body}` : ""}`)];
+  const facts = [
+    fact(
+      `Meeting ${day(meeting.occurred_at)}: ${meeting.subject ?? ""}${meeting.body ? ` — ${meeting.body}` : ""}`,
+    ),
+  ];
   const sources = [activityId];
   const refs: { object: string; id: string }[] = [];
   const orgIds = new Set<string>();
@@ -263,7 +296,11 @@ export async function meetingPrepInput(db: Kysely<CoreDatabase>, activityId: str
         .where("id", "=", link.record_id)
         .executeTakeFirst();
       if (!p) continue;
-      facts.push(fact(`Attendee: ${p.display_name}${p.job_title ? `, ${p.job_title}` : ""}${p.organisation_name ? ` at ${p.organisation_name}` : ""}`));
+      facts.push(
+        fact(
+          `Attendee: ${p.display_name}${p.job_title ? `, ${p.job_title}` : ""}${p.organisation_name ? ` at ${p.organisation_name}` : ""}`,
+        ),
+      );
       sources.push(p.id);
       refs.push({ object: "person", id: p.id });
       if (p.organisation_id) orgIds.add(p.organisation_id);
@@ -324,7 +361,10 @@ export async function activitySummaryInput(
 }
 
 /** Facts for a change set: what each pending action would do, and the agent's reasons. */
-export async function changeSetSummaryInput(db: Kysely<CoreDatabase>, changeSetId: string): Promise<SummaryInput> {
+export async function changeSetSummaryInput(
+  db: Kysely<CoreDatabase>,
+  changeSetId: string,
+): Promise<SummaryInput> {
   const actions = await db
     .selectFrom("core_pending_action")
     .select(["id", "operation", "reason", "preview", "status", "actor", "summary"])
@@ -337,7 +377,12 @@ export async function changeSetSummaryInput(db: Kysely<CoreDatabase>, changeSetI
   const facts: string[] = [];
   const sources: string[] = [];
   for (const a of actions) {
-    let preview: { object: string; id: string; action: string; diff?: Record<string, { before?: unknown; after?: unknown }> }[] = [];
+    let preview: {
+      object: string;
+      id: string;
+      action: string;
+      diff?: Record<string, { before?: unknown; after?: unknown }>;
+    }[] = [];
     try {
       preview = JSON.parse(a.preview ?? "[]");
     } catch {
@@ -349,12 +394,19 @@ export async function changeSetSummaryInput(db: Kysely<CoreDatabase>, changeSetI
         sources.push(p.id);
         const fields = Object.entries(p.diff ?? {})
           .slice(0, 8)
-          .map(([k, v]) => `${k}: ${JSON.stringify(v.before ?? null)} → ${JSON.stringify(v.after ?? null)}`)
+          .map(
+            ([k, v]) =>
+              `${k}: ${JSON.stringify(v.before ?? null)} → ${JSON.stringify(v.after ?? null)}`,
+          )
           .join(", ");
         return `${p.action} ${p.object}${fields ? ` (${fields})` : ""}`;
       })
       .join("; ");
-    facts.push(fact(`${a.operation} [${a.status}]${a.reason ? ` because "${a.reason}"` : ""}: ${changes || "no record changes"}`));
+    facts.push(
+      fact(
+        `${a.operation} [${a.status}]${a.reason ? ` because "${a.reason}"` : ""}: ${changes || "no record changes"}`,
+      ),
+    );
   }
   return { kind: "changeset", subjectType: "change_set", subjectId: changeSetId, facts, sources };
 }
@@ -404,7 +456,12 @@ export async function readCachedSummary(
     .executeTakeFirst();
   if (!row) return null;
   const hash = await summaryHash(input, model);
-  return { text: row.text, model: row.model, createdAt: row.created_at, fresh: row.input_hash === hash };
+  return {
+    text: row.text,
+    model: row.model,
+    createdAt: row.created_at,
+    fresh: row.input_hash === hash,
+  };
 }
 
 /** The statement that stores a generated summary (replacing the subject's previous one). */
@@ -446,11 +503,9 @@ export async function storeSummaryStatement(
 /** Erase (ADR 0019): every summary about, or built from, one of `ids`. */
 export function deleteSummariesStatement(db: Kysely<CoreDatabase>, ids: readonly string[]) {
   const json = JSON.stringify([...new Set(ids)]);
-  return db
-    .deleteFrom("core_ai_summary")
-    .where(
-      sql<boolean>`subject_id IN (SELECT value FROM json_each(${json}))
+  return db.deleteFrom("core_ai_summary").where(
+    sql<boolean>`subject_id IN (SELECT value FROM json_each(${json}))
         OR EXISTS (SELECT 1 FROM json_each(core_ai_summary.sources) s
                    WHERE s.value IN (SELECT value FROM json_each(${json})))`,
-    );
+  );
 }

@@ -26,13 +26,17 @@ export interface VectorStore {
 
 /** The Vectorize binding, as far as we use it (structural, so tests need no real binding). */
 export interface VectorizeLike {
-  upsert(vectors: { id: string; values: number[]; metadata?: Record<string, unknown> }[]): Promise<unknown>;
+  upsert(
+    vectors: { id: string; values: number[]; metadata?: Record<string, unknown> }[],
+  ): Promise<unknown>;
   deleteByIds(ids: string[]): Promise<unknown>;
   query(
     vector: number[],
     options?: { topK?: number; returnMetadata?: "none" | "indexed" | "all"; filter?: unknown },
   ): Promise<{ matches: { id: string; score: number; metadata?: Record<string, unknown> }[] }>;
-  getByIds(ids: string[]): Promise<{ id: string; values: number[] | Float32Array | Float64Array }[]>;
+  getByIds(
+    ids: string[],
+  ): Promise<{ id: string; values: number[] | Float32Array | Float64Array }[]>;
 }
 
 const encoder = new TextEncoder();

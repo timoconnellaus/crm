@@ -19,8 +19,8 @@ import {
   type ModelRunner,
   memoryVectorStore,
   modelRunnerFromEnv,
-  type VectorStore,
   type VectorizeLike,
+  type VectorStore,
   vectorizeStore,
 } from "@crm/core";
 import type { CrmDb } from "@crm/db";
