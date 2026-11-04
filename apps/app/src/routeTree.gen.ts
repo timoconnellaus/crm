@@ -17,9 +17,12 @@ import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppStatusRouteImport } from './routes/_app/status'
+import { Route as AppSuggestedContactsRouteImport } from './routes/_app/suggested-contacts'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ConnectHandoffRouteImport } from './routes/connect.handoff'
+import { Route as GatekeeperSplatRouteImport } from './routes/gatekeeper/$'
 import { Route as AppAutomationsIndexRouteImport } from './routes/_app/automations/index'
 import { Route as AppAutomationsIdRouteImport } from './routes/_app/automations/$id'
 import { Route as AppDashboardsIndexRouteImport } from './routes/_app/dashboards/index'
@@ -35,6 +38,7 @@ import { Route as AppSettingsAutomationsRouteImport } from './routes/_app/settin
 import { Route as AppSettingsConnectedAppsRouteImport } from './routes/_app/settings/connected-apps'
 import { Route as AppSettingsExtensionsRouteImport } from './routes/_app/settings/extensions'
 import { Route as AppSettingsGeneralRouteImport } from './routes/_app/settings/general'
+import { Route as AppSettingsIntegrationsRouteImport } from './routes/_app/settings/integrations'
 import { Route as AppSettingsStorageRouteImport } from './routes/_app/settings/storage'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -80,6 +84,11 @@ const AppStatusRoute = AppStatusRouteImport.update({
   path: '/status',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSuggestedContactsRoute = AppSuggestedContactsRouteImport.update({
+  id: '/suggested-contacts',
+  path: '/suggested-contacts',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTasksRoute = AppTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -93,6 +102,16 @@ const AppTrashRoute = AppTrashRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectHandoffRoute = ConnectHandoffRouteImport.update({
+  id: '/connect/handoff',
+  path: '/connect/handoff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GatekeeperSplatRoute = GatekeeperSplatRouteImport.update({
+  id: '/gatekeeper/$',
+  path: '/gatekeeper/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppAutomationsIndexRoute = AppAutomationsIndexRouteImport.update({
@@ -172,6 +191,11 @@ const AppSettingsGeneralRoute = AppSettingsGeneralRouteImport.update({
   path: '/settings/general',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsIntegrationsRoute = AppSettingsIntegrationsRouteImport.update({
+  id: '/settings/integrations',
+  path: '/settings/integrations',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsStorageRoute = AppSettingsStorageRouteImport.update({
   id: '/settings/storage',
   path: '/settings/storage',
@@ -206,9 +230,12 @@ export interface FileRoutesByFullPath {
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
   '/status': typeof AppStatusRoute
+  '/suggested-contacts': typeof AppSuggestedContactsRoute
   '/tasks': typeof AppTasksRoute
   '/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
+  '/connect/handoff': typeof ConnectHandoffRoute
+  '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/automations/$id': typeof AppAutomationsIdRoute
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
@@ -219,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/general': typeof AppSettingsGeneralRoute
+  '/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -237,9 +265,12 @@ export interface FileRoutesByTo {
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
   '/status': typeof AppStatusRoute
+  '/suggested-contacts': typeof AppSuggestedContactsRoute
   '/tasks': typeof AppTasksRoute
   '/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
+  '/connect/handoff': typeof ConnectHandoffRoute
+  '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/': typeof AppIndexRoute
   '/automations/$id': typeof AppAutomationsIdRoute
   '/dashboards/$id': typeof AppDashboardsIdRoute
@@ -251,6 +282,7 @@ export interface FileRoutesByTo {
   '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/general': typeof AppSettingsGeneralRoute
+  '/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -271,9 +303,12 @@ export interface FileRoutesById {
   '/_app/import': typeof AppImportRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/status': typeof AppStatusRoute
+  '/_app/suggested-contacts': typeof AppSuggestedContactsRoute
   '/_app/tasks': typeof AppTasksRoute
   '/_app/trash': typeof AppTrashRoute
   '/api/health': typeof ApiHealthRoute
+  '/connect/handoff': typeof ConnectHandoffRoute
+  '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/_app/': typeof AppIndexRoute
   '/_app/automations/$id': typeof AppAutomationsIdRoute
   '/_app/dashboards/$id': typeof AppDashboardsIdRoute
@@ -285,6 +320,7 @@ export interface FileRoutesById {
   '/_app/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/_app/settings/extensions': typeof AppSettingsExtensionsRoute
   '/_app/settings/general': typeof AppSettingsGeneralRoute
+  '/_app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/_app/settings/storage': typeof AppSettingsStorageRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -306,9 +342,12 @@ export interface FileRouteTypes {
     | '/import'
     | '/notifications'
     | '/status'
+    | '/suggested-contacts'
     | '/tasks'
     | '/trash'
     | '/api/health'
+    | '/connect/handoff'
+    | '/gatekeeper/$'
     | '/automations/$id'
     | '/dashboards/$id'
     | '/organisations/$id'
@@ -319,6 +358,7 @@ export interface FileRouteTypes {
     | '/settings/connected-apps'
     | '/settings/extensions'
     | '/settings/general'
+    | '/settings/integrations'
     | '/settings/storage'
     | '/settings/users'
     | '/api/auth/$'
@@ -337,9 +377,12 @@ export interface FileRouteTypes {
     | '/import'
     | '/notifications'
     | '/status'
+    | '/suggested-contacts'
     | '/tasks'
     | '/trash'
     | '/api/health'
+    | '/connect/handoff'
+    | '/gatekeeper/$'
     | '/'
     | '/automations/$id'
     | '/dashboards/$id'
@@ -351,6 +394,7 @@ export interface FileRouteTypes {
     | '/settings/connected-apps'
     | '/settings/extensions'
     | '/settings/general'
+    | '/settings/integrations'
     | '/settings/storage'
     | '/settings/users'
     | '/api/auth/$'
@@ -370,9 +414,12 @@ export interface FileRouteTypes {
     | '/_app/import'
     | '/_app/notifications'
     | '/_app/status'
+    | '/_app/suggested-contacts'
     | '/_app/tasks'
     | '/_app/trash'
     | '/api/health'
+    | '/connect/handoff'
+    | '/gatekeeper/$'
     | '/_app/'
     | '/_app/automations/$id'
     | '/_app/dashboards/$id'
@@ -384,6 +431,7 @@ export interface FileRouteTypes {
     | '/_app/settings/connected-apps'
     | '/_app/settings/extensions'
     | '/_app/settings/general'
+    | '/_app/settings/integrations'
     | '/_app/settings/storage'
     | '/_app/settings/users'
     | '/api/auth/$'
@@ -400,6 +448,8 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   SignInRoute: typeof SignInRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ConnectHandoffRoute: typeof ConnectHandoffRoute
+  GatekeeperSplatRoute: typeof GatekeeperSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -461,6 +511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStatusRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/suggested-contacts': {
+      id: '/_app/suggested-contacts'
+      path: '/suggested-contacts'
+      fullPath: '/suggested-contacts'
+      preLoaderRoute: typeof AppSuggestedContactsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/tasks': {
       id: '/_app/tasks'
       path: '/tasks'
@@ -480,6 +537,20 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connect/handoff': {
+      id: '/connect/handoff'
+      path: '/connect/handoff'
+      fullPath: '/connect/handoff'
+      preLoaderRoute: typeof ConnectHandoffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gatekeeper/$': {
+      id: '/gatekeeper/$'
+      path: '/gatekeeper/$'
+      fullPath: '/gatekeeper/$'
+      preLoaderRoute: typeof GatekeeperSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/automations/': {
@@ -587,6 +658,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsGeneralRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/integrations': {
+      id: '/_app/settings/integrations'
+      path: '/settings/integrations'
+      fullPath: '/settings/integrations'
+      preLoaderRoute: typeof AppSettingsIntegrationsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/storage': {
       id: '/_app/settings/storage'
       path: '/settings/storage'
@@ -631,6 +709,7 @@ interface AppRouteChildren {
   AppImportRoute: typeof AppImportRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppStatusRoute: typeof AppStatusRoute
+  AppSuggestedContactsRoute: typeof AppSuggestedContactsRoute
   AppTasksRoute: typeof AppTasksRoute
   AppTrashRoute: typeof AppTrashRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -644,6 +723,7 @@ interface AppRouteChildren {
   AppSettingsConnectedAppsRoute: typeof AppSettingsConnectedAppsRoute
   AppSettingsExtensionsRoute: typeof AppSettingsExtensionsRoute
   AppSettingsGeneralRoute: typeof AppSettingsGeneralRoute
+  AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
   AppSettingsStorageRoute: typeof AppSettingsStorageRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
   AppAutomationsIndexRoute: typeof AppAutomationsIndexRoute
@@ -661,6 +741,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppImportRoute: AppImportRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppStatusRoute: AppStatusRoute,
+  AppSuggestedContactsRoute: AppSuggestedContactsRoute,
   AppTasksRoute: AppTasksRoute,
   AppTrashRoute: AppTrashRoute,
   AppIndexRoute: AppIndexRoute,
@@ -674,6 +755,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsConnectedAppsRoute: AppSettingsConnectedAppsRoute,
   AppSettingsExtensionsRoute: AppSettingsExtensionsRoute,
   AppSettingsGeneralRoute: AppSettingsGeneralRoute,
+  AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
   AppSettingsStorageRoute: AppSettingsStorageRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,
   AppAutomationsIndexRoute: AppAutomationsIndexRoute,
@@ -691,6 +773,8 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   SignInRoute: SignInRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ConnectHandoffRoute: ConnectHandoffRoute,
+  GatekeeperSplatRoute: GatekeeperSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

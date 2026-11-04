@@ -7,6 +7,7 @@ import type {
   CrmModule,
   Extension,
   ExtensionContext,
+  GatekeeperModule,
   LogModule,
   StorageModule,
 } from "./contract.ts";
@@ -20,6 +21,8 @@ export interface RawHostModules {
   storage?: { get: HostFn; set: HostFn; del: HostFn; list: HostFn };
   log?: { write: HostFn };
   ai?: { summarise: HostFn; extract: HostFn; classify: HostFn };
+  /** `codemode:<gatekeeper>` modules, by gatekeeper name. */
+  [gatekeeper: string]: Record<string, HostFn> | undefined;
 }
 
 export type RunRequest =
@@ -104,7 +107,27 @@ export function buildContext(
         classify: (text, labels) => raw.ai?.classify(text, labels) as Promise<never>,
       }
     : absent("ai");
-  return { extension: { id: extension.id, version: extension.version }, crm, storage, log, ai };
+  const gatekeeper = (name: string): GatekeeperModule => {
+    const mod = raw[name] as Record<string, HostFn> | undefined;
+    if (!mod?.call) return absent<GatekeeperModule>(name);
+    return {
+      connections: () => mod.connections?.() as Promise<never>,
+      call: async (connectionId, resource, method, ...args) => {
+        const reply = (await mod.call?.(connectionId, resource, method, args)) as CrmReply;
+        if (reply.ok) return reply.value as never;
+        throw new CrmCallError(reply.error.code, reply.error.message, reply.error.details);
+      },
+      types: (connectionId, resource) => mod.types?.(connectionId, resource) as Promise<string>,
+    };
+  };
+  return {
+    extension: { id: extension.id, version: extension.version },
+    crm,
+    storage,
+    log,
+    ai,
+    gatekeeper: gatekeeper as ExtensionContext["gatekeeper"],
+  };
 }
 
 function toError(error: unknown): { code: string; message: string; details?: unknown } {

@@ -39,6 +39,7 @@ import {
 } from "#/components/automations/record-automations";
 import { EmptyState } from "#/components/empty-state";
 import { ExtensionFieldsCards } from "#/components/fields/fields-card";
+import { useEnrichAction } from "#/components/integrations/enrich-action";
 import { useMergeAction } from "#/components/merge/merge-action";
 import { PersonDetailsCard } from "#/components/people/person-details-card";
 import {
@@ -383,6 +384,7 @@ function DeleteAction({ id, name }: { id: string; name: string }) {
   const remove = useOpMutation("person.delete");
   const restore = useOpMutation("person.restore");
   const merge = useMergeAction("person", id);
+  const enrich = useEnrichAction("person", id);
 
   async function run() {
     try {
@@ -410,6 +412,7 @@ function DeleteAction({ id, name }: { id: string; name: string }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {enrich.item}
           {merge.item}
           <DropdownMenuItem variant="destructive" onSelect={() => setOpen(true)}>
             <Trash2Icon />
@@ -418,6 +421,7 @@ function DeleteAction({ id, name }: { id: string; name: string }) {
         </DropdownMenuContent>
       </DropdownMenu>
       {merge.dialog}
+      {enrich.dialog}
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

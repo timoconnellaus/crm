@@ -209,8 +209,8 @@ function dependencies(
 }
 
 /** Finds or creates the change set new actions from this caller go into. */
-async function targetChangeSet(
-  req: QueueRequest,
+export async function targetChangeSet(
+  req: Pick<QueueRequest, "db" | "origin" | "user" | "actor" | "now">,
 ): Promise<{ id: string; statements: Compilable[] }> {
   const sessionId = req.origin.sessionId ?? null;
   let query = req.db.query

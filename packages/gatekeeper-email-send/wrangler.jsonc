@@ -1,0 +1,33 @@
+// crm-gatekeeper-email-send: our own outbound gatekeeper (not vendored). Sends email through
+// Cloudflare Email Service's `send_email` binding; every send is an approval-queue action.
+// Account-agnostic: no account or resource IDs are committed (ADR 0012).
+//
+// No secrets and no connect flow: the host mints its account with createAccount(). The sender
+// domains must be onboarded to Email Service in the deploying account. See README.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crm-gatekeeper-email-send",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["allow_irrevocable_stub_storage"],
+  // Internal only: reached through service bindings.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "invocation_logs": false }
+  },
+  // Cloudflare Email Service: env.EMAIL.send({ from, to, subject, text, html, ... }).
+  "send_email": [{ "name": "EMAIL" }],
+  "vars": {
+    // Comma-separated domains a sender address may use. Empty refuses every sender.
+    "ALLOWED_SENDER_DOMAINS": "",
+    // Comma-separated domains whose recipients count as colleagues: a send whose every recipient
+    // is in one of them is the auto-approvable `email.internal` kind.
+    "INTERNAL_DOMAINS": ""
+  },
+  "rules": [{ "type": "Text", "globs": ["**/*.txt"], "fallthrough": false }],
+  // The sender facet is reached through ctx.exports; no binding is required.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["EmailSendGatekeeper"] }]
+}

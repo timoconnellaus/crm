@@ -40,6 +40,7 @@ import {
 } from "#/components/automations/record-automations";
 import { EmptyState } from "#/components/empty-state";
 import { ExtensionFieldsCards } from "#/components/fields/fields-card";
+import { useEnrichAction } from "#/components/integrations/enrich-action";
 import { useMergeAction } from "#/components/merge/merge-action";
 import { faviconUrl } from "#/components/organisations/config";
 import { OrganisationDetailsCard } from "#/components/organisations/organisation-details-card";
@@ -357,6 +358,7 @@ function OrganisationRecord({
 function OrganisationActions({ id, name }: { id: string; name: string }) {
   const [deleting, setDeleting] = useState(false);
   const merge = useMergeAction("organisation", id);
+  const enrich = useEnrichAction("organisation", id);
   const remove = useOpMutation("organisation.delete");
   const restore = useOpMutation("organisation.restore");
 
@@ -386,6 +388,7 @@ function OrganisationActions({ id, name }: { id: string; name: string }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {enrich.item}
           {merge.item}
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
@@ -395,6 +398,7 @@ function OrganisationActions({ id, name }: { id: string; name: string }) {
         </DropdownMenuContent>
       </DropdownMenu>
       {merge.dialog}
+      {enrich.dialog}
       <AlertDialog open={deleting} onOpenChange={setDeleting}>
         <AlertDialogContent>
           <AlertDialogHeader>
