@@ -63,7 +63,15 @@ export function actionTitle(
   preview: readonly PreviewEntry[],
   input?: unknown,
 ): string {
-  const args = (input ?? {}) as { id?: unknown; version?: unknown; eject?: unknown };
+  const args = (input ?? {}) as {
+    id?: unknown;
+    version?: unknown;
+    eject?: unknown;
+    title?: unknown;
+    actionKind?: { label?: unknown } | null;
+    connectionTitle?: unknown;
+  };
+  if (operation === OUTBOUND_OPERATION) return outboundTitle(args);
   if (operation === "extension.apply") {
     const what = `extension ${String(args.id ?? "")} ${String(args.version ?? "")}`.trim();
     return args.eject ? `Eject and install ${what}` : `Install ${what}`;
@@ -75,6 +83,26 @@ export function actionTitle(
   const count = new Set(mainRecords(operation, preview).map((p) => p.id)).size;
   const verb = verbOf(operation);
   return count > 1 ? `${verb} ${count} ${noun(object, count)}` : `${verb} ${noun(object)}`;
+}
+
+/** The operation outbound (gatekeeper) items carry (ADR 0051). */
+export const OUTBOUND_OPERATION = "integration.outbound";
+
+/**
+ * An outbound item's title: the gatekeeper's own ("Send mail to ada@example.com"), else its
+ * action kind's label, else a generic one naming the connection.
+ */
+export function outboundTitle(input: {
+  title?: unknown;
+  actionKind?: { label?: unknown } | null;
+  connectionTitle?: unknown;
+}): string {
+  if (typeof input.title === "string" && input.title.trim()) return input.title.trim();
+  const kind = input.actionKind?.label;
+  if (typeof kind === "string" && kind.trim()) return kind.trim();
+  return typeof input.connectionTitle === "string" && input.connectionTitle
+    ? `Outbound action on ${input.connectionTitle}`
+    : "Outbound action";
 }
 
 export type LineKind = "add" | "remove" | "change" | "note";

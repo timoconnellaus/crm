@@ -19,7 +19,7 @@ import {
   type SourceIssue,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
-import type { ExtensionManifest, RunResponse } from "@crm/sdk";
+import { type ExtensionManifest, GATEKEEPER_MODULES, type RunResponse } from "@crm/sdk";
 import { runBuildRole } from "../extensions/ai.ts";
 import {
   buildScript,
@@ -367,7 +367,7 @@ export class Executor {
       runId: `code-${crypto.randomUUID()}`,
       extensionId: "(code)",
       code: { caller: input.caller, pending: [], calls: 0 },
-      modules: new Set(["crm"]),
+      modules: new Set(["crm", ...GATEKEEPER_MODULES]),
       user: input.caller.user,
       permissions: { read: [], write: [], operations: [], modules: ["crm"] },
       deadline: Date.now() + this.#codeTimeoutMs,

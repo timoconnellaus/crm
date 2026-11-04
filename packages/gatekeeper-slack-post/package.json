@@ -1,0 +1,32 @@
+{
+  "name": "@crm/gatekeeper-slack-post",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gatekeeper Worker that posts Slack messages and DMs with a bot token, each post an approval-queue action. Shares the Slack app with the vendored read-only Slack gatekeeper.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/worker.ts",
+  "exports": {
+    ".": "./src/worker.ts",
+    "./types": "./src/types.d.ts"
+  },
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "types": "wrangler types --strict-vars=false",
+    "typecheck": "wrangler types --strict-vars=false --check && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@crm/gatekeeper-interface": "workspace:*",
+    "@crm/gatekeeper-kit": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@crm/config": "workspace:*",
+    "typescript": "6.0.3",
+    "vite": "7.3.6",
+    "vitest": "5.1.0",
+    "wrangler": "4.157.0"
+  }
+}

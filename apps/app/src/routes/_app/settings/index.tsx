@@ -7,6 +7,7 @@ import {
   DatabaseIcon,
   ListOrderedIcon,
   PlugIcon,
+  PlugZapIcon,
   PuzzleIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
@@ -33,6 +34,7 @@ function Section({
     | "/settings/audit"
     | "/settings/connected-apps"
     | "/settings/extensions"
+    | "/settings/integrations"
     | "/settings/storage"
     | "/settings/general";
 }) {
@@ -128,6 +130,16 @@ function SettingsPage() {
                 : "See who can sign in and their roles."
             }
             to="/settings/users"
+          />
+          <Section
+            icon={<PlugZapIcon className="size-5" />}
+            title="Integrations"
+            description={
+              isAdmin
+                ? "Connect mailboxes, calendars and other services, choose what syncs, and enable integrations."
+                : "Connect your mailbox, calendar and other services, and choose what syncs."
+            }
+            to="/settings/integrations"
           />
           <Section
             icon={<PlugIcon className="size-5" />}

@@ -8,12 +8,14 @@ import {
   type EvaluateResult,
   type ExtensionHost,
   type ExtensionVersion,
+  type IntegrationRuntime,
   installShippedExtensions,
   parseFloor,
   type RunToolInput,
   type RunToolResult,
   type ShippedExtension,
   type ShippedInstallResult,
+  vendorBinding,
   type WorkingCopy,
   type WorkingCopyOptions,
   type WorkspaceEntry,
@@ -22,11 +24,24 @@ import {
 import { createCrmDb } from "@crm/db";
 import { Executor, type ExecutorOptions } from "./executor/executor.ts";
 import type { HelloOutput } from "./hello-workflow.ts";
+import { fakeProviderFetch } from "./integrations/fake.ts";
+import { availableVendors, integrationRuntime } from "./integrations/runtime.ts";
 import type { PingResult, RunnerRpc, WorkflowRunStatus } from "./rpc.ts";
 
 export { CodeModeGate } from "./executor/code-gate.ts";
 export { ExtensionWorkspace } from "./extensions/workspace.ts";
 export { HelloWorkflow } from "./hello-workflow.ts";
+export { ConnectCallback, HostHookInitiator } from "./integrations/entrypoints.ts";
+export {
+  FakeAccount,
+  FakeGatekeeper,
+  FakeGatekeeperVendor,
+  FakeHookController,
+  FakeProvider,
+  FakeUser,
+  FakeVerifier,
+} from "./integrations/fake.ts";
+export { IntegrationHost } from "./integrations/host.ts";
 export type { PingResult, RunnerRpc, WorkflowRunStatus } from "./rpc.ts";
 
 /** The deployment's one extension workspace: git, working copies, the build cache. */
@@ -133,6 +148,30 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
       host: extensionHost(this.env),
       floor: parseFloor(this.env.APPROVAL_FLOOR),
     });
+  }
+
+  // Integrations (ADR 0050, ADR 0110): the IntegrationRuntime port for crm-app, one method.
+  integration<K extends keyof IntegrationRuntime>(
+    method: K,
+    input: Parameters<IntegrationRuntime[K]>[0],
+  ): ReturnType<IntegrationRuntime[K]> {
+    const runtime = integrationRuntime(this.env);
+    if (!Object.hasOwn(runtime, method)) throw new Error(`No integration method ${String(method)}`);
+    return (runtime[method] as (i: typeof input) => ReturnType<IntegrationRuntime[K]>)(input);
+  }
+
+  /** crm-app proxies /gatekeeper/<vendor>/* here: OAuth redirects, connect pages, pushes. */
+  async gatekeeperFetch(vendor: string, request: Request): Promise<Response> {
+    if (vendor === "fake") {
+      if (this.env.INTEGRATIONS_FAKE_PROVIDER !== "true")
+        return new Response("Not found", { status: 404 });
+      return fakeProviderFetch(this.env, request);
+    }
+    if (!availableVendors(this.env).includes(vendor)) {
+      return new Response("Not found", { status: 404 });
+    }
+    const binding = (this.env as unknown as Record<string, Fetcher>)[vendorBinding(vendor)];
+    return binding ? binding.fetch(request) : new Response("Not found", { status: 404 });
   }
 
   override async fetch(_request: Request): Promise<Response> {

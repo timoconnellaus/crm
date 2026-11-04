@@ -28,6 +28,7 @@ import {
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
 import { createMcpHandler } from "agents/mcp/server";
+import { blobStoreFor, integrationRuntimeFor } from "../integrations.ts";
 import { ensureShippedExtensions, extensionHostFor, type OperationsEnv } from "../operations.ts";
 import { CONSENT_PATH, handleConsent, type McpProps } from "./consent.ts";
 import { createCrmMcpServer, type McpCaller } from "./tools.ts";
@@ -110,8 +111,12 @@ export async function serveMcp(
 
   await ensureShippedExtensions(env);
   const extensionHost = extensionHostFor(env);
+  const integrations = integrationRuntimeFor(env);
+  const blobs = blobStoreFor(env);
   const caller: McpCaller = {
     context: {
+      ...(integrations ? { integrations } : {}),
+      ...(blobs ? { blobs } : {}),
       actor: "mcp",
       user,
       origin: {

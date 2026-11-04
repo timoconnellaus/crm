@@ -6,7 +6,7 @@
   "name": "crm-runner",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "allow_irrevocable_stub_storage"],
   // Internal only: crm-app reaches it through a service binding, never a public URL.
   "workers_dev": false,
   "preview_urls": false,
@@ -35,7 +35,13 @@
   "durable_objects": {
     "bindings": [
       { "name": "EXTENSION_WORKSPACE", "class_name": "ExtensionWorkspace" },
-      { "name": "CODE_MODE_GATE", "class_name": "CodeModeGate" }
+      { "name": "CODE_MODE_GATE", "class_name": "CodeModeGate" },
+      // Stage 6a (ADR 0110): one integration host per connection. It owns gatekeeper accounts,
+      // facets and hooks (persistent RPC stubs need allow_irrevocable_stub_storage).
+      { "name": "INTEGRATION_HOST", "class_name": "IntegrationHost" },
+      // The fake provider (development and tests only; see INTEGRATIONS_FAKE_PROVIDER).
+      { "name": "FAKE_ACCOUNT", "class_name": "FakeAccount" },
+      { "name": "FAKE_PROVIDER", "class_name": "FakeProvider" }
     ]
   },
   "migrations": [
@@ -47,13 +53,32 @@
       "new_sqlite_classes": ["ExtensionWorkspace"]
     },
     // ADR 0043: Code Mode's per-user concurrency gate.
-    { "tag": "v3", "new_sqlite_classes": ["CodeModeGate"] }
+    { "tag": "v3", "new_sqlite_classes": ["CodeModeGate"] },
+    // Stage 6a: the integration host, and the fake gatekeeper (its facet class included).
+    {
+      "tag": "v4",
+      "new_sqlite_classes": ["IntegrationHost", "FakeAccount", "FakeProvider", "FakeGatekeeper"]
+    }
+  ],
+  // Email bodies of synced mail (ADR 0112): D1 keeps a snippet only (cost audit U1).
+  "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "crm-blobs" }],
+  // Gatekeepers (ADR 0007): each is a Worker's GatekeeperVendor entrypoint, enabled per
+  // deployment by an admin. Deploy the gatekeeper Workers you use and add their bindings here
+  // (GATEKEEPER_GOOGLE → crm-gatekeeper-google, …); see docs/integrations.md. The fake provider
+  // is crm-runner itself and answers only when INTEGRATIONS_FAKE_PROVIDER is "true".
+  "services": [
+    { "binding": "GATEKEEPER_FAKE", "service": "crm-runner", "entrypoint": "FakeGatekeeperVendor" }
   ],
   "vars": {
     // Extension code calls operations here (codemode:crm), so the runner applies the same
     // approval floor as crm-app. Keep the two in step. See docs/deploying.md.
     "APPROVAL_FLOOR": "",
     // Optional AI Gateway id for codemode:ai. Workers AI also needs an `ai` binding.
-    "AI_GATEWAY_ID": ""
+    "AI_GATEWAY_ID": "",
+    // The CRM's public origin (https://crm.example.com), where connect popups are handed back.
+    // crm-app passes the request's origin; this is the fallback.
+    "APP_ORIGIN": "",
+    // "true" offers the fake provider (development and e2e only; never in production).
+    "INTEGRATIONS_FAKE_PROVIDER": "false"
   }
 }

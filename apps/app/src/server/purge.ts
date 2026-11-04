@@ -7,15 +7,19 @@ import {
   expirePendingActions,
   measureStorage,
   parseFloor,
+  purgeIntegrationEvents,
   purgeRunHistory,
   runAuditPurge,
   runTrashPurge,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
+import { integrationRuntimeFor } from "./integrations.ts";
 
 export interface PurgeEnv {
   DB: D1Database;
   APPROVAL_FLOOR?: string;
+  /** crm-runner: expired outbound items are dropped on their gatekeepers. */
+  RUNNER?: Fetcher;
 }
 
 export async function runScheduledPurge(env: PurgeEnv, clock?: () => Date) {
@@ -39,7 +43,7 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   const purge = await runScheduledPurge(env, clock);
   const db = createCrmDb(env.DB);
   const now = (clock?.() ?? new Date()).toISOString();
-  const expired = await expirePendingActions(db.query, now);
+  const expired = await expirePendingActions(db.query, now, integrationRuntimeFor(env));
   if (expired) console.log(`approvals: ${expired} pending action(s) expired`);
 
   const step = async <T>(name: string, run: () => Promise<T>): Promise<T | null> => {
@@ -66,5 +70,9 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   );
   if (compacted?.compacted) console.log(`approvals: ${compacted.compacted} action(s) compacted`);
   const storage = await step("storage measurement", () => measureStorage(db, now));
-  return { purge, expired, audit, runs, compacted, storage };
+  // Inbound events are kept 90 days (stage 5 consumes them well within that).
+  const events = await step("integration events", () =>
+    purgeIntegrationEvents(db, { now: clock?.() ?? new Date() }),
+  );
+  return { purge, expired, audit, runs, compacted, storage, events };
 }

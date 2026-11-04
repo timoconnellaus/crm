@@ -43,7 +43,7 @@ Upstream has no tests for this package. Smoke: 3 tests.
 
 | File | Stands in for |
 | --- | --- |
-| `src/generated/account-configurator-ui.txt` | The configurator frame upstream builds from `src/configurator/account-configurator-ui.tsx` with the configurator-ui runtime. An inert placeholder page marked `SHIM`; Stage 6 replaces it with a shadcn renderer of the configurator specs. See [`../gatekeeper-configurator-ui/UPSTREAM.md`](../gatekeeper-configurator-ui/UPSTREAM.md). |
+| `src/generated/account-configurator-ui.txt` | The configurator frame upstream builds from `src/configurator/account-configurator-ui.tsx` with the configurator-ui runtime. Generated, not committed: `src/generated/` is git-ignored, and `scripts/gatekeeper-configurator-frames.mjs` (run before this package's `typecheck`, `test` and `build`, and by `scripts/dev-setup.mjs`) writes a tiny document naming the spec. The CRM renders the spec itself natively in the app (`apps/app/src/components/integrations/configurator`) and uses only the `ui` capability `startResourceConfigurator()` returns. See [`../gatekeeper-configurator-ui/UPSTREAM.md`](../gatekeeper-configurator-ui/UPSTREAM.md). |
 
 ## Pulling upstream changes
 

@@ -1,9 +1,16 @@
 // Timeline of activities (newest first), its type filter, and the composer that logs a note,
 // call, meeting or email with that type's payload. Used by record pages (one record's timeline)
 // and the Activity page (the feed across records, with links shown).
+import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
 import { Card, CardContent } from "@crm/ui/components/card";
 import { Checkbox } from "@crm/ui/components/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@crm/ui/components/dropdown-menu";
 import { Input } from "@crm/ui/components/input";
 import { Label } from "@crm/ui/components/label";
 import {
@@ -16,20 +23,25 @@ import {
 import { Skeleton } from "@crm/ui/components/skeleton";
 import { Textarea } from "@crm/ui/components/textarea";
 import { cn } from "@crm/ui/lib/utils";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouteContext } from "@tanstack/react-router";
 import {
   BriefcaseIcon,
   CalendarIcon,
+  EllipsisIcon,
+  EyeIcon,
+  LockIcon,
   type LucideIcon,
   MailIcon,
   MessageSquareTextIcon,
   PhoneIcon,
+  RefreshCwIcon,
   SparklesIcon,
 } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { formatDateTime, formatValue } from "#/lib/format";
-import { errorMessage } from "#/lib/query";
+import { callOp } from "#/lib/operations";
+import { errorMessage, useOpMutation } from "#/lib/query";
 import { EmptyState, ErrorState } from "../empty-state.tsx";
 import { LoadMoreSentinel } from "../layout/infinite.tsx";
 import { Markdown } from "../markdown.tsx";
@@ -260,6 +272,7 @@ export function TimelineEntry({ item, showLinks }: { item: TimelineItem; showLin
         {item.authorName && item.type !== "system" && (
           <span className="text-xs text-muted-foreground">by {item.authorName}</span>
         )}
+        {item.synced && <SyncedMarkers item={item} />}
       </div>
       {summary && <p className="mt-0.5 text-xs text-muted-foreground">{summary}</p>}
       {item.payload.kind === "job_change" && <JobChange payload={item.payload} />}
@@ -273,7 +286,11 @@ export function TimelineEntry({ item, showLinks }: { item: TimelineItem; showLin
           ))}
         </ul>
       ) : null}
-      {item.body && <Markdown className="mt-1">{item.body}</Markdown>}
+      {item.synced ? (
+        <SyncedBody item={item} />
+      ) : (
+        item.body && <Markdown className="mt-1">{item.body}</Markdown>
+      )}
       {links.length > 0 && (
         <p className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
           On{" "}
@@ -286,6 +303,125 @@ export function TimelineEntry({ item, showLinks }: { item: TimelineItem; showLin
             </span>
           ))}
         </p>
+      )}
+    </>
+  );
+}
+
+// --- Synced mail and meetings (stage 6a, ADR 0052) -------------------------------------------
+// Consecutive emails of one thread (threadKey) are not grouped: each stays its own entry.
+
+const MARKER = "rounded-sm px-1.5 py-0 text-[0.6875rem] font-normal";
+
+/**
+ * "Synced", "Metadata only" and "Private" next to a synced activity's time, and for its owner
+ * (the mailbox's owner) a menu to mark it private or share it again.
+ */
+function SyncedMarkers({ item }: { item: TimelineItem }) {
+  const { user } = useRouteContext({ from: "/_app" });
+  const setPrivate = useOpMutation("activity.setPrivate");
+  const owner = item.authorUserId !== null && item.authorUserId === user.id;
+
+  async function toggle() {
+    try {
+      await setPrivate.mutateAsync({ id: item.id, private: !item.private });
+      toast.success(
+        item.private ? "Shared again with everyone" : "Marked private: only you see it now",
+      );
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1" data-testid="synced-markers">
+      <Badge variant="outline" className={cn(MARKER, "text-muted-foreground")}>
+        <RefreshCwIcon aria-hidden />
+        Synced
+      </Badge>
+      {item.disclosure === "metadata" && (
+        <Badge variant="outline" className={cn(MARKER, "text-muted-foreground")}>
+          Metadata only
+        </Badge>
+      )}
+      {item.private && (
+        <Badge variant="secondary" className={MARKER}>
+          <LockIcon aria-hidden />
+          Private
+        </Badge>
+      )}
+      {owner && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label={`Sharing options for ${item.subject ?? ACTIVITY_TYPE_LABELS[item.type]}`}
+            >
+              <EllipsisIcon />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem disabled={setPrivate.isPending} onSelect={() => void toggle()}>
+              {item.private ? <EyeIcon /> : <LockIcon />}
+              {item.private ? "Share again" : "Mark private"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </span>
+  );
+}
+
+/** A synced item's snippet, with "Show full email" when the full body was kept. */
+function SyncedBody({ item }: { item: TimelineItem }) {
+  const [full, setFull] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  async function show() {
+    if (full !== null) {
+      setOpen((v) => !v);
+      return;
+    }
+    setLoading(true);
+    try {
+      const out = await callOp("activity.getBody", { id: item.id });
+      setFull(out.body ?? "");
+      setOpen(true);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Synced text is the sender's plain text: shown as text (React escapes it), never as HTML.
+  const text = open && full !== null ? full : item.body;
+  return (
+    <>
+      {text && (
+        <p
+          className={cn(
+            "mt-1 text-sm break-words whitespace-pre-wrap",
+            open ? "max-h-96 overflow-y-auto rounded-md border p-2" : "line-clamp-4",
+          )}
+          data-testid={open ? "full-email" : "synced-snippet"}
+        >
+          {text}
+        </p>
+      )}
+      {item.hasFullBody && (
+        <Button
+          variant="link"
+          size="xs"
+          className="h-auto px-0"
+          aria-expanded={open}
+          disabled={loading}
+          onClick={() => void show()}
+        >
+          {loading ? "Loading…" : open ? "Show less" : "Show full email"}
+        </Button>
       )}
     </>
   );
