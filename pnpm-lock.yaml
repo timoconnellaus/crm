@@ -309,6 +309,9 @@ importers:
       '@crm/db':
         specifier: workspace:*
         version: link:../db
+      '@crm/release':
+        specifier: workspace:*
+        version: link:../release
       '@crm/sdk':
         specifier: workspace:*
         version: link:../sdk

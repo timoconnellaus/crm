@@ -27,6 +27,8 @@ import { recordOperations } from "./record.ts";
 import { retentionOperations } from "./retention.ts";
 import { searchOperations } from "./search.ts";
 import { settingsOperations } from "./settings.ts";
+import { setupOperations } from "./setup.ts";
+import { updateOperations } from "./update.ts";
 import { suggestionOperations } from "./suggestions.ts";
 import { taskOperations } from "./task.ts";
 import { trashOperations } from "./trash.ts";
@@ -65,4 +67,6 @@ export const coreOperations = [
   ...settingsOperations,
   ...dashboardOperations,
   ...extensionUiOperations,
+  ...updateOperations,
+  ...setupOperations,
 ] as const;

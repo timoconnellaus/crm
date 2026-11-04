@@ -30,6 +30,7 @@ import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { findProvisionalIds, newId } from "./ids.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
+import type { UpdaterRuntime } from "./updates.ts";
 import type { ModelRunner } from "./models.ts";
 import {
   type AnyOperation,
@@ -90,6 +91,8 @@ export interface InvocationContext {
   models?: ModelRunner;
   /** Widget result cache (ADR 0057); absent means the Workers Cache API. */
   widgetCache?: WidgetCache;
+  /** The self-updater (ADR 0164): GitHub Releases and the Cloudflare API. */
+  updater?: UpdaterRuntime;
 }
 
 /** The installed extension whose principal is `userId`, with its declared permissions. */
@@ -534,6 +537,7 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.extension ? { extension: ctx.extension } : {}),
     ...(ctx.models ? { models: ctx.models } : {}),
     ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
+    ...(ctx.updater ? { updater: ctx.updater } : {}),
     pipeline: {
       crm: ctx.db,
       invoke: (name, nestedInput, nested) => {

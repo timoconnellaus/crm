@@ -56,7 +56,10 @@ export * from "./operations/query.ts";
 export * from "./operations/record.ts";
 export * from "./operations/retention.ts";
 export * from "./operations/search.ts";
-export { COMMON_CURRENCIES } from "./operations/settings.ts";
+export { COMMON_CURRENCIES, MAX_LOGO_LENGTH } from "./operations/settings.ts";
+export * from "./operations/setup.ts";
+export * from "./operations/update.ts";
+export * from "./updates.ts";
 export * from "./operations/suggestions.ts";
 export * from "./operations/task.ts";
 export * from "./operations/trash.ts";
@@ -89,7 +92,13 @@ export * from "./records/tags.ts";
 export * from "./registry.ts";
 export * from "./relative.ts";
 export * from "./retention.ts";
-export { BASE_CURRENCY_SETTING, loadApprovalPolicy, loadGeneralSettings } from "./settings.ts";
+export {
+  AI_MODES,
+  BASE_CURRENCY_SETTING,
+  type GeneralSettings,
+  loadApprovalPolicy,
+  loadGeneralSettings,
+} from "./settings.ts";
 export * from "./sync/ingest.ts";
 export * from "./sync/signals.ts";
 export { type PrincipalLike, resolveActingUser, SYSTEM_USER } from "./users.ts";

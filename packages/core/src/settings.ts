@@ -32,19 +32,71 @@ export { DEFAULT_POLICY };
 /** The base currency (migration 0100, ADR 0101): ISO 4217, JSON string. */
 export const BASE_CURRENCY_SETTING = "base_currency";
 
-/** The org's general settings. A missing or unreadable base currency falls back to USD. */
-export async function loadGeneralSettings(
-  db: Kysely<CoreDatabase>,
-): Promise<{ baseCurrency: string }> {
-  const row = await db
-    .selectFrom("core_settings")
-    .select("value")
-    .where("key", "=", BASE_CURRENCY_SETTING)
-    .executeTakeFirst();
+/** Stage 8 (ADR 0167): the organisation's name, logo, timezone and AI mode, set by the wizard. */
+export const ORG_NAME_SETTING = "org_name";
+export const ORG_LOGO_SETTING = "org_logo";
+export const ORG_TIMEZONE_SETTING = "org_timezone";
+export const AI_MODE_SETTING = "ai_mode";
+
+/** "workers-ai": every model role uses Workers AI (the default until per-role providers, 7a). */
+export const AI_MODES = ["workers-ai"] as const;
+export type AiMode = (typeof AI_MODES)[number];
+
+export interface GeneralSettings {
+  baseCurrency: string;
+  orgName: string | null;
+  /** A small image as a data: URL, or null. */
+  logo: string | null;
+  /** IANA timezone, e.g. Europe/London. */
+  timezone: string;
+  aiMode: AiMode;
+}
+
+function parseJson(value: string | undefined): unknown {
+  if (value === undefined) return null;
   try {
-    const value = row ? (JSON.parse(row.value) as unknown) : null;
-    return { baseCurrency: typeof value === "string" && /^[A-Z]{3}$/.test(value) ? value : "USD" };
+    return JSON.parse(value) as unknown;
   } catch {
-    return { baseCurrency: "USD" };
+    return null;
   }
+}
+
+export function isTimezone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The org's general settings. A missing or unreadable base currency falls back to USD, a missing
+ * timezone to UTC and the AI mode to Workers AI.
+ */
+export async function loadGeneralSettings(db: Kysely<CoreDatabase>): Promise<GeneralSettings> {
+  const rows = await db
+    .selectFrom("core_settings")
+    .select(["key", "value"])
+    .where("key", "in", [
+      BASE_CURRENCY_SETTING,
+      ORG_NAME_SETTING,
+      ORG_LOGO_SETTING,
+      ORG_TIMEZONE_SETTING,
+      AI_MODE_SETTING,
+    ])
+    .execute();
+  const get = (key: string) => parseJson(rows.find((r) => r.key === key)?.value);
+  const currency = get(BASE_CURRENCY_SETTING);
+  const name = get(ORG_NAME_SETTING);
+  const logo = get(ORG_LOGO_SETTING);
+  const timezone = get(ORG_TIMEZONE_SETTING);
+  const aiMode = get(AI_MODE_SETTING);
+  return {
+    baseCurrency: typeof currency === "string" && /^[A-Z]{3}$/.test(currency) ? currency : "USD",
+    orgName: typeof name === "string" && name.trim() ? name : null,
+    logo: typeof logo === "string" && logo.startsWith("data:image/") ? logo : null,
+    timezone: typeof timezone === "string" && isTimezone(timezone) ? timezone : "UTC",
+    aiMode: (AI_MODES as readonly unknown[]).includes(aiMode) ? (aiMode as AiMode) : "workers-ai",
+  };
 }

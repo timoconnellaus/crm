@@ -125,14 +125,14 @@ describe("Deals on the host", () => {
   });
 
   it("keeps the base currency in settings; currency fields without one use it", async () => {
-    expect(await invokeByName("settings.get", {}, context(member))).toEqual({
+    expect(await invokeByName("settings.get", {}, context(member))).toMatchObject({
       baseCurrency: "USD",
     });
     await expect(
       invokeByName("settings.update", { baseCurrency: "EUR" }, context(member)),
     ).rejects.toMatchObject({ code: "forbidden" });
     await invokeByName("settings.update", { baseCurrency: "AUD" }, context(admin));
-    expect(await invokeByName("settings.get", {}, context(member))).toEqual({
+    expect(await invokeByName("settings.get", {}, context(member))).toMatchObject({
       baseCurrency: "AUD",
     });
     await invokeByName("settings.update", { baseCurrency: "USD" }, context(admin));

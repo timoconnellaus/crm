@@ -11,6 +11,7 @@ import type { ExtensionHost } from "./extensions/host.ts";
 import type { GateFloor } from "./gate.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
 import type { ModelRunner } from "./models.ts";
+import type { UpdaterRuntime } from "./updates.ts";
 import {
   ACTORS,
   type ActingUser,
@@ -138,6 +139,8 @@ export interface HandlerContext {
   readonly models?: ModelRunner;
   /** The dashboard widget result cache (ADR 0057). Absent: the Workers Cache API. */
   readonly widgetCache?: WidgetCache;
+  /** The self-updater (ADR 0164), when the adapter provides one (update.*). */
+  readonly updater?: UpdaterRuntime;
 }
 
 /** The extension an `extension`-actor call runs for, and its approved permissions. */
