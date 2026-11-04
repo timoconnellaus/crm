@@ -193,9 +193,19 @@ test("bell → inbox → mark read", async ({ page }) => {
 // showed). Loading /automations directly hid it, so these tests navigate the way people do.
 test.describe("the automations list survives history navigation", () => {
   const rows = (page: Page) => page.getByTestId("automation-item");
+  /** Client-side navigation through the sidebar (the drawer at phone width). */
+  async function navTo(page: Page, name: string) {
+    let nav: Page | ReturnType<Page["getByRole"]> = page;
+    if (isPhone(page)) {
+      await page.getByRole("button", { name: "Toggle navigation" }).click();
+      nav = page.getByRole("dialog", { name: /Sidebar/ });
+      await expect(nav).toBeVisible();
+    }
+    await nav.getByRole("link", { name, exact: true }).first().click();
+  }
   async function openFromSidebar(page: Page) {
     await open(page, "/");
-    await page.getByRole("link", { name: "Automations", exact: true }).first().click();
+    await navTo(page, "Automations");
     await expect(rows(page).first()).toBeVisible();
   }
 
@@ -218,7 +228,8 @@ test.describe("the automations list survives history navigation", () => {
 
   test("another page, then Back", async ({ page }) => {
     await openFromSidebar(page);
-    await page.getByRole("link", { name: "People", exact: true }).first().click();
+    await navTo(page, "People");
+    await expect(page).toHaveURL(/\/people$/);
     await page.goBack();
     await expect(rows(page).first()).toBeVisible();
   });
