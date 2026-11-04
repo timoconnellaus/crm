@@ -2,7 +2,13 @@
 // check reads (no telemetry, ADR 0166). Unauthenticated by default, so the GitHub API's anonymous
 // rate limit applies (60 requests an hour per IP); callers cache.
 import { releaseAssetNames } from "./bundle.ts";
-import { bareVersion, type Channel, compareVersions, isVersion, visibleOnChannel } from "./semver.ts";
+import {
+  bareVersion,
+  type Channel,
+  compareVersions,
+  isVersion,
+  visibleOnChannel,
+} from "./semver.ts";
 
 export const DEFAULT_REPOSITORY = "timoconnellaus/crm";
 export const GITHUB_API = "https://api.github.com";
@@ -84,7 +90,10 @@ export async function listReleases(
   options: GitHubOptions = {},
 ): Promise<ReleaseInfo[]> {
   const repo = options.repository ?? DEFAULT_REPOSITORY;
-  const releases = await githubJson<GitHubRelease[]>(`/repos/${repo}/releases?per_page=50`, options);
+  const releases = await githubJson<GitHubRelease[]>(
+    `/repos/${repo}/releases?per_page=50`,
+    options,
+  );
   return releases
     .map(toInfo)
     .filter((r): r is ReleaseInfo => r !== null && visibleOnChannel(r.version, channel))

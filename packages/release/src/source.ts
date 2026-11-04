@@ -1,10 +1,16 @@
 // Getting a release you can trust: download its assets from GitHub Releases, verify the bundle
 // (SHA256SUMS + build attestation, ADR 0162), then open it (every file checked against the
 // manifest). Shared by the CLI and the self-updater, so both refuse the same tampered bundles.
-import { type ExtraVerifier, verifyBundleBytes, VerificationError } from "./attestation.ts";
+import { type ExtraVerifier, VerificationError, verifyBundleBytes } from "./attestation.ts";
 import { openBundle, type ReleaseBundle } from "./bundle.ts";
+import {
+  DEFAULT_REPOSITORY,
+  downloadAsset,
+  type GitHubOptions,
+  getRelease,
+  type ReleaseInfo,
+} from "./github.ts";
 import { parseManifest } from "./manifest.ts";
-import { DEFAULT_REPOSITORY, downloadAsset, getRelease, type GitHubOptions, type ReleaseInfo } from "./github.ts";
 
 export interface VerifiedRelease {
   info: ReleaseInfo;
@@ -41,7 +47,9 @@ export async function fetchVerifiedRelease(
     );
   }
   if (bundle.manifest.repository !== repository) {
-    throw new VerificationError(`bundle was built for ${bundle.manifest.repository}, not ${repository}`);
+    throw new VerificationError(
+      `bundle was built for ${bundle.manifest.repository}, not ${repository}`,
+    );
   }
   return { info, bundle, digest };
 }
@@ -49,5 +57,7 @@ export async function fetchVerifiedRelease(
 /** The release manifest alone (for preflight), without downloading the bundle. */
 export async function fetchReleaseManifest(info: ReleaseInfo, options: GitHubOptions = {}) {
   if (!info.assets.manifest) throw new Error(`release ${info.tag} has no manifest asset`);
-  return parseManifest(new TextDecoder().decode(await downloadAsset(info.assets.manifest, options)));
+  return parseManifest(
+    new TextDecoder().decode(await downloadAsset(info.assets.manifest, options)),
+  );
 }

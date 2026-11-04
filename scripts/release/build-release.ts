@@ -13,7 +13,15 @@
 // Usage: node scripts/release/build-release.ts --version 1.2.3 [--out release-out]
 //          [--repository owner/repo] [--skip-build]
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -75,7 +83,9 @@ export async function collectModules(outDir: string) {
     const bytes = new Uint8Array(readFileSync(file));
     modules.push({ name, type, sha256: await sha256Hex(bytes), size: bytes.length, bytes });
   }
-  const main = modules.find((m) => m.name === "index.js") ?? modules.find((m) => m.type === "esm" && !m.name.includes("/"));
+  const main =
+    modules.find((m) => m.name === "index.js") ??
+    modules.find((m) => m.type === "esm" && !m.name.includes("/"));
   if (!main) throw new Error(`no entry module in ${outDir}`);
   return { mainModule: main.name, modules };
 }
@@ -86,7 +96,10 @@ export async function collectAssets(dir: string) {
   try {
     ignore = new Set([
       ".assetsignore",
-      ...readFileSync(join(dir, ".assetsignore"), "utf8").split("\n").map((l) => l.trim()).filter(Boolean),
+      ...readFileSync(join(dir, ".assetsignore"), "utf8")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean),
     ]);
   } catch {}
   const files: Record<string, { hash: string; size: number }> = {};
@@ -125,11 +138,17 @@ function parseArgs(argv: string[]) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const version = String(args.version ?? process.env.RELEASE_VERSION ?? "0.0.0-beta.0").replace(/^v/, "");
-  if (!isVersion(version)) throw new Error(`--version must be X.Y.Z or X.Y.Z-beta.N, got ${version}`);
+  const version = String(args.version ?? process.env.RELEASE_VERSION ?? "0.0.0-beta.0").replace(
+    /^v/,
+    "",
+  );
+  if (!isVersion(version))
+    throw new Error(`--version must be X.Y.Z or X.Y.Z-beta.N, got ${version}`);
   const out = resolve(String(args.out ?? "release-out"));
   const repository = String(args.repository ?? process.env.GITHUB_REPOSITORY ?? DEFAULT_REPOSITORY);
-  const commit = process.env.GITHUB_SHA ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
+  const commit =
+    process.env.GITHUB_SHA ??
+    execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
   const wranglerVersion = JSON.parse(
     readFileSync(join(ROOT, "apps/app/node_modules/wrangler/package.json"), "utf8"),
   ).version as string;
@@ -181,10 +200,13 @@ async function main() {
 
   const manifestText = `${stableStringify(manifest)}\n`;
   const enc = new TextEncoder();
-  const entries = [{ path: "manifest.json", bytes: enc.encode(manifestText) }];
+  const entries: { path: string; bytes: Uint8Array }[] = [
+    { path: "manifest.json", bytes: enc.encode(manifestText) },
+  ];
   for (const [sha, bytes] of moduleBlobs) entries.push({ path: `modules/${sha}`, bytes });
   for (const [hash, bytes] of assetBlobs) entries.push({ path: `assets/${hash}`, bytes });
-  for (const [name, sql] of migrations) entries.push({ path: `migrations/${name}`, bytes: enc.encode(sql) });
+  for (const [name, sql] of migrations)
+    entries.push({ path: `migrations/${name}`, bytes: enc.encode(sql) });
   // node:zlib at a fixed level; the header's time and OS bytes are pinned.
   const bundle = normaliseGzipHeader(new Uint8Array(gzipSync(writeTar(entries), { level: 9 })));
 

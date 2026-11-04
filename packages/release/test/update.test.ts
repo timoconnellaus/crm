@@ -3,11 +3,11 @@
 // the previous release, and preflight.
 import { describe, expect, it } from "vitest";
 import {
-  CloudflareClient,
-  d1ApiMigrations,
-  type DeploymentState,
-  deployWorkers,
   applyBundleMigrations,
+  CloudflareClient,
+  type DeploymentState,
+  d1ApiMigrations,
+  deployWorkers,
   neededResources,
   openBundle,
   preflight,
@@ -23,7 +23,11 @@ const ACCOUNT = "acc0000000000000000000000000test";
 
 async function setup(version = "1.0.0") {
   const cf = new FakeCloudflare({ token: "t", accountId: ACCOUNT, sql: nodeSqliteEngine });
-  const api = new CloudflareClient({ token: "t", apiBase: "https://cf.test/client/v4", fetch: cf.fetch });
+  const api = new CloudflareClient({
+    token: "t",
+    apiBase: "https://cf.test/client/v4",
+    fetch: cf.fetch,
+  });
   const bundle = await openBundle((await buildFixtureRelease({ version })).bundle);
   const resources = await provisionResources(api, ACCOUNT, neededResources(bundle.manifest, []));
   const databaseId = resources["D1_ID(crm)"] as string;
@@ -69,7 +73,11 @@ describe("deploy engine", () => {
 
   it("upgrades: migrations, then all Workers switch to the new versions", async () => {
     const { cf, api, state, databaseId, bundle } = await setup();
-    await api.queryD1(ACCOUNT, databaseId, "INSERT INTO core_person (id, name) VALUES ('p1', 'Ada')");
+    await api.queryD1(
+      ACCOUNT,
+      databaseId,
+      "INSERT INTO core_person (id, name) VALUES ('p1', 'Ada')",
+    );
     const target = await openBundle(
       (
         await buildFixtureRelease({
@@ -103,7 +111,11 @@ describe("deploy engine", () => {
 
   it("a failing migration restores the bookmark and leaves the Workers alone", async () => {
     const { cf, api, state, databaseId, bundle } = await setup();
-    await api.queryD1(ACCOUNT, databaseId, "INSERT INTO core_person (id, name) VALUES ('p1', 'Ada')");
+    await api.queryD1(
+      ACCOUNT,
+      databaseId,
+      "INSERT INTO core_person (id, name) VALUES ('p1', 'Ada')",
+    );
     const live = cf.scripts.get("crm-app")?.current;
     const target = await openBundle(
       (
@@ -144,7 +156,11 @@ describe("deploy engine", () => {
         })
       ).bundle,
     );
-    await api.queryD1(ACCOUNT, databaseId, "INSERT INTO core_person (id, name) VALUES ('p1', 'Ada')");
+    await api.queryD1(
+      ACCOUNT,
+      databaseId,
+      "INSERT INTO core_person (id, name) VALUES ('p1', 'Ada')",
+    );
     const outcome = await runUpdate({
       api,
       state,

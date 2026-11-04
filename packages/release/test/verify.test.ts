@@ -34,9 +34,7 @@ describe("release verification", () => {
     const release = await buildFixtureRelease({ version: "1.0.0" });
     const other = await buildFixtureRelease({ version: "1.0.0", gatekeeperRevision: 666 });
     await github.publish(release, { tamper: { bytes: other.bundle, rewriteSums: true } });
-    await expect(fetchVerifiedRelease("1.0.0", options(github))).rejects.toThrow(
-      VerificationError,
-    );
+    await expect(fetchVerifiedRelease("1.0.0", options(github))).rejects.toThrow(VerificationError);
   });
 
   it("refuses attestations from another workflow, ref or repository", async () => {

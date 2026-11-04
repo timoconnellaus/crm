@@ -15,6 +15,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
+  channelOf,
   type DurableObjectMigration,
   MANIFEST_VERSION,
   type ManifestBinding,
@@ -28,7 +29,6 @@ import {
   sha256Hex,
   type WorkerEntry,
   type WorkerRole,
-  channelOf,
 } from "@crm/release";
 
 /** Strips // and /* comments and trailing commas from JSONC. Strings are left alone. */
@@ -91,7 +91,9 @@ export function readDeployablePackages(root: string): DeployablePackage[] {
       const pkg = JSON.parse(readFileSync(join(root, dir, "package.json"), "utf8"));
       let inputSecrets: DeployablePackage["inputSecrets"] = [];
       try {
-        inputSecrets = JSON.parse(readFileSync(join(root, dir, "deploy-inputs.json"), "utf8")).secrets;
+        inputSecrets = JSON.parse(
+          readFileSync(join(root, dir, "deploy-inputs.json"), "utf8"),
+        ).secrets;
       } catch {
         inputSecrets = [];
       }
@@ -214,7 +216,8 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
     );
   }
   const optional = pkg.role === "gatekeeper";
-  const shortName = pkg.role === "gatekeeper" ? pkg.dir.slice("packages/gatekeeper-".length) : undefined;
+  const shortName =
+    pkg.role === "gatekeeper" ? pkg.dir.slice("packages/gatekeeper-".length) : undefined;
   const bindings: ManifestBinding[] = [];
   const dependsOn = new Set<string>();
 
@@ -222,19 +225,34 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
     const dbName = String(db.database_name);
     const ref = placeholder("D1_ID", dbName);
     bindings.push({ type: "d1", name: db.binding, database_id: ref });
-    addResource(ctx, { type: "d1", name: dbName, placeholder: ref, implicit: false }, name, optional);
+    addResource(
+      ctx,
+      { type: "d1", name: dbName, placeholder: ref, implicit: false },
+      name,
+      optional,
+    );
   }
   for (const bucket of config.r2_buckets ?? []) {
     const ref = placeholder("R2_NAME", bucket.bucket_name);
     bindings.push({ type: "r2_bucket", name: bucket.binding, bucket_name: ref });
-    addResource(ctx, { type: "r2", name: bucket.bucket_name, placeholder: ref, implicit: false }, name, optional);
+    addResource(
+      ctx,
+      { type: "r2", name: bucket.bucket_name, placeholder: ref, implicit: false },
+      name,
+      optional,
+    );
   }
   for (const kv of config.kv_namespaces ?? []) {
     // wrangler provisions these by binding; releases name them after the Worker and binding.
     const title = `${name}-${kebab(kv.binding)}`;
     const ref = placeholder("KV_ID", title);
     bindings.push({ type: "kv_namespace", name: kv.binding, namespace_id: ref });
-    addResource(ctx, { type: "kv", name: title, placeholder: ref, implicit: false }, name, optional);
+    addResource(
+      ctx,
+      { type: "kv", name: title, placeholder: ref, implicit: false },
+      name,
+      optional,
+    );
   }
   for (const service of config.services ?? []) {
     bindings.push({
@@ -253,7 +271,12 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
       ...(ns.script_name ? { script_name: placeholder("WORKER_NAME", ns.script_name) } : {}),
     });
     if (!ns.script_name) {
-      addResource(ctx, { type: "durable_object", name: `${name}:${ns.class_name}`, implicit: true }, name, optional);
+      addResource(
+        ctx,
+        { type: "durable_object", name: `${name}:${ns.class_name}`, implicit: true },
+        name,
+        optional,
+      );
     }
   }
   for (const workflow of config.workflows ?? []) {
@@ -262,7 +285,9 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
       name: workflow.binding,
       workflow_name: workflow.name,
       class_name: workflow.class_name,
-      ...(workflow.script_name ? { script_name: placeholder("WORKER_NAME", workflow.script_name) } : {}),
+      ...(workflow.script_name
+        ? { script_name: placeholder("WORKER_NAME", workflow.script_name) }
+        : {}),
     });
     if (!workflow.script_name) {
       addResource(ctx, { type: "workflow", name: workflow.name, implicit: true }, name, optional);
@@ -276,12 +301,22 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
       queue_name: ref,
       ...(producer.delivery_delay !== undefined ? { delivery_delay: producer.delivery_delay } : {}),
     });
-    addResource(ctx, { type: "queue", name: producer.queue, placeholder: ref, implicit: false }, name, optional);
+    addResource(
+      ctx,
+      { type: "queue", name: producer.queue, placeholder: ref, implicit: false },
+      name,
+      optional,
+    );
   }
   const queueConsumers: WorkerEntry["queueConsumers"] = [];
   for (const consumer of config.queues?.consumers ?? []) {
     const ref = placeholder("QUEUE_NAME", consumer.queue);
-    addResource(ctx, { type: "queue", name: consumer.queue, placeholder: ref, implicit: false }, name, optional);
+    addResource(
+      ctx,
+      { type: "queue", name: consumer.queue, placeholder: ref, implicit: false },
+      name,
+      optional,
+    );
     if (consumer.dead_letter_queue) {
       addResource(
         ctx,
@@ -297,7 +332,8 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
     }
     const settings: Record<string, unknown> = {};
     if (consumer.max_batch_size !== undefined) settings.batch_size = consumer.max_batch_size;
-    if (consumer.max_batch_timeout !== undefined) settings.max_wait_time_ms = consumer.max_batch_timeout * 1000;
+    if (consumer.max_batch_timeout !== undefined)
+      settings.max_wait_time_ms = consumer.max_batch_timeout * 1000;
     if (consumer.max_retries !== undefined) settings.max_retries = consumer.max_retries;
     if (consumer.max_concurrency !== undefined) settings.max_concurrency = consumer.max_concurrency;
     if (consumer.retry_delay !== undefined) settings.retry_delay = consumer.retry_delay;
@@ -385,7 +421,9 @@ export async function buildWorkerEntry(build: WorkerBuild, ctx: Context): Promis
       name: secret,
       required: true,
       source: SECRET_SOURCES[secret] ?? "user",
-      ...(pkg.bindingDocs[secret]?.description ? { description: pkg.bindingDocs[secret].description } : {}),
+      ...(pkg.bindingDocs[secret]?.description
+        ? { description: pkg.bindingDocs[secret].description }
+        : {}),
     });
   }
   for (const [secret, doc] of Object.entries(pkg.bindingDocs)) {
@@ -501,7 +539,9 @@ export async function generateManifest(
     },
   ];
   for (const [varName, info] of Object.entries(INPUT_VARS)) {
-    const users = workers.filter((w) => w.bindings.some((b) => b.type === "plain_text" && b.name === varName));
+    const users = workers.filter((w) =>
+      w.bindings.some((b) => b.type === "plain_text" && b.name === varName),
+    );
     if (!users.length) continue;
     const appDefault = users[0]?.bindings.find((b) => b.name === varName)?.text;
     inputs.push({
@@ -516,10 +556,12 @@ export async function generateManifest(
 
   const assets: Record<string, { size: number }> = {};
   for (const worker of workers) {
-    for (const file of Object.values(worker.assets?.files ?? {})) assets[file.hash] = { size: file.size };
+    for (const file of Object.values(worker.assets?.files ?? {}))
+      assets[file.hash] = { size: file.size };
   }
   const migrationEntries = [];
-  for (const [name, sql] of migrations) migrationEntries.push({ name, sha256: await sha256Hex(sql) });
+  for (const [name, sql] of migrations)
+    migrationEntries.push({ name, sha256: await sha256Hex(sql) });
 
   return {
     manifestVersion: MANIFEST_VERSION,

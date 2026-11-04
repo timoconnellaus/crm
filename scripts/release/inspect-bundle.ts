@@ -15,11 +15,14 @@ assertUnresolved(bundle.manifest);
 const m = bundle.manifest;
 console.log(`crm ${m.version} (${m.channel}) from ${m.repository}@${m.commit.slice(0, 12)}`);
 console.log(`sha256 ${await sha256Hex(bytes)}`);
-console.log(`extension contract ${m.extensionContract.version} (supports ${m.extensionContract.supported.join(", ")})`);
+console.log(
+  `extension contract ${m.extensionContract.version} (supports ${m.extensionContract.supported.join(", ")})`,
+);
 console.log(`core schema ${m.coreSchemaVersion}, ${m.migrations.length} migrations`);
 for (const w of m.workers) {
   console.log(
     `  ${w.name.padEnd(28)} ${w.role.padEnd(10)} ${w.optional ? "optional" : "required"}  ${w.modules.length} modules${w.assets ? `, ${Object.keys(w.assets.files).length} assets` : ""}`,
   );
 }
-for (const r of m.resources) console.log(`  resource ${r.type} ${r.name}${r.implicit ? " (implicit)" : ""}`);
+for (const r of m.resources)
+  console.log(`  resource ${r.type} ${r.name}${r.implicit ? " (implicit)" : ""}`);

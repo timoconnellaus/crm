@@ -101,7 +101,10 @@ export class CloudflareClient {
     const out: T[] = [];
     for (let page = 1; page < 100; page++) {
       const sep = path.includes("?") ? "&" : "?";
-      const { result, info } = await this.request<T[]>("GET", `${path}${sep}page=${page}&per_page=50`);
+      const { result, info } = await this.request<T[]>(
+        "GET",
+        `${path}${sep}page=${page}&per_page=50`,
+      );
       out.push(...result);
       if (!info?.total_pages || page >= info.total_pages || result.length === 0) break;
     }
@@ -113,7 +116,8 @@ export class CloudflareClient {
   /** Verifies the token (user-owned, then account-owned). Returns its status. */
   async verifyToken(accountId?: string): Promise<{ id: string; status: string }> {
     try {
-      return (await this.request<{ id: string; status: string }>("GET", "/user/tokens/verify")).result;
+      return (await this.request<{ id: string; status: string }>("GET", "/user/tokens/verify"))
+        .result;
     } catch (error) {
       if (!accountId) throw error;
       return (
@@ -167,9 +171,13 @@ export class CloudflareClient {
 
   async createD1(accountId: string, name: string) {
     return (
-      await this.request<{ uuid: string; name: string }>("POST", `/accounts/${accountId}/d1/database`, {
-        name,
-      })
+      await this.request<{ uuid: string; name: string }>(
+        "POST",
+        `/accounts/${accountId}/d1/database`,
+        {
+          name,
+        },
+      )
     ).result;
   }
 
@@ -307,7 +315,8 @@ export class CloudflareClient {
   // ---- Workers --------------------------------------------------------------------------------
 
   async listScripts(accountId: string): Promise<ScriptInfo[]> {
-    return (await this.request<ScriptInfo[]>("GET", `/accounts/${accountId}/workers/scripts`)).result;
+    return (await this.request<ScriptInfo[]>("GET", `/accounts/${accountId}/workers/scripts`))
+      .result;
   }
 
   private form(metadata: Record<string, unknown>, modules: ModulePart[]): FormData {

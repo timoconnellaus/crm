@@ -832,7 +832,62 @@ export interface CrmStageHistoryView {
   entered_by: string | null;
 }
 
+/** Stage 8 (migration 0160): installer choices, JSON under key 'deployment' (no secrets). */
+export interface CoreInstallTable {
+  key: string;
+  value: JsonText;
+  updated_at: Timestamp;
+}
+
+/** Stage 8 (migration 0160): every update and rollback, with its Time Travel bookmark. */
+export interface CoreUpdateRunsTable {
+  id: string;
+  kind: "update" | "rollback";
+  from_version: string | null;
+  to_version: string;
+  status: "running" | "succeeded" | "rolled_back" | "failed";
+  step: string | null;
+  bookmark: string | null;
+  bundle_digest: string | null;
+  preflight: JsonText | null;
+  error: string | null;
+  started_by: string | null;
+  surface: "ui" | "cli";
+  started_at: Timestamp;
+  finished_at: Timestamp | null;
+}
+
+/** Stage 8 (migration 0160): public GitHub Releases per channel, cached. */
+export interface CoreReleaseCacheTable {
+  channel: "stable" | "beta";
+  releases: JsonText;
+  fetched_at: Timestamp;
+}
+
+/** Stage 8 (migration 0161): the first-run setup wizard, one row. */
+export interface CoreSetupTable {
+  id: number;
+  status: "pending" | "in_progress" | "completed" | "skipped";
+  step: string;
+  data: JsonText;
+  updated_at: Timestamp;
+  updated_by: string | null;
+  completed_at: Timestamp | null;
+}
+
+/** Stage 8 (migration 0161): records "Install sample data" created. */
+export interface CoreSampleRecordsTable {
+  object_type: string;
+  record_id: string;
+  created_at: Timestamp;
+}
+
 export interface CoreDatabase {
+  core_install: CoreInstallTable;
+  core_update_runs: CoreUpdateRunsTable;
+  core_release_cache: CoreReleaseCacheTable;
+  core_setup: CoreSetupTable;
+  core_sample_records: CoreSampleRecordsTable;
   core_meta: CoreMetaTable;
   core_migrations: CoreMigrationsTable;
   core_user: CoreUserTable;

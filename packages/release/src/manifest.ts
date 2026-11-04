@@ -192,7 +192,10 @@ export interface PlaceholderValues {
   accountId: string;
   hostname: string;
   workerName: (name: string) => string;
-  resource: (kind: "D1_ID" | "KV_ID" | "R2_NAME" | "QUEUE_NAME" | "VECTORIZE_NAME", name: string) => string;
+  resource: (
+    kind: "D1_ID" | "KV_ID" | "R2_NAME" | "QUEUE_NAME" | "VECTORIZE_NAME",
+    name: string,
+  ) => string;
   /** A secret's value, or undefined when it is not being set in this deploy (kept as is). */
   secret: (name: string) => string | undefined;
 }

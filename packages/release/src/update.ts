@@ -169,7 +169,13 @@ export async function runRollback(input: {
   await automations.pause();
   try {
     log(`redeploying ${input.previous.manifest.version}…`);
-    await deployWorkers({ api: input.api, bundle: input.previous, state: input.state, secrets: {}, log });
+    await deployWorkers({
+      api: input.api,
+      bundle: input.previous,
+      state: input.state,
+      secrets: {},
+      log,
+    });
     if (input.bookmark) {
       log("restoring the database bookmark…");
       await input.api.d1Restore(input.state.accountId, input.databaseId, input.bookmark);
@@ -190,14 +196,14 @@ export async function runRollback(input: {
 export async function healthSmoke(
   hostname: string,
   version: string,
-  options: { fetch?: typeof fetch; attempts?: number; delayMs?: number } = {},
+  options: { fetch?: typeof fetch; attempts?: number; delayMs?: number; origin?: string } = {},
 ): Promise<void> {
   const doFetch = options.fetch ?? fetch;
   const attempts = options.attempts ?? 20;
   let last = "no response";
   for (let i = 0; i < attempts; i++) {
     try {
-      const response = await doFetch(`https://${hostname}/api/health`, {
+      const response = await doFetch(`${options.origin ?? `https://${hostname}`}/api/health`, {
         headers: { "cache-control": "no-cache" },
       });
       const body = (await response.json()) as {
@@ -205,7 +211,12 @@ export async function healthSmoke(
         version?: string;
         migrations?: { upToDate?: boolean };
       };
-      if (response.ok && body.status === "ok" && body.version === version && body.migrations?.upToDate !== false) {
+      if (
+        response.ok &&
+        body.status === "ok" &&
+        body.version === version &&
+        body.migrations?.upToDate !== false
+      ) {
         return;
       }
       last = `status ${body.status}, version ${body.version}`;

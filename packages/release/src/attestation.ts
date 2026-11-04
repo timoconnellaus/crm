@@ -13,8 +13,8 @@
 // Fulcio, transparency log inclusion) is `gh attestation verify`, which the CLI also runs when
 // `gh` is installed; the Workers-side updater relies on the store check. See ADR 0162.
 import { parseSums, releaseAssetNames } from "./bundle.ts";
-import { fromBase64, sameDigest, sha256Hex } from "./hash.ts";
 import { type GitHubOptions, githubJson } from "./github.ts";
+import { fromBase64, sameDigest, sha256Hex } from "./hash.ts";
 
 export const RELEASE_WORKFLOW_PATH = ".github/workflows/release.yml";
 export const SLSA_PROVENANCE_V1 = "https://slsa.dev/provenance/v1";
@@ -175,7 +175,9 @@ export async function verifyProvenance(
     }
     const workflow = statement.predicate?.buildDefinition?.externalParameters?.workflow;
     if (workflow?.repository !== wantRepo) {
-      reasons.push(`an attestation was built in ${workflow?.repository ?? "an unknown repository"}`);
+      reasons.push(
+        `an attestation was built in ${workflow?.repository ?? "an unknown repository"}`,
+      );
       continue;
     }
     if (workflow.path !== RELEASE_WORKFLOW_PATH) {

@@ -75,7 +75,15 @@ describe("release manifest", () => {
       }
     }
     expect([...kinds].sort()).toEqual(
-      expect.arrayContaining(["ACCOUNT_ID", "D1_ID", "HOSTNAME", "KV_ID", "R2_NAME", "SECRET", "WORKER_NAME"]),
+      expect.arrayContaining([
+        "ACCOUNT_ID",
+        "D1_ID",
+        "HOSTNAME",
+        "KV_ID",
+        "R2_NAME",
+        "SECRET",
+        "WORKER_NAME",
+      ]),
     );
   });
 
@@ -126,7 +134,11 @@ describe("release manifest", () => {
       readMigrations(ROOT),
     );
     const entry = manifest.workers.find((w) => w.name === "crm-runner");
-    expect(entry?.bindings).toContainEqual({ type: "queue", name: "EVENTS", queue_name: "$QUEUE_NAME(crm-events)" });
+    expect(entry?.bindings).toContainEqual({
+      type: "queue",
+      name: "EVENTS",
+      queue_name: "$QUEUE_NAME(crm-events)",
+    });
     expect(entry?.queueConsumers).toEqual([
       { queue: "$QUEUE_NAME(crm-events)", settings: { batch_size: 10, max_wait_time_ms: 5000 } },
     ]);
@@ -153,7 +165,9 @@ describe("release manifest", () => {
     const manifest = await fixtureManifest();
     const order = deployOrder(manifest.workers).map((w) => w.name);
     expect(order.indexOf("crm-runner")).toBeLessThan(order.indexOf("crm-app"));
-    expect(manifest.workers.filter((w) => w.optional).every((w) => w.role === "gatekeeper")).toBe(true);
+    expect(manifest.workers.filter((w) => w.optional).every((w) => w.role === "gatekeeper")).toBe(
+      true,
+    );
   });
 
   it("parses JSONC with comments and trailing commas but leaves strings alone", () => {

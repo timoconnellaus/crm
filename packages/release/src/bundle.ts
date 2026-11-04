@@ -7,7 +7,7 @@
 //
 // Opening a bundle checks every file against the manifest's hashes, so a bundle whose outer
 // sha256 matched but whose contents were swapped (or a hand-assembled one) is refused too.
-import { gunzip, gzip, readTar, writeTar } from "./archive.ts";
+import { type ArchiveEntry, gunzip, gzip, readTar, writeTar } from "./archive.ts";
 import { assetHash, sha256Hex } from "./hash.ts";
 import { parseManifest, type ReleaseManifest, stableStringify } from "./manifest.ts";
 
@@ -33,7 +33,7 @@ export async function writeBundle(input: {
 }): Promise<{ bytes: Uint8Array; manifestText: string }> {
   const manifestText = `${stableStringify(input.manifest)}\n`;
   const encoder = new TextEncoder();
-  const entries = [{ path: "manifest.json", bytes: encoder.encode(manifestText) }];
+  const entries: ArchiveEntry[] = [{ path: "manifest.json", bytes: encoder.encode(manifestText) }];
   for (const [sha, bytes] of input.modules) entries.push({ path: `modules/${sha}`, bytes });
   for (const [hash, bytes] of input.assets) entries.push({ path: `assets/${hash}`, bytes });
   for (const [name, sql] of input.migrations) {

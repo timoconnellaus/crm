@@ -32,7 +32,12 @@ export const BASE_MIGRATIONS: [string, string][] = [
   ],
   [
     "0160_install.sql",
-    "CREATE TABLE core_install (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL);\nUPDATE core_meta SET value = '160' WHERE key = 'schema_version';",
+    [
+      "CREATE TABLE core_install (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL);",
+      "CREATE TABLE core_update_runs (id TEXT PRIMARY KEY, kind TEXT NOT NULL, from_version TEXT, to_version TEXT NOT NULL, status TEXT NOT NULL, step TEXT, bookmark TEXT, bundle_digest TEXT, preflight TEXT, error TEXT, started_by TEXT, surface TEXT NOT NULL, started_at TEXT NOT NULL, finished_at TEXT);",
+      "CREATE TABLE core_extensions (id TEXT PRIMARY KEY, source TEXT NOT NULL, status TEXT NOT NULL, manifest TEXT NOT NULL);",
+      "UPDATE core_meta SET value = '160' WHERE key = 'schema_version';",
+    ].join("\n"),
   ],
 ];
 
@@ -193,10 +198,37 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     migrations,
     workers: [app, runner, gatekeeper],
     resources: [
-      { type: "d1", name: "crm", placeholder: "$D1_ID(crm)", implicit: false, usedBy: ["crm-app", "crm-runner"], optional: false },
-      { type: "r2", name: "crm-blobs", placeholder: "$R2_NAME(crm-blobs)", implicit: false, usedBy: ["crm-app"], optional: false },
-      { type: "kv", name: "crm-app-oauth-kv", placeholder: "$KV_ID(crm-app-oauth-kv)", implicit: false, usedBy: ["crm-app"], optional: false },
-      { type: "durable_object", name: "Workspace", implicit: true, usedBy: ["crm-runner"], optional: false },
+      {
+        type: "d1",
+        name: "crm",
+        placeholder: "$D1_ID(crm)",
+        implicit: false,
+        usedBy: ["crm-app", "crm-runner"],
+        optional: false,
+      },
+      {
+        type: "r2",
+        name: "crm-blobs",
+        placeholder: "$R2_NAME(crm-blobs)",
+        implicit: false,
+        usedBy: ["crm-app"],
+        optional: false,
+      },
+      {
+        type: "kv",
+        name: "crm-app-oauth-kv",
+        placeholder: "$KV_ID(crm-app-oauth-kv)",
+        implicit: false,
+        usedBy: ["crm-app"],
+        optional: false,
+      },
+      {
+        type: "durable_object",
+        name: "Workspace",
+        implicit: true,
+        usedBy: ["crm-runner"],
+        optional: false,
+      },
     ],
     inputs: [
       { name: "HOSTNAME", kind: "placeholder", description: "Public hostname" },
@@ -211,7 +243,12 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     ],
     assets: Object.fromEntries([...assets].map(([hash, bytes]) => [hash, { size: bytes.length }])),
   };
-  const { bytes, manifestText } = await writeBundle({ manifest, modules, assets, migrations: migrationSql });
+  const { bytes, manifestText } = await writeBundle({
+    manifest,
+    modules,
+    assets,
+    migrations: migrationSql,
+  });
   const digest = await sha256Hex(bytes);
   const names = releaseAssetNames(version);
   const sums = formatSums(

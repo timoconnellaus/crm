@@ -10,7 +10,7 @@
 // Every step looks at what exists before changing it, so a re-run after a failure (or of a
 // finished install) converges instead of duplicating.
 import type { ReleaseBundle } from "./bundle.ts";
-import { type CloudflareClient, CloudflareApiError, type ModulePart } from "./cloudflare.ts";
+import { CloudflareApiError, type CloudflareClient, type ModulePart } from "./cloudflare.ts";
 import { toBase64 } from "./hash.ts";
 import {
   type DurableObjectMigration,
@@ -185,7 +185,9 @@ export async function provisionResources(
         break;
       }
       case "queue": {
-        const existing = (await api.listQueues(accountId)).find((q) => q.queue_name === resource.name);
+        const existing = (await api.listQueues(accountId)).find(
+          (q) => q.queue_name === resource.name,
+        );
         if (!existing) await api.createQueue(accountId, resource.name);
         log(`  Queue ${resource.name}: ${existing ? "exists" : "created"}`);
         out[key(resource)] = resource.name;
@@ -286,7 +288,8 @@ export function workerBindings(
   if (worker.gatekeeperBindings) {
     const { prefix, entrypoint } = worker.gatekeeperBindings;
     for (const gk of manifest.workers) {
-      if (gk.role !== "gatekeeper" || !gk.shortName || !state.gatekeepers.includes(gk.name)) continue;
+      if (gk.role !== "gatekeeper" || !gk.shortName || !state.gatekeepers.includes(gk.name))
+        continue;
       const name = gatekeeperBindingName(prefix, gk.shortName);
       if (bindings.some((b) => b.name === name)) continue;
       bindings.push({ type: "service", name, service: workerName(state, gk.name), entrypoint });
@@ -395,7 +398,10 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
       keep_bindings: ["secret_text", "secret_key"],
       ...(worker.observability ? { observability: worker.observability } : {}),
       ...(assetsJwt ? { assets: { jwt: assetsJwt, config: worker.assets?.config ?? {} } } : {}),
-      annotations: { "workers/message": `crm ${manifest.version}`, "workers/tag": manifest.version },
+      annotations: {
+        "workers/message": `crm ${manifest.version}`,
+        "workers/tag": manifest.version,
+      },
     };
     const modules: ModulePart[] = worker.modules.map((m) => ({
       name: m.name,
@@ -404,7 +410,12 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
     }));
     if (existing && !migration) {
       const { annotations: _a, observability: _o, ...versionMetadata } = metadata;
-      const versionId = await api.uploadVersion(state.accountId, deployedName, versionMetadata, modules);
+      const versionId = await api.uploadVersion(
+        state.accountId,
+        deployedName,
+        versionMetadata,
+        modules,
+      );
       log(`  staged ${deployedName} (version ${versionId.slice(0, 8)})`);
       staged.push({ worker, deployedName, versionId, metadata, modules });
     } else {
@@ -418,7 +429,12 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
   const result: DeployResult["workers"] = [];
   for (const item of staged) {
     if (item.versionId) {
-      await api.deployVersion(state.accountId, item.deployedName, item.versionId, `crm ${manifest.version}`);
+      await api.deployVersion(
+        state.accountId,
+        item.deployedName,
+        item.versionId,
+        `crm ${manifest.version}`,
+      );
       result.push({ name: item.worker.name, deployedAs: item.deployedName, via: "version" });
     } else {
       await api.putScript(state.accountId, item.deployedName, item.metadata, item.modules);
@@ -441,7 +457,13 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
       const existing = queue.consumers?.find(
         (c) => (c.script_name ?? c.script) === deployedName,
       )?.consumer_id;
-      await api.putQueueConsumer(state.accountId, queue.queue_id, deployedName, consumer.settings, existing);
+      await api.putQueueConsumer(
+        state.accountId,
+        queue.queue_id,
+        deployedName,
+        consumer.settings,
+        existing,
+      );
     }
     const onWorkersDev = worker.public && state.hostnameMode === "workers.dev";
     await api.setWorkersDev(state.accountId, deployedName, onWorkersDev);

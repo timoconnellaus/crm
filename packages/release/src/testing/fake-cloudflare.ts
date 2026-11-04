@@ -38,7 +38,13 @@ export interface FakeCloudflareOptions {
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 const ok = (result: unknown, info?: unknown) =>
-  json(200, { success: true, errors: [], messages: [], result, ...(info ? { result_info: info } : {}) });
+  json(200, {
+    success: true,
+    errors: [],
+    messages: [],
+    result,
+    ...(info ? { result_info: info } : {}),
+  });
 const fail = (status: number, code: number, message: string) =>
   json(status, { success: false, errors: [{ code, message }], messages: [], result: null });
 
@@ -48,7 +54,10 @@ export class FakeCloudflare {
   readonly d1 = new Map<string, { name: string; engine: SqlEngine }>();
   readonly r2 = new Set<string>();
   readonly kv = new Map<string, string>();
-  readonly queues = new Map<string, { name: string; consumers: { consumer_id: string; script_name: string; settings: unknown }[] }>();
+  readonly queues = new Map<
+    string,
+    { name: string; consumers: { consumer_id: string; script_name: string; settings: unknown }[] }
+  >();
   readonly vectorize = new Map<string, Record<string, unknown>>();
   readonly scripts = new Map<string, FakeScript>();
   readonly domains: { hostname: string; service: string; zone_id: string }[] = [];
@@ -118,8 +127,13 @@ export class FakeCloudflare {
     const a = `/accounts/${this.accountId}`;
     const b = body as Record<string, unknown>;
     if (path === "/user/tokens/verify") return ok({ id: "tok", status: "active" });
-    if (path === "/accounts") return ok([{ id: this.accountId, name: this.options.accountName ?? "Test account" }], { page: 1, total_pages: 1 });
-    if (path.startsWith("/accounts/") && !path.startsWith(a)) return fail(403, 9109, "no access to account");
+    if (path === "/accounts")
+      return ok([{ id: this.accountId, name: this.options.accountName ?? "Test account" }], {
+        page: 1,
+        total_pages: 1,
+      });
+    if (path.startsWith("/accounts/") && !path.startsWith(a))
+      return fail(403, 9109, "no access to account");
     if (path === "/zones") return ok(this.options.zones ?? [], { page: 1, total_pages: 1 });
     if (path === `${a}/workers/subdomain`) {
       if (method === "PUT") {
@@ -176,12 +190,16 @@ export class FakeCloudflare {
     }
     if (path === `${a}/storage/kv/namespaces`) {
       if (method === "POST") {
-        if ([...this.kv.values()].includes(String(b.title))) return fail(400, 10014, "title exists");
+        if ([...this.kv.values()].includes(String(b.title)))
+          return fail(400, 10014, "title exists");
         const id = this.id("kv");
         this.kv.set(id, String(b.title));
         return ok({ id, title: b.title });
       }
-      return ok([...this.kv].map(([id, title]) => ({ id, title })), { page: 1, total_pages: 1 });
+      return ok(
+        [...this.kv].map(([id, title]) => ({ id, title })),
+        { page: 1, total_pages: 1 },
+      );
     }
     m = new RegExp(`^${a}/storage/kv/namespaces/([^/]+)$`).exec(path);
     if (m && method === "DELETE") {
@@ -195,7 +213,11 @@ export class FakeCloudflare {
         return ok({ queue_id: id, queue_name: b.queue_name });
       }
       return ok(
-        [...this.queues].map(([queue_id, q]) => ({ queue_id, queue_name: q.name, consumers: q.consumers })),
+        [...this.queues].map(([queue_id, q]) => ({
+          queue_id,
+          queue_name: q.name,
+          consumers: q.consumers,
+        })),
         { page: 1, total_pages: 1 },
       );
     }
@@ -209,7 +231,11 @@ export class FakeCloudflare {
         consumer.settings = b.settings;
         return ok(consumer);
       }
-      const consumer = { consumer_id: this.id("c"), script_name: String(b.script_name), settings: b.settings };
+      const consumer = {
+        consumer_id: this.id("c"),
+        script_name: String(b.script_name),
+        settings: b.settings,
+      };
       queue.consumers.push(consumer);
       return ok(consumer);
     }
@@ -267,13 +293,23 @@ export class FakeCloudflare {
       const migrations = metadata.migrations as { old_tag?: string; new_tag?: string } | undefined;
       if (migrations) {
         if ((migrations.old_tag ?? undefined) !== script?.migrationTag) {
-          return fail(400, 10079, `migration old_tag ${migrations.old_tag} does not match ${script?.migrationTag}`);
+          return fail(
+            400,
+            10079,
+            `migration old_tag ${migrations.old_tag} does not match ${script?.migrationTag}`,
+          );
         }
       } else if (!script && this.needsMigration(metadata)) {
         return fail(400, 10074, "durable object classes need a migration");
       }
-      const target: FakeScript =
-        script ?? { name, versions: [], secrets: new Map(), schedules: [], workersDev: false, bindings: [] };
+      const target: FakeScript = script ?? {
+        name,
+        versions: [],
+        secrets: new Map(),
+        schedules: [],
+        workersDev: false,
+        bindings: [],
+      };
       this.applySecrets(target, metadata);
       const versionId = this.id("ver");
       target.versions.push({ id: versionId, metadata, modules });
@@ -302,7 +338,8 @@ export class FakeCloudflare {
     if (rest === "/versions" && method === "POST") {
       if (!form) return fail(400, 10021, "expected multipart");
       const { metadata, modules } = await this.readUpload(form);
-      if (metadata.migrations) return fail(400, 10211, "migrations are not supported with versions");
+      if (metadata.migrations)
+        return fail(400, 10211, "migrations are not supported with versions");
       this.applySecrets(script, metadata);
       const id = this.id("ver");
       script.versions.push({ id, metadata, modules });
@@ -366,7 +403,8 @@ export class FakeCloudflare {
     if (metadata.assets) {
       const jwt = (metadata.assets as { jwt?: string }).jwt ?? "";
       const session = this.sessions.get(jwt);
-      if (!session || session.pending.size > 0) throw new Error("assets completion token is not valid");
+      if (!session || session.pending.size > 0)
+        throw new Error("assets completion token is not valid");
     }
     return { metadata, modules };
   }

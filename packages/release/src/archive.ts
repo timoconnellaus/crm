@@ -49,7 +49,8 @@ export function writeTar(entries: ArchiveEntry[]): Uint8Array {
   let total = BLOCK * 2;
   for (let i = 0; i < sorted.length; i++) {
     const entry = sorted[i] as ArchiveEntry;
-    if (i > 0 && sorted[i - 1]?.path === entry.path) throw new Error(`duplicate path ${entry.path}`);
+    if (i > 0 && sorted[i - 1]?.path === entry.path)
+      throw new Error(`duplicate path ${entry.path}`);
     total += BLOCK + Math.ceil(entry.bytes.length / BLOCK) * BLOCK;
   }
   const out = new Uint8Array(total);
@@ -79,7 +80,9 @@ export function readTar(bytes: Uint8Array): Map<string, Uint8Array> {
     for (let i = 0; i < BLOCK; i++) stored += i >= 148 && i < 156 ? 0x20 : (header[i] as number);
     if (stored !== readOctal(header, 148, 8)) throw new Error("corrupt tar header checksum");
     const nameEnd = header.indexOf(0);
-    const name = decoder.decode(header.subarray(0, nameEnd === -1 || nameEnd > 100 ? 100 : nameEnd));
+    const name = decoder.decode(
+      header.subarray(0, nameEnd === -1 || nameEnd > 100 ? 100 : nameEnd),
+    );
     const prefixBytes = header.subarray(345, 500);
     const prefixEnd = prefixBytes.indexOf(0);
     const prefix = decoder.decode(prefixBytes.subarray(0, prefixEnd === -1 ? 155 : prefixEnd));
@@ -100,7 +103,7 @@ export function readTar(bytes: Uint8Array): Map<string, Uint8Array> {
   return files;
 }
 
-async function pipe(bytes: Uint8Array, transform: TransformStream<Uint8Array, Uint8Array>) {
+async function pipe(bytes: Uint8Array, transform: CompressionStream | DecompressionStream) {
   const stream = new Blob([bytes as Uint8Array<ArrayBuffer>]).stream().pipeThrough(transform);
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
