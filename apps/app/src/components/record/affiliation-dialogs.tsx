@@ -12,7 +12,7 @@ import {
 } from "@crm/ui/components/dialog";
 import { Input } from "@crm/ui/components/input";
 import { Label } from "@crm/ui/components/label";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { errorMessage, useOpMutation } from "#/lib/query";
 import type { AffiliationItem } from "./adapters.ts";
@@ -100,7 +100,12 @@ function useDialogState(open: boolean) {
       setOrganisation(null);
     }
   }, [open]);
-  return { error, setError, organisation, setOrganisation };
+  // Picking one clears a "Pick an organisation" error left by an earlier submit.
+  const pick = useCallback((value: PickedOrganisation | null) => {
+    setOrganisation(value);
+    if (value) setError(null);
+  }, []);
+  return { error, setError, organisation, pick };
 }
 
 export interface AffiliationDialogProps {
@@ -155,7 +160,7 @@ export function AddAffiliationDialog({
         <OrganisationPicker
           id="aff-org"
           value={state.organisation}
-          onChange={state.setOrganisation}
+          onChange={state.pick}
           autoFocus
         />
       </Field>
@@ -231,7 +236,7 @@ export function ChangeJobDialog({
         <OrganisationPicker
           id="job-org"
           value={state.organisation}
-          onChange={state.setOrganisation}
+          onChange={state.pick}
           autoFocus
         />
       </Field>

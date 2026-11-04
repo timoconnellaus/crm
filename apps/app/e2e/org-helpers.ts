@@ -7,7 +7,8 @@ export async function createOrganisation(
   page: Page,
   org: { name: string; domains?: string; industry?: string },
 ): Promise<string> {
-  if (!/\/organisations/.test(page.url())) await open(page, "/organisations");
+  // `c` creates an organisation on the list; on a record page it creates a task.
+  if (!/\/organisations\/?(\?.*)?$/.test(page.url())) await open(page, "/organisations");
   const dialog = page
     .getByRole("dialog", { name: "New organisation" })
     .and(page.locator("[data-state=open]"));

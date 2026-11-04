@@ -55,6 +55,7 @@ test("a note on a person shows on their organisation's timeline too", async ({ p
   const add = page.getByRole("form", { name: "Add organisation" });
   await add.getByLabel("Organisation").fill(`Flight Research${token}`);
   await add.getByRole("button", { name: `Create “Flight Research${token}”` }).click();
+  await expect(add.getByTestId("picked-organisation")).toHaveText(`Flight Research${token}`);
   await add.getByRole("button", { name: "Add", exact: true }).click();
   await expect(add).toBeHidden();
 
@@ -117,6 +118,7 @@ test("change job and see it on the person's timeline", async ({ page }) => {
   const change = page.getByRole("form", { name: "Change job" });
   await change.getByLabel("New organisation").fill(`NASA${token}`);
   await change.getByRole("button", { name: `Create “NASA${token}”` }).click();
+  await expect(change.getByTestId("picked-organisation")).toHaveText(`NASA${token}`);
   await change.getByLabel("New job title").fill("Programmer");
   await change.getByRole("button", { name: "Change job" }).click();
   await expect(change).toBeHidden();
