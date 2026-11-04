@@ -133,6 +133,47 @@ export interface ListPage<Row> {
 }
 
 /**
+ * Whether the page can stream in index order. The default sort of every core object (and `id`)
+ * has an index, so SQLite walks it and computes the view's columns only for the rows it returns.
+ */
+function indexOrdered(object: ObjectDefinition, field: FieldDefinition): boolean {
+  return field.name === "id" || field.name === object.defaultSort.field;
+}
+
+/**
+ * Any other sort needs a temp B-tree, and SQLite computes every selected column (the crm_*
+ * views' correlated subqueries: emails, phones, tags, counts) for every matching row before
+ * sorting. Here it sorts ids alone, then loads the page's rows by primary key. For person.list
+ * sorted by createdAt on 20k people, that cuts rows read from about 180k to about 20k
+ * (docs/research/cloudflare-cost-audit.md).
+ */
+async function pageByIds<DB, TB extends keyof DB, Row extends { id: string }>(
+  base: SelectQueryBuilder<DB, TB, Row>,
+  ordered: SelectQueryBuilder<DB, TB, Row>,
+  alias: string,
+  column: string,
+  take: number,
+): Promise<Row[]> {
+  const keys = (await ordered
+    .clearSelect()
+    .select([sql.ref(`${alias}.id`).as("id"), sql.ref(`${alias}.${column}`).as("sort_value")])
+    .limit(take)
+    .execute()) as unknown as { id: string }[];
+  if (!keys.length) return [];
+  const ids = keys.map((k) => k.id);
+  const rows = await base
+    .where(
+      sql<SqlBool>`${sql.ref(`${alias}.id`)} IN (SELECT value FROM json_each(${JSON.stringify(ids)}))`,
+    )
+    .execute();
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return ids.flatMap((id) => {
+    const row = byId.get(id);
+    return row ? [row] : [];
+  });
+}
+
+/**
  * Applies filter, cursor, sort and limit to `query` (a select over `object.source`, aliased
  * `alias`), runs it and returns one page. The query must select the `id` column and the sort
  * field's column under their own names (e.g. `selectAll()` on the crm_* view).
@@ -152,7 +193,9 @@ export async function runListQuery<DB, TB extends keyof DB, Row extends { id: st
   q = q.orderBy(sql`${sql.ref(`${alias}.id`)} ${direction}`);
 
   const limit = input.limit ?? LIST_DEFAULT_LIMIT;
-  const rows = await q.limit(limit + 1).execute();
+  const rows = indexOrdered(object, field)
+    ? await q.limit(limit + 1).execute()
+    : await pageByIds(query, q, alias, field.column, limit + 1);
   const page = rows.slice(0, limit);
   const last = page.at(-1);
   let nextCursor: string | null = null;
