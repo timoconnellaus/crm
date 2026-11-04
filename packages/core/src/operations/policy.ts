@@ -15,13 +15,16 @@ const policyOutput = z.object({
   preset: z.enum(POLICY_PRESETS),
   /** The full actor × risk matrix the preset applies, for display. */
   matrix: z.record(z.string(), z.record(z.string(), z.unknown())),
+  /** The deploy-time floor (env APPROVAL_FLOOR): rules no preset can loosen. Read-only. */
+  floor: z.record(z.string(), z.record(z.string(), z.unknown())),
 });
 
 export const policyGet = defineOperation({
   name: "policy.get",
   description:
     "Get the org's approval policy: the active preset (cautious, balanced or autonomous) and " +
-    "the actor × risk-class matrix it applies. The deploy-time floor is not included. Read-only.",
+    "the actor × risk-class matrix it applies, plus the deploy-time floor (rules no preset can " +
+    "loosen; set by the operator in env, not changeable here). Read-only.",
   input: z.object({}),
   output: policyOutput,
   permission: "records:read",
@@ -29,7 +32,7 @@ export const policyGet = defineOperation({
   mcp: { idempotent: true },
   async handler(_input, ctx) {
     const policy = await loadApprovalPolicy(ctx.db);
-    return { preset: policy.preset, matrix: PRESET_MATRICES[policy.preset] };
+    return { preset: policy.preset, matrix: PRESET_MATRICES[policy.preset], floor: ctx.floor };
   },
 });
 
@@ -74,6 +77,7 @@ export const policyUpdate = defineOperation({
     return {
       preset: input.preset,
       matrix: PRESET_MATRICES[input.preset],
+      floor: ctx.floor,
       previousPreset: before.preset,
       loosened: isLoosening(before.preset, input.preset),
     };

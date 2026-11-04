@@ -5,6 +5,7 @@ import type { AuditChangeAction, CoreDatabase } from "@crm/db";
 import type { Compilable, Kysely } from "kysely";
 import type { z } from "zod";
 import type { FieldDiff } from "./diff.ts";
+import type { GateFloor } from "./gate.ts";
 import {
   ACTORS,
   type ActingUser,
@@ -80,6 +81,8 @@ export interface HandlerContext {
   readonly now: string;
   /** Typed Kysely for reads and for building the statements passed to `write`. */
   readonly db: Kysely<CoreDatabase>;
+  /** The deploy-time approval floor (APPROVAL_FLOOR) the gate applied, for display. */
+  readonly floor: GateFloor;
   /** Queues statements (Kysely insert/update/delete builders) for the commit batch, in order. */
   write(...statements: Compilable[]): void;
   /**

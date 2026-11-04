@@ -1,3 +1,5 @@
+// Main navigation. On phone widths the shadcn Sidebar renders as a drawer (Sheet); following a
+// link closes it.
 import {
   Sidebar,
   SidebarContent,
@@ -8,15 +10,35 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@crm/ui/components/sidebar";
 import { Link } from "@tanstack/react-router";
-import { Activity, Home } from "lucide-react";
+import { ActivitySquareIcon } from "lucide-react";
+import { MAIN_NAV, type NavItem, SETTINGS_NAV } from "#/lib/nav";
 
-const NAV = [{ to: "/", label: "Home", icon: Home }] as const;
+function NavLink({ item }: { item: NavItem }) {
+  const { setOpenMobile } = useSidebar();
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild tooltip={item.label}>
+        <Link
+          to={item.to}
+          activeOptions={{ exact: item.to === "/" }}
+          activeProps={{ "data-active": true, "aria-current": "page" }}
+          onClick={() => setOpenMobile(false)}
+        >
+          <item.icon />
+          <span>{item.label}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
 
 export function AppSidebar() {
+  const { setOpenMobile } = useSidebar();
   return (
-    <Sidebar>
+    <Sidebar aria-label="Main navigation">
       <SidebarHeader>
         <div className="px-2 py-1.5 text-lg font-semibold tracking-tight">CRM</div>
       </SidebarHeader>
@@ -24,15 +46,8 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV.map((item) => (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton asChild>
-                    <Link to={item.to} activeOptions={{ exact: true }}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+              {MAIN_NAV.map((item) => (
+                <NavLink key={item.to} item={item} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -40,10 +55,13 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          {SETTINGS_NAV.filter((item) => !item.adminOnly).map((item) => (
+            <NavLink key={item.to} item={item} />
+          ))}
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link to="/status">
-                <Activity />
+              <Link to="/status" onClick={() => setOpenMobile(false)}>
+                <ActivitySquareIcon />
                 <span>System status</span>
               </Link>
             </SidebarMenuButton>

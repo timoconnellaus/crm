@@ -79,7 +79,7 @@ export const OPS_BY_TYPE: Record<FieldType, readonly FilterOp[]> = {
 };
 
 /** Ops a multi-valued (related) field supports: "has a value that …" and their negations. */
-const RELATED_OPS: readonly FilterOp[] = [
+export const RELATED_OPS: readonly FilterOp[] = [
   "eq",
   "neq",
   "in",
