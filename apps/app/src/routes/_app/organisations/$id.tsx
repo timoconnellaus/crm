@@ -36,6 +36,10 @@ import { SimilarRecordsCard } from "#/components/ai/similar-records";
 import { RecordSummaryCard } from "#/components/ai/summary";
 import { useAppCommands } from "#/components/app-commands";
 import { PendingChangesBadge } from "#/components/approvals/pending-badge";
+import {
+  ManualAutomationButtons,
+  RecordAutomationsCard,
+} from "#/components/automations/record-automations";
 import { EmptyState } from "#/components/empty-state";
 import { ExtensionFieldsCards } from "#/components/fields/fields-card";
 import { useEnrichAction } from "#/components/integrations/enrich-action";
@@ -225,6 +229,7 @@ function OrganisationRecord({
       actions={
         !deleted && (
           <>
+            <ManualAutomationButtons object="organisation" id={org.id} />
             {addTask && (
               <Button variant="outline" size="sm" onClick={addTask} aria-keyshortcuts="c">
                 <PlusIcon />
@@ -326,6 +331,7 @@ function OrganisationRecord({
           <OrganisationDetailsCard organisation={org} readOnly={deleted} />
           <RecordSummaryCard object="organisation" id={org.id} />
           {recordViews.panels}
+          <RecordAutomationsCard object={"organisation"} id={org.id} />
           <ExtensionFieldsCards object="organisation" id={org.id} readOnly={deleted} />
           <OrganisationPeopleCard
             affiliations={people.data}

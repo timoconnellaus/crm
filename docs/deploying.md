@@ -76,6 +76,29 @@ extensions (`extensions/`) are installed through `extension.install` on the firs
 deploy. AI (model roles for `codemode:ai`, "Describe a widget", summaries and semantic search) is
 described in [In-app AI](#in-app-ai) below.
 
+### Automations
+
+Automations (stage 5, ADR 0130) need these bindings, all declared in the wrangler files and
+provisioned by name on deploy:
+
+| Binding | Worker | Purpose |
+| --- | --- | --- |
+| `AUTOMATION_EVENTS` (queue producer) | crm-app, crm-runner | Committed record changes and approval decisions, queue `crm-automation-events` |
+| queue consumer | crm-runner | Starts runs: batches of up to 100, 5 s, 5 retries, then the dead-letter queue `crm-automation-events-dlq` |
+| `AUTOMATION_WORKFLOW` | crm-runner | Workflow `crm-automation` (class `AutomationWorkflow`), one instance per run |
+| `AUTOMATION_RATE_LIMIT` | crm-runner | Runs per minute per automation (default 60 per 60 s, `namespace_id` 4201); above it the automation auto-pauses and admins are notified |
+| cron `* * * * *` | crm-runner | Schedule triggers and the daily date-relative scan |
+
+Create the queues once per account before the first deploy (`wrangler queues create
+crm-automation-events` and `wrangler queues create crm-automation-events-dlq`); Workflows need no
+setup. Queues and Workflows are billed per use (see ADR 0130). The kill switch, the automation
+timezone and the debounce window are in Settings → Automations; only human admins can engage the
+kill switch.
+
+Semantic search (ADR 0154) also consumes these events: the queue consumer embeds the records a
+batch changed, so crm-runner gets the `vectorize` binding too (added by the deploy script; see
+[In-app AI](#in-app-ai)).
+
 Dashboard widget results are cached for 60 seconds in the Workers Cache API (ADR 0057). The Cache
 API does nothing on `*.workers.dev` hostnames, so put crm-app on a custom domain to get the cache;
 without it every widget view runs its query.
@@ -85,21 +108,22 @@ without it every widget view runs its query.
 Model roles (ADR 0009, ADR 0150), summaries (ADR 0153) and semantic search (ADR 0154, ADR 0155).
 Everything works without AI; each feature then says "AI is not configured".
 
-**Bindings.** Workers AI (`"ai": { "binding": "AI" }`, on crm-app and crm-runner) and Vectorize
-(`"vectorize": [{ "binding": "VECTORIZE", "index_name": "crm-records" }]`, on crm-app) are
+**Bindings.** Workers AI (`"ai": { "binding": "AI" }`) and Vectorize
+(`"vectorize": [{ "binding": "VECTORIZE", "index_name": "crm-records" }]`), both on crm-app and
+crm-runner (whose automation events consumer embeds changed records), are
 remote-only, so the committed `wrangler.jsonc` files leave them out (local development and tests
 use stand-ins, ADR 0156) and `pnpm run deploy` adds them. To do it by hand:
 
 ```sh
 pnpm exec wrangler vectorize create crm-records --dimensions=384 --metric=cosine
 pnpm exec wrangler vectorize create-metadata-index crm-records --property-name=object --type=string
-# then add the two bindings above to apps/app/wrangler.jsonc and the `ai` one to apps/runner/wrangler.jsonc
+# then add both bindings above to apps/app/wrangler.jsonc and apps/runner/wrangler.jsonc
 ```
 
 The index's dimensions must match the `embed` role's model (384 for the shipped
 `@cf/baai/bge-small-en-v1.5`) and the `VECTORIZE_DIMENSIONS` var. A model of another size needs a
 new index. Existing records are embedded by the 10-minute cron after the first deploy (a one-time
-backfill), new and changed ones right after each write.
+backfill), new and changed ones by the automation events consumer seconds after each write.
 
 **Variables** (in `apps/app/wrangler.jsonc`, and the model ones also in `apps/runner/wrangler.jsonc`):
 
@@ -164,7 +188,7 @@ never reaches our script.
 1. with AI on (the default; `CRM_AI=off` skips it): `wrangler vectorize create crm-records
    --dimensions=384 --metric=cosine` and its `object` metadata index, if the index does not exist
    yet, and a generated `wrangler.deploy.jsonc` for each Worker that adds the `ai` binding (both)
-   and the `vectorize` binding (crm-app) (see [In-app AI](#in-app-ai));
+   and the `vectorize` binding (both) (see [In-app AI](#in-app-ai));
 2. `wrangler deploy` for `crm-runner` (creates the `crm` D1 database on a fresh account);
 3. `wrangler d1 migrations apply DB --remote` (core migrations, tracked in `core_migrations`);
 4. `vite build` and `wrangler deploy` for `crm-app`, passing any of the secrets above that are set

@@ -94,12 +94,12 @@ beforeAll(async () => {
 
 describe("the shipped Deals extension", () => {
   it("is bundled and installed as a shipped extension, as its own principal", async () => {
-    expect(await host.shipped()).toEqual([{ id: "deals", version: "1.0.0" }]);
+    expect(await host.shipped()).toEqual([{ id: "deals", version: "1.1.0" }]);
     const row = await extensionRow("deals");
     expect(row).toMatchObject({
       source: "shipped",
       status: "active",
-      version: "1.0.0",
+      version: "1.1.0",
       user_id: "extension:deals",
     });
     expect(await installShippedExtensions({ db, host })).toEqual([
@@ -149,6 +149,7 @@ describe("the shipped Deals extension", () => {
       "x_deals_deal__stage",
       "x_deals_deal__status__closed_at",
       "x_deals_deal__status__expected_close",
+      "x_deals_deal__status__updated_at",
     ]);
     expect(results.every((r) => r.sql.includes("WHERE deleted_at IS NULL"))).toBe(true);
   });

@@ -96,7 +96,7 @@ Rules worth knowing before the first check:
 | `recordPanels` | The same shape, shown as a card in the record page's side panel. |
 | `settings` | Typed settings, edited by admins in Settings → Extensions: `{ type: "text" \| "number" \| "boolean" \| "select", label, description?, required?, default?, min?, max?, options? }`. Read them with `extensionSettings.list`. |
 | `tools` | Operations named `x.<ext>.<tool>` (zod input/output, description, risk `read`/`write`/`bulk-write`/`destructive`). They run in the sandbox. |
-| `automations` | `{ description, trigger, handler }`: typed and validated now; triggers fire from stage 5. |
+| `automations` | `defineAutomation({ label, description, trigger, conditions?, steps, onRejected?, rails?, run })`: see Automations below. |
 | `permissions` | `read` / `write` (objects; write implies read), `operations` (exact names, e.g. `task.create`, `search.global`), `modules` (`crm`, `storage`, `log`, `ai`). Own objects are always allowed. `extension.*`, `policy.*`, `user.*` and `audit.*` can never be granted. Destructive operations must be listed in `operations`. |
 
 ### Object behaviour (ADR 0100)
@@ -257,9 +257,131 @@ await host.runTool("setTier", { organisationId: "org_1", tier: "gold" });
 expect(host.calls).toContainEqual(expect.objectContaining({ operation: "record.update", allowed: true }));
 ```
 
-It fakes `record.create/get/update/delete/list` (simple `eq`/`in`/null filters) and
-`<core>.get`; pass `operations: { "task.create": (input) => … }` for anything else, and `ai` to
+It fakes `record.create/get/update/delete/list` (every filter op), `<core>.get`,
+`task.create/get/update/complete/list` and `notification.send`; pass `operations: { "query.sql":
+(input) => … }` for anything else, `users` for who `notification.send` resolves, and `ai` to
 replace the stand-in AI.
+
+### Testing an automation
+
+`host.runAutomation(name, options)` runs an automation in memory, start to finish:
+
+```ts
+const host = createTestHost(extension, {
+  records: { "deals.deal": [{ id: "d1", name: "Acme", status: "won", owner: "usr_sarah" }] },
+  users: [{ id: "usr_sarah", role: "member" }, { id: "usr_admin", role: "admin" }],
+});
+const run = await host.runAutomation("wonOnboarding", { record: { object: "deals.deal", id: "d1" } });
+expect(run.error).toBeNull();
+expect(run.undeclared).toEqual([]);                          // every effect was declared
+expect(run.steps.map((s) => s.name)).toEqual(["createTasks", "notifyOwner", "wait", "notifyManager"]);
+expect(run.steps[2]?.skippedMs).toBe(3 * 86_400_000);       // waits are skipped, and recorded
+expect(run.notifications[0]?.userIds).toEqual(["usr_sarah"]);
+```
+
+Declared `conditions` are checked on the trigger record first (`matched: false` and nothing runs
+when they fail). `step.do` runs its function; `step.sleep` and `step.waitForEvent` return at once
+(pass `events: { <step>: payload }` for a wait's payload; default `null`, a timeout). A step name
+that is not declared with the matching kind, or that runs twice, fails the run with
+`undeclared_step`, as on the host. Options: `record`, `change`, `period`, `manual`, `approval`,
+`events`, `runId`, `test`. The result lists `steps`, `writes`, `notifications`, `undeclared` and
+`value`.
+
+## Automations (`defineAutomation`, ADR 0028, ADR 0131)
+
+An automation lives in `automations` of `defineExtension`. It declares what starts it, what it
+checks, and every step it may take; the host renders the plain-English summary and step diagram
+from those declarations (never from the code) and runs `run` durably on Cloudflare Workflows,
+each `step.do` in the sandbox as actor `automation` under `extension:<id>`.
+
+```ts
+import { defineAutomation, defineExtension } from "@crm/sdk";
+
+const wonOnboarding = defineAutomation({
+  label: "Won deal → onboarding",
+  description: "Creates onboarding tasks for the owner of a won deal and tells them.",
+  trigger: { type: "fieldChanged", object: "deals.deal", field: "stage", to: { stageType: "won" } },
+  steps: [
+    {
+      name: "createTasks",
+      label: "Create onboarding tasks",
+      writes: [{ object: "task", count: 2, titles: ["Kick-off call", "Set up account"],
+                 assignTo: { field: "owner" }, linkedToTrigger: true }],
+    },
+    { name: "notifyOwner", notifies: [{ to: { field: "owner" }, message: "Deal won 🎉" }] },
+    { name: "wait", kind: "sleep", duration: "3 days" },
+    { name: "anyOpen", kind: "condition", label: "Any task still open?",
+      clause: "any of those tasks are still open" },
+    { name: "notifyManager", reads: ["task"],
+      notifies: [{ to: { managerOf: "owner" }, message: "Onboarding not started for {record}" }] },
+  ],
+  async run(event, step, ctx) {
+    const deal = event.record!;
+    const ids = await step.do("createTasks", async () => { /* ctx.crm.call("task.create", …) */ });
+    await step.do("notifyOwner", () => ctx.notify({ field: "owner" }, { title: "Deal won 🎉" }));
+    await step.sleep("wait", "3 days");
+    await step.do("notifyManager", async () => { /* check the tasks, then ctx.notify(...) */ });
+  },
+});
+
+export default defineExtension({
+  id: "acme", version: "1.0.0", contractVersion: 1,
+  permissions: { write: ["task"], operations: ["notification.send"], modules: ["crm"] },
+  automations: { wonOnboarding },
+});
+```
+
+**Triggers.**
+
+| `type` | Fields | Fires |
+|---|---|---|
+| `record` | `object`, `on: ["created" \| "updated" \| "deleted" \| "restored"]`, `includeBulk?` | after a record change commits (bulk changes only with `includeBulk`) |
+| `fieldChanged` | `object`, `field`, `from?`, `to?`, `includeBulk?` | when the field changes; `from`/`to` are a value, `{ in: [...] }` or, on the object's stage field, `{ stageType: "open" \| "won" \| "lost" }` |
+| `schedule` | `cron` (5 fields) | in the automation timezone (Settings → Automations) |
+| `dateRelative` | `object`, `field` (date/datetime), `offsetDays` (−365…365) | once a day for each record whose date is that many days away |
+| `manual` | `object`, `label`, `bulk?` | a button on the record page (and a bulk action on lists) |
+| `approvalDecided` | `decision?`, `operation?`, `object?` | when a pending action is approved or rejected |
+
+**Conditions.** `conditions` is a view filter (`{ field, op, value }`, `and`, `or`) on the
+trigger record, checked before a run starts and shown in the summary ("if its status is Open").
+
+**Steps and intents.** Each step has a camelCase `name` (unique) and an optional `label`:
+- `do` (default): `reads`, `writes` (`{ object, action?, count?, titles?, assignTo?,
+  linkedToTrigger? }`), `notifies` (`{ to, message }`, `{record}` = the trigger record's title),
+  `calls` (other operations);
+- `sleep`: `duration` (`"3 days"`, `"90 minutes"`, ms);
+- `waitForEvent`: `event` (letters, digits, `-`, `_`), `timeout?` (default 7 days);
+- `condition`: `label` (the question on the diagram) and `clause?` (how the summary says it).
+
+Recipients: `{ field }` (a `user` field of the trigger record), `{ managerOf }` (that user's
+manager: the admins while users have no manager field), `{ userId }`, `"admins"`, `"actor"` (who
+started a manual run).
+
+**`run(event, step, ctx)`.** `event` has `automation`, `runId`, `trigger`, `record` (`object`,
+`id`, `data`, `title`), `change` (`action`, `diff`), `period`, `manual`, `approval` and `test`.
+`step.do(name, fn)` runs `fn` once and stores its result (a resumed run gets the stored value; a
+throw is retried with backoff); `step.sleep(name, duration)` and `step.waitForEvent(name)` are
+durable waits. Only declared names of the matching kind are allowed. Keep side effects inside
+`step.do`: `run` itself is replayed from the start on every resume. `ctx` is the tool `ctx` plus
+`ctx.notify(to, { title, body?, link?: "record" | "run" })`, which calls `notification.send`
+(needs it in `permissions.operations`) with a per-step dedupe key, so a retried step notifies once.
+
+**`onRejected`.** When a write in a run needs approval the run pauses; if a person rejects it the
+run follows `onRejected`: `"stop"` (default, run cancelled), `"continue"`, or `{ notify, message? }`.
+
+**Rails.** Host maxima: 60 runs/minute and 500 writes/hour per automation (exceeding them pauses
+it and notifies admins), cascade depth 3, no self-retrigger on the same record in one cascade,
+updates to one record debounced. `rails` may only be stricter (`maxRunsPerMinute`,
+`maxWritesPerHour`, `debounceSeconds`).
+
+**Test mode.** `automation.test { id, record }` (also an MCP tool) dry-runs the automation against
+a real record through the simulation overlay: nothing is written, waits are skipped and shown, and
+the report lists the writes, notifications and approvals the real run would make.
+
+**Checks.** `extension.check` reports, among others: unknown objects or fields, a `dateRelative`
+field that is not a date, `{ stageType }` off the stage field, an invalid cron, repeated or
+non-camelCase step names, recipients that are not user fields, writes without write permission,
+notifying without `notification.send`, and waits adding up to more than 365 days.
 
 ## Exports
 
@@ -267,4 +389,4 @@ replace the stand-in AI.
   (`FIELD_TYPES`, `LOSSLESS_TYPE_CHANGES`), the manifest (`toManifest`, `validateManifest`,
   `manifestSchema`), permissions (`checkGrant`) and the sandbox dispatcher (`runExtension`).
 - `@crm/sdk/formula`: `parseFormula`, `compileFormula`, `checkFormula`, `FORMULA_FUNCTIONS`.
-- `@crm/sdk/testing`: `createTestHost`.
+- `@crm/sdk/testing`: `createTestHost` (`runTool`, `runAutomation`).

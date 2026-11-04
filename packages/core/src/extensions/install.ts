@@ -5,6 +5,7 @@
 import type { CoreDatabase } from "@crm/db";
 import { type ExtensionManifest, type ManifestIssue, validateManifest } from "@crm/sdk";
 import type { Kysely } from "kysely";
+import { automationSyncStatements } from "../automations/registry.ts";
 import { dashboardSpecSchema } from "../dashboards/spec.ts";
 import { ConfigError, ValidationError } from "../errors.ts";
 import { listObjects } from "../fields/index.ts";
@@ -291,6 +292,15 @@ export async function installExtension(
       .onConflict((oc) =>
         oc.columns(["extension_id", "commit_oid"]).doUpdateSet({ installed_at: ctx.now }),
       ),
+  );
+  // The extension's automations join the registry (ADR 0130); enabled flags and pauses persist.
+  ctx.write(
+    ...automationSyncStatements(ctx.db, {
+      extensionId: input.id,
+      commit: input.commit,
+      automations: manifest.automations ?? {},
+      now: ctx.now,
+    }),
   );
   return {
     id: input.id,

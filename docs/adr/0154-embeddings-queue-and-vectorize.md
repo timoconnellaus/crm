@@ -89,3 +89,29 @@ for bge-small; re-embedding only on hash changes keeps that to new and edited te
   results immediately after being embedded.
 - In local development and e2e there is no Vectorize: with `AI_FAKE_MODEL=true` crm-app keeps
   vectors in memory per isolate (ADR 0156).
+
+## Amendment, 2026-11-05 (merged with stage 5: embeddings move onto the event queue)
+Stage 5 (ADR 0130) landed while 7a was in review: after every commit the pipeline sends the
+record changes to the `crm-automation-events` queue, consumed by crm-runner in batches of up to
+100 messages. Embeddings now use that path:
+
+- **Where a deployment has Vectorize** (the deploy script binds `VECTORIZE` and `AI` on both
+  Workers), crm-app and crm-runner set `InvocationContext.embedViaEvents`. The pipeline then
+  writes **no** `core_embedding_queue` row: the cost on the write path is zero beyond the event
+  stage 5 already sends. crm-runner's queue handler calls `embedRecordEvents` after dispatching
+  automations. It maps the batch's record changes to records whose embedded text may have changed
+  (the same field rules; an affiliation event re-embeds its person, looked up by id), then embeds
+  only changed hashes, at most 100 per model call. A redelivered batch costs no model call because
+  the hash matches. If the model or Vectorize fails, those records are written to
+  `core_embedding_queue` for the cron to retry, and the queue batch is not failed, so automations
+  are not redelivered for an embedding problem.
+- **Exactly once.** For each write, either the event path embeds it (`embedViaEvents`) or the
+  pipeline queues it in its batch (no Vectorize: local development, e2e, tests and scripts), never
+  both. Erase and sync are unchanged: stage 5 emits no event for an erase (the record is gone), and
+  `sync.ingest` writes activities without record changes, so both still queue their records
+  themselves and crm-app drains right after the commit.
+- crm-app's 10-minute cron still runs the one-time backfill and drains the queue: the failures
+  above, erase, sync, and anything written without `embedViaEvents`.
+- The in-memory vector store of local development lives in crm-app, so locally crm-app keeps the
+  queue path even though events are sent.
+

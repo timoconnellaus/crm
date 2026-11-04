@@ -186,6 +186,37 @@ How stage 3b added authoring ([ADR 0041](adr/0041-extension-authoring-and-propos
   - **Limits.** It needs `records:write`. It runs one script per user at a time and is rate
     limited per user (ADR 0043).
 
+How stage 5 runs automations ([ADR 0130](adr/0130-automation-runtime.md), test mode
+[ADR 0133](adr/0133-automation-test-mode.md)):
+
+```
+ operation commits ─► EventSink (≤100 changes/message, one sendBatch per operation, origin-tagged)
+   ─► Queue crm-automation-events ─► crm-runner queue() ─► dispatchAutomationMessages
+        TriggerSource per message kind (record, approval; 6b: integration)
+        ─► rails: kill switch, depth ≤ 3, cycle, bulk, debounce, conditions, fan-out, rate limits
+        ─► run row (INSERT … ON CONFLICT DO NOTHING on the Workflow id) ─► createBatch
+ crm-runner cron (* * * * *) ─► schedules in the automation timezone, daily date-relative scan
+ AutomationWorkflow: start ─► advance:<n> (executor.runAutomation via LOADER.get) ─► sleep / wait
+        ─► review pause (waitForEvent approval-<actionId>) ─► finish (counters, history)
+```
+
+- **Registry.** `extension.install` syncs `core_automations` from the manifest; the consumer and
+  cron load enabled automations through `core_automations_trigger_idx`.
+- **Replay.** Each advance replays the extension's `run` with the journal of finished steps in the
+  extension's tool worker; one new `step.do` runs per advance, sleeps and waits are Workflow
+  sleeps and waits. Steps act as actor `automation` under the extension principal, with cascade
+  tags on their origin.
+- **Review pause.** A gated write becomes a pending action in one change set per run; the
+  Workflow waits for the decision (approval resumes, rejection follows `onRejected`, expiry ends
+  the run `expired`).
+- **Test mode.** One executor call with `InvocationContext.simulate`: gates recorded, writes
+  dry-run into an in-memory overlay, nothing written, no events.
+- **Operations.** `automation.list/get/test/enable/disable/runs/run/retry/replay/cancel/explain/
+  killSwitch/settings/updateSettings` (`packages/core/src/operations/automation.ts`); crm-app
+  reaches the runner's `AutomationHost` RPC for test, run, retry, replay and cancel.
+- **History.** `core_automation_runs` and `core_automation_run_records`, purged by the daily cron
+  (30 days, failed 90).
+
 ### 5. Integrations
 
 All external access goes through **gatekeepers**: reviewed Workers in the repo that own OAuth, expose
@@ -303,16 +334,17 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   [ADR 0155](adr/0155-hybrid-search-similar-records-and-retrieval.md)):
 
 ```
- write ─► pipeline batch (+ core_embedding_queue rows) ─► onCommitted ─► waitUntil(drain)
-                                                   10-minute cron ─► backfill + drain
+ write ─► pipeline commit ─► stage 5 record events (Queue) ─► crm-runner consumer ─► embedRecordEvents
+         (no Vectorize, erase, sync: core_embedding_queue rows in the batch ─► onCommitted ─► drain)
+                                       10-minute cron (crm-app) ─► backfill + drain retries
  drain: text per record ─► SHA-256 unchanged? skip : embed role (≤100 per call) ─► Vectorize (crm-records)
  search.hybrid: FTS5 (all words, any word) + Vectorize nearest ─► reciprocal rank fusion ─► Cmd-K, retrieval
  record.similar: the record's stored vector ─► Vectorize nearest ─► "Similar records"
 ```
 
   Private and metadata-only synced activities are never embedded; an erase deletes vectors and
-  summaries. The pipeline's post-commit hook (`InvocationContext.onCommitted`) is the seam stage 5's
-  event queue can take over.
+  summaries. Changed records are embedded from stage 5's record events by crm-runner's queue
+  consumer; the D1 queue is only the fallback (ADR 0154 amendment).
 - **Bindings are optional** ([ADR 0156](adr/0156-optional-ai-bindings-and-local-stand-ins.md)):
   `pnpm run deploy` adds `ai` (both Workers) and `vectorize` (crm-app). Without them AI features
   say AI is not configured and search is full-text only. Locally `AI_FAKE_MODEL=true` answers

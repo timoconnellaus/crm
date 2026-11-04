@@ -8,6 +8,7 @@ import type { z } from "zod";
 import type { AiAdmin } from "./ai/admin.ts";
 import type { AiEnv } from "./ai/client.ts";
 import type { VectorStore } from "./ai/vectors.ts";
+import type { AutomationHost, EventSink } from "./automations/types.ts";
 import type { WidgetCache } from "./dashboards/cache.ts";
 import type { FieldDiff } from "./diff.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
@@ -147,6 +148,10 @@ export interface HandlerContext {
   readonly aiAdmin?: AiAdmin;
   /** The AI part of the Worker environment (bindings present, deploy config). */
   readonly aiEnv?: AiEnv;
+  /** Post-commit automation events (ADR 0130), for operations that emit their own (approvals). */
+  readonly events?: EventSink;
+  /** crm-runner's automation host, for automation.* operations. */
+  readonly automationHost?: AutomationHost;
 }
 
 /** The extension an `extension`-actor call runs for, and its approved permissions. */

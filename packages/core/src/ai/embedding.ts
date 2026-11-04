@@ -300,7 +300,85 @@ export async function drainEmbeddingQueue(deps: EmbeddingDeps): Promise<DrainRes
     more,
   };
   if (!rows.length) return result;
+  return embedRows(deps, rows, result, now, "queue");
+}
 
+/**
+ * Embeds records straight from stage 5's record events (ADR 0154 amendment): the event consumer
+ * passes a batch of committed changes, and nothing is written to the queue unless the model or
+ * Vectorize fails, in which case the records are queued for the cron to retry. Changes that do
+ * not affect a record's text are skipped; an affiliation change re-embeds its person.
+ */
+export async function embedRecordEvents(
+  deps: EmbeddingDeps,
+  changes: readonly {
+    object: string;
+    id: string;
+    action: string;
+    diff?: Record<string, unknown>;
+  }[],
+): Promise<DrainResult> {
+  const now = (deps.clock?.() ?? new Date()).toISOString();
+  const refs: EmbeddingRef[] = [];
+  const affiliations: string[] = [];
+  for (const c of changes) {
+    if (c.object === "affiliation") {
+      affiliations.push(c.id);
+      continue;
+    }
+    const action = (
+      { created: "create", updated: "update", deleted: "delete", restored: "restore" } as const
+    )[c.action as "created"];
+    if (!action) continue;
+    const change = { object: c.object, id: c.id, action, ...(c.diff ? { diff: c.diff } : {}) };
+    if (changeAffectsEmbedding(change as RecordChange)) refs.push({ object: c.object, id: c.id });
+  }
+  if (affiliations.length) {
+    const people = await deps.db.query
+      .selectFrom("core_affiliation")
+      .select("person_id")
+      .where("id", "in", jsonList([...new Set(affiliations)].slice(0, 500)))
+      .execute();
+    for (const p of people) refs.push({ object: "person", id: p.person_id });
+  }
+  const unique = [...new Map(refs.map((r) => [`${r.object}\u0000${r.id}`, r])).values()];
+  const result: DrainResult = {
+    taken: unique.length,
+    embedded: 0,
+    unchanged: 0,
+    deleted: 0,
+    failed: 0,
+    more: false,
+  };
+  if (!unique.length) return result;
+  // Same work as a drain round, DRAIN_BATCH records at a time.
+  for (let i = 0; i < unique.length; i += DRAIN_BATCH) {
+    const rows = unique
+      .slice(i, i + DRAIN_BATCH)
+      .map((r) => ({ object_type: r.object, record_id: r.id, queued_at: now }));
+    const part = await embedRows(
+      deps,
+      rows,
+      { taken: rows.length, embedded: 0, unchanged: 0, deleted: 0, failed: 0, more: false },
+      now,
+      "direct",
+    );
+    result.embedded += part.embedded;
+    result.unchanged += part.unchanged;
+    result.deleted += part.deleted;
+    result.failed += part.failed;
+  }
+  return result;
+}
+
+async function embedRows(
+  deps: EmbeddingDeps,
+  rows: readonly { object_type: string; record_id: string; queued_at: string }[],
+  result: DrainResult,
+  now: string,
+  source: "queue" | "direct",
+): Promise<DrainResult> {
+  const { db } = deps;
   const byObject = new Map<string, string[]>();
   for (const r of rows)
     byObject.set(r.object_type, [...(byObject.get(r.object_type) ?? []), r.record_id]);
@@ -400,17 +478,26 @@ export async function drainEmbeddingQueue(deps: EmbeddingDeps): Promise<DrainRes
         ),
       );
     }
-    dequeue(rows);
+    if (source === "queue") dequeue(rows);
   } catch (error) {
     console.error("embedding drain failed", error);
     result.failed = rows.length - result.embedded - result.deleted - result.unchanged;
-    statements.push(
-      sql`UPDATE core_embedding_queue SET attempts = attempts + 1 WHERE (object_type, record_id) IN
+    if (source === "direct") {
+      // Straight from events: queue the batch so the cron retries it.
+      const retry = enqueueEmbeddings(
+        db.query,
+        rows.map((r) => ({ object: r.object_type, id: r.record_id })),
+        now,
+      );
+      if (retry) statements.push(retry);
+    } else
+      statements.push(
+        sql`UPDATE core_embedding_queue SET attempts = attempts + 1 WHERE (object_type, record_id) IN
         (SELECT json_extract(j.value, '$[0]'), json_extract(j.value, '$[1]')
          FROM json_each(${JSON.stringify(rows.map((r) => [r.object_type, r.record_id]))}) j)`.compile(
-        db.query,
-      ),
-    );
+          db.query,
+        ),
+      );
   }
   if (statements.length) await db.batch(statements);
   return result;

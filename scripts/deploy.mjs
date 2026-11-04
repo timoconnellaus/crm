@@ -8,7 +8,7 @@
 //   4. crm-app (bound to the same database and to crm-runner).
 //
 // In-app AI (ADRs 0150-0155) is on by default: both Workers get an `ai` binding (Workers AI) and
-// crm-app a `vectorize` binding (`crm-records`). Neither runs locally, so the committed
+// a `vectorize` binding (`crm-records`). Neither runs locally, so the committed
 // wrangler.jsonc files leave them out (local dev and tests use stand-ins) and this script adds
 // them to a generated `wrangler.deploy.jsonc` next to each one. CRM_AI=off deploys without AI.
 // CRM_VECTORIZE_INDEX names the index (default crm-records).
@@ -122,7 +122,8 @@ if (aiOn) {
       "--type=string",
     ]);
   }
-  runnerConfig = ["--config", deployConfig("apps/runner", { vectorize: false })];
+  // crm-runner's automation events consumer embeds changed records (ADR 0154 amendment).
+  runnerConfig = ["--config", deployConfig("apps/runner", { vectorize: true })];
   appConfigEnv = { CRM_WRANGLER_CONFIG: deployConfig("apps/app", { vectorize: true }) };
 } else {
   console.log("\nCRM_AI=off: deploying without Workers AI and Vectorize bindings");

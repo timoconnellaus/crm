@@ -5,11 +5,13 @@ import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type ActingUser,
+  type AutomationQueueMessage,
   backfillEmbeddingQueue,
   type CommitEvent,
   drainAllEmbeddings,
   drainEmbeddingQueue,
   EMBEDDING_BACKFILL_SETTING,
+  embedRecordEvents,
   invoke,
   type ModelRunner,
   memoryVectorStore,
@@ -283,6 +285,91 @@ describe("erase (ADR 0019)", () => {
       .bind(person.id, `%${person.id}%`)
       .first<{ n: number }>();
     expect(summaries?.n).toBe(0);
+  });
+});
+
+describe("embedding from stage 5 record events (ADR 0154 amendment)", () => {
+  function sink() {
+    const sent: AutomationQueueMessage[] = [];
+    return { sent, events: { send: async (m: AutomationQueueMessage[]) => void sent.push(...m) } };
+  }
+
+  it("writes no queue row when the events consumer embeds, and embeds once from the event", async () => {
+    const { sent, events } = sink();
+    const person = await invoke(
+      "person.create",
+      { displayName: `Event ${unique()}`, location: "Rome" },
+      context(member, { events, embedViaEvents: true }),
+    );
+    expect(await queued()).toEqual([]);
+    const changes = sent.flatMap((m) => (m.kind === "record" ? m.changes : []));
+    expect(changes).toContainEqual(expect.objectContaining({ object: "person", id: person.id }));
+    const first = await embedRecordEvents(deps(), changes);
+    expect(first.embedded).toBe(1);
+    // A redelivered batch costs no model call: the hash matches.
+    const again = await embedRecordEvents(deps(), changes);
+    expect(again).toMatchObject({ embedded: 0, unchanged: 1 });
+    expect(embedCalls).toHaveLength(1);
+
+    // An update to a field that is not embedded is skipped; one that is, is embedded.
+    sent.length = 0;
+    await invoke(
+      "person.update",
+      { id: person.id, timezone: "Europe/Rome" },
+      context(member, { events, embedViaEvents: true }),
+    );
+    expect(
+      (
+        await embedRecordEvents(
+          deps(),
+          sent.flatMap((m) => (m.kind === "record" ? m.changes : [])),
+        )
+      ).taken,
+    ).toBe(0);
+    sent.length = 0;
+    await invoke(
+      "person.update",
+      { id: person.id, location: "Milan" },
+      context(member, { events, embedViaEvents: true }),
+    );
+    expect(
+      (
+        await embedRecordEvents(
+          deps(),
+          sent.flatMap((m) => (m.kind === "record" ? m.changes : [])),
+        )
+      ).embedded,
+    ).toBe(1);
+    expect(await queued()).toEqual([]);
+  });
+
+  it("still queues when events are sent but nothing embeds from them (no Vectorize)", async () => {
+    const { events } = sink();
+    const person = await invoke(
+      "person.create",
+      { displayName: `NoVec ${unique()}` },
+      context(member, { events }),
+    );
+    expect(await queued()).toContainEqual({ object_type: "person", record_id: person.id });
+  });
+
+  it("queues the records for the cron when embedding from events fails", async () => {
+    const { sent, events } = sink();
+    const person = await invoke(
+      "person.create",
+      { displayName: `Retry ${unique()}` },
+      context(member, { events, embedViaEvents: true }),
+    );
+    const failing: ModelRunner = {
+      ...models,
+      embed: async () => Promise.reject(new Error("model down")),
+    };
+    const out = await embedRecordEvents(
+      { db, models: failing, vectors },
+      sent.flatMap((m) => (m.kind === "record" ? m.changes : [])),
+    );
+    expect(out.failed).toBe(1);
+    expect(await queued()).toContainEqual({ object_type: "person", record_id: person.id });
   });
 });
 

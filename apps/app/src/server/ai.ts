@@ -150,9 +150,14 @@ export function aiContextFor(env: AiAppEnv, db: CrmDb) {
   const models = modelsFor(env, db);
   const vectors = vectorStoreFor(env);
   const onCommitted = embeddingHook(db, models, vectors);
+  // With a real Vectorize binding, crm-runner's events consumer embeds committed changes (it has
+  // the same bindings, ADR 0154 amendment); the in-memory dev store is filled here instead.
+  const index = env.VECTORIZE as VectorizeLike | undefined;
+  const viaEvents = Boolean(index && typeof index.query === "function" && models?.embed);
   return {
     ...(models ? { models } : {}),
     ...(vectors ? { vectors } : {}),
+    ...(viaEvents ? { embedViaEvents: true } : {}),
     ...(onCommitted ? { onCommitted } : {}),
     aiAdmin: aiAdminFor(env),
     aiEnv: aiEnvView(env),

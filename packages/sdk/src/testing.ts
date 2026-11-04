@@ -8,11 +8,31 @@
 // The in-memory `crm` module enforces the extension's declared permissions with the host's rules
 // (`checkGrant`) and implements the generic record operations over an in-memory store. Pass
 // `operations` to fake anything else.
+//
+// Automations run in memory too, start to finish, without the Workflow:
+//
+//   const run = await host.runAutomation("wonOnboarding", { record: { object: "deals.deal", id: "d1" } });
+//   expect(run.steps.map((s) => s.name)).toEqual(["createTasks", "notifyOwner", "wait", "notifyManager"]);
+//   expect(run.notifications[0]?.userIds).toEqual(["usr_owner"]);
+//
+// `step.do` runs its function, `step.sleep` and `step.waitForEvent` return at once (recorded with
+// how long they would wait; pass `events` for waitForEvent payloads), and every step name is held
+// to the automation's declarations like the host does. Writes and notifications a step did not
+// declare are listed in `undeclared`.
+import {
+  type AutomationContext,
+  type AutomationEvent,
+  type AutomationStepApi,
+  type AutomationTestStep,
+  durationMs,
+  type NotificationSendInput,
+  notificationInput,
+} from "./automation.ts";
 import type { AiModule, Extension } from "./contract.ts";
 import type { ExtensionManifest, ManifestIssue, ValidateOptions } from "./manifest.ts";
 import { CORE_OBJECT_NAMES, toManifest, validateManifest } from "./manifest.ts";
 import { checkGrant } from "./permissions.ts";
-import { type RawHostModules, runExtension } from "./runtime.ts";
+import { buildContext, type RawHostModules, runExtension } from "./runtime.ts";
 
 type Values = Record<string, unknown> & { id: string };
 type OperationFake = (input: Record<string, unknown>) => unknown;
@@ -26,6 +46,58 @@ export interface TestHostOptions {
   ai?: Partial<AiModule>;
   /** Passed to validateManifest. */
   validate?: ValidateOptions;
+  /**
+   * Users `notification.send` resolves (`{ role: "admin" }`, `managerOf`). Default one admin,
+   * `usr_admin`.
+   */
+  users?: { id: string; role: "admin" | "member" | "viewer" }[];
+}
+
+/** A notification the in-memory `notification.send` delivered. */
+export interface SentNotification extends Omit<NotificationSendInput, "type" | "dedupeKey"> {
+  type: string;
+  dedupeKey: string | null;
+  /** Resolved, deduplicated recipients. */
+  userIds: string[];
+  notes: string[];
+  /** The step that sent it (null: outside a step). */
+  step: string | null;
+}
+
+export interface AutomationRunOptions {
+  /** The trigger record, from the seeded `records`. */
+  record?: { object: string; id: string };
+  change?: AutomationEvent["change"];
+  period?: string;
+  manual?: AutomationEvent["manual"];
+  approval?: AutomationEvent["approval"];
+  /** waitForEvent payloads by step name. Default null (the wait timed out). */
+  events?: Record<string, unknown>;
+  runId?: string;
+  /** `event.test`. Default false: the run writes to the in-memory store. */
+  test?: boolean;
+}
+
+export interface AutomationRunResult {
+  /** False when the declared conditions did not match the trigger record (nothing ran). */
+  matched: boolean;
+  /** What `run` returned. */
+  value: unknown;
+  /** Set when `run` threw (a step failed, or an undeclared step name). */
+  error: { code: string; message: string } | null;
+  /** Every step in the order it ran; waits carry `skippedMs`. */
+  steps: (AutomationTestStep & { calls: TestHost["calls"] })[];
+  /** Record writes the run made (operation, object, the created or changed id). */
+  writes: { step: string | null; operation: string; object: string | null; id: string | null }[];
+  notifications: SentNotification[];
+  /** Effects no declaration covers, e.g. "step notifyOwner wrote task (not in its writes)". */
+  undeclared: string[];
+}
+
+/** Thrown into `run` when it uses a step name it did not declare (the host refuses it too). */
+export class AutomationStepError extends Error {
+  override name = "AutomationStepError";
+  readonly code = "undeclared_step";
 }
 
 export class ExtensionToolError extends Error {
@@ -50,11 +122,19 @@ export interface TestHost {
   logs: { level: string; message: string; data: unknown }[];
   storage: Map<string, unknown>;
   records: Map<string, Map<string, Values>>;
+  /** Every notification sent through the in-memory `notification.send`. */
+  notifications: SentNotification[];
+  /**
+   * Runs automation `name` in memory, start to finish: conditions checked on the trigger
+   * record, waits skipped (and recorded), steps held to the declarations.
+   */
+  runAutomation(name: string, options?: AutomationRunOptions): Promise<AutomationRunResult>;
 }
 
 function riskOf(operation: string): string {
   const verb = operation.split(".").at(-1) ?? "";
-  if (/^(get|list|search|listForRecord|listMine)$/.test(verb)) return "read";
+  if (/^(get|list|search|listForRecord|listMine|sql|global|count|unreadCount)$/.test(verb))
+    return "read";
   if (/^(delete|erase|merge|deleteMany)$/.test(verb)) return "destructive";
   return "write";
 }
@@ -123,6 +203,24 @@ export function createTestHost(extension: Extension, options: TestHostOptions = 
         return value != null;
       case "in":
         return Array.isArray(f.value) && f.value.includes(value);
+      case "not_in":
+        return Array.isArray(f.value) && !f.value.includes(value);
+      case "lt":
+        return value != null && (value as never) < (f.value as never);
+      case "lte":
+        return value != null && (value as never) <= (f.value as never);
+      case "gt":
+        return value != null && (value as never) > (f.value as never);
+      case "gte":
+        return value != null && (value as never) >= (f.value as never);
+      case "contains":
+        return String(value ?? "").includes(String(f.value));
+      case "not_contains":
+        return !String(value ?? "").includes(String(f.value));
+      case "starts_with":
+        return String(value ?? "").startsWith(String(f.value));
+      case "ends_with":
+        return String(value ?? "").endsWith(String(f.value));
       default:
         throw new ExtensionToolError(
           "unsupported",
@@ -172,6 +270,102 @@ export function createTestHost(extension: Extension, options: TestHostOptions = 
     builtIn[`${object}.get`] = (input) => builtIn["record.get"]?.({ ...input, object });
   }
 
+  // Tasks, in the task operations' shape (status, assignee, links).
+  const taskShape = (row: Values) => ({
+    title: null,
+    notes: null,
+    dueAt: null,
+    status: "open",
+    assigneeId: null,
+    links: [],
+    ...row,
+  });
+  const requireTask = (id: unknown) => {
+    const row = table("task").get(String(id));
+    if (!row) throw new ExtensionToolError("not_found", `No task with id ${id}`);
+    return row;
+  };
+  Object.assign(builtIn, {
+    "task.create": (input: Record<string, unknown>) => {
+      sequence += 1;
+      const row: Values = {
+        status: "open",
+        assigneeId: null,
+        links: [],
+        ...input,
+        id: `tsk_test${sequence}`,
+      };
+      table("task").set(row.id, row);
+      return taskShape(row);
+    },
+    "task.get": (input: Record<string, unknown>) => taskShape(requireTask(input.id)),
+    "task.update": (input: Record<string, unknown>) => {
+      const row = { ...requireTask(input.id), ...input } as Values;
+      table("task").set(row.id, row);
+      return taskShape(row);
+    },
+    "task.complete": (input: Record<string, unknown>) => {
+      const row = { ...requireTask(input.id), status: "done" } as Values;
+      table("task").set(row.id, row);
+      return taskShape(row);
+    },
+    "task.list": (input: Record<string, unknown>) => {
+      const linked = (row: Values, filter: unknown): boolean => {
+        const f = filter as { and?: unknown[]; field?: string; value?: unknown } | undefined;
+        if (f?.and) return f.and.every((child) => linked(row, child));
+        if (f?.field !== "linkedRecordId") return matches(row, f);
+        return (row.links as { id: string }[]).some((link) => link.id === f.value);
+      };
+      return {
+        items: [...table("task").values()]
+          .filter((row) => linked(row, input.filter))
+          .map(taskShape),
+        nextCursor: null,
+      };
+    },
+  });
+
+  // notification.send: resolves recipients like the host (managerOf → the admins, with a note,
+  // since users have no manager field) and keeps one notification per (user, dedupeKey).
+  const users = options.users ?? [{ id: "usr_admin", role: "admin" as const }];
+  const notifications: SentNotification[] = [];
+  const delivered = new Set<string>();
+  let currentStep: string | null = null;
+  let observer:
+    | ((operation: string, input: Record<string, unknown>, value: unknown) => void)
+    | null = null;
+  builtIn["notification.send"] = (input) => {
+    const notes: string[] = [];
+    const admins = users.filter((u) => u.role === "admin").map((u) => u.id);
+    const ids: string[] = [];
+    for (const to of input.to as Record<string, unknown>[]) {
+      if (typeof to.userId === "string") ids.push(to.userId);
+      else if (to.role === "admin") ids.push(...admins);
+      else if (typeof to.managerOf === "string") {
+        notes.push("Users have no manager field: sent to the admins instead");
+        ids.push(...admins);
+      } else if (typeof to.field === "string") {
+        const ref = to.record as { object: string; id: string };
+        const value = table(ref.object).get(ref.id)?.[to.field];
+        if (typeof value === "string" && value) ids.push(value);
+        else notes.push(`${ref.object} ${ref.id} has no ${to.field}`);
+      }
+    }
+    const key = typeof input.dedupeKey === "string" ? input.dedupeKey : null;
+    const userIds = [...new Set(ids)].filter((id) => !key || !delivered.has(`${id}\n${key}`));
+    for (const id of userIds) if (key) delivered.add(`${id}\n${key}`);
+    const { dedupeKey: _key, type, ...rest } = input as unknown as NotificationSendInput;
+    notifications.push({
+      ...rest,
+      type: String(type ?? "system.message"),
+      dedupeKey: key,
+      userIds,
+      notes,
+      step: currentStep,
+    });
+    return { sent: userIds.length, userIds, notes };
+  };
+
   const has = (name: string) => manifest.permissions.modules.includes(name as never);
   const raw: RawHostModules = {};
   if (has("crm")) {
@@ -195,7 +389,9 @@ export function createTestHost(extension: Extension, options: TestHostOptions = 
           };
         }
         try {
-          return { ok: true, value: structuredClone(await fake(body)) };
+          const value = structuredClone(await fake(body));
+          observer?.(name, body, value);
+          return { ok: true, value };
         } catch (error) {
           const e = error as { code?: string; message?: string };
           return {
@@ -243,6 +439,191 @@ export function createTestHost(extension: Extension, options: TestHostOptions = 
     };
   }
 
+  async function runAutomation(
+    name: string,
+    run: AutomationRunOptions = {},
+  ): Promise<AutomationRunResult> {
+    const automation = extension.automations?.[name];
+    if (!automation) {
+      throw new ExtensionToolError("unknown_automation", `No automation named ${name}`);
+    }
+    const declared = new Map(automation.steps.map((step) => [step.name, step]));
+    const result: AutomationRunResult = {
+      matched: true,
+      value: null,
+      error: null,
+      steps: [],
+      writes: [],
+      notifications: [],
+      undeclared: [],
+    };
+    let row: Values | undefined;
+    if (run.record) {
+      row = records.get(run.record.object)?.get(run.record.id);
+      if (!row) {
+        throw new ExtensionToolError(
+          "not_found",
+          `Seed ${run.record.object} ${run.record.id} in records to use it as the trigger record`,
+        );
+      }
+    }
+    if (automation.conditions && row && !matches(row, automation.conditions)) {
+      result.matched = false;
+      return result;
+    }
+    const event: AutomationEvent = {
+      automation: `${manifest.id}.${name}`,
+      runId: run.runId ?? "arn_TEST",
+      trigger: automation.trigger.type,
+      ...(run.record && row
+        ? {
+            record: {
+              object: run.record.object,
+              id: run.record.id,
+              data: Object.fromEntries(Object.entries(row).filter(([key]) => key !== "id")),
+              title: titleOf(run.record.object, row),
+            },
+          }
+        : {}),
+      ...(run.change ? { change: run.change } : {}),
+      ...(run.period ? { period: run.period } : {}),
+      ...(run.manual ? { manual: run.manual } : {}),
+      ...(run.approval ? { approval: run.approval } : {}),
+      test: run.test ?? false,
+    };
+
+    const ran = new Set<string>();
+    const claim = (stepName: string, kind: "do" | "sleep" | "waitForEvent") => {
+      const step = declared.get(stepName);
+      if (!step || (step.kind ?? "do") !== kind) {
+        throw new AutomationStepError(
+          `step.${kind}("${stepName}") is not a declared ${kind} step of ${name}; declare it in steps`,
+        );
+      }
+      if (ran.has(stepName)) {
+        throw new AutomationStepError(`Step ${stepName} already ran; each step runs once per run`);
+      }
+      ran.add(stepName);
+      return step;
+    };
+    const declaredWrites = (stepName: string | null) => {
+      const step = stepName ? declared.get(stepName) : undefined;
+      return step && (step.kind ?? "do") === "do"
+        ? ((step as { writes?: { object: string }[] }).writes ?? []).map((w) => w.object)
+        : [];
+    };
+    const declaresNotify = (stepName: string | null) => {
+      const step = stepName ? declared.get(stepName) : undefined;
+      return Boolean((step as { notifies?: unknown[] } | undefined)?.notifies?.length);
+    };
+    const where = (stepName: string | null) =>
+      stepName ? `step ${stepName}` : "run (outside a step)";
+    const notificationsBefore = notifications.length;
+    observer = (operation, input, value) => {
+      if (operation === "notification.send") {
+        if (!declaresNotify(currentStep)) {
+          result.undeclared.push(`${where(currentStep)} sent a notification (not in its notifies)`);
+        }
+        return;
+      }
+      if (riskOf(operation) === "read") return;
+      const object = objectOf(operation, input);
+      const id =
+        value && typeof value === "object" && "id" in value
+          ? String((value as { id: unknown }).id)
+          : null;
+      result.writes.push({ step: currentStep, operation, object, id });
+      if (!object || !declaredWrites(currentStep).includes(object)) {
+        result.undeclared.push(
+          `${where(currentStep)} called ${operation}${object ? ` on ${object}` : ""} (not in its writes)`,
+        );
+      }
+    };
+
+    const pending: Promise<unknown>[] = [];
+    const base = buildContext(extension, raw, pending);
+    const notifyCounts = new Map<string, number>();
+    const ctx: AutomationContext = {
+      ...base,
+      async notify(to, message) {
+        const key = currentStep ?? "run";
+        const n = (notifyCounts.get(key) ?? 0) + 1;
+        notifyCounts.set(key, n);
+        const input = notificationInput(event, to, message, `${key}:${n}`);
+        const sent = await base.crm.call<{ sent: number }>("notification.send", input);
+        return { sent: sent.sent };
+      },
+    };
+    const stepApi: AutomationStepApi = {
+      async do<T>(stepName: string, a: unknown, b?: unknown): Promise<T> {
+        const fn = (typeof a === "function" ? a : b) as () => Promise<T> | T;
+        const step = claim(stepName, "do");
+        if (typeof a === "object" && a !== null) {
+          const intent = a as { writes?: { object: string }[] };
+          const allowed = declaredWrites(step.name);
+          for (const write of intent.writes ?? []) {
+            if (!allowed.includes(write.object)) {
+              throw new AutomationStepError(
+                `step.do("${stepName}") says it writes ${write.object}, but its declaration does not`,
+              );
+            }
+          }
+        }
+        const first = calls.length;
+        currentStep = stepName;
+        try {
+          const value = await fn();
+          result.steps.push({
+            name: stepName,
+            kind: "do",
+            value: value === undefined ? null : structuredClone(value),
+            calls: calls.slice(first),
+          });
+          return value;
+        } finally {
+          currentStep = null;
+        }
+      },
+      async sleep(stepName, duration) {
+        claim(stepName, "sleep");
+        result.steps.push({
+          name: stepName,
+          kind: "sleep",
+          skippedMs: durationMs(duration),
+          calls: [],
+        });
+      },
+      async waitForEvent<T>(stepName: string): Promise<T | null> {
+        const step = claim(stepName, "waitForEvent") as { timeout?: number | string };
+        const value = (run.events?.[stepName] ?? null) as T | null;
+        result.steps.push({
+          name: stepName,
+          kind: "waitForEvent",
+          value,
+          skippedMs: durationMs((step.timeout ?? "7 days") as never),
+          calls: [],
+        });
+        return value;
+      },
+    };
+    try {
+      const value = await automation.run(event, stepApi, ctx);
+      result.value = value === undefined ? null : structuredClone(value);
+    } catch (error) {
+      const e = error as { code?: unknown; message?: unknown };
+      result.error = {
+        code: typeof e.code === "string" ? e.code : "automation_error",
+        message: typeof e.message === "string" ? e.message : String(error),
+      };
+    } finally {
+      observer = null;
+      currentStep = null;
+      await Promise.all(pending);
+    }
+    result.notifications = notifications.slice(notificationsBefore);
+    return result;
+  }
+
   return {
     manifest,
     issues,
@@ -250,6 +631,8 @@ export function createTestHost(extension: Extension, options: TestHostOptions = 
     logs,
     storage,
     records,
+    notifications,
+    runAutomation,
     async runTool<T>(tool: string, input: unknown): Promise<T> {
       const response = await runExtension(extension, { kind: "tool", tool, input }, raw);
       if (!response.ok) {

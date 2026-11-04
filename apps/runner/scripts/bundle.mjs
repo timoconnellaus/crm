@@ -61,6 +61,16 @@ for (const entry of (await readdir(extensionsDir, { withFileTypes: true })).sort
 )) {
   if (!entry.isDirectory()) continue;
   const dir = join(extensionsDir, entry.name);
+  // A folder left behind after an extension is removed (only git-ignored node_modules/.turbo) is
+  // not an extension. Skip it rather than crash dev, test and build.
+  const hasPackage = await stat(join(dir, "package.json")).then(
+    () => true,
+    () => false,
+  );
+  if (!hasPackage) {
+    console.warn(`bundle: skipping extensions/${entry.name} (no package.json)`);
+    continue;
+  }
   const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8"));
   await stat(join(dir, "index.ts"));
   shipped.push({ id: entry.name, version: pkg.version, files: await sourceFiles(dir) });

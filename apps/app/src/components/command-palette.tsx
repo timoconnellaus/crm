@@ -36,7 +36,7 @@ import {
   UserPlusIcon,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
-import { MAIN_NAV, type NavItem, SETTINGS_NAV } from "#/lib/nav";
+import { MAIN_NAV, type NavItem, NOTIFICATIONS_NAV, SETTINGS_NAV } from "#/lib/nav";
 import {
   type HighlightSegment,
   type SearchAdapter,
@@ -216,7 +216,11 @@ export function CommandPalette({
       run: close(() => navigate({ to: "/import" })),
     },
   ];
-  const nav = [...MAIN_NAV, ...SETTINGS_NAV.filter((item) => isAdmin || !item.adminOnly)].map(go);
+  const nav = [
+    ...MAIN_NAV,
+    NOTIFICATIONS_NAV,
+    ...SETTINGS_NAV.filter((item) => isAdmin || !item.adminOnly),
+  ].map(go);
   const themeCommand = (theme: Theme, label: string, icon: LucideIcon): PaletteCommand => ({
     id: `theme:${theme}`,
     label,

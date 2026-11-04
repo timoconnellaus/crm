@@ -3,6 +3,8 @@
 // diffs and reconciles the manifest. `validateManifest` is the contract check `extension.check`
 // runs; it returns structured issues a model can act on.
 import { z } from "zod";
+import { automationManifestSchema } from "./automation.ts";
+import { checkAutomation } from "./automation-check.ts";
 import { checkObjectBehaviour } from "./behaviour.ts";
 import {
   type Extension,
@@ -208,17 +210,6 @@ export const settingManifestSchema = z.object({
 });
 export type SettingManifest = z.infer<typeof settingManifestSchema>;
 
-export const automationManifestSchema = z.object({
-  description: z.string().min(1).max(2000),
-  trigger: z.union([
-    z.object({
-      type: z.enum(["record.created", "record.updated", "record.deleted"]),
-      object: z.string().max(80),
-    }),
-    z.object({ type: z.literal("schedule"), cron: z.string().min(9).max(100) }),
-  ]),
-});
-
 export const permissionsManifestSchema = z.object({
   read: z.array(z.string().max(80)).max(100).default([]),
   write: z.array(z.string().max(80)).max(100).default([]),
@@ -343,7 +334,15 @@ export function toManifest(extension: Extension): ExtensionManifest {
     automations: Object.fromEntries(
       Object.entries(extension.automations ?? {}).map(([name, automation]) => [
         name,
-        { description: automation.description, trigger: automation.trigger },
+        {
+          label: automation.label,
+          description: automation.description,
+          trigger: automation.trigger,
+          ...(automation.conditions ? { conditions: automation.conditions } : {}),
+          steps: automation.steps,
+          ...(automation.onRejected ? { onRejected: automation.onRejected } : {}),
+          ...(automation.rails ? { rails: automation.rails } : {}),
+        },
       ]),
     ),
   };
@@ -433,6 +432,11 @@ export interface ValidateOptions {
   baseFields?: (object: string) => Record<string, FormulaFieldRef>;
   /** Objects that exist outside this extension (`person`, `other.thing`). Default: core only. */
   knownObjects?: readonly string[];
+  /**
+   * Field types of objects outside this extension (installed extensions' objects), for the
+   * automation checks; null when unknown (those checks are skipped). Core objects are built in.
+   */
+  objectFields?: (object: string) => Record<string, FieldTypeName> | null;
 }
 
 /** Formula environment for a set of field manifests (formula fields compile on demand). */
@@ -719,14 +723,11 @@ export function validateManifest(
   }
 
   for (const [name, automation] of Object.entries(m.automations)) {
-    if (!FIELD_NAME_RE.test(name))
-      contract(`automations.${name}`, "Automation names must be camelCase");
-    if ("object" in automation.trigger && !known.has(automation.trigger.object)) {
-      contract(
-        `automations.${name}.trigger.object`,
-        `Unknown object "${automation.trigger.object}"`,
-      );
-    }
+    checkAutomation(
+      { manifest: m, known, objectFields: options.objectFields, contract },
+      name,
+      automation,
+    );
   }
 
   const perms = m.permissions;
