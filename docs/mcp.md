@@ -1,8 +1,8 @@
-# Connecting Claude over MCP
+# Connecting an MCP client
 
-Claude (Claude Desktop, claude.ai and Claude Code) can work in the CRM over the Model Context
-Protocol. It signs in as you, sees what your role allows, and anything risky waits for a person to
-approve it.
+Any MCP client (for example Claude Desktop, claude.ai or Claude Code) can work in the CRM over the
+Model Context Protocol. It signs in as you, sees what your role allows, and anything risky waits
+for a person to approve it. Below, "the client" means the MCP client and the model driving it.
 
 > Screenshots marked `TODO(screenshot)` are still to be captured against a real deployment with
 > Claude Desktop and claude.ai (see the [walkthrough](#walkthrough-connect-claude-desktop-or-claudeai)).
@@ -14,10 +14,10 @@ approve it.
 | Endpoint | `https://<your-deployment>/mcp`, Streamable HTTP transport, stateless. |
 | Sign-in | OAuth 2.1 with dynamic client registration. Sign-in goes through the deployment's identity provider (Better Auth or Cloudflare Access), then a consent page. |
 | Scopes | `read`, `write` and `admin`. `admin` is only offered to admins. What a connection may do is your role ∩ the scopes you granted. Policy changes stay with people whatever the scope. |
-| Tools | About 17 curated tools for everyday work, plus `describe_operations` and `call_operation` for every other operation MCP may reach. |
+| Tools | About 25 curated tools for everyday work, extension authoring and Code Mode, plus `describe_operations` and `call_operation` for every other operation MCP may reach. |
 | Resource | `crm://schema`: objects and fields, operations, their risk classes and whether you may call them. |
 | Approvals | Under the approval policy, a change may come back as `pending_approval` instead of applying. It waits in a Change set until a person approves it in the Approvals inbox. |
-| Provisional IDs | A queued create gets a Provisional ID (`per_pending_…`) that Claude can keep using in the same session. |
+| Provisional IDs | A queued create gets a Provisional ID (`per_pending_…`) that the client can keep using in the same session. |
 | Rate limits | Per Connected app: 120 requests and 30 changes per minute by default. |
 | Tokens | Access tokens last an hour, refresh tokens 30 days. |
 | Revocation | Settings → Connected apps. Revoking stops the app's access and refresh tokens on their next use. |
@@ -37,6 +37,11 @@ The curated tools are generated from the operations registry. Tool names are ope
 | `query_sql` | Read-only SQL (one `SELECT` or `WITH`) over the `crm_*` views |
 | `approval_status` | What happened to queued changes |
 | `changeset_begin`, `changeset_commit` | Group a task's queued changes under one title |
+| `code` | Code Mode: run a short ES module that calls operations through `import { crm } from "codemode:crm"`, as you, under the same approval policy (ADR 0042) |
+| `extension_list`, `extension_read` | Installed extensions, the extension workspace, and extension source (working copy or a commit) |
+| `extension_write`, `extension_check` | Write an extension's working copy; type-check, contract-check and dry-run it |
+| `extension_propose` | Commit the working copy and queue it for approval, with its diff and impact (ADR 0041) |
+| `extension_eject` | Copy a shipped extension into the workspace to take it over |
 | `describe_operations` | List every operation this connection can see, with input schemas and whether it is allowed |
 | `call_operation` | Run any of those by name, through the same permissions, policy and audit |
 
@@ -50,7 +55,7 @@ Some operations are never exposed to MCP. They do not appear in the tool list, i
 `approval.approve`, `approval.reject`, `approval.pendingForRecord`, `connectedApp.register`,
 `connectedApp.revoke`.
 
-Claude can list Connected apps (`connectedApp.list`, and `connectedApp.listAll` for admins) but can
+The client can list Connected apps (`connectedApp.list`, and `connectedApp.listAll` for admins) but can
 never connect or disconnect one, and can never approve its own changes.
 
 ### Sessions
@@ -58,11 +63,11 @@ never connect or disconnect one, and can never approve its own changes.
 The transport is stateless, so the CRM treats the **Connected app** (one OAuth authorization) as
 the MCP session. That has two consequences:
 
-- Two Claude conversations using the same connection share one session: they see the same
+- Two conversations using the same connection share one session: they see the same
   simulated pending changes and fill the same open Change set.
 - Connecting the same client again creates a new session and replaces the old connection.
   Pending actions from the old session stay in the Approvals inbox, but its simulated state is no
-  longer visible to Claude.
+  longer visible to the client.
 
 ## Walkthrough: connect Claude Desktop or claude.ai
 
@@ -200,12 +205,12 @@ Scopes never add to a role. A viewer who grants `write` still cannot write; a me
 offered `admin`, and the server refuses it if a client asks anyway. Changing the approval policy is
 for people only, whatever the scope.
 
-**Allow** records a Connected app and sends you back to Claude. **Deny** sends Claude an
+**Allow** records a Connected app and sends you back to the client. **Deny** sends the client an
 `access_denied` error.
 
 ## Pending approvals
 
-The approval policy (Settings → Approval policy) decides what Claude may do without review.
+The approval policy (Settings → Approval policy) decides what the client may do without review.
 
 | Preset | MCP reads | Single-record writes | Bulk writes | Deletes and merges |
 | --- | --- | --- | --- | --- |
@@ -216,7 +221,7 @@ The approval policy (Settings → Approval policy) decides what Claude may do wi
 An `APPROVAL_FLOOR` set by the deployment can tighten these but never loosen them
 ([deploying.md](deploying.md)).
 
-### What Claude sees
+### What the client sees
 
 When a change goes to review it is **not applied**. The tool returns:
 
@@ -234,12 +239,12 @@ When a change goes to review it is **not applied**. The tool returns:
 }
 ```
 
-The server instructions tell Claude to say plainly that the change is waiting for approval.
+The server instructions tell the client model to say plainly that the change is waiting for approval.
 
-- **Simulation.** Until it is decided, Claude's own reads in the same session (`get`, `list`,
+- **Simulation.** Until it is decided, the client's own reads in the same session (`get`, `list`,
   `search_global`, `activity_listForRecord`) show the change as if it were applied. Nobody else
   sees it: not colleagues, not the UI, not another connection.
-- **Provisional IDs.** A queued create returns a `per_pending_…` id. Claude can log Activities and
+- **Provisional IDs.** A queued create returns a `per_pending_…` id. The client can log Activities and
   create Tasks against it; those queue too and depend on the create.
 - **Dependencies.** Rejecting an action also rejects everything that depends on it. Approving out
   of order is refused.
@@ -382,8 +387,8 @@ permission. Scopes never widen a role; ask an admin.
 `MCP_RATE_LIMIT_WRITES`. The message and `Retry-After` say how long to wait. Raise the vars if
 your usage is legitimate.
 
-**A colleague cannot see the change Claude made.** It is probably pending. Simulated changes are
-only visible to the session that made them. Check the Approvals inbox or ask Claude for
+**A colleague cannot see the change the client made.** It is probably pending. Simulated changes are
+only visible to the session that made them. Check the Approvals inbox or ask the client for
 `approval_status`.
 
 **"per_pending_… is not a pending record in this session".** The Provisional ID was approved,

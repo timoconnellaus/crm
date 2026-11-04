@@ -88,7 +88,7 @@ export const changeSetSchema = z.object({
   userName: z.string().nullable(),
   actor: z.string(),
   explicit: z.boolean(),
-  /** open: still collecting actions. committed: closed by Claude. closed: a person decided. */
+  /** open: still collecting actions. committed: closed by the agent. closed: a person decided. */
   state: z.enum(["open", "committed", "closed"]),
   /** awaiting_review while any action is pending; else done. */
   status: z.enum(["awaiting_review", "done", "empty"]),

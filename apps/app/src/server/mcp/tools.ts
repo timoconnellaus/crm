@@ -93,7 +93,7 @@ export function toolInputSchema(op: AnyOperation): JsonSchema {
 }
 
 /**
- * Many MCP clients (the Claude API among them) refuse a top-level `anyOf`/`oneOf` in a tool's
+ * Many MCP clients and model APIs refuse a top-level `anyOf`/`oneOf` in a tool's
  * input schema, so a union of objects (activity.log's note | email | call | meeting) becomes one
  * object: every variant's properties, a property that differs per variant as an `anyOf` of its
  * forms, and only the properties every variant requires as required. The pipeline still
