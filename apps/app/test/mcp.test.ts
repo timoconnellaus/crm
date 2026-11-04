@@ -52,18 +52,19 @@ describe("tools from the registry (AC2)", () => {
       const tool = tools.find((t) => t.name === op.name.replace(/\./g, "_"));
       expect(tool, op.name).toBeDefined();
       expect(tool?.description?.length ?? 0).toBeGreaterThan(60);
-      const schema = (tool?.inputSchema ?? {}) as {
-        required?: string[];
-        anyOf?: { required?: string[] }[];
-      };
-      const required = schema.required ?? [];
-      const variantsRequire =
-        (schema.anyOf?.length ?? 0) > 0 &&
-        (schema.anyOf ?? []).every((v) => v.required?.includes("reason"));
+      const schema = (tool?.inputSchema ?? {}) as Record<string, unknown>;
+      // Plain objects at the top level: the Claude API refuses top-level anyOf/oneOf.
+      expect(schema.type, op.name).toBe("object");
+      expect(schema.anyOf, op.name).toBeUndefined();
+      expect(schema.oneOf, op.name).toBeUndefined();
       if (op.risk !== "read" && !op.bookkeeping) {
-        expect(required.includes("reason") || variantsRequire, op.name).toBe(true);
+        expect((schema.required as string[]) ?? [], op.name).toContain("reason");
       }
     }
+    const log = tools.find((t) => t.name === "activity_log")?.inputSchema as {
+      properties: Record<string, { enum?: string[] }>;
+    };
+    expect(log.properties.type?.enum).toEqual(["note", "email", "call", "meeting"]);
     expect(names).toContain("describe_operations");
     expect(names).toContain("call_operation");
     for (const hidden of coreRegistry.list().filter((op) => op.mcp?.expose === false)) {

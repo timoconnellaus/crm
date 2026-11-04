@@ -66,20 +66,55 @@ type JsonSchema = Record<string, unknown>;
 export function toolInputSchema(op: AnyOperation): JsonSchema {
   const schema = z.toJSONSchema(op.input, { io: "input", unrepresentable: "any" }) as JsonSchema;
   delete schema.$schema;
-  if (!requiresReason(op)) return schema.type === "object" ? schema : { type: "object", ...schema };
+  if (!requiresReason(op)) return flattenUnion(schema);
   const withReason = (s: JsonSchema): JsonSchema => ({
     ...s,
     type: "object",
     properties: { ...((s.properties as JsonSchema) ?? {}), reason: REASON_SCHEMA },
     required: [...new Set([...((s.required as string[]) ?? []), "reason"])],
   });
-  if (schema.type === "object") return withReason(schema);
+  return withReason(flattenUnion(schema));
+}
+
+/**
+ * Many MCP clients (the Claude API among them) refuse a top-level `anyOf`/`oneOf` in a tool's
+ * input schema, so a union of objects (activity.log's note | email | call | meeting) becomes one
+ * object: every variant's properties, a property that differs per variant as an `anyOf` of its
+ * forms, and only the properties every variant requires as required. The pipeline still
+ * validates against the exact union.
+ */
+export function flattenUnion(schema: JsonSchema): JsonSchema {
+  if (schema.type === "object" && !schema.anyOf && !schema.oneOf) return schema;
   const variants = (schema.anyOf ?? schema.oneOf) as JsonSchema[] | undefined;
-  if (variants) {
-    const { anyOf: _a, oneOf: _o, ...rest } = schema;
-    return { ...rest, type: "object", anyOf: variants.map(withReason) };
+  if (!variants?.length) return { ...schema, type: "object" };
+  const properties: Record<string, JsonSchema[]> = {};
+  for (const variant of variants) {
+    for (const [key, value] of Object.entries((variant.properties as JsonSchema) ?? {})) {
+      const forms = properties[key] ?? [];
+      if (!forms.some((f) => JSON.stringify(f) === JSON.stringify(value))) {
+        forms.push(value as JsonSchema);
+      }
+      properties[key] = forms;
+    }
   }
-  return withReason({ type: "object" });
+  const sets = variants.map((v) => new Set((v.required as string[]) ?? []));
+  const required = [...(sets[0] ?? [])].filter((k) => sets.every((set) => set.has(k)));
+  const { anyOf: _a, oneOf: _o, $schema: _s, ...rest } = schema;
+  return {
+    ...rest,
+    type: "object",
+    properties: Object.fromEntries(
+      Object.entries(properties).map(([key, forms]) => {
+        if (forms.length === 1) return [key, forms[0]];
+        // Discriminators (`type: { const: "note" }` per variant) become one enum.
+        const consts = forms.map((f) => f.const);
+        if (consts.every((c) => typeof c === "string"))
+          return [key, { type: "string", enum: consts }];
+        return [key, { anyOf: forms }];
+      }),
+    ),
+    required,
+  };
 }
 
 /**
