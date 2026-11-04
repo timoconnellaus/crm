@@ -1,0 +1,121 @@
+# Releases (ADR 0053, ADR 0160-0162): push a tag vX.Y.Z (stable) or vX.Y.Z-beta.N (beta).
+#
+#   build      reproducible bundle (built twice, hashes compared), golden manifest test
+#   attest     GitHub build provenance for the bundle and the manifest
+#   draft      a draft GitHub Release with the assets, SHA256SUMS and the changelog
+#   smoke      install-test.yml against the built bundle (skips cleanly without the test account)
+#   publish    the draft goes public; stable releases become "latest", betas are pre-releases
+#
+# Everything a deployment downloads comes from the published release, and is verified against
+# SHA256SUMS and the attestation made here (create-crm and Settings → Updates refuse anything else).
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, attest and draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Version from the tag
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
+            echo "::error::$tag is not vX.Y.Z or vX.Y.Z-beta.N"; exit 1
+          fi
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          if [[ "$tag" == *-beta.* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"; else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Release tooling tests (golden manifest, verification, CLI)
+        run: pnpm --filter @crm/release --filter @crm/release-scripts --filter create-crm test
+
+      - name: Build the release
+        run: node scripts/release/build-release.ts --version "${{ steps.version.outputs.version }}" --out release-out
+
+      - name: Reproducibility (a second, uncached build must hash identically)
+        env:
+          TURBO_FORCE: "true"
+        run: |
+          node scripts/release/build-release.ts --version "${{ steps.version.outputs.version }}" --out release-check
+          diff release-out/SHA256SUMS release-check/SHA256SUMS
+          echo "Reproducible:"; cat release-out/SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            release-out/crm-*.tar.gz
+            release-out/crm-*.manifest.json
+
+      - name: Changelog from PR titles
+        run: node scripts/release/changelog.ts --tag "${GITHUB_REF_NAME}" > release-notes.md
+
+      - name: Draft the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=(--draft --title "${GITHUB_REF_NAME}" --notes-file release-notes.md --verify-tag)
+          if [[ "${{ steps.version.outputs.prerelease }}" == "true" ]]; then flags+=(--prerelease); fi
+          gh release create "${GITHUB_REF_NAME}" "${flags[@]}" release-out/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle
+          path: release-out
+          retention-days: 30
+
+  smoke:
+    name: Smoke install (real Cloudflare account)
+    needs: build
+    uses: ./.github/workflows/install-test.yml
+    with:
+      to_version: ${{ needs.build.outputs.version }}
+      bundle_artifact: release-bundle
+    secrets: inherit
+
+  publish:
+    name: Publish
+    needs: [build, smoke]
+    if: ${{ always() && needs.build.result == 'success' && (needs.smoke.result == 'success' || needs.smoke.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [[ "${{ needs.build.outputs.prerelease }}" == "true" ]]; then
+            gh release edit "${GITHUB_REF_NAME}" --draft=false --prerelease
+          else
+            gh release edit "${GITHUB_REF_NAME}" --draft=false --latest
+          fi
