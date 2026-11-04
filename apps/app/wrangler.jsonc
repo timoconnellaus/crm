@@ -25,6 +25,11 @@
   // .dev.vars.example and docs/deploying.md.
   "secrets": { "required": ["BETTER_AUTH_SECRET"] },
   "services": [{ "binding": "RUNNER", "service": "crm-runner" }],
+  // Automation events (ADR 0130): committed record changes and approval decisions go to this
+  // queue; crm-runner consumes it and starts automation runs.
+  "queues": {
+    "producers": [{ "binding": "AUTOMATION_EVENTS", "queue": "crm-automation-events" }]
+  },
   // Synced email bodies (ADR 0112), shared with crm-runner: D1 keeps a snippet only.
   "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "crm-blobs" }],
   // OAuth 2.1 for /mcp (ADR 0021): clients, grants and hashed tokens. Provisioned by name on

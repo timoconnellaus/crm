@@ -10,11 +10,15 @@ export * from "./field-types.ts";
 export * from "./manifest.ts";
 export * from "./permissions.ts";
 export {
+  type AutomationRunValue,
+  AutomationStepError,
+  buildAutomationContext,
   buildContext,
   CrmCallError,
   type CrmReply,
   type RawHostModules,
   type RunRequest,
   type RunResponse,
+  runAutomation,
   runExtension,
 } from "./runtime.ts";

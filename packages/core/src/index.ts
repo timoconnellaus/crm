@@ -1,8 +1,14 @@
 // @crm/core: the operations registry and everything an operation needs. See README.md.
 
-export { DEFAULT_APPROVAL_EXPIRY_DAYS } from "./approvals/queue.ts";
+export { DEFAULT_APPROVAL_EXPIRY_DAYS, runSessionKey } from "./approvals/queue.ts";
 export { isSimulatedRead } from "./approvals/simulation.ts";
+export * from "./automations/cron.ts";
+export * from "./automations/events.ts";
+export * from "./automations/records.ts";
+export * from "./automations/registry.ts";
 export * from "./automations/schemas.ts";
+export * from "./automations/simulate.ts";
+export * from "./automations/sources.ts";
 export * from "./automations/summary.ts";
 export * from "./automations/types.ts";
 export * from "./dashboards/cache.ts";
@@ -43,6 +49,7 @@ export * from "./operations/activity.ts";
 export * from "./operations/affiliation.ts";
 export * from "./operations/approval.ts";
 export * from "./operations/audit.ts";
+export * from "./operations/automation.ts";
 export * from "./operations/code.ts";
 export * from "./operations/connected-app.ts";
 export * from "./operations/count.ts";

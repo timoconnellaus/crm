@@ -4,6 +4,8 @@
 // runs proceed in parallel; git, working copies and the build cache stay in the workspace DO.
 import { WorkerEntrypoint } from "cloudflare:workers";
 import {
+  type AutomationQueueMessage,
+  type AutomationTestReport,
   type CodeResult,
   type EvaluateResult,
   type ExtensionHost,
@@ -15,6 +17,7 @@ import {
   type RunToolResult,
   type ShippedExtension,
   type ShippedInstallResult,
+  type StartRunInput,
   vendorBinding,
   type WorkingCopy,
   type WorkingCopyOptions,
@@ -22,12 +25,24 @@ import {
   type WorkspaceWrite,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
+import { dispatchAutomationMessages } from "./automations/dispatch.ts";
+import { automationHost } from "./automations/host.ts";
+import { runAutomationCron } from "./automations/schedule.ts";
 import { Executor, type ExecutorOptions } from "./executor/executor.ts";
 import type { HelloOutput } from "./hello-workflow.ts";
 import { fakeProviderFetch } from "./integrations/fake.ts";
 import { availableVendors, integrationRuntime } from "./integrations/runtime.ts";
 import type { PingResult, RunnerRpc, WorkflowRunStatus } from "./rpc.ts";
 
+export {
+  type AutomationRunParams,
+  type CandidateOrigin,
+  chainKey,
+  dispatchAutomationMessages,
+  type StartResult,
+  startRuns,
+} from "./automations/dispatch.ts";
+export { AutomationWorkflow } from "./automations/workflow.ts";
 export { CodeModeGate } from "./executor/code-gate.ts";
 export { ExtensionWorkspace } from "./extensions/workspace.ts";
 export { HelloWorkflow } from "./hello-workflow.ts";
@@ -172,6 +187,49 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
     }
     const binding = (this.env as unknown as Record<string, Fetcher>)[vendorBinding(vendor)];
     return binding ? binding.fetch(request) : new Response("Not found", { status: 404 });
+  }
+
+  // AutomationHost (ADR 0130): automation.test, run, retry, replay and cancel from crm-app.
+  testAutomation(input: {
+    automationId: string;
+    record?: { object: string; id: string };
+    userId: string;
+  }): Promise<AutomationTestReport> {
+    return automationHost(this.env).testAutomation(input);
+  }
+  startManualRun(input: StartRunInput): Promise<{ runIds: string[]; skipped: number }> {
+    return automationHost(this.env).startManualRun(input);
+  }
+  retryRun(runId: string): Promise<{ runId: string }> {
+    return automationHost(this.env).retryRun(runId);
+  }
+  replayRun(runId: string): Promise<{ runId: string }> {
+    return automationHost(this.env).replayRun(runId);
+  }
+  cancelRun(runId: string): Promise<{ runId: string }> {
+    return automationHost(this.env).cancelRun(runId);
+  }
+
+  /**
+   * The automation events consumer (ADR 0130): a batch at a time. A failed batch is retried
+   * (and dead-lettered after max_retries); run creation is idempotent, so a retry never doubles.
+   */
+  override async queue(batch: MessageBatch<AutomationQueueMessage>): Promise<void> {
+    try {
+      await dispatchAutomationMessages(
+        this.env,
+        batch.messages.map((m) => m.body),
+      );
+      batch.ackAll();
+    } catch (error) {
+      console.error("automation events: batch failed, retrying", error);
+      batch.retryAll({ delaySeconds: 10 });
+    }
+  }
+
+  /** `* * * * *`: schedules and the daily date-relative scan (ADR 0130). */
+  override async scheduled(controller: ScheduledController): Promise<void> {
+    await runAutomationCron(this.env, new Date(controller.scheduledTime));
   }
 
   override async fetch(_request: Request): Promise<Response> {

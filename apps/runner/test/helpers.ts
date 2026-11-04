@@ -8,6 +8,7 @@ import {
   newId,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
+import { automationHost } from "../src/automations/host.ts";
 import { extensionHost } from "../src/index.ts";
 
 export const db = createCrmDb(env.DB);
@@ -35,7 +36,15 @@ export function context(
   user: ActingUser,
   overrides: Partial<InvocationContext> & { actor?: Actor } = {},
 ): InvocationContext {
-  return { actor: "human", user, origin: { surface: "ui" }, db, extensionHost: host, ...overrides };
+  return {
+    actor: "human",
+    user,
+    origin: { surface: "ui" },
+    db,
+    extensionHost: host,
+    automationHost: automationHost(env),
+    ...overrides,
+  };
 }
 
 export function call<T = unknown>(user: ActingUser, name: string, input: unknown): Promise<T> {

@@ -275,8 +275,8 @@ export interface AutomationTestReport {
   matched: boolean;
   matchReason: string;
   steps: (AutomationTestStep & { operations: RunOperationRecord[]; logs: string[] })[];
-  /** Records it would create / change (simulated: provisional ids). */
-  writes: { object: string; id: string; action: string; title: string | null }[];
+  /** Records it would create / change (simulated: provisional ids); `for`: a task's assignee. */
+  writes: { object: string; id: string; action: string; title: string | null; for?: string }[];
   notifications: TestNotification[];
   /** Operations that would need approval under the current policy. */
   approvals: { operation: string; reason: string; bulkSize: number }[];
