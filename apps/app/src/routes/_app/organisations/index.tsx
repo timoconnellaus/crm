@@ -36,7 +36,7 @@ function OrganisationsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/organisations/" });
   const setSearch = useCallback(
-    (next: ViewSearch) => navigate({ search: next, replace: true }),
+    (update: (current: ViewSearch) => ViewSearch) => navigate({ search: update, replace: true }),
     [navigate],
   );
   const view = useViewState({

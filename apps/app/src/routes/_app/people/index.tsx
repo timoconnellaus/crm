@@ -30,7 +30,7 @@ function PeoplePage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/people/" });
   const setSearch = useCallback(
-    (next: ViewSearch) => navigate({ search: next, replace: true }),
+    (update: (current: ViewSearch) => ViewSearch) => navigate({ search: update, replace: true }),
     [navigate],
   );
   const view = useViewState({

@@ -59,7 +59,8 @@ export interface DataTableProps<Row extends { id: string }> {
   /** Extra fields to fetch for renderers (e.g. `organisationId` for a link). */
   extraFields?: readonly string[];
   sort: Sort;
-  onSortChange: (sort: Sort) => void;
+  /** Called with an updater from the current sort (a `useState` setter fits). */
+  onSortChange: (update: (current: Sort) => Sort) => void;
   filter?: Filter;
   /** Custom cell renderers by field name; others use DefaultCell (by field type). */
   renderCell?: Partial<Record<string, (row: Row) => ReactNode>>;
@@ -177,8 +178,13 @@ export function DataTable<Row extends { id: string }>({
 
   function onHeaderClick(field: FieldDefinition) {
     if (!field.sortable) return;
-    if (sort.field !== field.name) onSortChange({ field: field.name, direction: "asc" });
-    else onSortChange({ field: field.name, direction: sort.direction === "asc" ? "desc" : "asc" });
+    // Toggle against the current sort when the change applies, not the rendered `sort`: a second
+    // quick click can land before the parent re-renders with the first one's result.
+    onSortChange((current) =>
+      current.field !== field.name
+        ? { field: field.name, direction: "asc" }
+        : { field: field.name, direction: current.direction === "asc" ? "desc" : "asc" },
+    );
   }
 
   return (

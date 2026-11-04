@@ -8,6 +8,9 @@
 import { type Filter, filterSchema, type ObjectDefinition, type Sort } from "@crm/core/client";
 import { useCallback, useMemo } from "react";
 
+/** A new sort, or a function of the current one (e.g. a header click toggling direction). */
+export type SortUpdate = Sort | ((current: Sort) => Sort);
+
 export interface ViewState {
   filter: Filter | undefined;
   sort: Sort;
@@ -108,8 +111,14 @@ export interface UseViewStateOptions<S extends ViewSearch> {
   defaults: ViewDefaults;
   /** The route's current search params (`Route.useSearch()`). */
   search: S;
-  /** Writes new search params (e.g. `(s) => navigate({ search: s, replace: true })`). */
-  setSearch: (search: S) => void;
+  /**
+   * Writes new search params from the current ones, e.g.
+   * `(update) => navigate({ search: update, replace: true })`. It takes an updater rather than a
+   * value because two quick changes (a double click on a sortable header) can both happen before
+   * the route re-renders with the first: the router resolves `update` against its latest
+   * (pending) location, so the second change builds on the first instead of on stale props.
+   */
+  setSearch: (update: (current: S) => S) => void;
 }
 
 export interface ViewStateApi {
@@ -117,7 +126,7 @@ export interface ViewStateApi {
   /** The saved view the state was loaded from, if the URL names one. */
   viewId: string | undefined;
   setFilter: (filter: Filter | undefined) => void;
-  setSort: (sort: Sort | undefined) => void;
+  setSort: (sort: SortUpdate | undefined) => void;
   setColumns: (columns: string[]) => void;
   /** Replaces the whole state, e.g. from a saved view. */
   apply: (state: Partial<ViewState>, viewId?: string) => void;
@@ -138,33 +147,50 @@ export function useViewState<S extends ViewSearch>({
     [object, search, defaults],
   );
 
+  /** Writes the state `next` computes from the current URL's state (see `setSearch`). */
   const write = useCallback(
-    (next: ViewState, viewId: string | undefined) => {
-      // Keep params the route owns besides the view ones (e.g. a dialog flag).
-      const { filter: _f, sort: _s, cols: _c, view: _v, ...rest } = search;
-      const view = viewStateToSearch(next, defaults);
-      setSearch({ ...rest, ...view, ...(viewId ? { view: viewId } : {}) } as S);
+    (
+      next: (current: ViewState) => ViewState,
+      viewId: (current: string | undefined) => string | undefined = (current) => current,
+    ) => {
+      setSearch((current) => {
+        // Keep params the route owns besides the view ones (e.g. a dialog flag).
+        const { filter: _f, sort: _s, cols: _c, view: _v, ...rest } = current;
+        const id = viewId(current.view);
+        const view = viewStateToSearch(
+          next(searchToViewState(object, current, defaults)),
+          defaults,
+        );
+        return { ...rest, ...view, ...(id ? { view: id } : {}) } as S;
+      });
     },
-    [search, defaults, setSearch],
+    [object, defaults, setSearch],
   );
 
   return {
     state,
     viewId: search.view,
-    setFilter: (filter) => write({ ...state, filter }, search.view),
-    setSort: (sort) => write({ ...state, sort: sort ?? defaults.sort }, search.view),
-    setColumns: (columns) => write({ ...state, columns }, search.view),
+    setFilter: (filter) => write((current) => ({ ...current, filter })),
+    setSort: (sort) =>
+      write((current) => ({
+        ...current,
+        sort: (typeof sort === "function" ? sort(current.sort) : sort) ?? defaults.sort,
+      })),
+    setColumns: (columns) => write((current) => ({ ...current, columns })),
     apply: (partial, viewId) =>
       write(
-        {
+        () => ({
           filter: partial.filter,
           sort: partial.sort ?? defaults.sort,
           columns: partial.columns ?? [...defaults.columns],
-        },
-        viewId,
+        }),
+        () => viewId,
       ),
     reset: () =>
-      write({ filter: undefined, sort: defaults.sort, columns: [...defaults.columns] }, undefined),
+      write(
+        () => ({ filter: undefined, sort: defaults.sort, columns: [...defaults.columns] }),
+        () => undefined,
+      ),
     isDirty: Object.keys(viewStateToSearch(state, defaults)).length > 0,
   };
 }
