@@ -61,10 +61,10 @@ function importError(error: unknown): { message: string; gate: boolean } {
         gate: true,
       };
     }
-    if (error.code === "review_not_supported") {
+    if (error.code === "pending_approval") {
       return {
         message:
-          "This import is above the policy's bulk threshold and needs approval, and approvals are not available yet. Import fewer rows at a time, or ask an admin to change the approval policy.",
+          "This import needs approval under the deployment's approval floor. It has been queued in the Approvals inbox and will run once someone approves it.",
         gate: true,
       };
     }

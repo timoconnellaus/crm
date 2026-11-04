@@ -15,8 +15,8 @@ import {
   invokeByName,
   invokeOperation,
   newId,
+  PendingApprovalError,
   parseFloor,
-  ReviewNotYetSupportedError,
   UnknownOperationError,
   ValidationError,
 } from "../src/index.ts";
@@ -122,7 +122,7 @@ describe("gate", () => {
     });
   });
 
-  it("returns a typed not-yet-supported error for review, and writes nothing", async () => {
+  it("queues a reviewed call as a pending action, and writes no record", async () => {
     await setPreset("cautious");
     const name = unique("Reviewed");
     const error = await invoke(
@@ -130,8 +130,8 @@ describe("gate", () => {
       { displayName: name },
       context(member, { actor: "assistant" }),
     ).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(ReviewNotYetSupportedError);
-    expect((error as ReviewNotYetSupportedError).code).toBe("review_not_supported");
+    expect(error).toBeInstanceOf(PendingApprovalError);
+    expect((error as PendingApprovalError).code).toBe("pending_approval");
     const count = await env.DB.prepare(
       "SELECT COUNT(*) AS n FROM core_person WHERE display_name = ?",
     )

@@ -3,7 +3,9 @@
 // One line per object so parallel changes merge cleanly.
 import { activityOperations } from "./activity.ts";
 import { affiliationOperations } from "./affiliation.ts";
+import { approvalOperations } from "./approval.ts";
 import { auditOperations } from "./audit.ts";
+import { connectedAppOperations } from "./connected-app.ts";
 import { exportOperations } from "./export.ts";
 import { importOperations } from "./import.ts";
 import { organisationOperations } from "./organisation.ts";
@@ -32,4 +34,6 @@ export const coreOperations = [
   ...queryOperations,
   ...importOperations,
   ...exportOperations,
+  ...approvalOperations,
+  ...connectedAppOperations,
 ] as const;

@@ -375,6 +375,7 @@ export const personCreate = defineOperation({
   output: personSchema,
   permission: "records:write",
   risk: "write",
+  mcp: { curated: true },
   async handler(input, ctx) {
     const emails = normaliseEmails(input.emails ?? []);
     const phones = normalisePhones(input.phones ?? []);
@@ -451,7 +452,7 @@ export const personGet = defineOperation({
   output: personSchema,
   permission: "records:read",
   risk: "read",
-  mcp: { idempotent: true },
+  mcp: { curated: true, idempotent: true },
   async handler(input, ctx) {
     return requirePerson(ctx.db, input.id, { includeDeleted: input.includeDeleted });
   },
@@ -468,6 +469,7 @@ export const personUpdate = defineOperation({
   output: personSchema,
   permission: "records:write",
   risk: "write",
+  mcp: { curated: true },
   async handler(input, ctx) {
     const before = await requirePerson(ctx.db, input.id);
     const after: Person = { ...before, updatedAt: ctx.now };
@@ -676,6 +678,7 @@ export const personChangeJob = defineOperation({
   }),
   permission: "records:write",
   risk: "write",
+  mcp: { curated: true },
   async handler(input, ctx) {
     const person = await requirePerson(ctx.db, input.personId);
     const organisation = await requireLiveOrganisation(ctx.db, input.organisationId);

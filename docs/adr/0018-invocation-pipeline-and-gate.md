@@ -116,3 +116,20 @@ linked to that record, in the same batch.
   links, task tags and search entries go by cascade and trigger. A live activity or task linked
   to a purged record is kept and loses only that link. Each purged record gets an `erase` change
   row, as before.
+
+## Amendment, 2026-11-04 (stage 2: MCP and the approval queue)
+- **Balanced for `mcp`.** Every `bulk-write`, `destructive` and merge (merges are `destructive`)
+  call by an MCP client goes to review, whatever its size; reads and single-record creates and
+  updates stay `auto`. This replaces the `auto ≤ 25` bulk threshold for `mcp` in the table above.
+  The `assistant` actor keeps its stage-1 values until stage 7. Cautious (every MCP write
+  reviewed) and Autonomous are unchanged.
+- **`review` queues instead of refusing.** `ReviewNotYetSupportedError` is gone. A `review`
+  outcome dry-runs the handler and records a pending action (ADR 0022, ADR 0032); the caller gets
+  `PendingApprovalError` (`pending_approval`), whose details are the pending result MCP returns
+  as a normal tool result. The audit row has outcome `review` and links the pending action
+  (`core_audit.pending_action_id`, migration 0010).
+- **Token scopes.** The invocation context can carry `grantedPermissions` (an MCP token's scopes);
+  the call needs its permission in both the role and that list.
+- **Approved re-runs.** An approved action re-runs through the whole pipeline with
+  `ctx.approval`; `deny` still refuses it, `review` proceeds, and it fails with a conflict if a
+  previewed field changed meanwhile (ADR 0032).

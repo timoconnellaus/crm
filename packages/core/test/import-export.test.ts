@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 import {
   ForbiddenError,
   invoke,
+  PendingApprovalError,
   parseCsv,
-  ReviewNotYetSupportedError,
   suggestMapping,
   toCsv,
   tryNormaliseDomain,
@@ -439,7 +439,7 @@ describe("import.csv: people", () => {
           { object: "person", csv: rowsFor(30) },
           context(member, { actor: "assistant" }),
         ),
-      ).rejects.toBeInstanceOf(ReviewNotYetSupportedError);
+      ).rejects.toBeInstanceOf(PendingApprovalError);
       const refused = (await auditRows("import.csv.commit", member.id)).at(-1);
       expect(refused?.outcome).toBe("review");
       // Humans are never gated.

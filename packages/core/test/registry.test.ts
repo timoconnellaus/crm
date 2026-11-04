@@ -40,10 +40,39 @@ describe("core registry", () => {
       });
 
       it("read operations use a read permission", () => {
-        if (op.risk === "read") expect(["records:read", "audit:read"]).toContain(op.permission);
+        if (op.risk === "read") {
+          expect(["records:read", "audit:read", "users:manage"]).toContain(op.permission);
+        }
+      });
+
+      it("is not both curated for MCP and hidden from it", () => {
+        if (op.mcp?.curated) expect(op.mcp.expose).not.toBe(false);
       });
     });
   }
+
+  it("curates about 15 MCP tools, each with a model-facing description", () => {
+    const curated = coreOperations.filter((op) => op.mcp?.curated);
+    expect(curated.length).toBeGreaterThanOrEqual(12);
+    expect(curated.length).toBeLessThanOrEqual(20);
+    for (const op of curated) expect(op.description.trim().length).toBeGreaterThanOrEqual(60);
+  });
+
+  it("hides erase, role changes, purge, policy changes and approvals from MCP", () => {
+    for (const name of [
+      "person.erase",
+      "organisation.erase",
+      "user.updateRole",
+      "trash.purge",
+      "policy.update",
+      "approval.approve",
+      "approval.reject",
+      "connectedApp.revoke",
+      "connectedApp.register",
+    ]) {
+      expect(coreRegistry.get(name)?.mcp?.expose, name).toBe(false);
+    }
+  });
 
   it("can look operations up by name", () => {
     expect(coreRegistry.get("person.create")?.name).toBe("person.create");

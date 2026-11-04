@@ -446,7 +446,7 @@ export const querySql = defineOperation({
   }),
   permission: "records:read",
   risk: "read",
-  mcp: { idempotent: true },
+  mcp: { curated: true, idempotent: true },
   async handler(input, ctx) {
     const schema = await sql<{ name: string }>`SELECT name FROM sqlite_master`.execute(ctx.db);
     const checked = validateReadOnlySql(input.sql, new Set(schema.rows.map((r) => r.name)));

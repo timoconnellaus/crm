@@ -17,3 +17,12 @@ Status: accepted, 2026-11-04 (stage 2 interview).
 
 ## Why
 Every tool costs context in every conversation, and about 60 near-identical tools hurt tool choice. Curated tools cover common work, while the generic pair reaches everything through the same schemas and gate.
+
+## Amendment, 2026-11-04 (stage 2 build)
+- The handler is the Agents SDK's stateless `createMcpHandler` on MCP SDK v2 (`McpAgent` is
+  deprecated). MCP sessions are connected apps (ADR 0032).
+- The curated flag is `mcp: { curated: true }` inside the existing `McpOptions` object rather than
+  `mcp: "curated"`, so curated operations keep their other MCP hints (`idempotent`, `title`).
+- Tool names replace `.` with `_` (`person.create` → `person_create`): MCP clients such as the
+  Claude API accept only letters, digits, `_` and `-` in tool names. `describe_operations` and
+  `call_operation` use the dotted operation names.
