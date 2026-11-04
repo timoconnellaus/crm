@@ -46,7 +46,8 @@ _Avoid_: dedupe (that is finding duplicates), combine
 An admin-only hard delete for GDPR requests (`person.erase`, `organisation.erase`). Unlike a purge
 it also **redacts** the audit log: content that mentions the record becomes `"[erased]"` (ADR 0019).
 Activities and tasks only about the record are deleted; shared ones are scrubbed of its emails,
-phone numbers and id, and the search index is purged of it.
+phone numbers and id, and the search index is purged of it. Pending actions that touch or mention
+it are redacted, and rejected if still waiting.
 _Avoid_: purge (that is retention), delete (that is soft)
 
 **Activity**
@@ -95,8 +96,12 @@ _Avoid_: draft, proposal, request
 **Change set**
 The pending actions a person reviews together. By default one per MCP session; Claude can open a
 titled one with `changeset.begin` and finish it with `changeset.commit`. It is approved or
-rejected whole or item by item in the Approvals inbox.
+rejected whole or item by item in the **Approvals inbox** (`/approvals`).
 _Avoid_: batch (that is a `*Many` operation), transaction
+
+**Pending-change badge**
+The badge on a record's header and list row while a pending action would change it. Its popover
+lists the actions and links to their change set. The record itself still shows real data.
 
 **Provisional ID**
 The id a pending create gives its record (`per_pending_…`) so later pending actions in the same
