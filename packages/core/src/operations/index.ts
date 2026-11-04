@@ -4,10 +4,12 @@
 import { activityOperations } from "./activity.ts";
 import { personOperations } from "./person.ts";
 import { policyOperations } from "./policy.ts";
+import { taskOperations } from "./task.ts";
 
 // biome-ignore format: one spread per line keeps parallel additions conflict-free.
 export const coreOperations = [
   ...personOperations,
   ...policyOperations,
   ...activityOperations,
+  ...taskOperations,
 ] as const;

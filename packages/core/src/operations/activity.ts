@@ -227,15 +227,13 @@ function queueLinks(
   ctx.write(ctx.db.deleteFrom("core_activity_links").where("activity_id", "=", activityId));
   if (refs.length) {
     ctx.write(
-      ctx.db
-        .insertInto("core_activity_links")
-        .values(
-          refs.map((ref) => ({
-            activity_id: activityId,
-            object_type: ref.object,
-            record_id: ref.id,
-          })),
-        ),
+      ctx.db.insertInto("core_activity_links").values(
+        refs.map((ref) => ({
+          activity_id: activityId,
+          object_type: ref.object,
+          record_id: ref.id,
+        })),
+      ),
     );
   }
 }

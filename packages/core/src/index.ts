@@ -13,6 +13,7 @@ export * from "./operations/activity.ts";
 export { coreOperations } from "./operations/index.ts";
 export * from "./operations/person.ts";
 export * from "./operations/policy.ts";
+export * from "./operations/task.ts";
 export { type InvocationContext, invokeOperation, redactInput } from "./pipeline.ts";
 export * from "./principals.ts";
 export * from "./records/links.ts";
