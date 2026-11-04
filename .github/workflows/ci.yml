@@ -27,6 +27,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # Wall-clock-sensitive vendored tests, run alone so CPU contention doesn't fail them.
+      - run: pnpm --filter @crm/gatekeeper-microsoft test:timing
 
   e2e:
     name: E2E smoke (Playwright)

@@ -77,4 +77,4 @@ Follow the procedure in [`../gatekeeper-kit/UPSTREAM.md`](../gatekeeper-kit/UPST
 Compare upstream's generated `wrangler.jsonc` and the bindings in its workerd vitest config with
 ours, by hand.
 
-- **Test retries (local change, 2026-11-04).** `vitest.config.ts` sets `retry: 2` because wall-clock assertions in `outlook-content.test.ts` and `content/pathological.test.ts` flake on shared CI runners. The test files are unchanged.
+- **Timing tests run separately (local change, 2026-11-04).** Wall-clock assertions in `outlook-content.test.ts` ("well under a second") and `content/pathological.test.ts` ("without scanning it again…") fail under repo-wide parallel test load. `vitest.config.ts` skips them unless `TIMING_TESTS=1`; `pnpm test:timing` runs them alone, and CI runs that as its own step. The test files are unchanged.
