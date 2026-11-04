@@ -26,7 +26,8 @@ describe("ids", () => {
   });
 
   it("encodes the timestamp", () => {
-    const at = Date.UTC(2026, 10, 4, 10, 0, 0);
+    // Later than any id this isolate made: ids are monotonic, so an earlier time would be bumped.
+    const at = Date.now() + 5;
     expect(idTimestamp(newId("task", at))?.getTime()).toBe(at);
     expect(idTimestamp("nonsense")).toBeNull();
   });
