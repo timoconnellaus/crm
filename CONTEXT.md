@@ -27,11 +27,13 @@ A field flagged `track: "timeline"`, whose changes post a `system` Activity on t
 A user's stored list configuration (`object`, filter, sort, columns): the simplest kind of view spec.
 
 **Trash**
-Soft-deleted records, restorable for 30 days before they are purged.
+Soft-deleted records (people, organisations, activities and tasks), listed by `trash.list` and
+restorable for 30 days before they are purged.
 
 **Purge**
 The scheduled hard delete of records that have been in Trash for more than 30 days. It runs daily
-as an `automation` (`trash.purge`) and is audited like any operation.
+as an `automation` (`trash.purge`) and is audited like any operation. It removes people and
+organisations; deleted activities and tasks are not purged yet.
 
 **Merge**
 Folding a duplicate record into a **survivor**: chosen field values, combined emails/phones/domains

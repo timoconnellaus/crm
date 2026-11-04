@@ -32,12 +32,15 @@ export function isPhone(page: Page): boolean {
   return (page.viewportSize()?.width ?? 1280) < 768;
 }
 
-/** Creates a person through the `c` dialog and waits for their record page. */
+/**
+ * Creates a person through the `c` dialog on People and waits for their record page. (On a record
+ * page `c` adds a task, so this opens the list first.)
+ */
 export async function createPerson(
   page: Page,
   person: { given: string; family?: string; email?: string },
 ): Promise<string> {
-  if (!/\/people/.test(page.url())) await open(page, "/people");
+  if (!/\/people\/?(\?.*)?$/.test(page.url())) await open(page, "/people");
   const dialog = page
     .getByRole("dialog", { name: "New person" })
     .and(page.locator("[data-state=open]"));
