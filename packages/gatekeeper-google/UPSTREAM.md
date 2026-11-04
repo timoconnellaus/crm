@@ -34,7 +34,7 @@ kept as symlinks.
   `7.3.6` for the decorator reason given in `../gatekeeper-mcp/UPSTREAM.md`, `typescript6` alias),
   `tsconfig.json` and `tsconfig.test.json` (extend `@crm/config/tsconfig.vendored.json`, no
   `paths`).
-- **Test configs.** `vitest.config.ts` (Node) is upstream's, unchanged. `vitest.worker.config.ts`
+- **Test configs.** `vitest.config.ts` (Node) is upstream's except `testTimeout` raised to 60s (CI runners are slower than upstream's). `vitest.worker.config.ts`
   and `vitest.docs-worker.config.ts` inline the compatibility date and flags that upstream reads
   from `cloudflare.config.ts` (keep them in step with `wrangler.jsonc`), and take `assert-workerd`
   from `@crm/gatekeeper-interface`.
