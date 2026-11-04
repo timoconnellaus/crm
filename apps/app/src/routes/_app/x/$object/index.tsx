@@ -14,6 +14,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BoxIcon, DownloadIcon, EllipsisIcon, PlusIcon, UploadIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useManualAutomations } from "#/components/automations/hooks";
+import { AutomationBulkActions } from "#/components/automations/record-automations";
 import { ColumnPicker } from "#/components/data-table/column-picker";
 import { DataTable, type ListPage, type ListPageRequest } from "#/components/data-table/data-table";
 import { EmptyState } from "#/components/empty-state";
@@ -91,6 +93,8 @@ function ObjectList({ info }: { info: ObjectInfo }) {
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Selection (and bulk actions) only when the object has a bulk manual automation.
+  const bulkAutomations = useManualAutomations(info.name, "bulk");
   const titleField = definition.titleField ?? "id";
 
   async function onExport() {
@@ -228,6 +232,13 @@ function ObjectList({ info }: { info: ObjectInfo }) {
           onSortChange={view.setSort}
           filter={view.state.filter}
           total={count.data}
+          {...(bulkAutomations.length
+            ? {
+                bulkActions: ({ ids, clear }: { ids: string[]; clear: () => void }) => (
+                  <AutomationBulkActions object={info.name} ids={ids} onDone={clear} />
+                ),
+              }
+            : {})}
           onOpen={(row) =>
             navigate({ to: "/x/$object/$id", params: { object: info.name, id: row.id } })
           }

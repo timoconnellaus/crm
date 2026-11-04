@@ -20,6 +20,7 @@ import { extensionUiOperations } from "./extension-ui.ts";
 import { importOperations } from "./import.ts";
 import { importRecordsOperations } from "./import-records.ts";
 import { integrationOperations } from "./integration.ts";
+import { notificationOperations } from "./notification.ts";
 import { organisationOperations } from "./organisation.ts";
 import { personOperations } from "./person.ts";
 import { policyOperations } from "./policy.ts";
@@ -67,4 +68,5 @@ export const coreOperations = [
   ...dashboardOperations,
   ...extensionUiOperations,
   ...automationOperations,
+  ...notificationOperations,
 ] as const;

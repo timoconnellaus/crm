@@ -50,6 +50,7 @@ import { toast } from "sonner";
 import { callOp } from "#/lib/operations";
 import { errorMessage, invalidateAfterWrite } from "#/lib/query";
 import { useUsers } from "#/lib/users-adapter";
+import { AutomationBulkActions } from "../automations/record-automations.tsx";
 import { TagInput } from "../fields.tsx";
 import { MergeDialog } from "../merge/merge-dialog.tsx";
 import type { ViewState } from "../views/view-state.ts";
@@ -139,6 +140,7 @@ export function BulkActions({ object, selected, onDone }: BulkActionsProps) {
         <BulkMerge object={object} ids={selected.map((r) => r.id)} onDone={onDone} />
       )}
       <BulkTagsAndOwner object={object} ids={selected.map((r) => r.id)} onDone={onDone} />
+      <AutomationBulkActions object={object} ids={selected.map((r) => r.id)} onDone={onDone} />
       <BulkDelete object={object} ids={selected.map((r) => r.id)} onDone={onDone} />
     </>
   );

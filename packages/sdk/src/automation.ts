@@ -207,6 +207,11 @@ export type AutomationStep =
       kind: "condition";
       /** The question, e.g. "Any onboarding task still open?". */
       label: string;
+      /**
+       * The condition as the summary says it after "if", e.g. "any of those tasks are still
+       * open". Default: the label, lower-cased, without its question mark.
+       */
+      clause?: string;
     });
 
 /** What happens when a person rejects a change a run queued for approval. Default `stop`. */
@@ -232,7 +237,13 @@ export interface AutomationEvent {
   runId: string;
   trigger: AutomationTriggerType;
   /** The trigger record (record, fieldChanged, dateRelative, manual), as read when the run started. */
-  record?: { object: string; id: string; data: Record<string, unknown> | null };
+  record?: {
+    object: string;
+    id: string;
+    data: Record<string, unknown> | null;
+    /** The record's title when the run started (what `{record}` in a notification stands for). */
+    title?: string | null;
+  };
   /** record / fieldChanged: what changed. `diff` holds changed fields only. */
   change?: {
     action: RecordEventType;
@@ -428,7 +439,12 @@ export const automationStepSchema = z.union([
     })
     .strict(),
   z
-    .object({ name: stepName, label: z.string().min(1).max(120), kind: z.literal("condition") })
+    .object({
+      name: stepName,
+      label: z.string().min(1).max(120),
+      kind: z.literal("condition"),
+      clause: z.string().min(1).max(200).optional(),
+    })
     .strict(),
 ]);
 
@@ -527,4 +543,79 @@ export interface AutomationTestStep {
   /** do: its result. sleep / waitForEvent: skipped, and how long it would wait. */
   value?: unknown;
   skippedMs?: number;
+}
+
+// ---------------------------------------------------------------------------------------------
+// ctx.notify → notification.send
+
+/** One recipient as `notification.send` takes it (core `recipientInputSchema`). */
+export type NotificationRecipientInput =
+  | { userId: string }
+  | { role: "admin" }
+  | { field: string; record: { object: string; id: string } }
+  | { managerOf: string; record: { object: string; id: string } };
+
+/** The `notification.send` input `ctx.notify(to, message)` makes for a run. */
+export interface NotificationSendInput {
+  to: NotificationRecipientInput[];
+  type: "automation.message";
+  title: string;
+  body?: string;
+  link?:
+    | { kind: "record"; object: string; id: string }
+    | { kind: "automationRun"; automationId: string; runId: string };
+  dedupeKey: string;
+}
+
+/**
+ * Turns `ctx.notify(to, message)` into a `notification.send` input for `event`'s run: field and
+ * manager recipients point at the trigger record, `"actor"` is whoever started a manual run,
+ * `{record}` in the title and body becomes the trigger record's title, and the dedupe key
+ * (`<runId>:<key>`, key = `<step name>:<n>` with n counting notify calls within that step, so it is the same on every replay) makes a retried or replayed step send each
+ * notification once. Shared by the runtime and the testing harness.
+ */
+export function notificationInput(
+  event: AutomationEvent,
+  to: Recipient | readonly Recipient[],
+  message: { title: string; body?: string; link?: "record" | "run" },
+  key: string,
+): NotificationSendInput {
+  const record = event.record;
+  const recipients: readonly Recipient[] = Array.isArray(to) ? to : [to as Recipient];
+  const resolved = recipients.map((recipient): NotificationRecipientInput => {
+    if (recipient === "admins") return { role: "admin" };
+    if (recipient === "actor") {
+      const userId = event.manual?.userId;
+      if (!userId)
+        throw new Error('"actor" recipients need a manual trigger (a person started it)');
+      return { userId };
+    }
+    if ("userId" in recipient) return { userId: recipient.userId };
+    if (!record) {
+      throw new Error(
+        `A ${event.trigger} run has no trigger record, so ${JSON.stringify(recipient)} cannot be resolved`,
+      );
+    }
+    const ref = { object: record.object, id: record.id };
+    return "field" in recipient
+      ? { field: recipient.field, record: ref }
+      : { managerOf: recipient.managerOf, record: ref };
+  });
+  const title = record?.title ?? "the record";
+  const fill = (text: string) => text.replaceAll("{record}", title);
+  const wanted = message.link ?? (record ? "record" : undefined);
+  const link =
+    wanted === "run"
+      ? { kind: "automationRun" as const, automationId: event.automation, runId: event.runId }
+      : wanted === "record" && record
+        ? { kind: "record" as const, object: record.object, id: record.id }
+        : undefined;
+  return {
+    to: resolved,
+    type: "automation.message",
+    title: fill(message.title).slice(0, 200),
+    ...(message.body === undefined ? {} : { body: fill(message.body) }),
+    ...(link ? { link } : {}),
+    dedupeKey: `${event.runId}:${key}`.slice(0, 200),
+  };
 }

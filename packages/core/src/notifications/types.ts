@@ -61,7 +61,27 @@ export interface NotificationRecord {
  */
 export interface NotificationChannel {
   id: NotificationChannelId;
-  deliver(notification: NotificationRecord): Promise<void>;
+  /**
+   * Delivers one committed notification. External channels (6b) call `integration.call` on an
+   * org `email-send` / `slack-post` connection through `context.callIntegration` (a system
+   * caller): kind `email.internal` / `slack.dm`, an outbound action the approval queue gates.
+   */
+  deliver(notification: NotificationRecord, context: NotificationDeliveryContext): Promise<void>;
+}
+
+/** What a channel gets besides the notification (6b fills it in after commit). */
+export interface NotificationDeliveryContext {
+  /** The recipient, as the channel needs them (email address; Slack ids come from the connection). */
+  recipient: { userId: string; email: string | null; name: string | null };
+  /** `integration.call` as the system caller; returns the call's output (or its pending action). */
+  callIntegration(input: {
+    connectionId: string;
+    resource: string;
+    method: string;
+    args: unknown[];
+  }): Promise<{ value: unknown; pending: unknown[]; applied: unknown[] }>;
+  /** Absolute URL of the notification's link in the app, for the message body. */
+  url: string | null;
 }
 
 /** A user's per-type channel choices (6b stores these; stage 5 has none). */
