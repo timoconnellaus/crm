@@ -50,6 +50,7 @@ export {
 } from "./pipeline.ts";
 export * from "./principals.ts";
 export { runTrashPurge, type TrashPurgeOptions } from "./purge.ts";
+export * from "./rate-limit.ts";
 export { BATCH_MAX, jsonList, purgeCutoff, restorableUntil } from "./records/common.ts";
 export {
   assertLinkTargets,

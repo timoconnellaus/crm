@@ -17,6 +17,21 @@
 
 The remaining big items need a design decision. They are in [Decisions needed](#decisions-needed).
 
+**Update, 2026-11-04 (runtime rework, [ADR 0043](../adr/0043-extension-executor-and-stable-loader-ids.md)):**
+
+- **D1 and D2 are decided and built.** F1, F2 and F18 are fixed.
+- **Stage 3b issues fixed in the same change:**
+  - The type checker's cache is keyed by a content hash, not `check-<uuid>`, so `check` and
+    `propose` no longer build and type-check the same files twice.
+  - The checker runs in its own Dynamic Worker (`tsc@<version>+<hash>`), out of the workspace DO
+    and out of crm-runner's main bundle (10,348 KiB before, 3,368 KiB after).
+  - `extension.list` reads directory names plus a dirty flag, with no git status.
+  - `extension.write` and `extension.read` no longer read every working-copy file.
+  - Proposal diffs are bounded (8M LCS cells) and capped (500 KB).
+  - The AI summary is cached by (commit, base) and runs outside the DO.
+  - Code Mode needs `records:write` and no longer writes `/code/<uuid>` directories.
+  - The unused `core_extension_proposals_ext_idx` is dropped (migration 0070).
+
 ## 1. Pricing and limits (official docs, fetched 2026-11-04)
 
 | Product | Billing model and included amounts | Limits that matter here | Source |
@@ -98,8 +113,8 @@ With `ANALYZE` stats the planner chooses correctly. So does a partial index on `
 
 | # | Location | Issue | Impact at 10 users / 100k records / 50 automations | Severity | Status |
 | --- | --- | --- | --- | --- | --- |
-| F1 | `@cloudflare/computer` 0.9.0 `WorkerJavaScriptBackend` (`dist/backends/worker-javascript/index.js:8141`), used by `apps/runner/src/extensions/workspace.ts` | Every execution (tool run, manifest evaluation, and later every automation step and Code Mode call) calls `loader.load()` with no id. Each one is a new billed Dynamic Worker with a cold start. It parses the 500 KB SDK bundle and the extension modules, then disposes them. | Today this is cheap: tool calls are human or MCP driven, and 1,000 loads a month are included. With stage 5 automations, 50 automations × 20 runs/day × 3 steps is about 90k loads a month, about **$180/month**. At 10k steps a day it is about **$600/month**. Keyed `get()` would bring this to roughly $0, at tens of versions a day. | **High** (becomes Critical in stage 5) | **Decision D1.** Not safely fixable by wrapping the loader: the runtime module patches `Date`, `Math.random`, timers and `fetch` on every `evaluate`, so reusing an isolate would stack the patches. |
-| F2 | `apps/runner/src/index.ts:27` `getByName("workspace")`, and `workspace.ts` `#serialise` | **One DO serialises every execution in the deployment:** tool runs, evaluations, commits, and later automation steps, Code Mode and type checks. | Each execution takes 0.2–1 s (load, run, D1 calls), so throughput tops out at about 1–5 executions a second. A 20k-row import that triggers one automation queues for hours, and interactive tools wait behind it. Duration cost is small, about 3.8 GB-s per 30 s run. | **High** (throughput) | **Decision D2** |
+| F1 | `@cloudflare/computer` 0.9.0 `WorkerJavaScriptBackend` (`dist/backends/worker-javascript/index.js:8141`), used by `apps/runner/src/extensions/workspace.ts` | Every execution (tool run, manifest evaluation, and later every automation step and Code Mode call) calls `loader.load()` with no id. Each one is a new billed Dynamic Worker with a cold start. It parses the 500 KB SDK bundle and the extension modules, then disposes them. | Today this is cheap: tool calls are human or MCP driven, and 1,000 loads a month are included. With stage 5 automations, 50 automations × 20 runs/day × 3 steps is about 90k loads a month, about **$180/month**. At 10k steps a day it is about **$600/month**. Keyed `get()` would bring this to roughly $0, at tens of versions a day. | **High** (becomes Critical in stage 5) | **Fixed** ([ADR 0043](../adr/0043-extension-executor-and-stable-loader-ids.md)). Our own executor gets tool and manifest workers from `LOADER.get(stableId)`: extension, commit (or source hash), host modules, SDK/runtime hash, contract and compatibility. Per-run context goes in as RPC arguments, and no globals are patched. One unique Dynamic Worker per extension version per day. Only Code Mode uses `load()`. Tests cover id stability and that no state leaks across runs. |
+| F2 | `apps/runner/src/index.ts:27` `getByName("workspace")`, and `workspace.ts` `#serialise` | **One DO serialises every execution in the deployment:** tool runs, evaluations, commits, and later automation steps, Code Mode and type checks. | Each execution takes 0.2–1 s (load, run, D1 calls), so throughput tops out at about 1–5 executions a second. A 20k-row import that triggers one automation queues for hours, and interactive tools wait behind it. Duration cost is small, about 3.8 GB-s per 30 s run. | **High** (throughput) | **Fixed** (ADR 0043). Execution moved to the stateless runner entrypoint, and the DO keeps git, working copies and caches. 20 concurrent tool runs: 1,452 ms (13.8/s) before, 82 ms (244/s) after. Code Mode is limited to one run per user and rate limited per user. |
 | F3 | Core migrations 0003/0004: `core_*_deleted_idx` on `deleted_at` | The planner used the `deleted_at` index for live-row reads (see section 3). List pages, search hydration and the Trash scanned whole tables, evaluating the views' subqueries for every row. | At 60k people a default page read about 245k rows. 3k page loads a day comes to about 22B rows a month: inside the included 25B, but it ate D1's single thread at about 100–300 ms per page. Now about 1k rows per page. | **High** (latency and D1 capacity) | **Fixed:** migration 0050 makes the four indexes partial (`WHERE deleted_at IS NOT NULL`). `rows-read.test.ts` holds budgets for these paths. |
 | F4 | `packages/core/src/list.ts` `runListQuery` | Any sort other than the indexed default needed a temp B-tree, and SQLite computed every selected view column for every matching row before sorting. That is about 9 rows read per person. | `person.list` sorted by created or updated date on 60k people read about 540k rows a page. | Medium | **Fixed:** non-default sorts now order ids first, then load the page by primary key. That cuts rows read by 4.4×, and the test covers it. A remaining full pass could be removed with `(created_at, id)` indexes: see F12. |
 | F5 | `core_task` | `task.list`'s default order (`due_at, id`) had no index. | Small. | Low | **Fixed:** `core_task_due_at_idx` in 0050. |
@@ -115,7 +130,7 @@ With `ANALYZE` stats the planner chooses correctly. So does a partial index on `
 | F15 | `apps/app/src/components/approvals/hooks.ts` | The sidebar badge polls `approval.list` every 60 s. | 7 rows read per poll. React Query doesn't poll background tabs, so this is about 5k requests a day for 10 users. | Info | No change needed. |
 | F16 | `apps/runner/src/extensions/runs.ts`, `core_extension_runs` | One row per execution, with logs and operations as JSON. There is no retention or purge. | Stage 5 at about 2k runs a day × 2 KB is about 1.4 GB a year, which counts against the 10 GB cap. | Medium | **Decision D3** (retention). Suggestion: purge after 30 days in the daily cron, with an index on `started_at`. |
 | F17 | `core_pending_action` | Decided and expired actions keep their full `input`, `preview` and `simulated` JSON forever. A large bulk preview or inline CSV can exceed D1's 2 MB row limit. | Grows with use. A single bulk import queued for review can fail outright. | Medium | **Decision D3.** Cap the stored previews and compact old rows. |
-| F18 | `@cloudflare/computer` runtime journal in the workspace DO | Each execution writes rows to `workspace_runtime_executions` and `_events`, which are pruned by retention and a count cap. `/build/<id>/<commit>/` directories are never removed. | A few DO SQLite rows per run. Old build directories accumulate in the DO's 10 GB. | Low | Recommendation: delete build directories for commits that are neither installed nor `last_good_commit`. |
+| F18 | `@cloudflare/computer` runtime journal in the workspace DO | Each execution writes rows to `workspace_runtime_executions` and `_events`, which are pruned by retention and a count cap. `/build/<id>/<commit>/` directories are never removed. | A few DO SQLite rows per run. Old build directories accumulate in the DO's 10 GB. | Low | **Fixed** (ADR 0043). Execution no longer goes through the computer runtime, so there is no journal per run. Builds are cached by content hash in DO storage, capped at 200, and the old `/build/` directories are removed once. |
 | F19 | `wrangler.jsonc` `observability: { enabled: true }` | 100% head sampling with invocation logs, in both Workers. | About 2 events per request plus `console` lines. 20M a month is included, and the price changes on 2026-12-01. | Low | Recommendation: keep it at this scale. Document `head_sampling_rate` (e.g. 0.1) for large orgs. |
 | F20 | `core_audit_changes`, `core_search_docs` + FTS5, `core_activity` | One audit-change row per changed record per bulk write (CSV import of 20k rows = 20k rows, each with 2 index writes). The FTS triggers write `core_search_docs` plus the FTS index on every name, email or body change. | One 20k-row import is about 200–300k rows written, about $0.25 above the 50M included. Storage is the concern (see D3). | Low (cost), Medium (storage) | Recorded. See U1. |
 | F21 | `apps/runner/src/extensions/ai.ts` `runModelRole` | No cache, and the 20k-character prompt cap is per call. Extensions decide how often to call it. | 8B-fast costs about 40 neurons per call (6k tokens in, 400 out), about $0.0004. | Low | Recommendation: set AI Gateway caching (`cf-aig-cache-ttl`) for `classify` and `extract`, and require a gateway id for production. |
@@ -142,6 +157,8 @@ The vendored gatekeepers are in good shape:
 
 ### D1. Dynamic Workers per execution (F1)
 
+**Decided and built:** option (b), with the stable-id rule. See [ADR 0043](../adr/0043-extension-executor-and-stable-loader-ids.md).
+
 **Recommendation: run extension code with `env.LOADER.get(id, cb)`, where `id` is a content hash.**
 
 **What goes into the id:** the extension id, the commit, the sorted set of host modules, the SDK bundle hash, the contract version, and the compatibility date and flags. The entry module is a `WorkerEntrypoint` whose `run(request, host)` takes the per-run context and an `RpcTarget` for the host modules as arguments. That way the code stays identical across runs, while actor, user and permissions travel with each call.
@@ -158,6 +175,8 @@ I recommend (b) now and (a) as a follow-up. Do it before stage 5, so that automa
 **Isolation caveat:** a warm isolate keeps module state between runs. That is acceptable because every run of one extension version acts as the same principal (`extension:<id>`). Don't share an id across extensions or versions.
 
 ### D2. The single workspace DO (F2)
+
+**Decided and built:** execution runs from the stateless entrypoint. Builds are cached by content hash in the DO. See [ADR 0043](../adr/0043-extension-executor-and-stable-loader-ids.md).
 
 **Recommendation:** keep `ExtensionWorkspace` for what needs it: git, source and builds. Move execution out of it:
 

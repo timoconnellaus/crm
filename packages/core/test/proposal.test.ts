@@ -3,8 +3,10 @@
 import { type ExtensionManifest, manifestSchema } from "@crm/sdk";
 import { describe, expect, it } from "vitest";
 import {
+  capDiff,
   computeImpact,
   diffFiles,
+  MAX_DIFF_BYTES,
   summaryPrompt,
   unifiedDiff,
 } from "../src/extensions/proposal.ts";
@@ -58,6 +60,32 @@ describe("diffFiles", () => {
     changed[35] = "changed 35";
     const [file] = diffFiles({ f: long.join("\n") }, { f: changed.join("\n") });
     expect(file?.hunks).toHaveLength(2);
+  });
+
+  it("bounds the LCS work over all files: past the budget a file is shown as replaced", () => {
+    const lines = (tag: string) => Array.from({ length: 100 }, (_, i) => `${tag}${i}`).join("\n");
+    const before = { "a.ts": lines("a"), "b.ts": lines("b") };
+    const after = { "a.ts": lines("A"), "b.ts": lines("B") };
+    // Each file needs 100 × 100 cells; a budget of 15,000 covers only the first.
+    const [a, b] = diffFiles(before, after, 15_000);
+    expect(a?.truncated).toBeUndefined();
+    expect(b).toMatchObject({ truncated: true, additions: 100, deletions: 100 });
+  });
+
+  it("caps the stored diff's size, keeping every file's path and counts", () => {
+    const big = (tag: string) => Array.from({ length: 2_000 }, (_, i) => `${tag} ${i}`).join("\n");
+    const diff = capDiff(
+      diffFiles(null, { "a.ts": big("a"), "b.ts": big("b"), "c.ts": "small\n" }),
+      100_000,
+    );
+    expect(JSON.stringify(diff).length).toBeLessThanOrEqual(100_000);
+    expect(diff.map((f) => [f.path, f.additions, f.truncated ?? false])).toEqual([
+      ["a.ts", 2_000, false],
+      ["b.ts", 2_000, true],
+      ["c.ts", 1, false],
+    ]);
+    expect(diff[1]?.hunks).toEqual([]);
+    expect(capDiff(diff, MAX_DIFF_BYTES)).toEqual(diff);
   });
 });
 

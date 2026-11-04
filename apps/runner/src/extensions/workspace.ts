@@ -1,84 +1,40 @@
-// The extension workspace (ADR 0006, ADR 0025): one Durable Object holding an @cloudflare/computer
-// Workspace. Each extension's source lives in its own git repository at /extensions/<id>/; a
-// commit is a version and rollback reinstalls an earlier commit. Code runs in Worker Loader
-// Dynamic Workers (the worker-javascript backend) with globalOutbound: null and read-only
-// filesystem access; it reaches the CRM only through the host modules below.
+// The extension workspace (ADR 0006, ADR 0025, ADR 0043): one Durable Object holding an
+// @cloudflare/computer Workspace. Each extension's source lives in its own git repository at
+// /extensions/<id>/; a commit is a version and rollback reinstalls an earlier commit.
 //
-// Host modules are configured once on the backend, so they find the running extension through
-// `#current`. Executions are serialised by `#queue` (one at a time, which is also the Workspace's
-// default), so `#current` always belongs to the execution making the call.
+// Since ADR 0043 the workspace runs no code. It keeps git, the working copies, and two caches the
+// stateless executor (src/executor/) reads and fills: builds by content hash, and AI summaries of
+// proposals by (commit, base). Tool runs, manifest evaluation, type checks and Code Mode run
+// outside it, so they never queue behind each other here. Only git mutations are serialised.
 
 import { DurableObject } from "cloudflare:workers";
-import { Workspace, type WorkspaceRuntimeValue } from "@cloudflare/computer";
-import { WorkerJavaScriptBackend } from "@cloudflare/computer/backends/worker-javascript";
+import { Workspace } from "@cloudflare/computer";
 import { createGitClient } from "@cloudflare/computer/git";
-import {
-  type ActingUser,
-  type CodeCaller,
-  type CodeResult,
-  type EvaluateResult,
-  type ExtensionHost,
-  type ExtensionVersion,
-  invokeByName,
-  PendingApprovalError,
-  type Permission,
-  parseFloor,
-  type RunToolInput,
-  type RunToolResult,
-  type ShippedExtension,
-  type SourceIssue,
-  toOperationError,
-  type WorkingCopy,
-  type WorkspaceEntry,
+import type {
+  ExtensionVersion,
+  ShippedExtension,
+  WorkingCopy,
+  WorkingCopyOptions,
+  WorkspaceEntry,
+  WorkspaceWrite,
 } from "@crm/core";
-import { createCrmDb } from "@crm/db";
-import type { ExtensionManifest, HostModuleName, RunResponse } from "@crm/sdk";
-import { SDK_BUNDLE } from "../generated/sdk-bundle.ts";
+import type { BuildRecord } from "../executor/build-cache.ts";
+import { buildKey, contentHash } from "../executor/worker-code.ts";
 import { SHIPPED_EXTENSIONS } from "../generated/shipped.ts";
-import { runBuildRole, runModelRole } from "./ai.ts";
-import { buildExtension, entrySource, SDK_SPECIFIER } from "./build.ts";
-import {
-  buildScript,
-  CODE_MAX_CALLS,
-  CODE_MAX_VALUE_BYTES,
-  CODE_TIMEOUT_MS,
-  CRM_WRAPPER,
-  codeEntry,
-} from "./code-mode.ts";
-import { recordRun } from "./runs.ts";
 
-/** Consecutive failed runs that quarantine an extension (ADR 0025). */
-export const QUARANTINE_AFTER = 3;
-const TOOL_TIMEOUT_MS = 30_000;
-const MANIFEST_TIMEOUT_MS = 10_000;
-const MAX_LOGS = 200;
 const IDENTITY = { name: "CRM extension workspace", email: "workspace@crm.invalid" };
-/** Failures that are the caller's, not the extension's: they do not count towards quarantine. */
-const CALLER_ERRORS = new Set(["invalid_input", "unknown_tool"]);
-
-/** A Code Mode run (ADR 0042): the script acts as the connected user, not as an extension. */
-interface CodeRun {
-  caller: CodeCaller;
-  pending: unknown[];
-  calls: number;
-}
-
-interface RunContext {
-  extensionId: string;
-  code?: CodeRun;
-  modules: ReadonlySet<HostModuleName>;
-  user: ActingUser;
-  permissions: ExtensionManifest["permissions"];
-  logs: { level: string; message: string; data: unknown; at: string }[];
-  operations: { operation: string; ok: boolean; code?: string; ms: number }[];
-}
-
-type Envelope =
-  | { ok: true; value: unknown }
-  | { ok: false; error: { code: string; message: string; details?: unknown } };
+/** Builds above this size (JSON) are not cached: a DO storage value is at most 2 MB. */
+const MAX_CACHED_BUILD = 1_800_000;
+/** Builds kept in the cache; the oldest are dropped beyond this. */
+const MAX_CACHED_BUILDS = 200;
 
 const extensionDir = (id: string) => `/extensions/${id}`;
 const ejectedKey = (id: string) => `ejected:${id}`;
+const dirtyKey = (id: string) => `dirty:${id}`;
+const sourceKey = (id: string, commit: string) => `source:${id}:${commit}`;
+const buildCacheKey = (key: string) => `build:${key}`;
+const summaryKey = (id: string, commit: string, base: string | null) =>
+  `summary:${id}:${commit}:${base ?? "-"}`;
 const EXTENSION_ID = /^[a-z][a-z0-9]{1,29}$/;
 
 function assertPath(path: string): void {
@@ -90,63 +46,28 @@ function assertPath(path: string): void {
     throw new Error(`Invalid file path ${path}`);
   }
 }
-const buildDir = (id: string, key: string) => `/build/${id}/${key}`;
 
 /** A content hash of a shipped extension's files (path order independent). */
-export async function shippedHash(files: Record<string, string>): Promise<string> {
-  const canonical = JSON.stringify(Object.entries(files).sort(([a], [b]) => (a < b ? -1 : 1)));
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+export const shippedHash = contentHash;
 
-function json(value: unknown): WorkspaceRuntimeValue {
-  return JSON.parse(JSON.stringify(value ?? null)) as WorkspaceRuntimeValue;
-}
+/** What `sourceOf` returns: the source hash of a commit, and its build or its files. */
+export type CommitSource =
+  | { sourceHash: string; build: BuildRecord; files: null }
+  | { sourceHash: string; build: null; files: Record<string, string> };
 
-export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionHost {
+export class ExtensionWorkspace extends DurableObject<Env> {
   readonly workspace: Workspace;
   #queue: Promise<unknown> = Promise.resolve();
-  #current: RunContext | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    // No execution backend: code runs in the stateless executor (ADR 0043).
     this.workspace = new Workspace({
       storage: ctx.storage,
       git: createGitClient(),
       defaultGitIdentity: IDENTITY,
-      backends: [
-        new WorkerJavaScriptBackend({
-          loader: env.LOADER,
-          root: "/",
-          access: "read",
-          globalOutbound: null,
-          defaultTimeoutMs: TOOL_TIMEOUT_MS,
-          maxTimeoutMs: 60_000,
-          modules: {
-            [SDK_SPECIFIER]: SDK_BUNDLE,
-            "codemode:crm": {
-              call: (args: readonly WorkspaceRuntimeValue[]) => this.#crmCall(args),
-            },
-            "codemode:storage": {
-              get: (args) => this.#storage("get", args),
-              set: (args) => this.#storage("set", args),
-              del: (args) => this.#storage("del", args),
-              list: (args) => this.#storage("list", args),
-            },
-            "codemode:log": { write: (args) => this.#log(args) },
-            "codemode:ai": {
-              summarise: (args) => this.#ai("summarise", args),
-              extract: (args) => this.#ai("extract", args),
-              classify: (args) => this.#ai("classify", args),
-            },
-          },
-        }),
-      ],
     });
   }
-
-  // -------------------------------------------------------------------------------------------
-  // Host modules
 
   async #exists(path: string): Promise<boolean> {
     try {
@@ -157,252 +78,11 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
     }
   }
 
-  #context(module: HostModuleName): RunContext {
-    const current = this.#current;
-    if (!current) throw new Error("No extension is running");
-    if (!current.modules.has(module)) {
-      throw new Error(`Host module "${module}" is not declared by ${current.extensionId}`);
-    }
-    return current;
-  }
-
-  async #crmCall(args: readonly WorkspaceRuntimeValue[]): Promise<WorkspaceRuntimeValue> {
-    const current = this.#context("crm");
-    if (current.code) return this.#codeCall(current, current.code, args);
-    const [name, input] = args;
-    const started = Date.now();
-    const operation = String(name);
-    let reply: Envelope;
-    try {
-      const db = createCrmDb(this.env.DB);
-      const value = await invokeByName(operation, input ?? {}, {
-        actor: "extension",
-        user: current.user,
-        origin: { surface: "extension", extensionId: current.extensionId },
-        db,
-        floor: parseFloor(this.env.APPROVAL_FLOOR),
-        extension: { id: current.extensionId, permissions: current.permissions },
-      });
-      reply = { ok: true, value };
-    } catch (error) {
-      const typed = toOperationError(error);
-      reply = {
-        ok: false,
-        error: {
-          code: typed.code,
-          message: typed.code === "internal" ? "Internal error" : typed.message,
-          ...(typed.code !== "internal" && typed.details !== undefined
-            ? { details: typed.details }
-            : {}),
-        },
-      };
-    }
-    current.operations.push({
-      operation,
-      ok: reply.ok,
-      ...(reply.ok ? {} : { code: reply.error.code }),
-      ms: Date.now() - started,
-    });
-    return json(reply);
-  }
-
-  /** `codemode:crm` for a Code Mode script: the connected user's actor, through the gate. */
-  async #codeCall(
-    current: RunContext,
-    run: CodeRun,
-    args: readonly WorkspaceRuntimeValue[],
-  ): Promise<WorkspaceRuntimeValue> {
-    const [name, input] = args;
-    const operation = String(name);
-    const started = Date.now();
-    let reply: Envelope;
-    let pendingActionId: string | undefined;
-    run.calls += 1;
-    if (run.calls > CODE_MAX_CALLS) {
-      reply = {
-        ok: false,
-        error: {
-          code: "limit",
-          message: `A script may make at most ${CODE_MAX_CALLS} operation calls; use *Many operations for many records`,
-        },
-      };
-    } else if (
-      operation.startsWith("extension.") ||
-      operation.startsWith("x.") ||
-      operation === "code.run"
-    ) {
-      reply = {
-        ok: false,
-        error: {
-          code: "forbidden",
-          message: `${operation} cannot be called from a Code Mode script; call it as a tool`,
-        },
-      };
-    } else {
-      const { caller } = run;
-      try {
-        const value = await invokeByName(operation, input ?? {}, {
-          actor: caller.actor,
-          user: caller.user,
-          origin: caller.origin,
-          db: createCrmDb(this.env.DB),
-          floor: parseFloor(this.env.APPROVAL_FLOOR),
-          grantedPermissions: caller.grantedPermissions as Permission[] | undefined,
-          reason: caller.reason ?? "Code Mode script",
-          approvalExpiryDays: caller.approvalExpiryDays,
-        });
-        reply = { ok: true, value };
-      } catch (error) {
-        if (error instanceof PendingApprovalError) {
-          run.pending.push(error.pending);
-          pendingActionId = error.pending.actionId;
-          reply = { ok: true, value: error.pending };
-        } else {
-          const typed = toOperationError(error);
-          reply = {
-            ok: false,
-            error: {
-              code: typed.code,
-              message: typed.code === "internal" ? "Internal error" : typed.message,
-              ...(typed.code !== "internal" && typed.details !== undefined
-                ? { details: typed.details }
-                : {}),
-            },
-          };
-        }
-      }
-    }
-    current.operations.push({
-      operation,
-      ok: reply.ok,
-      ...(reply.ok ? {} : { code: reply.error.code }),
-      ...(pendingActionId ? { pendingActionId } : {}),
-      ms: Date.now() - started,
-    });
-    return json(reply);
-  }
-
-  async #storage(
-    op: "get" | "set" | "del" | "list",
-    args: readonly WorkspaceRuntimeValue[],
-  ): Promise<WorkspaceRuntimeValue> {
-    const current = this.#context("storage");
-    const db = createCrmDb(this.env.DB).query;
-    const key = String(args[0] ?? "");
-    if (op !== "list" && (key.length < 1 || key.length > 512)) {
-      throw new Error("Storage keys are 1 to 512 characters");
-    }
-    const ext = current.extensionId;
-    switch (op) {
-      case "get": {
-        const row = await db
-          .selectFrom("core_extension_kv")
-          .select("value")
-          .where("extension_id", "=", ext)
-          .where("key", "=", key)
-          .executeTakeFirst();
-        return row ? (JSON.parse(row.value) as WorkspaceRuntimeValue) : null;
-      }
-      case "set": {
-        const value = JSON.stringify(args[1] ?? null);
-        if (value.length > 128_000) throw new Error("Storage values are limited to 128 KB");
-        const now = new Date().toISOString();
-        await db
-          .insertInto("core_extension_kv")
-          .values({ extension_id: ext, key, value, updated_at: now })
-          .onConflict((oc) =>
-            oc.columns(["extension_id", "key"]).doUpdateSet({ value, updated_at: now }),
-          )
-          .execute();
-        return null;
-      }
-      case "del":
-        await db
-          .deleteFrom("core_extension_kv")
-          .where("extension_id", "=", ext)
-          .where("key", "=", key)
-          .execute();
-        return null;
-      case "list": {
-        const rows = await db
-          .selectFrom("core_extension_kv")
-          .select(["key", "value"])
-          .where("extension_id", "=", ext)
-          .where("key", ">=", key)
-          .where("key", "<", `${key}￿`)
-          .orderBy("key")
-          .limit(1000)
-          .execute();
-        return rows.map((r) => ({
-          key: r.key,
-          value: JSON.parse(r.value) as WorkspaceRuntimeValue,
-        }));
-      }
-    }
-  }
-
-  #log(args: readonly WorkspaceRuntimeValue[]): WorkspaceRuntimeValue {
-    const current = this.#context("log");
-    const [level, message, data] = args;
-    if (current.logs.length < MAX_LOGS) {
-      current.logs.push({
-        level: ["info", "warn", "error"].includes(String(level)) ? String(level) : "info",
-        message: String(message).slice(0, 2000),
-        data: data ?? null,
-        at: new Date().toISOString(),
-      });
-    }
-    return null;
-  }
-
-  async #ai(
-    role: "summarise" | "extract" | "classify",
-    args: readonly WorkspaceRuntimeValue[],
-  ): Promise<WorkspaceRuntimeValue> {
-    this.#context("ai");
-    return json(await runModelRole(this.env, role, args));
-  }
-
-  // -------------------------------------------------------------------------------------------
-  // Execution
-
-  /** Runs `task` after every earlier execution has finished. */
+  /** Runs `task` after every earlier git mutation has finished. */
   #serialise<T>(task: () => Promise<T>): Promise<T> {
     const next = this.#queue.then(task, task);
     this.#queue = next.catch(() => undefined);
     return next;
-  }
-
-  async #exec(
-    source: string,
-    request: WorkspaceRuntimeValue,
-    timeoutMs: number,
-  ): Promise<{ response: RunResponse; ms: number; timedOut: boolean }> {
-    const started = Date.now();
-    const handle = await this.workspace.runtime.exec(source, {
-      backend: "worker-javascript",
-      encoding: "utf8",
-      input: request,
-      timeoutMs,
-    });
-    const result = await handle.result();
-    const ms = Date.now() - started;
-    if (result.status === "completed" && result.value && typeof result.value === "object") {
-      return { response: result.value as unknown as RunResponse, ms, timedOut: false };
-    }
-    const stderr = (result.stderr ?? "").trim();
-    const timedOut = /timed out/i.test(stderr);
-    return {
-      response: {
-        ok: false,
-        error: {
-          code: timedOut ? "timeout" : "crashed",
-          message: stderr.split("\n").slice(-3).join("\n") || `Execution ${result.status}`,
-        },
-      },
-      ms,
-      timedOut,
-    };
   }
 
   async #filesAt(id: string, commit: string): Promise<Record<string, string>> {
@@ -427,34 +107,67 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
     return files;
   }
 
-  /** Builds (or reuses) `/build/<id>/<key>/`. */
-  async #prepare(
-    id: string,
-    key: string,
-    files: () => Promise<Record<string, string>>,
-  ): Promise<{ ok: true; dir: string } | { ok: false; issues: SourceIssue[] }> {
-    const dir = buildDir(id, key);
-    if (await this.#exists(`${dir}/.built`)) return { ok: true, dir };
-    const source = await files();
-    const built = buildExtension(source);
-    if (!built.ok) return built;
-    // A real type check against @crm/sdk's types (ADR 0040 amendment). Loaded on first use, so
-    // isolates that never build an extension skip the compiler's ~130 ms start-up.
-    const { typecheckExtension } = await import("./typecheck.ts");
-    const typeIssues = typecheckExtension(source);
-    if (typeIssues.length) return { ok: false, issues: typeIssues };
-    await this.workspace.fs.rm(dir, { recursive: true, force: true });
-    for (const [path, code] of Object.entries(built.modules)) {
-      const target = `${dir}/${path}`;
-      await this.workspace.fs.mkdir(target.slice(0, target.lastIndexOf("/")), { recursive: true });
-      await this.workspace.fs.writeFile(target, code);
+  // -------------------------------------------------------------------------------------------
+  // Caches for the executor (ADR 0043)
+
+  /**
+   * The source hash of `commit` and its cached build, or its files when it has not been built
+   * with this runtime yet. Reads git only the first time a commit is seen.
+   */
+  async sourceOf(id: string, commit: string): Promise<CommitSource> {
+    const known = await this.ctx.storage.get<string>(sourceKey(id, commit));
+    if (known) {
+      const build = await this.cachedBuild(known);
+      if (build) return { sourceHash: known, build, files: null };
     }
-    await this.workspace.fs.writeFile(`${dir}/.built`, new Date().toISOString());
-    return { ok: true, dir };
+    const files = await this.#filesAt(id, commit);
+    const sourceHash = await contentHash(files);
+    if (!known) await this.ctx.storage.put(sourceKey(id, commit), sourceHash);
+    const build = await this.cachedBuild(sourceHash);
+    return build ? { sourceHash, build, files: null } : { sourceHash, build: null, files };
+  }
+
+  /** The cached build of source `sourceHash` with this runtime and checker, if any. */
+  async cachedBuild(sourceHash: string): Promise<BuildRecord | null> {
+    const key = await buildKey(sourceHash);
+    return (await this.ctx.storage.get<BuildRecord>(buildCacheKey(key))) ?? null;
+  }
+
+  async storeBuild(sourceHash: string, build: BuildRecord): Promise<void> {
+    if (JSON.stringify(build).length > MAX_CACHED_BUILD) return;
+    const key = await buildKey(sourceHash);
+    const index = (await this.ctx.storage.get<string[]>("build-index")) ?? [];
+    const next = [...index.filter((k) => k !== key), key];
+    const dropped = next.splice(0, Math.max(0, next.length - MAX_CACHED_BUILDS));
+    await this.ctx.storage.put({ [buildCacheKey(key)]: build, "build-index": next });
+    if (dropped.length) await this.ctx.storage.delete(dropped.map(buildCacheKey));
+    // Stage 3's executor kept builds as files under /build; drop them once (audit F18).
+    if (!(await this.ctx.storage.get("legacy-build-dirs-removed"))) {
+      await this.workspace.fs.rm("/build", { recursive: true, force: true }).catch(() => {});
+      await this.ctx.storage.put("legacy-build-dirs-removed", true);
+    }
+  }
+
+  /** A cached AI summary of a proposal of `commit` against `base`; undefined when not cached. */
+  async cachedSummary(
+    id: string,
+    commit: string,
+    base: string | null,
+  ): Promise<{ text: string; model: string } | undefined> {
+    return this.ctx.storage.get(summaryKey(id, commit, base));
+  }
+
+  async storeSummary(
+    id: string,
+    commit: string,
+    base: string | null,
+    summary: { text: string; model: string },
+  ): Promise<void> {
+    await this.ctx.storage.put(summaryKey(id, commit, base), summary);
   }
 
   // -------------------------------------------------------------------------------------------
-  // ExtensionHost
+  // Git
 
   async commit(input: {
     id: string;
@@ -471,7 +184,7 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
     message: string,
     author: { name: string; email: string },
   ): Promise<{ commit: string; changed: boolean }> {
-    if (!/^[a-z][a-z0-9]{1,29}$/.test(id)) throw new Error(`Invalid extension id ${id}`);
+    if (!EXTENSION_ID.test(id)) throw new Error(`Invalid extension id ${id}`);
     const dir = extensionDir(id);
     const fs = this.workspace.fs;
     const git = this.workspace.git;
@@ -495,9 +208,15 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
     await git.add({ dir, paths: Object.keys(files) });
     const status = await git.status({ dir });
     const head = await git.log({ dir, depth: 1 }).catch(() => []);
-    if (!status.length && head[0]) return { commit: head[0].oid, changed: false };
-    const { oid } = await git.commit({ dir, message, author });
-    return { commit: oid, changed: true };
+    let result: { commit: string; changed: boolean };
+    if (!status.length && head[0]) result = { commit: head[0].oid, changed: false };
+    else {
+      const { oid } = await git.commit({ dir, message, author });
+      result = { commit: oid, changed: true };
+    }
+    // The working copy now equals the commit.
+    await this.ctx.storage.put(dirtyKey(id), false);
+    return result;
   }
 
   async shipped(): Promise<ShippedExtension[]> {
@@ -507,9 +226,7 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
   /**
    * Every new crm-app isolate calls this (through installShipped) on its first request. When the
    * bundled source is the one already committed and the repository's HEAD is still that commit,
-   * it returns at once. Otherwise every isolate start rewrote each shipped file into the
-   * workspace filesystem and ran git add + status, in the singleton DO and in that request's
-   * path.
+   * it returns at once.
    */
   async commitShipped(id: string): Promise<{ commit: string; changed: boolean }> {
     const shipped = SHIPPED_EXTENSIONS.find((s) => s.id === id);
@@ -542,174 +259,6 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
     return log[0]?.oid ?? null;
   }
 
-  async evaluate(
-    input: { id: string; commit: string } | { id: string; files: Record<string, string> },
-  ): Promise<EvaluateResult> {
-    return this.#serialise(async () => {
-      const commit = "commit" in input ? input.commit : null;
-      const key = commit ?? `check-${crypto.randomUUID()}`;
-      let prepared: { ok: true; dir: string } | { ok: false; issues: SourceIssue[] };
-      try {
-        prepared = await this.#prepare(input.id, key, async () =>
-          "files" in input ? input.files : this.#filesAt(input.id, input.commit),
-        );
-      } catch (error) {
-        return {
-          ok: false,
-          commit,
-          issues: [
-            {
-              code: "entry",
-              path: "(root)",
-              message: error instanceof Error ? error.message : String(error),
-            },
-          ],
-        };
-      }
-      if (!prepared.ok) return { ok: false, commit, issues: prepared.issues };
-      try {
-        const { response, ms } = await this.#exec(
-          entrySource(prepared.dir, []),
-          { kind: "manifest" },
-          MANIFEST_TIMEOUT_MS,
-        );
-        if (commit) {
-          await recordRun(this.env, {
-            extensionId: input.id,
-            commit,
-            kind: "manifest",
-            name: null,
-            caller: null,
-            ms,
-            response,
-            logs: [],
-            operations: [],
-          });
-        }
-        if (!response.ok) {
-          return {
-            ok: false,
-            commit,
-            issues: [{ code: "evaluate", path: "index.ts", message: response.error.message }],
-          };
-        }
-        return { ok: true, commit, manifest: response.value };
-      } finally {
-        if (!commit) await this.workspace.fs.rm(prepared.dir, { recursive: true, force: true });
-      }
-    });
-  }
-
-  async runTool(input: RunToolInput): Promise<RunToolResult> {
-    return this.#serialise(() => this.#runTool(input));
-  }
-
-  async #runTool(input: RunToolInput): Promise<RunToolResult> {
-    const db = createCrmDb(this.env.DB).query;
-    const row = await db
-      .selectFrom("core_extensions as e")
-      .innerJoin("core_user as u", "u.id", "e.user_id")
-      .select([
-        "e.status",
-        "e.manifest",
-        "e.failure_count",
-        "e.last_good_commit",
-        "u.id as user_id",
-        "u.email",
-        "u.name",
-      ])
-      .where("e.id", "=", input.id)
-      .executeTakeFirst();
-    if (row?.status !== "active") {
-      return {
-        ok: false,
-        runId: "",
-        quarantined: row?.status === "quarantined",
-        error: {
-          code: "disabled",
-          message: `Extension ${input.id} is ${row?.status ?? "not installed"}`,
-        },
-      };
-    }
-    const manifest = JSON.parse(row.manifest) as ExtensionManifest;
-    const prepared = await this.#prepare(input.id, input.commit, () =>
-      this.#filesAt(input.id, input.commit),
-    );
-    const context: RunContext = {
-      extensionId: input.id,
-      modules: new Set(manifest.permissions.modules),
-      user: { id: row.user_id, email: row.email, name: row.name, role: "member" },
-      permissions: manifest.permissions,
-      logs: [],
-      operations: [],
-    };
-    let response: RunResponse;
-    let ms = 0;
-    if (!prepared.ok) {
-      response = {
-        ok: false,
-        error: { code: "build", message: prepared.issues.map((i) => i.message).join("; ") },
-      };
-    } else {
-      this.#current = context;
-      try {
-        ({ response, ms } = await this.#exec(
-          entrySource(prepared.dir, [...context.modules]),
-          json({ kind: "tool", tool: input.tool, input: input.input, version: manifest.version }),
-          TOOL_TIMEOUT_MS,
-        ));
-      } finally {
-        this.#current = null;
-      }
-    }
-    const counts = !response.ok && !CALLER_ERRORS.has(response.error.code);
-    const failures = response.ok ? 0 : counts ? row.failure_count + 1 : row.failure_count;
-    const quarantined = failures >= QUARANTINE_AFTER;
-    const runId = await recordRun(this.env, {
-      extensionId: input.id,
-      commit: input.commit,
-      kind: "tool",
-      name: input.tool,
-      caller: input.caller,
-      ms,
-      response,
-      logs: context.logs,
-      operations: context.operations,
-    });
-    // Most runs succeed on the last good commit with no failures behind them: nothing changes,
-    // so skip the write (a D1 row plus its index entries on every tool and automation step).
-    const unchanged =
-      failures === row.failure_count &&
-      !quarantined &&
-      (!response.ok || row.last_good_commit === input.commit);
-    if (unchanged) {
-      return response.ok
-        ? { ok: true, value: response.value, runId }
-        : { ok: false, error: response.error, runId, quarantined };
-    }
-    const now = new Date().toISOString();
-    await db
-      .updateTable("core_extensions")
-      .set({
-        failure_count: failures,
-        ...(response.ok ? { last_good_commit: input.commit } : {}),
-        ...(quarantined
-          ? {
-              status: "quarantined" as const,
-              status_reason: `Quarantined after ${QUARANTINE_AFTER} consecutive failed runs (last: ${
-                response.ok ? "" : response.error.message.slice(0, 200)
-              })`,
-            }
-          : {}),
-        updated_at: now,
-      })
-      .where("id", "=", input.id)
-      .where("status", "=", "active")
-      .execute();
-    if (response.ok) return { ok: true, value: response.value, runId };
-    return { ok: false, error: response.error, runId, quarantined };
-  }
-
   async versions(id: string): Promise<ExtensionVersion[]> {
     const dir = extensionDir(id);
     if (!(await this.#exists(`${dir}/.git`))) return [];
@@ -728,70 +277,98 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
   // -------------------------------------------------------------------------------------------
   // Authoring (ADR 0041): the working copy
 
-  /** Files under `/extensions/<id>/` as they are now (uncommitted edits included). */
-  async #workingFiles(id: string): Promise<Record<string, string>> {
+  /** Paths under `/extensions/<id>/` now (uncommitted edits included), without reading them. */
+  async #workingPaths(id: string): Promise<string[]> {
     const dir = extensionDir(id);
-    const files: Record<string, string> = {};
+    const paths: string[] = [];
     const walk = async (rel: string) => {
       const entries = await this.workspace.fs.readdir(rel ? `${dir}/${rel}` : dir);
       for (const entry of entries) {
         if (!rel && entry.name === ".git") continue;
         const path = rel ? `${rel}/${entry.name}` : entry.name;
         if (entry.isDirectory) await walk(path);
-        else if (entry.isFile)
-          files[path] = await this.workspace.fs.readFile(`${dir}/${path}`, "utf8");
+        else if (entry.isFile) paths.push(path);
       }
     };
     if (await this.#exists(dir)) await walk("");
+    return paths.sort();
+  }
+
+  async #read(id: string, paths: readonly string[]): Promise<Record<string, string>> {
+    const dir = extensionDir(id);
+    const files: Record<string, string> = {};
+    for (const path of paths) {
+      try {
+        files[path] = await this.workspace.fs.readFile(`${dir}/${path}`, "utf8");
+      } catch {
+        // Not in the working copy.
+      }
+    }
     return files;
   }
 
-  async #workingCopy(id: string): Promise<WorkingCopy> {
+  /** Paths that differ from HEAD (git status; reads every file). */
+  async #changed(id: string): Promise<string[]> {
+    const status = await this.workspace.git.status({ dir: extensionDir(id) });
+    return status
+      .filter((s) => s.index !== " " || s.worktree !== " ")
+      .map((s) => s.path)
+      .sort();
+  }
+
+  /** Whether the working copy was edited since its last commit (a stored flag). */
+  async #dirty(id: string): Promise<boolean> {
+    const flag = await this.ctx.storage.get<boolean>(dirtyKey(id));
+    if (flag !== undefined) return flag;
+    // Working copies from before the flag existed: work it out once.
+    const dirty = (await this.#changed(id)).length > 0;
+    await this.ctx.storage.put(dirtyKey(id), dirty);
+    return dirty;
+  }
+
+  async #workingCopy(id: string, options: WorkingCopyOptions = {}): Promise<WorkingCopy> {
     if (!EXTENSION_ID.test(id)) throw new Error(`Invalid extension id ${id}`);
     const dir = extensionDir(id);
     const ejected = Boolean(await this.ctx.storage.get(ejectedKey(id)));
     if (!(await this.#exists(`${dir}/.git`))) {
       return { id, exists: false, head: null, files: {}, changed: [], ejected };
     }
-    const files = await this.#workingFiles(id);
-    const head = (await this.workspace.git.log({ dir, depth: 1 }).catch(() => []))[0]?.oid ?? null;
-    const status = await this.workspace.git.status({ dir });
-    const changed = status
-      .filter((s) => s.index !== " " || s.worktree !== " ")
-      .map((s) => s.path)
-      .sort();
+    const paths = options.paths ?? (await this.#workingPaths(id));
+    const files = paths.length ? await this.#read(id, paths) : {};
+    const head = await this.#head(id);
+    const changed = options.status === false ? [] : await this.#changed(id);
     return { id, exists: true, head, files, changed, ejected };
   }
 
-  async workingCopy(id: string): Promise<WorkingCopy> {
-    return this.#serialise(() => this.#workingCopy(id));
+  /**
+   * The working copy. By default every file and its git status; `paths` reads only those files
+   * (none for `[]`) and `status: false` skips git status (which reads every file).
+   */
+  async workingCopy(id: string, options?: WorkingCopyOptions): Promise<WorkingCopy> {
+    return this.#serialise(() => this.#workingCopy(id, options));
   }
 
+  /** Directory names with a dirty flag: no file reads and no git status (audit, ADR 0043). */
   async listWorkspace(): Promise<WorkspaceEntry[]> {
-    return this.#serialise(async () => {
-      if (!(await this.#exists("/extensions"))) return [];
-      const out: WorkspaceEntry[] = [];
-      for (const entry of await this.workspace.fs.readdir("/extensions")) {
-        if (!entry.isDirectory || !EXTENSION_ID.test(entry.name)) continue;
-        const wc = await this.#workingCopy(entry.name);
-        if (!wc.exists) continue;
-        out.push({
-          id: wc.id,
-          head: wc.head,
-          files: Object.keys(wc.files).sort(),
-          changed: wc.changed.length > 0,
-          ejected: wc.ejected,
-        });
-      }
-      return out.sort((a, b) => a.id.localeCompare(b.id));
-    });
+    if (!(await this.#exists("/extensions"))) return [];
+    const ejected = await this.ctx.storage.list({ prefix: "ejected:" });
+    const out: WorkspaceEntry[] = [];
+    for (const entry of await this.workspace.fs.readdir("/extensions")) {
+      if (!entry.isDirectory || !EXTENSION_ID.test(entry.name)) continue;
+      out.push({
+        id: entry.name,
+        changed: await this.#dirty(entry.name),
+        ejected: ejected.has(ejectedKey(entry.name)),
+      });
+    }
+    return out.sort((a, b) => a.id.localeCompare(b.id));
   }
 
   async #writeFiles(
     id: string,
     files: Record<string, string | null>,
     replace: boolean,
-  ): Promise<WorkingCopy> {
+  ): Promise<WorkspaceWrite> {
     if (!EXTENSION_ID.test(id)) throw new Error(`Invalid extension id ${id}`);
     const dir = extensionDir(id);
     const fs = this.workspace.fs;
@@ -801,7 +378,7 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
     }
     for (const path of Object.keys(files)) assertPath(path);
     if (replace) {
-      for (const path of Object.keys(await this.#workingFiles(id))) {
+      for (const path of await this.#workingPaths(id)) {
         if (!Object.hasOwn(files, path)) await fs.rm(`${dir}/${path}`, { force: true });
       }
     }
@@ -814,14 +391,21 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
       await fs.mkdir(target.slice(0, target.lastIndexOf("/")), { recursive: true });
       await fs.writeFile(target, text);
     }
-    return this.#workingCopy(id);
+    await this.ctx.storage.put(dirtyKey(id), true);
+    return {
+      id,
+      head: await this.#head(id),
+      paths: await this.#workingPaths(id),
+      changed: true,
+      ejected: Boolean(await this.ctx.storage.get(ejectedKey(id))),
+    };
   }
 
   async writeFiles(input: {
     id: string;
     files: Record<string, string | null>;
     replace: boolean;
-  }): Promise<WorkingCopy> {
+  }): Promise<WorkspaceWrite> {
     return this.#serialise(() => this.#writeFiles(input.id, input.files, input.replace));
   }
 
@@ -831,103 +415,18 @@ export class ExtensionWorkspace extends DurableObject<Env> implements ExtensionH
     author: { name: string; email: string };
   }): Promise<{ commit: string; changed: boolean }> {
     return this.#serialise(async () => {
-      const files = await this.#workingFiles(input.id);
+      const files = await this.#read(input.id, await this.#workingPaths(input.id));
       if (!Object.keys(files).length) throw new Error(`${input.id} has no files to commit`);
       return this.#commit(input.id, files, input.message, input.author);
     });
   }
 
-  async eject(id: string): Promise<WorkingCopy> {
+  async eject(id: string): Promise<WorkspaceWrite> {
     const shipped = SHIPPED_EXTENSIONS.find((s) => s.id === id);
     if (!shipped) throw new Error(`No shipped extension ${id}`);
     return this.#serialise(async () => {
       await this.ctx.storage.put(ejectedKey(id), new Date().toISOString());
       return this.#writeFiles(id, shipped.files, true);
     });
-  }
-
-  // -------------------------------------------------------------------------------------------
-  // Code Mode (ADR 0042) and the build model role
-
-  async runCode(input: { code: string; caller: CodeCaller }): Promise<CodeResult> {
-    return this.#serialise(() => this.#runCode(input.code, input.caller));
-  }
-
-  async #runCode(code: string, caller: CodeCaller): Promise<CodeResult> {
-    const started = Date.now();
-    const built = buildScript(code);
-    if (!built.ok) {
-      return {
-        ok: false,
-        error: { code: "syntax", message: built.message },
-        logs: [],
-        operations: [],
-        pending: [],
-        durationMs: Date.now() - started,
-      };
-    }
-    const dir = `/code/${crypto.randomUUID()}`;
-    await this.workspace.fs.mkdir(dir, { recursive: true });
-    await this.workspace.fs.writeFile(`${dir}/script.js`, built.script);
-    await this.workspace.fs.writeFile(`${dir}/crm.js`, CRM_WRAPPER);
-    const run: CodeRun = { caller, pending: [], calls: 0 };
-    const context: RunContext = {
-      extensionId: "(code)",
-      code: run,
-      modules: new Set(["crm"]),
-      user: caller.user,
-      permissions: { read: [], write: [], operations: [], modules: ["crm"] },
-      logs: [],
-      operations: [],
-    };
-    this.#current = context;
-    let response: RunResponse & { logs?: { level: string; message: string }[]; dropped?: boolean };
-    try {
-      ({ response } = await this.#exec(codeEntry(dir), null, CODE_TIMEOUT_MS));
-    } finally {
-      this.#current = null;
-      await this.workspace.fs.rm(dir, { recursive: true, force: true });
-    }
-    const logs = (response.logs ?? []).map((l) => ({
-      level: (["log", "info", "warn", "error"].includes(l.level) ? l.level : "log") as
-        | "log"
-        | "info"
-        | "warn"
-        | "error",
-      message: String(l.message),
-    }));
-    let truncated = Boolean(response.dropped);
-    let value: unknown;
-    if (response.ok) {
-      value = response.value;
-      const size = JSON.stringify(value ?? null).length;
-      if (size > CODE_MAX_VALUE_BYTES) {
-        truncated = true;
-        value = {
-          truncated: true,
-          bytes: size,
-          preview: JSON.stringify(value).slice(0, 2_000),
-          message: `The result is larger than ${CODE_MAX_VALUE_BYTES} bytes; return less (e.g. counts or ids)`,
-        };
-      }
-    }
-    return {
-      ok: response.ok,
-      ...(response.ok ? { value: value ?? null } : { error: response.error }),
-      logs,
-      operations: context.operations,
-      pending: run.pending,
-      durationMs: Date.now() - started,
-      ...(truncated ? { truncated: true } : {}),
-    };
-  }
-
-  async describeChange(prompt: string): Promise<{ text: string; model: string } | null> {
-    try {
-      return await runBuildRole(this.env, prompt);
-    } catch (error) {
-      console.error("build role failed", error);
-      return null;
-    }
   }
 }

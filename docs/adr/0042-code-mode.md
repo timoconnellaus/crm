@@ -42,3 +42,16 @@ how the script reaches operations, as whom, and within what limits.
   description steers models to `*Many` operations.
 - Code Mode shares the extension DO's serial queue; a long script delays extension tools. Sharding
   executions (ADR 0040) fixes both.
+
+## Amendment, 2026-11-04 (runtime rework, [ADR 0043](0043-extension-executor-and-stable-loader-ids.md))
+- **Where it runs.** Scripts run in crm-runner's stateless entrypoint, not the workspace DO. Each
+  runs in a throwaway Dynamic Worker (`LOADER.load()`: the code is new every time). The source is
+  passed straight to the worker, so nothing is written under `/code/<uuid>/`. `codemode:crm` is
+  the per-run host `RpcTarget`.
+- **Permission.** `code.run` needs `records:write`, not `records:read`: a script can change records.
+- **Limits.**
+  - One script per user at a time, held by a `CodeModeGate` DO per user. A second concurrent run
+    fails with `rate_limited`.
+  - A per-user rate limit through the `CODE_MODE_RATE_LIMIT` Workers Rate Limiting binding in
+    crm-app (10 a minute by default; see docs/deploying.md).
+  - Scripts no longer share a queue with extension runs.

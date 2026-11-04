@@ -6,11 +6,16 @@
 //    and config), so it goes through the same transpile → check → sandbox path as runtime
 //    extensions. There is no static fast path.
 // 3. The declarations for the in-Worker type check of extension source (sdk-types.ts).
-// 4. The TypeScript compiler as an ES module the Worker can load (typescript.js).
+// 4. The TypeScript compiler as an ES module (typescript.js), and the type checker's Dynamic Worker
+//    (checker.txt: the compiler, the declarations and src/checker/entry.ts in one module). The
+//    checker runs in its own Dynamic Worker (ADR 0043), so crm-runner's main bundle does not carry
+//    or parse the compiler; it ships checker.txt as a Text module.
+// 5. runtime-meta.ts: hashes that go into the Dynamic Workers' stable loader ids (ADR 0043).
 //
-// Writes src/generated/{sdk-bundle,shipped,sdk-types}.ts and typescript.{js,d.ts} (gitignored).
-// Runs before typecheck, test, dev and build (see package.json).
-import { realpathSync } from "node:fs";
+// Writes src/generated/{shipped,sdk-types,runtime-meta}.ts, sdk-bundle.txt, checker.txt and
+// typescript.{js,d.ts} (gitignored). Runs before typecheck, test, dev and build (see package.json).
+import { createHash } from "node:crypto";
+import { readFileSync, realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -169,14 +174,78 @@ await writeFile(
   join(out, "sdk-types.ts"),
   `${banner}/** Declarations for the extension type checker: @crm/sdk, zod and the ES2022 libs. */\nexport const SDK_TYPES: { entry: string; files: Record<string, string>; resolutions: Record<string, Record<string, string>> } = ${sdkTypesJson};\n`,
 );
-await writeFile(
-  join(out, "sdk-bundle.ts"),
-  `${banner}/** @crm/sdk as one ES module, for the sandbox (specifier \`crm-sdk\`). */\nexport const SDK_BUNDLE: string = ${JSON.stringify(sdkSource)};\n`,
-);
+// @crm/sdk as one ES module for the sandbox (specifier `crm-sdk`), shipped as a Text module so the
+// runner never parses it as code.
+await writeFile(join(out, "sdk-bundle.txt"), sdkSource);
 await writeFile(
   join(out, "shipped.ts"),
   `${banner}/** Shipped extensions (extensions/<id>/), as source. */\nexport const SHIPPED_EXTENSIONS: readonly { id: string; version: string; files: Record<string, string> }[] = ${JSON.stringify(shipped, null, 2)};\n`,
 );
+
+// The checker's Dynamic Worker: one ES module with the compiler, the declarations and the entry.
+const checker = await build({
+  entryPoints: [join(here, "..", "src", "checker", "entry.ts")],
+  bundle: true,
+  format: "esm",
+  platform: "neutral",
+  target: "es2022",
+  minify: true,
+  write: false,
+  legalComments: "none",
+  external: [
+    "cloudflare:workers",
+    "fs",
+    "path",
+    "os",
+    "crypto",
+    "inspector",
+    "perf_hooks",
+    "source-map-support",
+  ],
+});
+const checkerSource = checker.outputFiles[0].text;
+await writeFile(join(out, "checker.txt"), checkerSource);
+
+const sha = (...parts) => {
+  const hash = createHash("sha256");
+  for (const part of parts) hash.update(part).update("\0");
+  return hash.digest("hex");
+};
+/** The version of a dependency: the nearest package.json above its resolved entry. */
+function pkgVersion(name) {
+  let dir = dirname(fileURLToPath(import.meta.resolve(name)));
+  for (;;) {
+    try {
+      const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+      if (pkg.name === name) return pkg.version;
+    } catch {}
+    const up = dirname(dir);
+    if (up === dir) throw new Error(`no package.json for ${name}`);
+    dir = up;
+  }
+}
+const typescriptVersion = pkgVersion("typescript");
+const sucraseVersion = pkgVersion("sucrase");
+// Everything that decides what a build produces and how its worker runs: the SDK bundle, the
+// transpiler and its version, the build rules and the fixed entry module.
+const runtimeHash = sha(
+  sdkSource,
+  sucraseVersion,
+  readFileSync(join(here, "..", "src", "extensions", "build.ts"), "utf8"),
+  readFileSync(join(here, "..", "src", "executor", "worker-code.ts"), "utf8"),
+);
+await writeFile(
+  join(out, "runtime-meta.ts"),
+  `${banner}/** Hashes in the Dynamic Workers' stable loader ids (ADR 0043). */
+export const SDK_HASH = ${JSON.stringify(sha(sdkSource))};
+/** The SDK bundle, sucrase, build.ts and the entry module: what a build and its worker depend on. */
+export const RUNTIME_HASH = ${JSON.stringify(runtimeHash)};
+/** The type checker's worker: the compiler, the SDK declarations and the checker entry. */
+export const CHECKER_HASH = ${JSON.stringify(sha(checkerSource))};
+export const TYPESCRIPT_VERSION = ${JSON.stringify(typescriptVersion)};
+export const SDK_TYPES_HASH = ${JSON.stringify(sha(sdkTypesJson))};
+`,
+);
 console.log(
-  `bundled crm-sdk (${(sdkSource.length / 1024).toFixed(0)} KiB), its type declarations (${Object.keys(sdkTypes.files).length} files, ${(sdkTypesJson.length / 1024).toFixed(0)} KiB), typescript (${(typescriptSource.length / 1024).toFixed(0)} KiB) and ${shipped.length} shipped extension(s)`,
+  `bundled crm-sdk (${(sdkSource.length / 1024).toFixed(0)} KiB), its type declarations (${Object.keys(sdkTypes.files).length} files, ${(sdkTypesJson.length / 1024).toFixed(0)} KiB), the checker worker with typescript ${typescriptVersion} (${(checkerSource.length / 1024).toFixed(0)} KiB) and ${shipped.length} shipped extension(s)`,
 );

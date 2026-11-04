@@ -20,7 +20,7 @@ Terms are defined in [`CONTEXT.md`](../CONTEXT.md). Decisions and their reasons 
                          │            ▼                                                      │
                          │  runner Worker                                                    │
                          │   • Extension workspace DO (@cloudflare/computer: files + git)    │
-                         │   • Worker Loader dynamic workers (extension code)                │
+                         │   • Executor: Worker Loader dynamic workers, LOADER.get(stableId) │
                          │   • Workflows (long automations), Queues (record-change events)   │
                          │            │ service bindings (GATEKEEPER_*)                      │
                          │            ▼                                                      │
@@ -117,12 +117,23 @@ How stage 3a built it ([ADR 0040](adr/0040-extension-runtime-build.md)):
 - **Registry**: extension objects and fields join the field registry (refreshed per invocation), so
   `record.*` operations, filters, saved views, search, CSV export and history work for them. Tools
   are operations `x.<ext>.<tool>`.
-- **Runtime** (`apps/runner/src/extensions/`): the `ExtensionWorkspace` DO holds each extension's
-  source in its own git repo, builds it (transpile, import check and a TypeScript type check
-  against `@crm/sdk`'s declarations), and runs tools with the
-  declared `codemode:crm`, `codemode:storage`, `codemode:log` and `codemode:ai` host modules. Code
-  acts as principal `extension:<id>` (actor `extension`) within its declared permissions. Runs are
-  recorded; 3 consecutive failures quarantine an extension; rollback reinstalls an earlier commit.
+- **Runtime** (`apps/runner/src/extensions/`, `apps/runner/src/executor/`,
+  [ADR 0043](adr/0043-extension-executor-and-stable-loader-ids.md)):
+  - **The workspace.** The `ExtensionWorkspace` DO holds each extension's source in its own git
+    repo, plus the build cache. It runs no code.
+  - **Builds.** A build is a transpile, an import check and a TypeScript type check against
+    `@crm/sdk`'s declarations. The type check runs in its own Dynamic Worker. Builds are cached by
+    a content hash of the source.
+  - **The executor.** It runs from crm-runner's stateless entrypoint, so runs execute in parallel.
+    Tool and manifest workers come from `LOADER.get(stableId)`: the id hashes the extension,
+    commit, host modules, SDK and runtime. Only Code Mode uses `load()`.
+  - **Per-run context.** Each call gets its context as RPC arguments, including a per-run host
+    `RpcTarget` serving the declared `codemode:crm`, `codemode:storage`, `codemode:log` and
+    `codemode:ai` modules.
+  - **Principal.** Code acts as `extension:<id>` (actor `extension`) within its declared
+    permissions.
+  - **Failures.** Runs are recorded. 3 consecutive failures quarantine an extension. Rollback
+    reinstalls an earlier commit.
 - **Shipped extensions** (`extensions/<id>/`, the example first) are bundled as source at build time
   and installed through the same `extension.install` path at boot.
 - **UI**: generic list and record pages at `/x/<ext>.<object>`, field widgets for every type,
@@ -148,9 +159,11 @@ How stage 3b added authoring ([ADR 0041](adr/0041-extension-authoring-and-propos
   `extension.eject` copies one into the working copy, and its approved proposal turns it into a
   runtime extension that releases no longer update.
 - **Code Mode** ([ADR 0042](adr/0042-code-mode.md)): the MCP `code` tool (operation `code.run`)
-  runs a client model's script in a Dynamic Worker as the connected user's `mcp` actor; each
-  `crm.call` goes through the pipeline with that user's role, scopes and session, so gates, pending
-  actions and simulated reads behave exactly as for tool calls.
+  runs a client model's script in a throwaway Dynamic Worker as the connected user's `mcp` actor.
+  - **Calls.** Each `crm.call` goes through the pipeline with that user's role, scopes and
+    session, so gates, pending actions and simulated reads behave exactly as for tool calls.
+  - **Limits.** It needs `records:write`. It runs one script per user at a time and is rate
+    limited per user (ADR 0043).
 
 ### 5. Integrations
 
@@ -277,5 +290,5 @@ UPSTREAMS.md           vendored upstream code and the commit each copy tracks
 
 - [`cloudflare/cloudflare-os`](https://github.com/cloudflare/cloudflare-os): gatekeepers,
   `gatekeeper-kit`, approval queue with simulation, release bundles and deploy page.
-- [`cloudflare/computer`](https://github.com/cloudflare/computer): Workspace filesystem, git, the
-  `worker-javascript` backend and host modules.
+- [`cloudflare/computer`](https://github.com/cloudflare/computer): the Workspace filesystem and
+  git. Its `worker-javascript` backend ran extension code until ADR 0043.

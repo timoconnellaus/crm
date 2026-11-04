@@ -1,10 +1,10 @@
 // Turning extension source into sandbox modules: transpile TypeScript (sucrase: types stripped,
 // ES modules kept), then check and rewrite imports. Extension code may import only its own files
 // (relative paths that stay inside the extension) and `@crm/sdk`. Host modules are never imported
-// by extension code: the host's entry module imports the declared ones and hands them to tools as
-// `ctx`, so an undeclared module cannot be reached (ADR 0025). `node:*`, other packages, dynamic
-// `import()` and `require` are refused here; the Dynamic Worker's loader refuses anything
-// unconfigured as a second line.
+// by extension code: the fixed entry module (src/executor/worker-code.ts) wires only the declared
+// ones and hands them to tools as `ctx`, so an undeclared module cannot be reached (ADR 0025).
+// `node:*`, other packages, dynamic `import()` and `require` are refused here; the Dynamic
+// Worker's loader refuses anything unconfigured as a second line.
 import type { SourceIssue } from "@crm/core";
 import { transform } from "sucrase";
 
@@ -144,19 +144,4 @@ export function buildExtension(files: Record<string, string>): BuildResult {
     modules[jsName(path)] = code.replace(IMPORT_FROM_RE, rewrite).replace(BARE_IMPORT_RE, rewrite);
   }
   return issues.length ? { ok: false, issues } : { ok: true, modules };
-}
-
-/** The per-run entry module: imports the build, the SDK and only the declared host modules. */
-export function entrySource(buildDir: string, modules: readonly string[]): string {
-  const imports = modules.map((m) => `import * as ${m} from "codemode:${m}";`).join("\n");
-  return `import extension from "${buildDir}/index.js";
-import { isExtension, runExtension } from "${SDK_SPECIFIER}";
-${imports}
-export default async (request) => {
-  if (!isExtension(extension)) {
-    return { ok: false, error: { code: "entry", message: "index.ts must export default defineExtension({...})" } };
-  }
-  return runExtension(extension, request, { ${modules.join(", ")} });
-};
-`;
 }

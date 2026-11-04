@@ -30,13 +30,20 @@ export interface FileDiff {
   additions: number;
   deletions: number;
   hunks: DiffHunk[];
-  /** True when the file was too large to diff line by line (shown as replaced). */
+  /**
+   * True when the file was too large to diff line by line (shown as replaced), or its hunks were
+   * dropped to keep the stored diff under its size cap (then `hunks` is empty).
+   */
   truncated?: boolean;
 }
 
 const CONTEXT = 3;
 /** Above this many cells the LCS table is skipped and the file is shown as replaced. */
 const MAX_CELLS = 4_000_000;
+/** LCS cells for a whole diff (all files): the work per proposal is bounded (ADR 0043). */
+export const MAX_DIFF_CELLS = 8_000_000;
+/** The stored diff's JSON size cap (D1 rows are at most 2 MB, alongside impact and check). */
+export const MAX_DIFF_BYTES = 500_000;
 
 function splitLines(text: string): string[] {
   if (text === "") return [];
@@ -46,7 +53,11 @@ function splitLines(text: string): string[] {
 }
 
 /** Line operations turning `a` into `b` (longest common subsequence). */
-function lineOps(a: string[], b: string[]): { ops: DiffLine[]; truncated: boolean } {
+function lineOps(
+  a: string[],
+  b: string[],
+  budget: { cells: number },
+): { ops: DiffLine[]; truncated: boolean } {
   // Trim the common prefix and suffix first: most edits touch a few lines of a file.
   let start = 0;
   while (start < a.length && start < b.length && a[start] === b[start]) start += 1;
@@ -63,11 +74,12 @@ function lineOps(a: string[], b: string[]): { ops: DiffLine[]; truncated: boolea
   const n = midA.length;
   const m = midB.length;
   let truncated = false;
-  if (n * m > MAX_CELLS) {
+  if (n * m > MAX_CELLS || n * m > budget.cells) {
     truncated = true;
     for (const text of midA) ops.push({ op: "-", text });
     for (const text of midB) ops.push({ op: "+", text });
   } else {
+    budget.cells -= n * m;
     // lcs[i][j]: LCS length of midA[i..] and midB[j..], one flat array.
     const width = m + 1;
     const lcs = new Uint32Array((n + 1) * width);
@@ -138,11 +150,16 @@ function hunksOf(ops: DiffLine[]): DiffHunk[] {
   });
 }
 
-/** The per-file diff from `before` (null: nothing installed) to `after`, sorted by path. */
+/**
+ * The per-file diff from `before` (null: nothing installed) to `after`, sorted by path. The LCS
+ * work is bounded by `maxCells` over all files; files past it are shown as replaced.
+ */
 export function diffFiles(
   before: Record<string, string> | null,
   after: Record<string, string>,
+  maxCells = MAX_DIFF_CELLS,
 ): FileDiff[] {
+  const budget = { cells: maxCells };
   const old = before ?? {};
   const paths = [...new Set([...Object.keys(old), ...Object.keys(after)])].sort();
   const out: FileDiff[] = [];
@@ -150,7 +167,7 @@ export function diffFiles(
     const a = Object.hasOwn(old, path) ? (old[path] as string) : null;
     const b = Object.hasOwn(after, path) ? (after[path] as string) : null;
     if (a === b) continue;
-    const { ops, truncated } = lineOps(splitLines(a ?? ""), splitLines(b ?? ""));
+    const { ops, truncated } = lineOps(splitLines(a ?? ""), splitLines(b ?? ""), budget);
     out.push({
       path,
       status: a === null ? "added" : b === null ? "deleted" : "modified",
@@ -161,6 +178,26 @@ export function diffFiles(
     });
   }
   return out;
+}
+
+/**
+ * Caps a diff's JSON size for storage: files are kept in order while they fit; past `maxBytes`
+ * a file keeps its path, status and counts but loses its hunks (`truncated`), so a reviewer still
+ * sees every file that changed.
+ */
+export function capDiff(diff: FileDiff[], maxBytes = MAX_DIFF_BYTES): FileDiff[] {
+  let used = 2;
+  return diff.map((file) => {
+    const size = JSON.stringify(file).length + 1;
+    if (used + size <= maxBytes) {
+      used += size;
+      return file;
+    }
+    const { hunks: _hunks, ...rest } = file;
+    const stub: FileDiff = { ...rest, hunks: [], truncated: true };
+    used += JSON.stringify(stub).length + 1;
+    return stub;
+  });
 }
 
 /** The diff as unified-diff text (for the AI summary prompt and plain-text readers). */
