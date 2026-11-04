@@ -56,6 +56,37 @@ describe("trash.list", () => {
     expect(orgsOnly.items.every((i) => i.object === "organisation")).toBe(true);
   });
 
+  it("lists deleted activities and tasks, restorable with their own restore", async () => {
+    const person = await invoke("person.create", { displayName: unique("TrashAT") }, at(3));
+    const links = [{ object: "person", id: person.id }];
+    const note = await invoke(
+      "activity.log",
+      { type: "note", subject: "  ", body: "A note in Trash", links },
+      at(3),
+    );
+    const task = await invoke("task.create", { title: unique("TrashTask"), links }, at(3));
+    await invoke("activity.delete", { id: note.id }, at(2));
+    await invoke("task.delete", { id: task.id }, at(1));
+
+    const page = await invoke("trash.list", { limit: 200 }, context(member));
+    expect(page.items.find((i) => i.id === note.id)).toMatchObject({
+      object: "activity",
+      name: "A note in Trash",
+      mergedIntoId: null,
+    });
+    expect(page.items.find((i) => i.id === task.id)).toMatchObject({
+      object: "task",
+      name: task.title,
+    });
+    const tasksOnly = await invoke("trash.list", { object: "task", limit: 200 }, context(member));
+    expect(tasksOnly.items.every((i) => i.object === "task")).toBe(true);
+    expect(tasksOnly.items.map((i) => i.id)).toContain(task.id);
+
+    await invoke("task.restore", { id: task.id }, context(member));
+    const after = await invoke("trash.list", { object: "task", limit: 200 }, context(member));
+    expect(after.items.map((i) => i.id)).not.toContain(task.id);
+  });
+
   it("paginates without gaps or repeats", async () => {
     for (let i = 0; i < 5; i++) {
       const p = await invoke("person.create", { displayName: unique("Page") }, at(5));

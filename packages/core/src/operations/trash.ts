@@ -1,5 +1,6 @@
-// trash.* operations: what is in Trash (soft-deleted people and organisations) and the scheduled
-// purge that hard-deletes records once their 30-day restore window has passed.
+// trash.* operations: what is in Trash (soft-deleted people, organisations, activities and tasks)
+// and the scheduled purge that hard-deletes people and organisations once their 30-day restore
+// window has passed.
 import { type SqlBool, sql } from "kysely";
 import { z } from "zod";
 import { ValidationError } from "../errors.ts";
@@ -7,13 +8,16 @@ import { decodeCursor, encodeCursor } from "../list.ts";
 import { defineOperation } from "../operation.ts";
 import { chunk, purgeCutoff, restorableUntil, TRASH_RETENTION_DAYS } from "../records/common.ts";
 
+/** Records trash.purge hard-deletes after the retention window. */
 const TRASH_OBJECTS = ["person", "organisation"] as const;
-type TrashObject = (typeof TRASH_OBJECTS)[number];
+/** Everything trash.list shows and the UI can restore (people, orgs, activities, tasks). */
+const TRASH_LIST_OBJECTS = ["person", "organisation", "activity", "task"] as const;
+type TrashListObject = (typeof TRASH_LIST_OBJECTS)[number];
 
 const trashItemSchema = z.object({
-  object: z.enum(TRASH_OBJECTS),
+  object: z.enum(TRASH_LIST_OBJECTS),
   id: z.string(),
-  name: z.string(),
+  name: z.string().describe("Display name, task title, or activity subject (or body excerpt)"),
   deletedAt: z.string(),
   deletedBy: z.string().nullable(),
   restorableUntil: z.string().describe("After this the scheduled purge deletes it for good"),
@@ -25,13 +29,13 @@ const TRASH_SORT = { field: "deletedAt", direction: "desc" } as const;
 export const trashList = defineOperation({
   name: "trash.list",
   description:
-    "List what is in Trash: soft-deleted people and organisations, most recently deleted " +
-    `first, each with when it was deleted and the date it stays restorable until ` +
-    `(${TRASH_RETENTION_DAYS} days, then it is purged). Merged-away records show the record ` +
-    "they were merged into. Restore with person.restore or organisation.restore. Pass " +
-    "nextCursor back as cursor for the next page. Read-only.",
+    "List what is in Trash: soft-deleted people, organisations, activities and tasks, most " +
+    "recently deleted first, each with when it was deleted and the date it stays restorable " +
+    `until (${TRASH_RETENTION_DAYS} days). Merged-away records show the record they were ` +
+    "merged into. Restore with person.restore, organisation.restore, activity.restore or " +
+    "task.restore. Pass nextCursor back as cursor for the next page. Read-only.",
   input: z.object({
-    object: z.enum(TRASH_OBJECTS).optional().describe("Only this kind of record"),
+    object: z.enum(TRASH_LIST_OBJECTS).optional().describe("Only this kind of record"),
     cursor: z.string().max(1000).optional().describe("nextCursor from the previous page."),
     limit: z.number().int().min(1).max(200).default(50),
   }),
@@ -40,34 +44,65 @@ export const trashList = defineOperation({
   risk: "read",
   mcp: { idempotent: true },
   async handler(input, ctx) {
-    const people = ctx.db
-      .selectFrom("core_person")
-      .select([
-        sql<TrashObject>`'person'`.as("object"),
-        "id",
-        "display_name as name",
-        "deleted_at",
-        "deleted_by",
-        "merged_into_id",
-      ])
-      .where("deleted_at", "is not", null);
-    const organisations = ctx.db
-      .selectFrom("core_organisation")
-      .select([
-        sql<TrashObject>`'organisation'`.as("object"),
-        "id",
-        "name",
-        "deleted_at",
-        "deleted_by",
-        "merged_into_id",
-      ])
-      .where("deleted_at", "is not", null);
-    const source =
-      input.object === "person"
-        ? people
-        : input.object === "organisation"
-          ? organisations
-          : people.unionAll(organisations);
+    const sources = {
+      person: () =>
+        ctx.db
+          .selectFrom("core_person")
+          .select([
+            sql<TrashListObject>`'person'`.as("object"),
+            "id",
+            sql<string>`display_name`.as("name"),
+            "deleted_at",
+            "deleted_by",
+            "merged_into_id",
+          ])
+          .where("deleted_at", "is not", null),
+      organisation: () =>
+        ctx.db
+          .selectFrom("core_organisation")
+          .select([
+            sql<TrashListObject>`'organisation'`.as("object"),
+            "id",
+            sql<string>`name`.as("name"),
+            "deleted_at",
+            "deleted_by",
+            "merged_into_id",
+          ])
+          .where("deleted_at", "is not", null),
+      activity: () =>
+        ctx.db
+          .selectFrom("core_activity")
+          .select([
+            sql<TrashListObject>`'activity'`.as("object"),
+            "id",
+            sql<string>`coalesce(nullif(trim(subject), ''), substr(body, 1, 120), type)`.as("name"),
+            "deleted_at",
+            "deleted_by",
+            sql<string | null>`null`.as("merged_into_id"),
+          ])
+          .where("deleted_at", "is not", null),
+      task: () =>
+        ctx.db
+          .selectFrom("core_task")
+          .select([
+            sql<TrashListObject>`'task'`.as("object"),
+            "id",
+            sql<string>`title`.as("name"),
+            "deleted_at",
+            "deleted_by",
+            sql<string | null>`null`.as("merged_into_id"),
+          ])
+          .where("deleted_at", "is not", null),
+    };
+    const [first, ...rest] = (input.object ? [input.object] : TRASH_LIST_OBJECTS).map((object) =>
+      sources[object](),
+    );
+    if (!first) return { items: [], nextCursor: null };
+    // Every branch selects the same columns in the same order, so the union has the first's rows.
+    const source = rest.reduce<typeof first>(
+      (union, next) => union.unionAll(next as unknown as typeof first),
+      first,
+    );
 
     let query = ctx.db.selectFrom(source.as("t")).selectAll();
     if (input.cursor) {

@@ -5,9 +5,11 @@ import {
   CheckSquareIcon,
   HomeIcon,
   type LucideIcon,
+  ScrollTextIcon,
   SettingsIcon,
   ShieldCheckIcon,
   Trash2Icon,
+  UserCogIcon,
   UsersIcon,
 } from "lucide-react";
 
@@ -20,7 +22,9 @@ export interface NavItem {
     | "/activity"
     | "/trash"
     | "/settings"
-    | "/settings/approval-policy";
+    | "/settings/approval-policy"
+    | "/settings/users"
+    | "/settings/audit";
   label: string;
   icon: LucideIcon;
   /** Extra words the palette matches on. */
@@ -44,6 +48,20 @@ export const SETTINGS_NAV: NavItem[] = [
     label: "Approval policy",
     icon: ShieldCheckIcon,
     keywords: ["preset", "gate", "settings"],
+    adminOnly: true,
+  },
+  {
+    to: "/settings/users",
+    label: "Users and roles",
+    icon: UserCogIcon,
+    keywords: ["members", "permissions", "admin", "settings"],
+    adminOnly: true,
+  },
+  {
+    to: "/settings/audit",
+    label: "Audit log",
+    icon: ScrollTextIcon,
+    keywords: ["history", "changes", "log", "settings"],
     adminOnly: true,
   },
 ];

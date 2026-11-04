@@ -17,7 +17,10 @@ export const SHORTCUTS: ShortcutGroup[] = [
     shortcuts: [
       { keys: ["⌘", "K"], label: "Open the command palette (Ctrl K on Windows and Linux)" },
       { keys: ["?"], label: "Show keyboard shortcuts" },
-      { keys: ["c"], label: "Create a record (a person on People)" },
+      {
+        keys: ["c"],
+        label: "Create in context (a person on People, a task on Tasks or a record page)",
+      },
     ],
   },
   {

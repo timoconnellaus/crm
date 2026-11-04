@@ -1,15 +1,28 @@
 // App-wide commands any screen can trigger: the Cmd-K palette, the `?` shortcut sheet and the
 // global create dialogs. The signed-in layout mounts the provider (and the dialogs it controls),
-// so pages and the palette share one "New person" dialog.
+// so pages and the palette share one "New person" and one "New task" dialog.
 import { createContext, type ReactNode, useContext, useMemo, useState } from "react";
 
-export type CreateKind = "person";
+export type CreateKind = "person" | "task";
+
+/** A record a new item is about (a task's link). */
+export interface CreateLink {
+  object: "person" | "organisation";
+  id: string;
+  /** Display name, shown in the dialog. */
+  title?: string;
+}
+
+export interface CreateOptions {
+  /** Link the new item to this record (tasks). */
+  link?: CreateLink;
+}
 
 export interface AppCommands {
   openPalette: () => void;
   openShortcuts: () => void;
   /** Opens the create dialog for an object. */
-  create: (kind: CreateKind) => void;
+  create: (kind: CreateKind, options?: CreateOptions) => void;
 }
 
 interface AppCommandsState extends AppCommands {
@@ -18,6 +31,7 @@ interface AppCommandsState extends AppCommands {
   shortcuts: boolean;
   setShortcuts: (open: boolean) => void;
   creating: CreateKind | null;
+  createOptions: CreateOptions;
   setCreating: (kind: CreateKind | null) => void;
 }
 
@@ -27,6 +41,7 @@ export function AppCommandsProvider({ children }: { children: ReactNode }) {
   const [palette, setPalette] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
   const [creating, setCreating] = useState<CreateKind | null>(null);
+  const [createOptions, setCreateOptions] = useState<CreateOptions>({});
   const value = useMemo<AppCommandsState>(
     () => ({
       palette,
@@ -34,15 +49,17 @@ export function AppCommandsProvider({ children }: { children: ReactNode }) {
       shortcuts,
       setShortcuts,
       creating,
+      createOptions,
       setCreating,
       openPalette: () => setPalette(true),
       openShortcuts: () => setShortcuts(true),
-      create: (kind) => {
+      create: (kind, options = {}) => {
         setPalette(false);
+        setCreateOptions(options);
         setCreating(kind);
       },
     }),
-    [palette, shortcuts, creating],
+    [palette, shortcuts, creating, createOptions],
   );
   return <AppCommandsContext.Provider value={value}>{children}</AppCommandsContext.Provider>;
 }

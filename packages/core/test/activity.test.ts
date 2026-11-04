@@ -322,3 +322,95 @@ describe("activity.listForRecord", () => {
     expect(calls.items.map((a) => a.type)).toEqual(["call", "call", "call"]);
   });
 });
+
+describe("activity.list", () => {
+  it("lists activities across records, newest first, filtered by type and linked record", async () => {
+    await setup();
+    const person = await createPerson(member);
+    const org = await insertOrganisation();
+    const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+    const note = await invoke(
+      "activity.log",
+      {
+        type: "note",
+        body: "feed note",
+        occurredAt: ago(3),
+        links: [{ object: "person", id: person.id }],
+      },
+      context(member),
+    );
+    const call = await invoke(
+      "activity.log",
+      {
+        type: "call",
+        subject: "feed call",
+        occurredAt: ago(2),
+        links: [{ object: "organisation", id: org.id }],
+      },
+      context(member),
+    );
+    const meeting = await invoke(
+      "activity.log",
+      {
+        type: "meeting",
+        subject: "feed meeting",
+        occurredAt: ago(1),
+        links: [{ object: "person", id: person.id }],
+      },
+      context(member),
+    );
+    await invoke("activity.delete", { id: meeting.id }, context(member));
+
+    const mine = { field: "authorUserId", op: "eq", value: member.id } as const;
+    const recent = { field: "occurredAt", op: "gte", value: ago(10) } as const;
+    const all = await invoke(
+      "activity.list",
+      { filter: { and: [mine, recent] }, limit: 200 },
+      context(viewer),
+    );
+    const ids = all.items.map((a) => a.id);
+    expect(ids).not.toContain(meeting.id);
+    expect(ids).toContain(note.id);
+    expect(ids.indexOf(call.id)).toBeLessThan(ids.indexOf(note.id));
+    const listed = all.items.find((a) => a.id === note.id);
+    expect(listed?.authorName).toBe("member user");
+    expect(listed?.links?.map((l) => l.id)).toEqual([person.id]);
+
+    const calls = await invoke(
+      "activity.list",
+      { filter: { and: [mine, recent, { field: "type", op: "in", value: ["call"] }] } },
+      context(viewer),
+    );
+    expect(calls.items.map((a) => a.id)).toContain(call.id);
+    expect(calls.items.every((a) => a.type === "call")).toBe(true);
+
+    const onPerson = await invoke(
+      "activity.list",
+      { filter: { field: "linkedRecordId", op: "eq", value: person.id }, fields: ["subject"] },
+      context(viewer),
+    );
+    expect(onPerson.items).toEqual([{ id: note.id, subject: null }]);
+  });
+
+  it("pages without gaps or repeats", async () => {
+    await setup();
+    const person = await createPerson(member);
+    for (let i = 0; i < 5; i++) {
+      await invoke(
+        "activity.log",
+        { type: "note", body: `page ${i}`, links: [{ object: "person", id: person.id }] },
+        context(member),
+      );
+    }
+    const filter = { field: "linkedRecordId", op: "eq", value: person.id } as const;
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await invoke("activity.list", { filter, limit: 2, cursor }, context(viewer));
+      seen.push(...page.items.map((a) => a.id));
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+    expect(seen).toHaveLength(5);
+    expect(new Set(seen).size).toBe(5);
+  });
+});

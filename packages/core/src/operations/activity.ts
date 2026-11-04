@@ -5,8 +5,16 @@ import type { CoreDatabase } from "@crm/db";
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "../errors.ts";
+import { activityObject } from "../fields/activity.ts";
 import { newId } from "../ids.ts";
-import { decodeCursor, encodeCursor, pageSchema } from "../list.ts";
+import {
+  decodeCursor,
+  encodeCursor,
+  listInputSchema,
+  pageSchema,
+  runListQuery,
+  selectFields,
+} from "../list.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import { jsonList } from "../records/common.ts";
 import {
@@ -491,6 +499,46 @@ export const activityListForRecord = defineOperation({
   },
 });
 
+const ACTIVITY_FIELDS = Object.keys(activitySchema.shape);
+
+export const activityList = defineOperation({
+  name: "activity.list",
+  description:
+    "List live activities across all records (the Activity feed), newest first by default, one " +
+    "page at a time. Filter with structured filter JSON over activity fields, e.g. { field: " +
+    "'type', op: 'in', value: ['note', 'call'] }, { field: 'authorUserId', op: 'eq', value: " +
+    "'usr_…' } or { field: 'occurredAt', op: 'gte', value: '2026-01-01' }; linkedRecordId " +
+    "finds activities on a record (for one record's timeline prefer activity.listForRecord). " +
+    "Each item includes its linked records. Pass nextCursor back as cursor for the next page. " +
+    "Read-only.",
+  input: listInputSchema,
+  output: pageSchema(activitySchema.partial().required({ id: true })),
+  permission: "records:read",
+  risk: "read",
+  mcp: { idempotent: true },
+  async handler(input, ctx) {
+    const page = await runListQuery(
+      ctx.db.selectFrom("crm_activities").selectAll(),
+      activityObject,
+      input,
+    );
+    const ids = page.rows.map((row) => row.id);
+    const rows = ids.length
+      ? await activityQuery(ctx.db).where("a.id", "in", jsonList(ids)).execute()
+      : [];
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const ordered = ids.flatMap((id) => {
+      const row = byId.get(id);
+      return row ? [row] : [];
+    });
+    const items = await toActivities(ctx.db, ordered);
+    return {
+      items: selectFields(items, input.fields, ACTIVITY_FIELDS),
+      nextCursor: page.nextCursor,
+    };
+  },
+});
+
 export const activityOperations = [
   activityLog,
   activityGet,
@@ -498,4 +546,5 @@ export const activityOperations = [
   activityDelete,
   activityRestore,
   activityListForRecord,
+  activityList,
 ] as const;

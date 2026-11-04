@@ -22,6 +22,8 @@ import { Route as AppPeopleIndexRouteImport } from './routes/_app/people/index'
 import { Route as AppPeopleIdRouteImport } from './routes/_app/people/$id'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsApprovalPolicyRouteImport } from './routes/_app/settings/approval-policy'
+import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
+import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const AppRoute = AppRouteImport.update({
@@ -89,6 +91,16 @@ const AppSettingsApprovalPolicyRoute =
     path: '/settings/approval-policy',
     getParentRoute: () => AppRoute,
   } as any)
+const AppSettingsAuditRoute = AppSettingsAuditRouteImport.update({
+  id: '/settings/audit',
+  path: '/settings/audit',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsUsersRoute = AppSettingsUsersRouteImport.update({
+  id: '/settings/users',
+  path: '/settings/users',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -106,6 +118,8 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/settings/audit': typeof AppSettingsAuditRoute
+  '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/people/': typeof AppPeopleIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
@@ -121,6 +135,8 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/people/$id': typeof AppPeopleIdRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/settings/audit': typeof AppSettingsAuditRoute
+  '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/people': typeof AppPeopleIndexRoute
   '/settings': typeof AppSettingsIndexRoute
@@ -138,6 +154,8 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/people/$id': typeof AppPeopleIdRoute
   '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/_app/settings/audit': typeof AppSettingsAuditRoute
+  '/_app/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/people/': typeof AppPeopleIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
@@ -155,6 +173,8 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/people/$id'
     | '/settings/approval-policy'
+    | '/settings/audit'
+    | '/settings/users'
     | '/api/auth/$'
     | '/people/'
     | '/settings/'
@@ -170,6 +190,8 @@ export interface FileRouteTypes {
     | '/'
     | '/people/$id'
     | '/settings/approval-policy'
+    | '/settings/audit'
+    | '/settings/users'
     | '/api/auth/$'
     | '/people'
     | '/settings'
@@ -186,6 +208,8 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/people/$id'
     | '/_app/settings/approval-policy'
+    | '/_app/settings/audit'
+    | '/_app/settings/users'
     | '/api/auth/$'
     | '/_app/people/'
     | '/_app/settings/'
@@ -291,6 +315,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsApprovalPolicyRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/audit': {
+      id: '/_app/settings/audit'
+      path: '/settings/audit'
+      fullPath: '/settings/audit'
+      preLoaderRoute: typeof AppSettingsAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/users': {
+      id: '/_app/settings/users'
+      path: '/settings/users'
+      fullPath: '/settings/users'
+      preLoaderRoute: typeof AppSettingsUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -310,6 +348,8 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppPeopleIdRoute: typeof AppPeopleIdRoute
   AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
+  AppSettingsAuditRoute: typeof AppSettingsAuditRoute
+  AppSettingsUsersRoute: typeof AppSettingsUsersRoute
   AppPeopleIndexRoute: typeof AppPeopleIndexRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
@@ -323,6 +363,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppPeopleIdRoute: AppPeopleIdRoute,
   AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
+  AppSettingsAuditRoute: AppSettingsAuditRoute,
+  AppSettingsUsersRoute: AppSettingsUsersRoute,
   AppPeopleIndexRoute: AppPeopleIndexRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
 }

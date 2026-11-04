@@ -20,8 +20,12 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Building2Icon,
+  CheckSquareIcon,
   KeyboardIcon,
+  ListPlusIcon,
   type LucideIcon,
+  MessageSquareTextIcon,
   MonitorIcon,
   MoonIcon,
   SunIcon,
@@ -30,7 +34,12 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { MAIN_NAV, type NavItem, SETTINGS_NAV } from "#/lib/nav";
-import { type SearchAdapter, searchAdapter } from "#/lib/search-adapter";
+import {
+  type HighlightSegment,
+  type SearchAdapter,
+  type SearchHit,
+  searchAdapter,
+} from "#/lib/search-adapter";
 import type { CreateKind } from "./app-commands.tsx";
 import { type Theme, useTheme } from "./theme.tsx";
 
@@ -67,6 +76,59 @@ function matches(command: PaletteCommand, query: string): boolean {
   if (!q) return true;
   return [command.label, ...(command.keywords ?? [])].some((text) =>
     text.toLowerCase().includes(q),
+  );
+}
+
+const HIT_ICON: Record<SearchHit["object"], LucideIcon> = {
+  person: UserIcon,
+  organisation: Building2Icon,
+  activity: MessageSquareTextIcon,
+  task: CheckSquareIcon,
+};
+
+/** Highlighted text from search segments: matching words in <mark>, never raw HTML. */
+export function Highlighted({ segments }: { segments: HighlightSegment[] }) {
+  return (
+    <>
+      {segments.map((segment, i) =>
+        segment.match ? (
+          <mark
+            // biome-ignore lint/suspicious/noArrayIndexKey: segments are positional and static
+            key={i}
+            className="rounded-sm bg-yellow-200/70 px-0.5 text-inherit dark:bg-yellow-500/30"
+          >
+            {segment.text}
+          </mark>
+        ) : (
+          // biome-ignore lint/suspicious/noArrayIndexKey: segments are positional and static
+          <span key={i}>{segment.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+function SearchHitItem({ hit, onSelect }: { hit: SearchHit; onSelect: () => void }) {
+  const Icon = HIT_ICON[hit.object];
+  return (
+    <CommandItem value={`${hit.object}:${hit.id}`} onSelect={onSelect} className="items-start">
+      <Icon className="mt-0.5" />
+      <div className="grid min-w-0 flex-1">
+        <span className="truncate">
+          {hit.titleHighlight?.length ? <Highlighted segments={hit.titleHighlight} /> : hit.title}
+        </span>
+        {hit.snippet?.length ? (
+          <span className="truncate text-xs text-muted-foreground" data-testid="search-snippet">
+            <Highlighted segments={hit.snippet} />
+          </span>
+        ) : null}
+      </div>
+      {hit.subtitle && (
+        <span className="ml-auto max-w-[40%] truncate text-xs text-muted-foreground">
+          {hit.subtitle}
+        </span>
+      )}
+    </CommandItem>
   );
 }
 
@@ -115,6 +177,13 @@ export function CommandPalette({
       shortcut: "C",
       run: () => onCreate("person"),
     },
+    {
+      id: "create:task",
+      label: "New task",
+      icon: ListPlusIcon,
+      keywords: ["create", "add", "todo", "follow up"],
+      run: () => onCreate("task"),
+    },
   ];
   const nav = [...MAIN_NAV, ...SETTINGS_NAV.filter((item) => isAdmin || !item.adminOnly)].map(go);
   const themeCommand = (theme: Theme, label: string, icon: LucideIcon): PaletteCommand => ({
@@ -152,17 +221,11 @@ export function CommandPalette({
     sections.push(
       <CommandGroup key="search" heading="Search results">
         {searchHits.map((hit) => (
-          <CommandItem
+          <SearchHitItem
             key={`${hit.object}:${hit.id}`}
-            value={`${hit.object}:${hit.id}`}
+            hit={hit}
             onSelect={close(() => navigate({ href: hit.href }))}
-          >
-            <UserIcon />
-            <span className="truncate">{hit.title}</span>
-            {hit.subtitle && (
-              <span className="ml-auto truncate text-xs text-muted-foreground">{hit.subtitle}</span>
-            )}
-          </CommandItem>
+          />
         ))}
       </CommandGroup>,
     );
@@ -200,7 +263,7 @@ export function CommandPalette({
           <CommandInput
             value={query}
             onValueChange={setQuery}
-            placeholder="Search people, or type a command…"
+            placeholder="Search everything, or type a command…"
             aria-label="Search or run a command"
           />
           <CommandList className="max-h-[min(60svh,24rem)]">
