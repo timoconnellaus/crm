@@ -29,6 +29,7 @@ import {
   MonitorIcon,
   MoonIcon,
   SunIcon,
+  UploadIcon,
   UserIcon,
   UserPlusIcon,
 } from "lucide-react";
@@ -178,11 +179,25 @@ export function CommandPalette({
       run: () => onCreate("person"),
     },
     {
+      id: "create:organisation",
+      label: "New organisation",
+      icon: Building2Icon,
+      keywords: ["create", "add", "company"],
+      run: () => onCreate("organisation"),
+    },
+    {
       id: "create:task",
       label: "New task",
       icon: ListPlusIcon,
       keywords: ["create", "add", "todo", "follow up"],
       run: () => onCreate("task"),
+    },
+    {
+      id: "import:csv",
+      label: "Import CSV",
+      icon: UploadIcon,
+      keywords: ["import", "upload", "spreadsheet"],
+      run: close(() => navigate({ to: "/import" })),
     },
   ];
   const nav = [...MAIN_NAV, ...SETTINGS_NAV.filter((item) => isAdmin || !item.adminOnly)].map(go);

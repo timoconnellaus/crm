@@ -1,9 +1,10 @@
 // App-wide commands any screen can trigger: the Cmd-K palette, the `?` shortcut sheet and the
 // global create dialogs. The signed-in layout mounts the provider (and the dialogs it controls),
-// so pages and the palette share one "New person" and one "New task" dialog.
+// so pages and the palette share one "New person", one "New organisation" and one "New task"
+// dialog.
 import { createContext, type ReactNode, useContext, useMemo, useState } from "react";
 
-export type CreateKind = "person" | "task";
+export type CreateKind = "person" | "organisation" | "task";
 
 /** A record a new item is about (a task's link). */
 export interface CreateLink {

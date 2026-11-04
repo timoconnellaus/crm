@@ -254,11 +254,12 @@ export interface AffiliationItem {
 export function useAffiliations(
   object: RecordObject,
   id: string,
+  { limit }: { limit?: number } = {},
 ): AdapterResult<AffiliationItem[]> {
-  const query = useOp(
-    "affiliation.list",
-    object === "person" ? { personId: id } : { organisationId: id },
-  );
+  const query = useOp("affiliation.list", {
+    ...(object === "person" ? { personId: id } : { organisationId: id }),
+    ...(limit ? { limit } : {}),
+  });
   return {
     data: query.data?.items ?? [],
     isPending: query.isPending,

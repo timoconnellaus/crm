@@ -1,4 +1,4 @@
-// Empty and "coming soon" states: an icon, a title, a line of text and an optional action.
+// Empty states: an icon, a title, a line of text and an optional action.
 import { cn } from "@crm/ui/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
@@ -28,28 +28,6 @@ export function EmptyState({ icon: Icon, title, description, action, className }
       <p className="font-medium">{title}</p>
       {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-2">{action}</div>}
-    </div>
-  );
-}
-
-/** A full page placeholder for a section that a later stage fills in. */
-export function ComingSoon({
-  title,
-  icon,
-  description,
-}: {
-  title: string;
-  icon?: LucideIcon;
-  description?: string;
-}) {
-  return (
-    <div className="mx-auto grid w-full grid-cols-1 max-w-5xl gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <EmptyState
-        {...(icon ? { icon } : {})}
-        title="Coming soon"
-        description={description ?? `${title} is on its way.`}
-      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
-// People list: DataTable over person.list with the filter builder, column picker, saved views
-// and bulk edit/delete. Filter, sort and columns live in the URL.
+// People list: DataTable over person.list with the filter builder, column picker, saved views,
+// import/export, and bulk merge, tags/owner and delete. Filter, sort and columns live in the URL.
 import { personObject } from "@crm/core/client";
 import { Avatar, AvatarFallback } from "@crm/ui/components/avatar";
 import { Button } from "@crm/ui/components/button";
@@ -12,7 +12,7 @@ import { ColumnPicker } from "#/components/data-table/column-picker";
 import { DataTable, type ListPage, type ListPageRequest } from "#/components/data-table/data-table";
 import { EmptyState } from "#/components/empty-state";
 import { FilterBuilder } from "#/components/filter-builder/filter-builder";
-import { BulkDelete, BulkUpdate } from "#/components/people/bulk-actions";
+import { BulkActions, ListActionsMenu } from "#/components/list/list-actions";
 import { PERSON_COLUMNS, PERSON_LIST_DEFAULTS, type PersonRow } from "#/components/people/config";
 import { SavedViewsMenu } from "#/components/views/saved-views-menu";
 import { parseViewSearch, useViewState, type ViewSearch } from "#/components/views/view-state";
@@ -53,6 +53,7 @@ function PeoplePage() {
         <h1 className="text-2xl font-semibold tracking-tight">People</h1>
         <SavedViewsMenu object="person" defaultLabel="All people" view={view} />
         <div className="flex-1" />
+        <ListActionsMenu object="person" definition={personObject} view={view.state} />
         <Button onClick={() => create("person")} aria-keyshortcuts="c">
           <UserPlusIcon />
           New person
@@ -102,10 +103,7 @@ function PeoplePage() {
             userLabel(row.ownerId) || <span className="text-muted-foreground">—</span>,
         }}
         bulkActions={({ selected, clear }) => (
-          <>
-            <BulkUpdate people={selected} onDone={clear} />
-            <BulkDelete people={selected} onDone={clear} />
-          </>
+          <BulkActions object="person" selected={selected} onDone={clear} />
         )}
         empty={
           <EmptyState

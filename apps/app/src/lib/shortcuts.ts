@@ -19,7 +19,8 @@ export const SHORTCUTS: ShortcutGroup[] = [
       { keys: ["?"], label: "Show keyboard shortcuts" },
       {
         keys: ["c"],
-        label: "Create in context (a person on People, a task on Tasks or a record page)",
+        label:
+          "Create in context (a person on People, an organisation on Organisations, a task on Tasks or a record page)",
       },
     ],
   },

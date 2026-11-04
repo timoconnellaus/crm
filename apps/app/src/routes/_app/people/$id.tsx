@@ -35,6 +35,7 @@ import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { useAppCommands } from "#/components/app-commands";
 import { EmptyState } from "#/components/empty-state";
+import { useMergeAction } from "#/components/merge/merge-action";
 import { PersonDetailsCard } from "#/components/people/person-details-card";
 import {
   type ActivityType,
@@ -359,6 +360,7 @@ function DeleteAction({ id, name }: { id: string; name: string }) {
   const [open, setOpen] = useState(false);
   const remove = useOpMutation("person.delete");
   const restore = useOpMutation("person.restore");
+  const merge = useMergeAction("person", id);
 
   async function run() {
     try {
@@ -386,12 +388,14 @@ function DeleteAction({ id, name }: { id: string; name: string }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {merge.item}
           <DropdownMenuItem variant="destructive" onSelect={() => setOpen(true)}>
             <Trash2Icon />
             Delete person
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {merge.dialog}
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

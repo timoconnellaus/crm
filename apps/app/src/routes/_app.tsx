@@ -15,6 +15,7 @@ import {
 } from "../components/app-commands.tsx";
 import { AppSidebar } from "../components/app-sidebar.tsx";
 import { CommandPalette } from "../components/command-palette.tsx";
+import { CreateOrganisationDialog } from "../components/organisations/create-organisation-dialog.tsx";
 import { CreatePersonDialog } from "../components/people/create-person-dialog.tsx";
 import { ShortcutSheet } from "../components/shortcut-sheet.tsx";
 import { CreateTaskDialog } from "../components/tasks/create-task-dialog.tsx";
@@ -74,18 +75,17 @@ function AppHeader() {
 }
 
 /**
- * What `c` creates on a screen: a task on Tasks, a task about the record on a record page, a
- * person on People and elsewhere. Null where the screen owns its own create (Organisations).
+ * What `c` creates on a screen: a task about the record on a record page, a task on Tasks, an
+ * organisation on the Organisations list, and a person on People and elsewhere.
  */
-function createKindFor(pathname: string): { kind: CreateKind; options?: CreateOptions } | null {
+function createKindFor(pathname: string): { kind: CreateKind; options?: CreateOptions } {
   const record = /^\/(people|organisations)\/((?:per|org)_[^/]+)\/?$/.exec(pathname);
   if (record?.[2]) {
     const object = record[1] === "people" ? "person" : "organisation";
     return { kind: "task", options: { link: { object, id: record[2] } } };
   }
   if (pathname.startsWith("/tasks")) return { kind: "task" };
-  // The organisation list's create dialog lives with the organisation screens.
-  if (pathname.startsWith("/organisations")) return null;
+  if (pathname.startsWith("/organisations")) return { kind: "organisation" };
   return { kind: "person" };
 }
 
@@ -100,7 +100,7 @@ function AppOverlays() {
   // `c` creates in context (see createKindFor).
   useHotkey("c", () => {
     const target = createKindFor(pathname);
-    if (target) state.create(target.kind, target.options);
+    state.create(target.kind, target.options);
   });
   // Marks the signed-in shell interactive; end-to-end tests wait for it before using shortcuts.
   useEffect(() => {
@@ -120,6 +120,10 @@ function AppOverlays() {
       <CreatePersonDialog
         open={state.creating === "person"}
         onOpenChange={(open) => state.setCreating(open ? "person" : null)}
+      />
+      <CreateOrganisationDialog
+        open={state.creating === "organisation"}
+        onOpenChange={(open) => state.setCreating(open ? "organisation" : null)}
       />
       <CreateTaskDialog
         open={state.creating === "task"}
