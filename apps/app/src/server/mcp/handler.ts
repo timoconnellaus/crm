@@ -91,10 +91,11 @@ export async function serveMcp(
   }
   const row = await db.query
     .selectFrom("core_user")
-    .select(["id", "email", "name", "role"])
+    .select(["id", "email", "name", "role", "deactivated_at"])
     .where("id", "=", connection.userId)
     .executeTakeFirst();
   if (!row) return bearerError(401, "invalid_token", "The user no longer exists");
+  if (row.deactivated_at) return bearerError(401, "invalid_token", "This account was deactivated");
   const user: ActingUser = {
     id: row.id,
     email: row.email,

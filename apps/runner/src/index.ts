@@ -15,6 +15,7 @@ import {
   parseFloor,
   type RunToolInput,
   type RunToolResult,
+  retryOutbox,
   type ShippedExtension,
   type ShippedInstallResult,
   type StartRunInput,
@@ -27,6 +28,7 @@ import {
 import { createCrmDb } from "@crm/db";
 import { dispatchAutomationMessages } from "./automations/dispatch.ts";
 import { automationHost } from "./automations/host.ts";
+import { pollIntegrationEvents } from "./automations/integration-events.ts";
 import { runAutomationCron } from "./automations/schedule.ts";
 import { Executor, type ExecutorOptions } from "./executor/executor.ts";
 import type { HelloOutput } from "./hello-workflow.ts";
@@ -227,12 +229,35 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
     }
   }
 
-  /** `* * * * *`: schedules and the daily date-relative scan (ADR 0130). */
+  /**
+   * `* * * * *`: schedules and the daily date-relative scan (ADR 0130), the automation events
+   * outbox retry (ADR 0171) and integration events (webhooks, sync) as triggers (ADR 0173). Each
+   * step is independent: one failing is logged and does not stop the others.
+   */
   override async scheduled(controller: ScheduledController): Promise<void> {
-    await runAutomationCron(this.env, new Date(controller.scheduledTime));
+    const at = new Date(controller.scheduledTime);
+    await minuteStep("schedules", () => runAutomationCron(this.env, at));
+    await minuteStep("outbox", () =>
+      retryOutbox(
+        createCrmDb(this.env.DB),
+        async (messages) => {
+          await dispatchAutomationMessages(this.env, messages, { now: at });
+        },
+        { now: at },
+      ),
+    );
+    await minuteStep("integration events", () => pollIntegrationEvents(this.env, { now: at }));
   }
 
   override async fetch(_request: Request): Promise<Response> {
     return new Response("crm-runner is reached over RPC", { status: 404 });
+  }
+}
+
+async function minuteStep(name: string, run: () => Promise<unknown>): Promise<void> {
+  try {
+    await run();
+  } catch (error) {
+    console.error(`minute cron: ${name} failed`, error);
   }
 }

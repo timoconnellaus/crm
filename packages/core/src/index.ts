@@ -2,8 +2,11 @@
 
 export { DEFAULT_APPROVAL_EXPIRY_DAYS, runSessionKey } from "./approvals/queue.ts";
 export { isSimulatedRead } from "./approvals/simulation.ts";
+export * from "./automations/bindings.ts";
 export * from "./automations/cron.ts";
 export * from "./automations/events.ts";
+export * from "./automations/integration-source.ts";
+export * from "./automations/outbox.ts";
 export * from "./automations/records.ts";
 export * from "./automations/registry.ts";
 export * from "./automations/schemas.ts";

@@ -25,6 +25,7 @@ import {
   ROLES,
   type Role,
   recordIntegrationEvents,
+  revokeBindings,
   SYNC_BATCH_MAX,
   type SyncConfig,
   syncedInWindow,
@@ -379,6 +380,16 @@ export class IntegrationHost extends DurableObject<Env> {
         ? { status: "expired", error: "The provider says the credentials expired. Reconnect." }
         : { status: "active", error: null },
     );
+    if (state === "expired") {
+      // Run-as (ADR 0170): automations bound to this connection pause and the admins are told.
+      // Reconnecting does not restore the bindings: a person binds it again.
+      const meta = await this.#meta();
+      await revokeBindings(
+        createCrmDb(this.env.DB),
+        { connectionId: meta.connectionId },
+        { reason: `${meta.title}'s credentials expired`, by: null },
+      );
+    }
   }
 
   /** Redeems a handoff ticket over the initiating user's session (with the popup's nonce). */
