@@ -112,7 +112,7 @@ runaways.
 ### UI
 - An **Automations** page listing every automation with status, last run and error counts.
 - An automation page in exactly the reference design's layout: header actions (Test on a record…,
-  Pause, Ask Claude to change), the What it does summary, Steps diagram, test mode result,
+  Pause, Ask the assistant), the What it does summary, Steps diagram, test mode result,
   permissions, safety rails and recent runs. Tabs: Overview, Runs, Code, Versions.
 - **Manual triggers:** buttons on record pages and bulk actions on lists.
 - The notification bell and inbox.
