@@ -14,9 +14,10 @@ import { toast } from "sonner";
 import { formatDateTime, formatRelative } from "#/lib/format";
 import { errorMessage, useOp } from "#/lib/query";
 import { ChangePreview, RiskBadge, StatusBadge } from "./change-preview.tsx";
-import { actionTitle, groupPreview, summariseDecision } from "./describe.ts";
+import { actionTitle, groupPreview, outboundTitle, summariseDecision } from "./describe.ts";
 import { ExtensionProposal } from "./extension-proposal.tsx";
 import { decide, useRecordNames, useRefreshAfterDecision } from "./hooks.ts";
+import { OutboundPreview } from "./outbound-preview.tsx";
 
 type ChangeSet = CoreOutput<"approval.get">;
 type ChangeSetSummary = Omit<ChangeSet, "actions">;
@@ -131,7 +132,13 @@ function ChangeSetView({
   const allEntries = useMemo(() => actions.flatMap((a) => a.preview), [actions]);
   const names = useRecordNames(allEntries);
   const titles = useMemo(
-    () => new Map(actions.map((a) => [a.id, actionTitle(a.operation, a.preview, a.input)])),
+    () =>
+      new Map(
+        actions.map((a) => [
+          a.id,
+          a.outbound ? outboundTitle(a.outbound) : actionTitle(a.operation, a.preview, a.input),
+        ]),
+      ),
     [actions],
   );
 
@@ -351,7 +358,9 @@ function ActionItem({
         <p className="text-sm text-muted-foreground">
           <span className="sr-only">The agent's </span>Reason: {action.reason}
         </p>
-        {action.operation === "extension.apply" ? (
+        {action.outbound ? (
+          <OutboundPreview outbound={action.outbound} />
+        ) : action.operation === "extension.apply" ? (
           <ExtensionProposal actionId={action.id} />
         ) : (
           <ChangePreview groups={groups} names={names} />

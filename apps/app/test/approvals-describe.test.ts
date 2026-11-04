@@ -28,6 +28,27 @@ describe("actionTitle", () => {
   });
 });
 
+describe("actionTitle for outbound items", () => {
+  it("uses the gatekeeper's title, then the action kind, then the connection", () => {
+    expect(
+      actionTitle("integration.outbound", [], {
+        title: "Send mail to ada@ext.test",
+        actionKind: { tag: "fake.send", label: "Send mail" },
+      }),
+    ).toBe("Send mail to ada@ext.test");
+    expect(
+      actionTitle("integration.outbound", [], {
+        title: " ",
+        actionKind: { tag: "slack.post", label: "Post to Slack" },
+      }),
+    ).toBe("Post to Slack");
+    expect(actionTitle("integration.outbound", [], { connectionTitle: "Sales inbox" })).toBe(
+      "Outbound action on Sales inbox",
+    );
+    expect(actionTitle("integration.outbound", [])).toBe("Outbound action");
+  });
+});
+
 describe("diffLines", () => {
   it("labels fields from the registry and shows added, removed and changed values", () => {
     const lines = diffLines(
