@@ -53,6 +53,7 @@ export {
   type InvocationContext,
   invokeOperation,
   operationObject,
+  readCountHour,
   redactInput,
 } from "./pipeline.ts";
 export * from "./principals.ts";

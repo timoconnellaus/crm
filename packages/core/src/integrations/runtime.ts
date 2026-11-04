@@ -75,6 +75,8 @@ export interface IntegrationRuntime {
     connectionId: string;
     vendor: string;
     userId: string;
+    /** The CRM's public origin, where the popup is handed back (/connect/handoff). */
+    appOrigin?: string | undefined;
   }): Promise<ConnectStart>;
   /** Mints an auto-provisioned account (web search, email sending, webhooks): no OAuth. */
   provision(input: { connectionId: string; vendor: string; userId: string }): Promise<{
@@ -88,7 +90,11 @@ export interface IntegrationRuntime {
     userId: string;
   }): Promise<ConnectRedeemed>;
   /** Starts a reconnect for an expired connection (same ticket and nonce handoff). */
-  reconnect(input: { connectionId: string; userId: string }): Promise<ConnectStart>;
+  reconnect(input: {
+    connectionId: string;
+    userId: string;
+    appOrigin?: string | undefined;
+  }): Promise<ConnectStart>;
   /** Revokes the account and drops facets, hooks and sync. */
   disconnect(input: { connectionId: string }): Promise<void>;
   /** Creates (or returns) the facet for a resource URL on the connection. */
