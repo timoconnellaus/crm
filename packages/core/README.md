@@ -9,7 +9,7 @@ src/
   operations/          one file per object; index.ts lists them all
     person.ts          the reference implementation — copy its shape (+ changeJob, merge, *Many, erase)
     organisation.ts    mirrors person; affiliation.ts, trash.ts (list + purge), user.ts, policy.ts
-    activity.ts        activity.log/get/update/delete/restore/listForRecord (typed payloads)
+    activity.ts        activity.log/get/update/delete/restore/listForRecord/list (typed payloads)
     task.ts            task.create/get/update/complete/reopen/delete/restore/list/listMine
     view.ts            view.create/update/delete/list (saved `table` view specs)
     audit.ts           audit.list (admin), audit.listForRecord (History tab)
