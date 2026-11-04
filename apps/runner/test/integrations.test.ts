@@ -421,6 +421,40 @@ describe("sync", () => {
     expect(await env.BLOBS.get(rows.results[0]?.body_ref ?? "")).toBeNull();
   });
 
+  it("propagates deletes a provider reports only by no longer listing them", async () => {
+    const ext = `${unique("ext")}.org`;
+    await op(admin, "person.create", { displayName: "Ada", emails: [{ email: `ada@${ext}` }] });
+    const provider = fakeProviderStub(env, address);
+    await provider.putMessage({
+      id: "quiet",
+      messageId: `<quiet.${ext}@mail.test>`,
+      from: { email: `ada@${ext}` },
+      to: [{ email: address }],
+      subject: "Soon gone",
+      text: "x",
+      sentAt: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+    });
+    const { connection, mailbox } = await syncedConnection(member);
+    // A short window: one reconciliation pass covers it.
+    await op(member, "connection.setSync", {
+      id: connection.id,
+      mail: mailbox,
+      calendar: null,
+      backfillDays: 5,
+    });
+    await op(member, "connection.syncNow", { id: connection.id });
+    const key = `email:quiet.${ext}@mail.test`;
+    const live = () =>
+      env.DB.prepare("SELECT deleted_at FROM core_activity WHERE external_key = ?")
+        .bind(key)
+        .first<{ deleted_at: string | null }>();
+    expect((await live())?.deleted_at).toBeNull();
+    // Gone from the mailbox with no change recorded (like Gmail or Outlook without a feed).
+    await provider.dropMessage("quiet");
+    await op(member, "connection.syncNow", { id: connection.id });
+    expect((await live())?.deleted_at).not.toBeNull();
+  });
+
   it("syncs meetings from the calendar", async () => {
     const ext = `${unique("ext")}.org`;
     await op(admin, "organisation.create", { name: "Ext", domains: [{ domain: ext }] });

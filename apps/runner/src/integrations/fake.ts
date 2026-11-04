@@ -162,6 +162,18 @@ export class FakeProvider extends DurableObject<Env> {
     await this.#notify();
   }
 
+  /** Removes a message without recording a change, as a provider without a delete feed would. */
+  async dropMessage(id: string): Promise<void> {
+    this.ctx.storage.kv.delete(`msg:${id}`);
+  }
+
+  async messageIdsBetween(from: string, to: string): Promise<string[]> {
+    return [...this.ctx.storage.kv.list<FakeMessage>({ prefix: "msg:" })]
+      .map(([, m]) => m)
+      .filter((m) => m.sentAt >= from && m.sentAt < to)
+      .map((m) => m.id);
+  }
+
   async deleteMessage(id: string): Promise<void> {
     this.ctx.storage.kv.delete(`msg:${id}`);
     this.#change("mail", id, "delete");
@@ -542,6 +554,9 @@ class FakeSession extends RpcTarget {
   searchMessages(query: string) {
     return this.#gk.searchMessages(this.#queue, query);
   }
+  listIdsBetween(from: string, to: string) {
+    return this.#gk.listIdsBetween(this.#queue, from, to);
+  }
   getEvent(id: string) {
     return this.#gk.readEvent(this.#queue, id);
   }
@@ -657,6 +672,16 @@ export class FakeGatekeeper extends DurableObject<
       subresources: [],
     });
     return hits.slice(0, 20);
+  }
+
+  async listIdsBetween(queue: QueueStub, from: string, to: string): Promise<string[]> {
+    this.#require("mailbox");
+    await queue.authorizeObservation({
+      title: "List message ids",
+      description: `${from} to ${to}`,
+      subresources: [],
+    });
+    return this.#provider().messageIdsBetween(String(from), String(to));
   }
 
   async readEvent(queue: QueueStub, id: string): Promise<FakeEvent> {

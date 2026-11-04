@@ -242,6 +242,8 @@ function queueLinks(ing: Ingest, activityId: string, links: { people: string[]; 
 }
 
 function queueMapping(ing: Ingest, item: Item, key: string, activityId: string | null) {
+  const occurredAt =
+    item.op === "upsert" ? (item.kind === "email" ? item.sentAt : item.startsAt) : null;
   ing.statements.push(
     ing.ctx.db
       .insertInto("core_sync_item")
@@ -251,12 +253,14 @@ function queueMapping(ing: Ingest, item: Item, key: string, activityId: string |
         external_key: key,
         kind: item.kind,
         activity_id: activityId,
+        occurred_at: occurredAt,
         updated_at: ing.ctx.now,
       })
       .onConflict((oc) =>
         oc.columns(["connection_id", "provider_id"]).doUpdateSet({
           external_key: key,
           activity_id: activityId,
+          occurred_at: occurredAt,
           updated_at: ing.ctx.now,
         }),
       ),
@@ -901,6 +905,34 @@ export const syncIngest = defineOperation({
     return out;
   },
 });
+
+/**
+ * The provider ids this connection synced into live activities within [from, to), for delete
+ * reconciliation (ADR 0112): what the provider no longer lists in that window was deleted. Walks
+ * core_sync_item_window_idx, so it reads only the window's rows.
+ */
+export async function syncedInWindow(
+  db: Kysely<CoreDatabase>,
+  input: {
+    connectionId: string;
+    kind: "email" | "meeting";
+    from: string;
+    to: string;
+    limit?: number;
+  },
+): Promise<string[]> {
+  const rows = await db
+    .selectFrom("core_sync_item")
+    .select("provider_id")
+    .where("connection_id", "=", input.connectionId)
+    .where("kind", "=", input.kind)
+    .where("occurred_at", ">=", input.from)
+    .where("occurred_at", "<", input.to)
+    .where("activity_id", "is not", null)
+    .limit(input.limit ?? 2000)
+    .execute();
+  return rows.map((r) => r.provider_id);
+}
 
 // --- Settings operations -----------------------------------------------------------------------
 

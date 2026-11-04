@@ -93,6 +93,14 @@ only be fixed inside vendored code, so we propose them upstream instead of patch
   wrap the drivers' access-token fetches in `AccessTokenCache`, as the facets already do, saving
   about three DO requests a sync. Our own gatekeepers (`gatekeeper-slack-post`) cache tokens per
   facet already.
+- **V3, delete feeds for mail and calendar sync** (found in stage 6a): the sessions expose no way
+  to learn what was deleted. Proposed: on `GmailScopedSession`, a `listChanges(sinceHistoryId)`
+  over Gmail `users.history.list` returning `messageAdded` and `messageDeleted` ids plus the next
+  history id (the hook driver already tracks history ids); on the Outlook session, a
+  `listChanges(deltaToken)` over Graph `messages/delta` returning changed ids and `@removed` ids;
+  the same for Outlook Calendar (`events/delta`) and Google Calendar (`events.list` with
+  `syncToken`, which returns cancelled items). Until then the CRM reconciles deletes by listing
+  windows (ADR 0112), which is complete but slower (hours, not seconds).
 
 ## Local changes to vendored code
 

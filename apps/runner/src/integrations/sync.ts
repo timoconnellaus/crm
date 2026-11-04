@@ -45,6 +45,28 @@ export interface SyncAdapter {
   pull(session: unknown, cursor: string | null, ctx: PullContext): Promise<PullResult>;
   /** Subscribes the session's push hook (new mail) so a change triggers a pass. */
   subscribe?(session: unknown, hook: unknown): Promise<void>;
+  /**
+   * Every provider id in [from, to), without reading content, for delete reconciliation
+   * (ADR 0112): what the CRM synced in that window and the provider no longer lists was deleted.
+   * `complete` is false when the listing was cut short (then nothing is deleted).
+   */
+  listIds?(session: unknown, from: Date, to: Date): Promise<{ ids: string[]; complete: boolean }>;
+}
+
+/** Reconciliation reads at most this many ids per window. */
+export const RECONCILE_MAX = 2000;
+
+async function drainAll<T>(
+  cursor: { next(): Promise<T[] | null> },
+  max: number,
+): Promise<{ items: T[]; complete: boolean }> {
+  const items: T[] = [];
+  for (;;) {
+    const page = await cursor.next();
+    if (!page?.length) return { items, complete: true };
+    items.push(...page);
+    if (items.length > max) return { items: items.slice(0, max), complete: false };
+  }
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: gatekeeper sessions are RPC stubs typed by each vendor's .d.ts, which crm-runner does not import.
@@ -105,6 +127,11 @@ export function normaliseMail(raw: RawMail): { item: SyncItem; body: string } | 
 
 export const fakeMailAdapter: SyncAdapter = {
   kind: "mail",
+  // The fake has a change feed, and also lists by window so delete reconciliation is tested.
+  async listIds(session: Session, from, to) {
+    const ids = (await session.listIdsBetween(from.toISOString(), to.toISOString())) as string[];
+    return { ids, complete: true };
+  },
   async pull(session: Session, cursor, ctx) {
     const page = (await session.listChanges(cursor, ctx.limit)) as {
       items: { id: string; op: "upsert" | "delete" }[];
@@ -338,6 +365,14 @@ export const gmailAdapter: SyncAdapter = {
   async subscribe(session: Session, hook) {
     await session.subscribeNewMessages(hook);
   },
+  async listIds(session: Session, from, to) {
+    const query = `after:${Math.floor(from.getTime() / 1000)} before:${Math.ceil(to.getTime() / 1000)}`;
+    const { items, complete } = await drainAll<{ info: { id: string } }>(
+      await session.searchMessages(query),
+      RECONCILE_MAX,
+    );
+    return { ids: items.map((e) => e.info.id), complete };
+  },
 };
 
 function calendarTime(
@@ -398,6 +433,10 @@ export const googleCalendarAdapter: SyncAdapter = {
       };
     });
     return { items, bodies: new Map(), cursor: w.next, more: w.more, restricted: 0 };
+  },
+  async listIds(session: Session, from, to) {
+    const events = (await session.listEvents({ timeMin: from, timeMax: to })) as { id: string }[];
+    return { ids: events.map((e) => e.id), complete: events.length < 2500 };
   },
 };
 
@@ -486,6 +525,17 @@ export const outlookAdapter: SyncAdapter = {
   async subscribe(session: Session, hook) {
     await session.subscribeNewMessages(hook);
   },
+  async listIds(session: Session, from, to) {
+    const { items, complete } = await drainAll<{ id: string; sentAt?: string; receivedAt: string }>(
+      await session.listMessages({ since: from.toISOString(), pageSize: 50 }),
+      RECONCILE_MAX,
+    );
+    const end = to.toISOString();
+    return {
+      ids: items.filter((m) => (m.sentAt ?? m.receivedAt) < end).map((m) => m.id),
+      complete,
+    };
+  },
 };
 
 export const outlookCalendarAdapter: SyncAdapter = {
@@ -540,6 +590,13 @@ export const outlookCalendarAdapter: SyncAdapter = {
       });
     }
     return { items, bodies: new Map(), cursor: w.next, more: w.more, restricted: 0 };
+  },
+  async listIds(session: Session, from, to) {
+    const { items, complete } = await drainAll<{ id: string }>(
+      await session.listEvents({ start: from.toISOString(), end: to.toISOString(), pageSize: 50 }),
+      RECONCILE_MAX,
+    );
+    return { ids: items.map((e) => e.id), complete };
   },
 };
 

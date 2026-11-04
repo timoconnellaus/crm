@@ -174,3 +174,37 @@ describe("Outlook", () => {
     expect(out.items).toEqual([expect.objectContaining({ kind: "meeting", title: "Demo" })]);
   });
 });
+
+describe("delete reconciliation listings", () => {
+  it("lists ids per window and says when a listing was cut short", async () => {
+    const from = new Date("2026-08-01T00:00:00Z");
+    const to = new Date("2026-08-08T00:00:00Z");
+    const gmail = await gmailAdapter.listIds?.(
+      { searchMessages: async () => cursorOf([[{ info: { id: "a" } }, { info: { id: "b" } }]]) },
+      from,
+      to,
+    );
+    expect(gmail).toEqual({ ids: ["a", "b"], complete: true });
+    const many = Array.from({ length: 2100 }, (_, i) => ({ info: { id: `m${i}` } }));
+    const cut = await gmailAdapter.listIds?.(
+      { searchMessages: async () => cursorOf([many]) },
+      from,
+      to,
+    );
+    expect(cut?.complete).toBe(false);
+    const outlook = await outlookAdapter.listIds?.(
+      {
+        listMessages: async () =>
+          cursorOf([
+            [
+              { id: "in", receivedAt: "2026-08-02T00:00:00Z" },
+              { id: "after", receivedAt: "2026-08-09T00:00:00Z" },
+            ],
+          ]),
+      },
+      from,
+      to,
+    );
+    expect(outlook).toEqual({ ids: ["in"], complete: true });
+  });
+});

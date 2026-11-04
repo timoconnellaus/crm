@@ -762,6 +762,7 @@ export interface CoreSyncItemTable {
   external_key: string;
   kind: "email" | "meeting";
   activity_id: Defaulted<string | null>;
+  occurred_at: Defaulted<Timestamp | null>;
   updated_at: Timestamp;
 }
 

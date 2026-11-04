@@ -27,6 +27,7 @@ import {
   recordIntegrationEvents,
   SYNC_BATCH_MAX,
   type SyncConfig,
+  syncedInWindow,
   syncKindOf,
   vendorBinding,
 } from "@crm/core";
@@ -42,6 +43,7 @@ const CATCH_UP_MS = 15 * 60_000;
 const BACKFILL_STEP_MS = 1_000;
 const SYNC_SOON_MS = 5_000;
 const SYNC_PAGE = 25;
+const RECONCILE_WINDOW_MS = 7 * 86_400_000;
 
 interface Meta {
   connectionId: string;
@@ -104,6 +106,9 @@ interface KindState {
   lastRunAt?: string;
   created?: number;
   restricted?: number;
+  /** Delete reconciliation walks 7-day windows from `since`; the next one starts here. */
+  reconcileFrom?: string;
+  deleted?: number;
 }
 
 async function sha256(text: string): Promise<string> {
@@ -969,7 +974,68 @@ export class IntegrationHost extends DurableObject<Env> {
     }
     state.cursor = result.cursor;
     if (!result.more) state.backfilled = true;
+    // Caught up: reconcile one window for deletes (providers without a delete feed).
+    if (!result.more && sharing !== "none") await this.#reconcile(meta, kind, state, user);
     return result.more;
+  }
+
+  /**
+   * Delete propagation for window-based adapters (Gmail, Google Calendar, Outlook; ADR 0112): one
+   * 7-day window per catch-up pass, walking the backfill range and starting again. What the CRM
+   * synced in the window and the provider no longer lists (deleted, trashed) is sent to
+   * sync.ingest as a delete. Nothing is deleted when the listing was cut short.
+   */
+  async #reconcile(meta: Meta, kind: SyncKind, state: KindState, user: ActingUser): Promise<void> {
+    const adapter = adapterFor(meta.vendor, kind);
+    if (!adapter?.listIds) return;
+    const now = Date.now();
+    const start = Math.max(Date.parse(state.reconcileFrom ?? state.since), Date.parse(state.since));
+    const end = Math.min(start + RECONCILE_WINDOW_MS, now);
+    if (end <= start) {
+      state.reconcileFrom = state.since;
+      return;
+    }
+    const from = new Date(start);
+    const to = new Date(end);
+    const { value: listed } = await this.#withSession(
+      state.resource,
+      { kind: "system", purpose: "sync", user },
+      (session) =>
+        adapter.listIds?.(session, from, to) ?? Promise.resolve({ ids: [], complete: false }),
+    );
+    state.reconcileFrom = end >= now ? state.since : to.toISOString();
+    if (!listed.complete) return;
+    const present = new Set(listed.ids);
+    const db = createCrmDb(this.env.DB);
+    const synced = await syncedInWindow(db.query, {
+      connectionId: meta.connectionId,
+      kind: kind === "mail" ? "email" : "meeting",
+      from: from.toISOString(),
+      to: to.toISOString(),
+    });
+    const gone = synced.filter((id) => !present.has(id));
+    for (let i = 0; i < gone.length; i += SYNC_BATCH_MAX) {
+      const out = (await invokeByName(
+        "sync.ingest",
+        {
+          connectionId: meta.connectionId,
+          items: gone.slice(i, i + SYNC_BATCH_MAX).map((providerId) => ({
+            kind: kind === "mail" ? "email" : "meeting",
+            op: "delete",
+            providerId,
+          })),
+        },
+        {
+          actor: "automation",
+          user,
+          origin: { surface: "automation", automationId: `sync:${meta.connectionId}` },
+          db,
+        },
+      )) as { deleted: number; removedBodies: string[] };
+      state.deleted = (state.deleted ?? 0) + out.deleted;
+      if (out.removedBodies.length && this.env.BLOBS)
+        await this.env.BLOBS.delete(out.removedBodies);
+    }
   }
 
   async #mirrorSync(state: SyncState): Promise<void> {
@@ -993,6 +1059,7 @@ export class IntegrationHost extends DurableObject<Env> {
       lastRunAt: s.lastRunAt ?? null,
       lastError: s.lastError ?? null,
       created: s.created ?? 0,
+      deleted: s.deleted ?? 0,
       restrictedSkipped: s.restricted ?? 0,
     };
   }

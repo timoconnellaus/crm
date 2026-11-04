@@ -21,9 +21,16 @@ so late arrivals are not missed; ingest dedupes.
 2,000-character snippet, the full body (kept aside for R2), signature block and bounce recipients.
 Shipped: Gmail, Google Calendar, Outlook mail, Outlook Calendar and the fake provider. Outlook has no
 RFC Message-ID and per-mailbox ids, so its dedupe key is a hash of sender, send time and subject;
-drafts, encrypted mail and events marked private are not synced. Window-based adapters (Google,
-Microsoft) do not see deletes: their catch-up re-reads the recent window only, so a delete
-propagates from the fake provider's change feed today and from a periodic reconciliation later.
+drafts, encrypted mail and events marked private are not synced.
+
+**Deletes without a delete feed.** The vendored Google and Microsoft sessions expose no Gmail
+`history.list` (`messageDeleted`) or Graph delta (`@removed`), so the window-based adapters
+reconcile instead: after each caught-up pass the host lists one 7-day window's ids (no content
+reads), compares them with what this connection synced into live activities in that window
+(`core_sync_item.occurred_at`, indexed) and sends the missing ones to `sync.ingest` as deletes. The
+window walks the backfill range, so a delete anywhere in it propagates within about a dozen
+catch-up passes (a few hours). Nothing is deleted when a listing is cut short (over 2,000 ids). A
+provider delete feed would make this immediate: proposed upstream (`UPSTREAMS.md`, V3).
 
 **Restricted reads are dropped in the adapter.** Each content read goes through the session's queue;
 an observation flagged `containsRestrictedData` marks the tracker and the item is skipped before
