@@ -1,0 +1,56 @@
+{
+  "name": "@crm/gatekeeper-kit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Building blocks for gatekeepers: connect-flow, credential, action, observation, and simulation primitives. Vendored from cloudflare-os. Not a deployable Worker.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./action-description": "./src/action-description.ts",
+    "./action-files": "./src/action-files.ts",
+    "./actions": "./src/actions.ts",
+    "./auth-retry": "./src/auth-retry.ts",
+    "./cache": "./src/cache.ts",
+    "./ci": "./src/ci.ts",
+    "./connect-handshake": "./src/connect-handshake.ts",
+    "./connect-nonce": "./src/connect-nonce.ts",
+    "./connect-pages": "./src/connect-pages.ts",
+    "./credential-expiry": "./src/credential-expiry.ts",
+    "./credential-stage": "./src/credential-stage.ts",
+    "./credentials": "./src/credentials.ts",
+    "./cursors": "./src/cursors.ts",
+    "./endpoint": "./src/endpoint.ts",
+    "./git-diff": "./src/git-diff.ts",
+    "./git-objects": "./src/git-objects.ts",
+    "./git-pull-transfer": "./src/git-pull-transfer.ts",
+    "./git-transport": "./src/git-transport.ts",
+    "./hook-delivery-queue": "./src/hook-delivery-queue.ts",
+    "./http-errors": "./src/http-errors.ts",
+    "./observers": "./src/observers.ts",
+    "./oauth-client": "./src/oauth-client.ts",
+    "./preview-oauth": "./src/preview-oauth.ts",
+    "./response-body": "./src/response-body.ts",
+    "./serial-queue": "./src/serial-queue.ts",
+    "./simulation": "./src/simulation.ts",
+    "./single-flight": "./src/single-flight.ts",
+    "./subresource-ids": "./src/subresource-ids.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run && vitest run -c vitest.worker.config.ts"
+  },
+  "dependencies": {
+    "@crm/gatekeeper-interface": "workspace:*",
+    "@crm/gatekeeper-observability": "workspace:*",
+    "diff": "9.0.0",
+    "jose": "6.2.15"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@cloudflare/workers-types": "5.20261104.1",
+    "@crm/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

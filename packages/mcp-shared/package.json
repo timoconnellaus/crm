@@ -1,0 +1,47 @@
+{
+  "name": "@crm/mcp-shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The library behind the MCP gatekeeper: MCP client, OAuth chain, account DO base, scope grammar and queued-action store. Vendored from cloudflare-os. Not a Worker.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./account": "./src/account.ts",
+    "./base-types": "./src/base-types.ts",
+    "./client": "./src/client.ts",
+    "./connect-nonce": "./src/connect-nonce.ts",
+    "./connection": "./src/connection.ts",
+    "./endpoint": "./src/endpoint.ts",
+    "./fetch": "./src/fetch.ts",
+    "./facet": "./src/facet.ts",
+    "./html": "./src/html.ts",
+    "./http": "./src/http.ts",
+    "./log": "./src/log.ts",
+    "./portal": "./src/portal.ts",
+    "./schema-to-ts": "./src/schema-to-ts.ts",
+    "./scope": "./src/scope.ts",
+    "./session": "./src/session.ts",
+    "./tools": "./src/tools.ts",
+    "./types": "./src/types.d.ts",
+    "./user": "./src/user.ts",
+    "./util": "./src/util.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@crm/gatekeeper-interface": "workspace:*",
+    "@crm/gatekeeper-kit": "workspace:*",
+    "@crm/gatekeeper-observability": "workspace:*",
+    "@modelcontextprotocol/client": "2.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261104.1",
+    "@crm/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "typescript6": "npm:typescript@6.0.3",
+    "vitest": "5.1.0"
+  }
+}
