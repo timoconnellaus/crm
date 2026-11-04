@@ -4,6 +4,7 @@
 // runs; it returns structured issues a model can act on.
 import { z } from "zod";
 import { automationManifestSchema } from "./automation.ts";
+import { checkAutomation } from "./automation-check.ts";
 import { checkObjectBehaviour } from "./behaviour.ts";
 import {
   type Extension,
@@ -431,6 +432,11 @@ export interface ValidateOptions {
   baseFields?: (object: string) => Record<string, FormulaFieldRef>;
   /** Objects that exist outside this extension (`person`, `other.thing`). Default: core only. */
   knownObjects?: readonly string[];
+  /**
+   * Field types of objects outside this extension (installed extensions' objects), for the
+   * automation checks; null when unknown (those checks are skipped). Core objects are built in.
+   */
+  objectFields?: (object: string) => Record<string, FieldTypeName> | null;
 }
 
 /** Formula environment for a set of field manifests (formula fields compile on demand). */
@@ -717,18 +723,11 @@ export function validateManifest(
   }
 
   for (const [name, automation] of Object.entries(m.automations)) {
-    if (!FIELD_NAME_RE.test(name))
-      contract(`automations.${name}`, "Automation names must be camelCase");
-    if (
-      "object" in automation.trigger &&
-      automation.trigger.object &&
-      !known.has(automation.trigger.object)
-    ) {
-      contract(
-        `automations.${name}.trigger.object`,
-        `Unknown object "${automation.trigger.object}"`,
-      );
-    }
+    checkAutomation(
+      { manifest: m, known, objectFields: options.objectFields, contract },
+      name,
+      automation,
+    );
   }
 
   const perms = m.permissions;
