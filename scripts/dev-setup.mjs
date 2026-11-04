@@ -24,6 +24,11 @@ for (const app of ["apps/app", "apps/runner"]) {
   console.log(`created ${app}/.dev.vars`);
 }
 
+// The vendored gatekeeper Workers import configurator frames that are generated, not committed.
+execFileSync("node", [join(root, "scripts/gatekeeper-configurator-frames.mjs")], {
+  stdio: "inherit",
+});
+
 // crm-runner bundles the SDK and the shipped extensions as source at build time (ADR 0025); vite
 // dev loads it as an auxiliary Worker, so the bundle must exist first.
 execFileSync("node", [join(root, "apps/runner/scripts/bundle.mjs")], { stdio: "inherit" });

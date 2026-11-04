@@ -50,7 +50,7 @@ kept as symlinks.
 
 | File | Stands in for |
 | --- | --- |
-| `src/generated/{bigquery,calendar,chat-account,chat-space,chat-thread,drive,gmail}-configurator-ui.txt` | The configurator frames upstream builds from the matching `src/configurator/*-ui.tsx` with the configurator-ui runtime. Inert placeholder pages; see [`../gatekeeper-configurator-ui/UPSTREAM.md`](../gatekeeper-configurator-ui/UPSTREAM.md). |
+| `src/generated/{bigquery,calendar,chat-account,chat-space,chat-thread,drive,gmail}-configurator-ui.txt` | The configurator frames upstream builds from the matching `src/configurator/*-ui.tsx` with the configurator-ui runtime. Generated, not committed: `src/generated/` is git-ignored, and `scripts/gatekeeper-configurator-frames.mjs` (run before this package's `typecheck`, `test` and `build`, and by `scripts/dev-setup.mjs`) writes a tiny document naming the spec. The CRM renders the spec itself natively in the app (`apps/app/src/components/integrations/configurator`) and uses only the `ui` capability `startResourceConfigurator()` returns. See [`../gatekeeper-configurator-ui/UPSTREAM.md`](../gatekeeper-configurator-ui/UPSTREAM.md). |
 
 ## Pulling upstream changes
 

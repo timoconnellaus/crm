@@ -6,6 +6,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import pkg from "./package.json" with { type: "json" };
+import { configuratorSpecs } from "./src/components/integrations/configurator/vite-plugin.ts";
 
 function gitCommit(): string {
   // Workers Builds sets WORKERS_CI_COMMIT_SHA; fall back to the local checkout.
@@ -36,6 +37,8 @@ export default defineConfig({
       auxiliaryWorkers: [{ configPath: "../runner/wrangler.jsonc" }],
     }),
     tailwindcss(),
+    // Gatekeeper resource pickers: the vendored configurator specs, rendered with our runtime.
+    configuratorSpecs(),
     tanstackStart(),
     viteReact(),
   ],

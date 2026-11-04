@@ -49,10 +49,14 @@ Local changes, in summary:
   `worker-configuration.d.ts`. Not taken: the rest of `workshop-shared`, observability's error
   reporting, metrics and tracing, configurator-ui's runtime and build, and `@gadgets/scripts`
   (except `assert-workerd.ts`).
-- **Shim:** placeholder configurator frames in
-  `packages/gatekeeper-{mcp,google,microsoft,slack,email,zoominfo}/src/generated/*.txt` (16 files)
-  stand in for the frames upstream builds with the configurator-ui runtime, which we don't vendor.
-  Stage 6 replaces them with a shadcn renderer of the configurator specs.
+- **Configurator frames:** we don't vendor upstream's configurator-ui runtime. The CRM renders the
+  configurator specs (`src/configurator/*-configurator-ui.tsx`, unchanged) natively with its own
+  shadcn runtime (`apps/app/src/components/integrations/configurator`) and drives each gatekeeper's
+  `ui` capability through the server. The frames the vendored sources still import,
+  `packages/gatekeeper-{mcp,google,microsoft,slack,email,zoominfo}/src/generated/*.txt` (16 files),
+  are generated and git-ignored: `scripts/gatekeeper-configurator-frames.mjs` writes a tiny
+  document naming each spec, run by those packages' `typecheck`, `test` and `build` and by
+  `scripts/dev-setup.mjs`.
 - **Tests:** upstream's suites run unchanged (Node and workerd), except Microsoft's configurator
   frame suites, which drive upstream's built frames in Chromium (we ship placeholders), and its
   opt-in live-tenant suite. The gatekeeper Workers pin `vite` 7.3.6 for their tests because Vite 8

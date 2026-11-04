@@ -7,10 +7,10 @@
   "type": "module",
   "main": "./src/email.ts",
   "scripts": {
-    "build": "wrangler deploy --dry-run --outdir dist",
+    "build": "node ../../scripts/gatekeeper-configurator-frames.mjs && wrangler deploy --dry-run --outdir dist",
     "types": "node ../../scripts/gatekeeper-worker-types.mjs",
-    "typecheck": "node ../../scripts/gatekeeper-worker-types.mjs --check && tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "test": "vitest run -c vitest.smoke.config.ts"
+    "typecheck": "node ../../scripts/gatekeeper-configurator-frames.mjs && node ../../scripts/gatekeeper-worker-types.mjs --check && tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "node ../../scripts/gatekeeper-configurator-frames.mjs && vitest run -c vitest.smoke.config.ts"
   },
   "dependencies": {
     "@crm/gatekeeper-configurator-ui": "workspace:*",
