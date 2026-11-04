@@ -1,0 +1,21 @@
+# Local development secrets for crm-app. `pnpm dev` copies this to .dev.vars when it is missing and
+# fills in BETTER_AUTH_SECRET. Production values are set with `wrangler secret put` (docs/deploying.md).
+
+# Identity adapter: better-auth (default) or cloudflare-access.
+IDENTITY_PROVIDER=better-auth
+
+# Better Auth. The secret signs sessions: at least 32 random characters.
+BETTER_AUTH_SECRET=
+# Public origin of the app. Leave empty locally to infer it from the request.
+BETTER_AUTH_URL=
+# Open sign-up to everyone (local dev and e2e tests sign up a test user).
+AUTH_ALLOW_SIGNUP=true
+
+# Google sign-in (optional). Create an OAuth client with redirect URI
+# <origin>/api/auth/callback/google.
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Cloudflare Access (only when IDENTITY_PROVIDER=cloudflare-access).
+CF_ACCESS_TEAM_DOMAIN=
+CF_ACCESS_AUD=

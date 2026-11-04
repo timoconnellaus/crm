@@ -1,0 +1,10 @@
+{
+  "extends": "@crm/config/tsconfig.react.json",
+  "compilerOptions": {
+    "types": ["./worker-configuration.d.ts", "vite/client", "@cloudflare/vitest-plugin/types"],
+    "paths": {
+      "#/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "test", "worker-configuration.d.ts"]
+}
