@@ -1,0 +1,33 @@
+// crm-gatekeeper-mcp: the MCP gatekeeper vendored from cloudflare-os (packages/gatekeeper-mcp).
+// Upstream generates its wrangler.jsonc from cloudflare.config.ts; we keep this file as the source
+// of truth instead, with the same settings plus our name and no public URL. Account-agnostic: no
+// account or resource IDs are committed (ADR 0012). Not yet bound to crm-runner (stage 6).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crm-gatekeeper-mcp",
+  // capnweb-validate writes the validated entrypoint here (see `build`); wrangler bundles that.
+  "main": ".wrangler/validate/src/mcp.ts",
+  "compatibility_date": "2026-09-04",
+  // `global_fetch_strictly_public` is the real SSRF boundary for this Worker: endpoints are
+  // user-supplied, and workerd rejects reserved address ranges after DNS resolution.
+  "compatibility_flags": ["allow_irrevocable_stub_storage", "global_fetch_strictly_public"],
+  // Internal only for now: reached through service bindings. OAuth callbacks will be proxied to it
+  // by crm-app when stage 6 wires it in.
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "invocation_logs": false }
+  },
+  "vars": {
+    // Set to "true" to permit http:// and private-network endpoints. Local development only.
+    "MCP_ALLOW_INSECURE": "false"
+  },
+  "build": {
+    "command": "pnpm exec capnweb-validate build --out .wrangler/validate",
+    "watch_dir": "src"
+  },
+  "rules": [{ "type": "Text", "globs": ["**/*.txt", "**/*.svg"], "fallthrough": false }],
+  "migrations": [{ "tag": "v0", "new_sqlite_classes": ["McpAccount", "McpGatekeeperImpl"] }]
+}
