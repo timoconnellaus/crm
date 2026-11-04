@@ -5,6 +5,7 @@ import type { CoreDatabase } from "@crm/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ConflictError, NotFoundError, ValidationError } from "../errors.ts";
+import { getObject } from "../fields/index.ts";
 import { organisationObject } from "../fields/organisation.ts";
 import { newId } from "../ids.ts";
 import { listInputSchema, pageSchema, runListQuery, selectFields } from "../list.ts";
@@ -620,7 +621,7 @@ export const organisationList = defineOperation({
   async handler(input, ctx) {
     const page = await runListQuery(
       ctx.db.selectFrom("crm_organisations").selectAll(),
-      organisationObject,
+      getObject("organisation") ?? organisationObject,
       input,
     );
     const items: OrganisationListItem[] = page.rows.map((row) => ({

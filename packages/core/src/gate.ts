@@ -63,6 +63,20 @@ const autonomousAi: Record<RiskClass, GateRule> = {
 };
 
 /**
+ * Extension code (ADR 0025) is gated like an automation: it already holds declared, approved
+ * permissions, but it never changes schema or extensions and bulk work above 100 records waits.
+ */
+const extensionRow = (bulk: GateRule, destructive: GateRule): Record<RiskClass, GateRule> => ({
+  read: "auto",
+  write: "auto",
+  "bulk-write": bulk,
+  destructive,
+  schema: "deny",
+  extension: "deny",
+  outbound: "review",
+});
+
+/**
  * The presets. Humans are `auto` everywhere (role permissions still apply); the presets differ
  * in how much the in-app assistant, MCP clients and automations may do without review.
  * Automations never change schema or extensions.
@@ -81,6 +95,7 @@ export const PRESET_MATRICES: Record<PolicyPreset, GateMatrix> = {
       extension: "deny",
       outbound: "review",
     },
+    extension: extensionRow("review", "review"),
   },
   balanced: {
     human: HUMAN_ALL_AUTO,
@@ -95,12 +110,14 @@ export const PRESET_MATRICES: Record<PolicyPreset, GateMatrix> = {
       extension: "deny",
       outbound: "review",
     },
+    extension: extensionRow({ autoUpTo: 100, above: "review" }, "review"),
   },
   autonomous: {
     human: HUMAN_ALL_AUTO,
     assistant: autonomousAi,
     mcp: autonomousAi,
     automation: { ...autonomousAi, schema: "deny", extension: "deny" },
+    extension: extensionRow("auto", { autoUpTo: 10, above: "review" }),
   },
 };
 

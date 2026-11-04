@@ -14,16 +14,19 @@ export const RISK_CLASSES = [
 export type RiskClass = (typeof RISK_CLASSES)[number];
 
 /** Who initiated an operation. */
-export const ACTORS = ["human", "assistant", "mcp", "automation"] as const;
+/** `extension`: extension code calling operations through `codemode:crm` (ADR 0025). */
+export const ACTORS = ["human", "assistant", "mcp", "automation", "extension"] as const;
 export type Actor = (typeof ACTORS)[number];
 
 /** Where a call came from, recorded in the audit log. */
 export const originSchema = z.object({
-  surface: z.enum(["ui", "mcp", "automation", "system"]),
+  surface: z.enum(["ui", "mcp", "automation", "system", "extension"]),
   /** The MCP client id (stage 2). */
   clientId: z.string().optional(),
   /** The automation id (later stages). */
   automationId: z.string().optional(),
+  /** The extension whose code made the call (actor `extension`). */
+  extensionId: z.string().optional(),
 });
 export type Origin = z.infer<typeof originSchema>;
 
@@ -38,6 +41,7 @@ export type Role = (typeof ROLES)[number];
  * - `audit:read`    the admin Audit page
  * - `users:manage`  change users' roles
  * - `policy:manage` change the approval policy (also human-only, see `actors`)
+ * - `extensions:manage` install, check, disable, enable and roll back extensions (stage 3)
  */
 export const PERMISSIONS = [
   "records:read",
@@ -46,6 +50,7 @@ export const PERMISSIONS = [
   "audit:read",
   "users:manage",
   "policy:manage",
+  "extensions:manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 

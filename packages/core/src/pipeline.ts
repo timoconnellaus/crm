@@ -5,7 +5,8 @@
 // The handler's queued writes, the timeline activities and the audit rows commit together in one
 // D1 batch (one transaction). Refusals (role, actor, gate) and failures are audited separately.
 import type { AuditChangeAction, CrmDb } from "@crm/db";
-import { type Compilable, sql } from "kysely";
+import { checkGrant } from "@crm/sdk";
+import { type Compilable, type CompiledQuery, sql } from "kysely";
 import { diffRecords, type FieldDiff } from "./diff.ts";
 import {
   ForbiddenError,
@@ -15,12 +16,15 @@ import {
   toOperationError,
   ValidationError,
 } from "./errors.ts";
-import { getObject } from "./fields/index.ts";
+import type { ExtensionHost } from "./extensions/host.ts";
+import { refreshSchemaRegistry } from "./extensions/schema.ts";
+import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { newId } from "./ids.ts";
 import {
   type AnyOperation,
   afterCommit,
+  type ExtensionCaller,
   type HandlerContext,
   isAfterCommit,
   type OperationOutput,
@@ -48,6 +52,20 @@ export interface InvocationContext {
   floor?: GateFloor;
   /** Clock override for tests. */
   clock?: () => Date;
+  /** The extension runtime (extension.* and x.* operations need it). */
+  extensionHost?: ExtensionHost;
+  /** Actor `extension` only: the calling extension and its declared permissions (ADR 0025). */
+  extension?: ExtensionCaller;
+}
+
+/** The object an operation reads or writes, for extension permission checks. */
+export function operationObject(op: AnyOperation, input: unknown): string | null {
+  if (op.name.startsWith("record.")) {
+    const object = (input as { object?: unknown } | null)?.object;
+    return typeof object === "string" ? object : null;
+  }
+  const prefix = op.name.split(".")[0] ?? "";
+  return isCoreObject(prefix) ? prefix : null;
 }
 
 type AuditOutcome = "ok" | "forbidden" | "denied" | "review" | "error";
@@ -194,7 +212,8 @@ function activityStatements(
       payload: JSON.stringify(activity.payload),
       occurred_at: activity.occurredAt ?? now,
       author_user_id: ctx.user.id,
-      author_actor: ctx.actor,
+      // core_activity.author_actor predates the extension actor; extension posts are `system`.
+      author_actor: ctx.actor === "extension" ? "system" : ctx.actor,
       created_at: now,
       updated_at: now,
     }),
@@ -257,6 +276,8 @@ export async function invokeOperation<O extends AnyOperation>(
     throw new ValidationError(`Invalid input for ${op.name}`, { issues: parsed.error.issues });
   }
   const input: unknown = parsed.data;
+  // Extension objects and fields join the field registry (ADR 0023); cheap when unchanged.
+  await refreshSchemaRegistry(ctx.db.query);
   const audited = isAudited(op, ctx.actor);
   const auditId = newId("audit");
   const base = { id: auditId, op, ctx, input, at: now } as const;
@@ -277,6 +298,23 @@ export async function invokeOperation<O extends AnyOperation>(
     });
     await auditAlone({ ...base, gate: gate.decision, outcome: "forbidden", error });
     throw error;
+  }
+  if (ctx.actor === "extension") {
+    const decision = ctx.extension
+      ? checkGrant(ctx.extension.id, ctx.extension.permissions, {
+          operation: op.name,
+          risk: op.risk,
+          object: operationObject(op, input),
+        })
+      : { ok: false as const, reason: "Extension calls need the calling extension" };
+    if (!decision.ok) {
+      const error = new ForbiddenError(decision.reason, {
+        extension: ctx.extension?.id ?? null,
+        operation: op.name,
+      });
+      await auditAlone({ ...base, gate: gate.decision, outcome: "forbidden", error });
+      throw error;
+    }
   }
   if (!roleHasPermission(ctx.user.role, op.permission)) {
     const error = new ForbiddenError(`Your role (${ctx.user.role}) cannot ${op.name}`, {
@@ -300,7 +338,7 @@ export async function invokeOperation<O extends AnyOperation>(
     throw error;
   }
 
-  const writes: Compilable[] = [];
+  const writes: (Compilable | CompiledQuery)[] = [];
   const changes: RecordChange[] = [];
   const activities: Compilable[] = [];
   const handlerCtx: HandlerContext = {
@@ -323,6 +361,8 @@ export async function invokeOperation<O extends AnyOperation>(
       return id;
     },
     afterCommit,
+    ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
+    ...(ctx.extension ? { extension: ctx.extension } : {}),
   };
 
   const fail = async (error: unknown): Promise<never> => {
@@ -356,7 +396,7 @@ export async function invokeOperation<O extends AnyOperation>(
     output = checked.data;
   }
 
-  const statements: Compilable[] = [...writes];
+  const statements: (Compilable | CompiledQuery)[] = [...writes];
   const changeRows: { o: string; r: string; a: string; d: string }[] = [];
   for (const change of changes) {
     const diff = change.diff ?? diffRecords(change.before, change.after);

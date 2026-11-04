@@ -17,6 +17,10 @@ export const ID_PREFIXES = {
   phone: "phn",
   domain: "dom",
   address: "adr",
+  /** Records of extension objects (stage 3). */
+  record: "rec",
+  /** Extension run history rows. */
+  extensionRun: "xrn",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

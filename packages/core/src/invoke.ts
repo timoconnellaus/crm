@@ -1,5 +1,8 @@
 // The core registry and typed entry points adapters call.
+import type { CoreDatabase } from "@crm/db";
+import type { Kysely } from "kysely";
 import { UnknownOperationError } from "./errors.ts";
+import { loadExtensionOperations, resolveExtensionOperation } from "./extensions/tools.ts";
 import type { AnyOperation, OperationInput, OperationOutput } from "./operation.ts";
 import { coreOperations } from "./operations/index.ts";
 import { type InvocationContext, invokeOperation } from "./pipeline.ts";
@@ -24,7 +27,8 @@ export function createInvoker<Ops extends readonly AnyOperation[]>(
     input: unknown,
     ctx: InvocationContext,
   ): Promise<unknown> => {
-    const op = registry.get(name);
+    // Extension tools (`x.<extension>.<tool>`) are resolved from installed manifests.
+    const op = registry.get(name) ?? (await resolveExtensionOperation(ctx.db.query, name));
     if (!op) throw new UnknownOperationError(name);
     return invokeOperation(op, input, ctx);
   };
@@ -57,4 +61,12 @@ export function invokeByName(
   ctx: InvocationContext,
 ): Promise<unknown> {
   return coreInvoker.invokeByName(name, input, ctx);
+}
+
+/**
+ * Every operation a caller can invoke: the core registry plus installed extension tools. MCP
+ * (stage 2) lists tools from this.
+ */
+export async function listOperations(db: Kysely<CoreDatabase>): Promise<AnyOperation[]> {
+  return [...coreRegistry.list(), ...(await loadExtensionOperations(db))];
 }

@@ -6,6 +6,7 @@ import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "../errors.ts";
 import { activityObject } from "../fields/activity.ts";
+import { getObject } from "../fields/index.ts";
 import { newId } from "../ids.ts";
 import {
   decodeCursor,
@@ -289,7 +290,7 @@ export const activityLog = defineOperation({
         payload: JSON.stringify(payload),
         occurred_at: occurredAt,
         author_user_id: ctx.user.id,
-        author_actor: ctx.actor,
+        author_actor: ctx.actor === "extension" ? "system" : ctx.actor,
         created_at: ctx.now,
         updated_at: ctx.now,
       }),
@@ -519,7 +520,7 @@ export const activityList = defineOperation({
   async handler(input, ctx) {
     const page = await runListQuery(
       ctx.db.selectFrom("crm_activities").selectAll(),
-      activityObject,
+      getObject("activity") ?? activityObject,
       input,
     );
     const ids = page.rows.map((row) => row.id);

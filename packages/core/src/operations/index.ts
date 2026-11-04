@@ -5,11 +5,13 @@ import { activityOperations } from "./activity.ts";
 import { affiliationOperations } from "./affiliation.ts";
 import { auditOperations } from "./audit.ts";
 import { exportOperations } from "./export.ts";
+import { extensionOperations } from "./extension.ts";
 import { importOperations } from "./import.ts";
 import { organisationOperations } from "./organisation.ts";
 import { personOperations } from "./person.ts";
 import { policyOperations } from "./policy.ts";
 import { queryOperations } from "./query.ts";
+import { recordOperations } from "./record.ts";
 import { searchOperations } from "./search.ts";
 import { taskOperations } from "./task.ts";
 import { trashOperations } from "./trash.ts";
@@ -32,4 +34,6 @@ export const coreOperations = [
   ...queryOperations,
   ...importOperations,
   ...exportOperations,
+  ...recordOperations,
+  ...extensionOperations,
 ] as const;
