@@ -15,7 +15,8 @@
       "!**/dist",
       "!**/playwright-report",
       "!**/test-results",
-      "!**/*.md"
+      "!**/*.md",
+      "!docs/stages/assets"
     ]
   },
   "overrides": [
