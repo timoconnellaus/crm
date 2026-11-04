@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -20,6 +21,8 @@ function gitCommit(): string {
 }
 
 export default defineConfig({
+  // `#/…` is src/ (tsconfig paths), as in `import { callOp } from "#/lib/operations"`.
+  resolve: { alias: { "#": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: { port: Number(process.env.PORT ?? 5173), strictPort: true },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
