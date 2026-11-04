@@ -29,6 +29,21 @@ A user's stored list configuration (`object`, filter, sort, columns): the simple
 **Trash**
 Soft-deleted records, restorable for 30 days before they are purged.
 
+**Purge**
+The scheduled hard delete of records that have been in Trash for more than 30 days. It runs daily
+as an `automation` (`trash.purge`) and is audited like any operation.
+
+**Merge**
+Folding a duplicate record into a **survivor**: chosen field values, combined emails/phones/domains
+and tags, and the duplicate's affiliations, activity and task links moved over. The merged-away
+record goes to Trash with a `merged_into_id` pointer and can be restored.
+_Avoid_: dedupe (that is finding duplicates), combine
+
+**Erase**
+An admin-only hard delete for GDPR requests (`person.erase`, `organisation.erase`). Unlike a purge
+it also **redacts** the audit log: content that mentions the record becomes `"[erased]"` (ADR 0019).
+_Avoid_: purge (that is retention), delete (that is soft)
+
 **Activity**
 One entry on a record's timeline: a note, email, call, meeting or system event.
 

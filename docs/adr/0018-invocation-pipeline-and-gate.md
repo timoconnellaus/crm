@@ -70,3 +70,33 @@ linked to that record, in the same batch.
   then lose single-transaction atomicity across chunks). Revisit with the first `*Many` operation.
 - Append-only audit means GDPR erase cannot redact old diffs yet. `*.erase` must decide how to
   handle personal data in `core_audit_changes` (e.g. a sanctioned redaction migration path).
+
+## Amendment, 2026-11-04 (stage 1 build, record operations)
+- **Batch operations and D1 limits.** `person.updateMany`, `person.deleteMany`,
+  `organisation.updateMany` and `organisation.deleteMany` take at most 100 ids (`BATCH_MAX`) and
+  declare `bulkSize = ids.length`, so the gate's bulk thresholds see the real count. Within one
+  call everything is still one D1 batch, so a call is atomic (all or none; a missing id fails the
+  whole call). The pipeline is unchanged; the cap exists because every touched record adds
+  statements to that batch (its diff row, and a timeline post for tracked fields), and D1 limits
+  queries per invocation and bound parameters per statement (100). `IN (...)` lists are chunked to
+  50 ids per statement, and bulk tag links pass ids as one JSON parameter (`json_each`).
+  **Trade-off:** a selection larger than 100 records is split by the caller into several calls.
+  Those are separate transactions, each gated and audited on its own, so a later call can fail
+  after earlier ones applied. The operation descriptions say so. Splitting also means each call is
+  gated at its own size; that is the caller's (and, in stage 2, the reviewer's) concern, not a
+  loophole in the atomic unit.
+- **Scheduled purge.** `crm-app` has a daily cron trigger (`wrangler.jsonc`, handler in
+  `apps/app/src/server.ts`). It calls `runTrashPurge`, which invokes `trash.purge` through the
+  pipeline in rounds of at most 100 records, as actor `automation`, origin
+  `{ surface: "system", automationId: "trash.purge" }`, acting as `SYSTEM_USER` (id `system`, not a
+  `core_user` row). Each round is gated (the floor applies) and audited, with an `erase` change row
+  per purged record. `trash.purge` is restricted to `actors: ["automation"]` and needs
+  `records:erase`. Its risk class is `write`, not `destructive`: the destructive decision was the
+  delete, which was gated when it happened and announced this purge date (`restorableUntil`);
+  carrying out that retention must not wait in a review queue that Balanced and Cautious apply to
+  every destructive automation call. A floor can still stop it (e.g.
+  `{"automation":{"*":"deny"}}`).
+- **Erase and the audit log**: see ADR 0019 (sanctioned redaction, migration 0008).
+- **Last admin.** `user.updateRole` refuses to demote the last admin, and its `UPDATE` re-checks in
+  SQL (a `CASE` that writes a value the role `CHECK` rejects when no other admin remains), so two
+  concurrent demotions cannot leave a deployment without an admin.
