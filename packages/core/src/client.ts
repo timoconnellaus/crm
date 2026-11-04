@@ -28,6 +28,8 @@ export {
   type PolicyPreset,
   PRESET_MATRICES,
 } from "./gate.ts";
+// Gatekeeper titles and companions (Slack posting rides on the Slack connection), for pickers.
+export { CATALOGUE, type CatalogueEntry, catalogueEntry } from "./integrations/catalogue.ts";
 export { LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT, type Sort, sortSchema } from "./list.ts";
 export {
   ACTORS,
