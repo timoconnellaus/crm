@@ -28,6 +28,7 @@ import { Route as AppSettingsApprovalPolicyRouteImport } from './routes/_app/set
 import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
 import { Route as AppSettingsConnectedAppsRouteImport } from './routes/_app/settings/connected-apps'
 import { Route as AppSettingsExtensionsRouteImport } from './routes/_app/settings/extensions'
+import { Route as AppSettingsGeneralRouteImport } from './routes/_app/settings/general'
 import { Route as AppSettingsStorageRouteImport } from './routes/_app/settings/storage'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -130,6 +131,11 @@ const AppSettingsExtensionsRoute = AppSettingsExtensionsRouteImport.update({
   path: '/settings/extensions',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsGeneralRoute = AppSettingsGeneralRouteImport.update({
+  id: '/settings/general',
+  path: '/settings/general',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsStorageRoute = AppSettingsStorageRouteImport.update({
   id: '/settings/storage',
   path: '/settings/storage',
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/settings/audit': typeof AppSettingsAuditRoute
   '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
+  '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -197,6 +204,7 @@ export interface FileRoutesByTo {
   '/settings/audit': typeof AppSettingsAuditRoute
   '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
+  '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -224,6 +232,7 @@ export interface FileRoutesById {
   '/_app/settings/audit': typeof AppSettingsAuditRoute
   '/_app/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
   '/_app/settings/extensions': typeof AppSettingsExtensionsRoute
+  '/_app/settings/general': typeof AppSettingsGeneralRoute
   '/_app/settings/storage': typeof AppSettingsStorageRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -251,6 +260,7 @@ export interface FileRouteTypes {
     | '/settings/audit'
     | '/settings/connected-apps'
     | '/settings/extensions'
+    | '/settings/general'
     | '/settings/storage'
     | '/settings/users'
     | '/api/auth/$'
@@ -276,6 +286,7 @@ export interface FileRouteTypes {
     | '/settings/audit'
     | '/settings/connected-apps'
     | '/settings/extensions'
+    | '/settings/general'
     | '/settings/storage'
     | '/settings/users'
     | '/api/auth/$'
@@ -302,6 +313,7 @@ export interface FileRouteTypes {
     | '/_app/settings/audit'
     | '/_app/settings/connected-apps'
     | '/_app/settings/extensions'
+    | '/_app/settings/general'
     | '/_app/settings/storage'
     | '/_app/settings/users'
     | '/api/auth/$'
@@ -454,6 +466,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsExtensionsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/general': {
+      id: '/_app/settings/general'
+      path: '/settings/general'
+      fullPath: '/settings/general'
+      preLoaderRoute: typeof AppSettingsGeneralRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/storage': {
       id: '/_app/settings/storage'
       path: '/settings/storage'
@@ -506,6 +525,7 @@ interface AppRouteChildren {
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
   AppSettingsConnectedAppsRoute: typeof AppSettingsConnectedAppsRoute
   AppSettingsExtensionsRoute: typeof AppSettingsExtensionsRoute
+  AppSettingsGeneralRoute: typeof AppSettingsGeneralRoute
   AppSettingsStorageRoute: typeof AppSettingsStorageRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
   AppOrganisationsIndexRoute: typeof AppOrganisationsIndexRoute
@@ -529,6 +549,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsAuditRoute: AppSettingsAuditRoute,
   AppSettingsConnectedAppsRoute: AppSettingsConnectedAppsRoute,
   AppSettingsExtensionsRoute: AppSettingsExtensionsRoute,
+  AppSettingsGeneralRoute: AppSettingsGeneralRoute,
   AppSettingsStorageRoute: AppSettingsStorageRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,
   AppOrganisationsIndexRoute: AppOrganisationsIndexRoute,

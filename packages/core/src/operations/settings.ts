@@ -3,29 +3,10 @@
 // and FX are out of scope; changing it relabels amounts, it never converts them.
 import { z } from "zod";
 import { defineOperation } from "../operation.ts";
-import { BASE_CURRENCY_SETTING, loadGeneralSettings } from "../settings.ts";
 
-/** ISO 4217 codes offered in Settings → General (any valid three-letter code is accepted). */
-export const COMMON_CURRENCIES = [
-  "USD",
-  "EUR",
-  "GBP",
-  "AUD",
-  "CAD",
-  "NZD",
-  "JPY",
-  "CHF",
-  "SGD",
-  "INR",
-  "SEK",
-  "NOK",
-  "DKK",
-  "ZAR",
-  "BRL",
-  "MXN",
-  "HKD",
-  "CNY",
-] as const;
+export { COMMON_CURRENCIES } from "../currencies.ts";
+
+import { BASE_CURRENCY_SETTING, loadGeneralSettings } from "../settings.ts";
 
 const generalSettings = z.object({
   baseCurrency: z

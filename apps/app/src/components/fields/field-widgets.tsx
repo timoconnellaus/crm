@@ -16,6 +16,7 @@ import { Textarea } from "@crm/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@crm/ui/components/tooltip";
 import { Link } from "@tanstack/react-router";
 import { SigmaIcon } from "lucide-react";
+import { RecordPicker } from "#/components/record-picker";
 import { formatDate, formatDateTime } from "#/lib/format";
 import { useOp } from "#/lib/query";
 import type { FieldInfo } from "#/lib/schema";
@@ -40,15 +41,28 @@ function widgetOf(field: FieldInfo) {
 
 const Empty = () => <span className="text-muted-foreground">—</span>;
 
-function formatNumber(field: FieldInfo, value: number, kind: string): string {
-  if (kind === "currency") {
-    const currency = (field.options?.currency as string | undefined) ?? "USD";
-    try {
-      return new Intl.NumberFormat("en", { style: "currency", currency }).format(value);
-    } catch {
-      return `${currency} ${value}`;
-    }
+/** The deployment's base currency (Settings → General, ADR 0101). */
+export function useBaseCurrency(): string {
+  const settings = useOp("settings.get", {}, { staleTime: 5 * 60_000 });
+  return settings.data?.baseCurrency ?? "USD";
+}
+
+/** A currency amount in `currency`. */
+export function formatCurrency(value: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat("en", { style: "currency", currency }).format(value);
+  } catch {
+    return `${currency} ${value}`;
   }
+}
+
+/** A currency field's value: in the field's own currency, else the base currency. */
+function CurrencyValue({ field, value }: { field: FieldInfo; value: number }) {
+  const base = useBaseCurrency();
+  return <>{formatCurrency(value, (field.options?.currency as string | undefined) ?? base)}</>;
+}
+
+function formatNumber(_field: FieldInfo, value: number, kind: string): string {
   if (kind === "percent") return `${new Intl.NumberFormat("en").format(value)}%`;
   return new Intl.NumberFormat("en").format(value);
 }
@@ -86,8 +100,13 @@ export function FieldDisplay({ field, value }: { field: FieldInfo; value: unknow
     return <Empty />;
   }
   switch (kind) {
-    case "number":
     case "currency":
+      return typeof value === "number" ? (
+        <CurrencyValue field={field} value={value} />
+      ) : (
+        <>{String(value)}</>
+      );
+    case "number":
     case "percent":
       return <>{typeof value === "number" ? formatNumber(field, value, kind) : String(value)}</>;
     case "date":
@@ -180,6 +199,57 @@ function FormulaValue({ field, value }: { field: FieldInfo; value: unknown }) {
 }
 
 function RelationEditor({
+  field,
+  value,
+  onChange,
+  id,
+}: {
+  field: FieldInfo;
+  value: unknown;
+  onChange: (value: unknown) => void;
+  id?: string;
+}) {
+  const to = String(field.options?.to ?? "");
+  const many = field.options?.many === true;
+  if (!many && (to === "organisation" || to === "person")) {
+    return <CoreRecordEditor to={to} field={field} value={value} onChange={onChange} id={id} />;
+  }
+  return <ExtensionRelationEditor field={field} value={value} onChange={onChange} id={id} />;
+}
+
+/** One person or organisation, picked by searching (there may be thousands). */
+function CoreRecordEditor({
+  to,
+  field,
+  value,
+  onChange,
+  id,
+}: {
+  to: "organisation" | "person";
+  field: FieldInfo;
+  value: unknown;
+  onChange: (value: unknown) => void;
+  id?: string;
+}) {
+  const current = typeof value === "string" ? value : null;
+  const record = useOp(
+    "record.get",
+    { object: to, id: current ?? "" },
+    { enabled: Boolean(current), staleTime: 60_000, retry: false },
+  );
+  return (
+    <RecordPicker
+      id={id}
+      object={to}
+      label={field.label}
+      placeholder={to === "organisation" ? "Choose an organisation" : "Choose a person"}
+      value={current ? { id: current, name: record.data?.title ?? current } : null}
+      onChange={(picked) => onChange(picked?.id ?? null)}
+    />
+  );
+}
+
+function ExtensionRelationEditor({
   field,
   value,
   onChange,

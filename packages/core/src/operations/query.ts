@@ -418,7 +418,9 @@ export const querySql = defineOperation({
   description:
     "Run one read-only SQL query (SQLite dialect) over the crm_* views: crm_people, " +
     "crm_organisations, crm_affiliations, crm_activities, crm_activity_links, crm_tasks, " +
-    "crm_task_links, crm_record_tags and crm_users. Only a single SELECT or WITH is allowed; " +
+    "crm_task_links, crm_record_tags, crm_users, crm_stage_history (stage entered/left times, " +
+    "days_in_stage) and extension objects as crm_x_<ext>_<object> (e.g. crm_x_deals_deal; see " +
+    "schema.objects). Only a single SELECT or WITH is allowed; " +
     "core_* and sqlite_* tables, PRAGMA, ATTACH, writes, recursive CTEs and named parameters " +
     "are refused. Pass values as params bound to ? (or ?1, ?2) placeholders, never by pasting " +
     "them into the SQL. Multi-valued columns (emails, domains, tags) are JSON arrays: use " +

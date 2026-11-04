@@ -141,10 +141,19 @@ How stage 3a built it ([ADR 0040](adr/0040-extension-runtime-build.md)):
     permissions.
   - **Failures.** Runs are recorded. 3 consecutive failures quarantine an extension. Rollback
     reinstalls an earlier commit.
-- **Shipped extensions** (`extensions/<id>/`, the example first) are bundled as source at build time
+- **Shipped extensions** (`extensions/<id>/`; Deals is the first) are bundled as source at build time
   and installed through the same `extension.install` path at boot.
-- **UI**: generic list and record pages at `/x/<ext>.<object>`, field widgets for every type,
-  extension fields on core record pages, and Settings → Extensions.
+- **Stage behaviour** ([ADR 0100](adr/0100-stage-behaviour-and-object-contract-additions.md)):
+  an object's declarative `stages` key is enforced by the host inside `record.create`,
+  `record.update` and `import.records.commit` (`packages/core/src/records/stages.ts`): stage rules
+  (a `StageRuleError` naming the missing fields), default stage and pipeline, probability,
+  status and won/lost date, `core_stage_history` rows (read as `crm_stage_history`) and
+  "Moved to <stage>" timeline posts on the record and its `timelineLinks`. The reconciler also
+  creates declared `indexes` (partial, live rows) and inserts `seed` records once.
+- **UI**: generic list and record pages at `/x/<ext>.<object>` (with CSV import and export),
+  field widgets for every type, extension fields on core record pages, Settings → Extensions, set-up
+  objects (`navigation: "settings"`, e.g. pipelines) under Settings, and Settings → General (the
+  base currency, [ADR 0101](adr/0101-base-currency.md)).
 
 How stage 3b added authoring ([ADR 0041](adr/0041-extension-authoring-and-proposals.md)):
 
@@ -273,7 +282,7 @@ packages/
   gatekeeper-<name>/   gatekeeper Workers `crm-gatekeeper-<name>`: mcp and google so far (vendored,
                        not yet bound to the runner; stage 6 wires them in)
 extensions/
-  example/             (stage 3) the example shipped extension; stage 4 replaces it with deals/
+  deals/               (stage 4) Deals: pipelines, stages, deals, participants (ADR 0026, 0100)
   deals/               (stage 4) first real shipped extension
 docs/
   architecture.md      this file
