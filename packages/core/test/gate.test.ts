@@ -27,7 +27,8 @@ const EXPECTED: Record<PolicyPreset, Record<Actor, string>> = {
   balanced: {
     human: "a a a a a a a",
     assistant: "a a a/r r r r r",
-    mcp: "a a a/r r r r r",
+    // Stage 2 (ADR 0018 amendment): every MCP bulk write is reviewed, whatever its size.
+    mcp: "a a r r r r r",
     automation: "a a a/r r d d r",
     extension: "a a a/r r d d r",
   },
@@ -68,11 +69,22 @@ describe("gate matrix", () => {
 });
 
 describe("bulk thresholds", () => {
-  it("balanced lets AI bulk-write up to 25 records", () => {
+  it("balanced lets the assistant bulk-write up to 25 records", () => {
     const at = (bulkSize: number) =>
-      evaluateGate({ actor: "mcp", risk: "bulk-write", bulkSize }, { preset: "balanced" }).decision;
+      evaluateGate({ actor: "assistant", risk: "bulk-write", bulkSize }, { preset: "balanced" })
+        .decision;
     expect(at(25)).toBe("auto");
     expect(at(26)).toBe("review");
+  });
+
+  it("balanced reviews every MCP bulk write, even of 2 records", () => {
+    const at = (bulkSize: number) =>
+      evaluateGate({ actor: "mcp", risk: "bulk-write", bulkSize }, { preset: "balanced" }).decision;
+    expect(at(1)).toBe("review");
+    expect(at(2)).toBe("review");
+    expect(evaluateGate({ actor: "mcp", risk: "write" }, { preset: "balanced" }).decision).toBe(
+      "auto",
+    );
   });
 
   it("balanced lets automations bulk-write up to 100 records", () => {
@@ -93,7 +105,7 @@ describe("bulk thresholds", () => {
 
   it("treats a missing or zero bulk size as one record", () => {
     expect(
-      evaluateGate({ actor: "mcp", risk: "bulk-write", bulkSize: 0 }, { preset: "balanced" })
+      evaluateGate({ actor: "assistant", risk: "bulk-write", bulkSize: 0 }, { preset: "balanced" })
         .decision,
     ).toBe("auto");
   });

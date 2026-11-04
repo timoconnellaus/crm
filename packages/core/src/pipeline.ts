@@ -1,28 +1,35 @@
-// The invocation pipeline (ADR 0016, ADR 0011, ADR 0017, ADR 0018):
+// The invocation pipeline (ADR 0016, ADR 0011, ADR 0017, ADR 0018, ADR 0022):
 //
-//   validate input → actor + role check → gate → handler → timeline activities → audit
+//   validate input → actor + role (+ token scope) check → gate → handler → timeline → audit
 //
 // The handler's queued writes, the timeline activities and the audit rows commit together in one
 // D1 batch (one transaction). Refusals (role, actor, gate) and failures are audited separately.
+// A gate `review` dry-runs the handler and queues a pending action instead (approvals/queue.ts);
+// reads by an MCP session see its pending actions applied (approvals/simulation.ts).
 import type { AuditChangeAction, CrmDb } from "@crm/db";
 import { checkGrant } from "@crm/sdk";
 import { type Compilable, type CompiledQuery, sql } from "kysely";
+import { type DryRunResult, prepareQueuedAction } from "./approvals/queue.ts";
+import { isSimulatedRead, loadSessionOverlay, overlayRead } from "./approvals/simulation.ts";
 import { diffRecords, type FieldDiff } from "./diff.ts";
 import {
+  ConflictError,
   ForbiddenError,
   GateDeniedError,
   OperationError,
-  ReviewNotYetSupportedError,
+  PendingApprovalError,
   toOperationError,
+  UnknownOperationError,
   ValidationError,
 } from "./errors.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
 import { refreshSchemaRegistry } from "./extensions/schema.ts";
 import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
-import { newId } from "./ids.ts";
+import { findProvisionalIds, newId } from "./ids.ts";
 import {
   type AnyOperation,
+  type ApplyingApproval,
   afterCommit,
   type ExtensionCaller,
   type HandlerContext,
@@ -37,6 +44,7 @@ import {
   type Actor,
   type Origin,
   originSchema,
+  type Permission,
   roleHasPermission,
 } from "./principals.ts";
 import { loadApprovalPolicy } from "./settings.ts";
@@ -52,10 +60,35 @@ export interface InvocationContext {
   floor?: GateFloor;
   /** Clock override for tests. */
   clock?: () => Date;
+  /**
+   * What the caller's credential allows (an MCP token's scopes, ADR 0021). The call needs its
+   * permission in both the user's role and this list. Omitted means the role alone decides.
+   */
+  grantedPermissions?: readonly Permission[] | undefined;
+  /** Why the caller wants this change. Stored on the pending action when it is queued. */
+  reason?: string | undefined;
+  /** Days before a pending action expires (env APPROVAL_EXPIRY_DAYS). Default 7. */
+  approvalExpiryDays?: number | undefined;
+  /** Set when this call applies an approved pending action. */
+  approval?: ApplyingApproval | undefined;
+  /** Looks up other operations by name, for approvals that re-run queued actions. */
+  resolveOperation?: ((name: string) => AnyOperation | undefined) | undefined;
   /** The extension runtime (extension.* and x.* operations need it). */
   extensionHost?: ExtensionHost;
   /** Actor `extension` only: the calling extension and its declared permissions (ADR 0025). */
   extension?: ExtensionCaller;
+}
+
+/** The installed extension whose principal is `userId`, with its declared permissions. */
+async function loadExtensionCaller(db: CrmDb, userId: string): Promise<ExtensionCaller | null> {
+  const row = await db.query
+    .selectFrom("core_extensions")
+    .select(["id", "manifest", "status"])
+    .where("user_id", "=", userId)
+    .executeTakeFirst();
+  if (!row || row.status !== "active") return null;
+  const manifest = JSON.parse(row.manifest) as { permissions: ExtensionCaller["permissions"] };
+  return { id: row.id, permissions: manifest.permissions };
 }
 
 /** The object an operation reads or writes, for extension permission checks. */
@@ -117,6 +150,7 @@ interface AuditRow {
   outcome: AuditOutcome;
   result?: unknown;
   error?: OperationError;
+  pendingActionId?: string | null;
 }
 
 function auditInsert(db: CrmDb, row: AuditRow): Compilable {
@@ -133,6 +167,7 @@ function auditInsert(db: CrmDb, row: AuditRow): Compilable {
     gate_decision: row.gate,
     outcome: row.outcome,
     error: row.error ? JSON.stringify(row.error.toJSON()) : null,
+    pending_action_id: row.pendingActionId ?? null,
   });
 }
 
@@ -261,9 +296,54 @@ function timelineActivity(
   };
 }
 
+const sameJson = (a: unknown, b: unknown) =>
+  JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/**
+ * When applying an approved action: fails with ConflictError if a record the human approved a
+ * change to has changed meanwhile (a previewed field's current value is not its preview `before`).
+ */
+function assertUnchangedSincePreview(approval: ApplyingApproval, changes: RecordChange[]): void {
+  for (const change of changes) {
+    if (change.action === "create" || !change.before) continue;
+    const previewed = approval.preview.find(
+      (p) => p.object === change.object && p.id === change.id,
+    );
+    if (!previewed) continue;
+    for (const [field, values] of Object.entries(previewed.diff)) {
+      if (!(field in change.before)) continue;
+      if (!sameJson(change.before[field], values.before)) {
+        throw new ConflictError(
+          `The ${change.object} ${change.id} changed after this was queued (${field}), so the ` +
+            "approved change no longer matches what was reviewed",
+          { object: change.object, id: change.id, field },
+        );
+      }
+    }
+  }
+}
+
+/** Provisional id → real id, matching the action's creates in order. */
+function bindProvisional(
+  approval: ApplyingApproval,
+  changes: RecordChange[],
+): Record<string, string> {
+  const creates = changes.filter((c) => c.action === "create");
+  const used = new Set<RecordChange>();
+  const bindings: Record<string, string> = {};
+  for (const p of approval.provisional) {
+    const match = creates.find((c) => c.object === p.object && !used.has(c));
+    if (!match) continue;
+    used.add(match);
+    bindings[p.id] = match.id;
+  }
+  return bindings;
+}
+
 /**
  * Runs one operation for one caller. Throws typed OperationErrors: ValidationError,
- * ForbiddenError, GateDeniedError, ReviewNotYetSupportedError, NotFoundError, ConflictError.
+ * ForbiddenError, GateDeniedError, PendingApprovalError (queued for review), NotFoundError,
+ * ConflictError.
  */
 export async function invokeOperation<O extends AnyOperation>(
   op: O,
@@ -280,7 +360,8 @@ export async function invokeOperation<O extends AnyOperation>(
   await refreshSchemaRegistry(ctx.db.query);
   const audited = isAudited(op, ctx.actor);
   const auditId = newId("audit");
-  const base = { id: auditId, op, ctx, input, at: now } as const;
+  const pendingActionId = ctx.approval?.actionId ?? null;
+  const base = { id: auditId, op, ctx, input, at: now, pendingActionId } as const;
 
   // Gate first (pure, after one settings read) so refusals record what it would have decided.
   const policy = await loadApprovalPolicy(ctx.db.query);
@@ -290,29 +371,38 @@ export async function invokeOperation<O extends AnyOperation>(
     policy,
     ctx.floor,
   );
+  let decision: GateDecision = gate.decision;
+  // Bookkeeping (opening a change set, revoking a token) is never queued; deny still applies.
+  if (op.bookkeeping && decision === "review") decision = "auto";
+  // A write that refers to a record still pending creation can only be queued after it.
+  const provisionalRefs = op.risk === "read" ? [] : findProvisionalIds(rawInput);
+  if (decision === "auto" && provisionalRefs.length && !ctx.approval) decision = "review";
 
   if (op.actors && !op.actors.includes(ctx.actor)) {
     const error = new ForbiddenError(`${op.name} cannot be called by ${ctx.actor} actors`, {
       actor: ctx.actor,
       allowed: op.actors,
     });
-    await auditAlone({ ...base, gate: gate.decision, outcome: "forbidden", error });
+    await auditAlone({ ...base, gate: decision, outcome: "forbidden", error });
     throw error;
   }
   if (ctx.actor === "extension") {
-    const decision = ctx.extension
-      ? checkGrant(ctx.extension.id, ctx.extension.permissions, {
+    // The runtime passes the caller; an approved pending action re-run by an admin does not, so
+    // it is loaded from the extension principal's installed manifest.
+    const caller = ctx.extension ?? (await loadExtensionCaller(ctx.db, ctx.user.id));
+    const grant = caller
+      ? checkGrant(caller.id, caller.permissions, {
           operation: op.name,
           risk: op.risk,
           object: operationObject(op, input),
         })
       : { ok: false as const, reason: "Extension calls need the calling extension" };
-    if (!decision.ok) {
-      const error = new ForbiddenError(decision.reason, {
-        extension: ctx.extension?.id ?? null,
+    if (!grant.ok) {
+      const error = new ForbiddenError(grant.reason, {
+        extension: caller?.id ?? null,
         operation: op.name,
       });
-      await auditAlone({ ...base, gate: gate.decision, outcome: "forbidden", error });
+      await auditAlone({ ...base, gate: decision, outcome: "forbidden", error });
       throw error;
     }
   }
@@ -321,20 +411,21 @@ export async function invokeOperation<O extends AnyOperation>(
       role: ctx.user.role,
       permission: op.permission,
     });
-    await auditAlone({ ...base, gate: gate.decision, outcome: "forbidden", error });
+    await auditAlone({ ...base, gate: decision, outcome: "forbidden", error });
     throw error;
   }
-  if (gate.decision === "deny") {
+  if (ctx.grantedPermissions && !ctx.grantedPermissions.includes(op.permission)) {
+    const error = new ForbiddenError(
+      `This connection was not granted the scope ${op.name} needs (${op.permission}). ` +
+        "Reconnect the app with a wider scope, if your role allows it.",
+      { permission: op.permission, granted: ctx.grantedPermissions },
+    );
+    await auditAlone({ ...base, gate: decision, outcome: "forbidden", error });
+    throw error;
+  }
+  if (decision === "deny") {
     const error = new GateDeniedError(`The approval policy does not allow ${op.name}`, gate);
     await auditAlone({ ...base, gate: "deny", outcome: "denied", error });
-    throw error;
-  }
-  if (gate.decision === "review") {
-    const error = new ReviewNotYetSupportedError(
-      `${op.name} needs review, and the approval queue is not available yet`,
-      gate,
-    );
-    await auditAlone({ ...base, gate: "review", outcome: "review", error });
     throw error;
   }
 
@@ -363,23 +454,141 @@ export async function invokeOperation<O extends AnyOperation>(
     afterCommit,
     ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
     ...(ctx.extension ? { extension: ctx.extension } : {}),
+    pipeline: {
+      crm: ctx.db,
+      invoke: (name, nestedInput, nested) => {
+        const target = ctx.resolveOperation?.(name);
+        if (!target) throw new UnknownOperationError(name);
+        return invokeOperation(target, nestedInput, {
+          db: ctx.db,
+          ...(ctx.floor ? { floor: ctx.floor } : {}),
+          ...(ctx.clock ? { clock: ctx.clock } : {}),
+          approvalExpiryDays: ctx.approvalExpiryDays,
+          resolveOperation: ctx.resolveOperation,
+          actor: nested.actor,
+          user: nested.user,
+          origin: nested.origin,
+          grantedPermissions: nested.grantedPermissions,
+          approval: nested.approval,
+          ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
+        });
+      },
+    },
   };
 
-  const fail = async (error: unknown): Promise<never> => {
+  const fail = async (error: unknown, gateDecision: GateDecision = "auto"): Promise<never> => {
     const typed = toOperationError(error);
-    if (audited) await auditAlone({ ...base, gate: "auto", outcome: "error", error: typed });
+    if (audited) await auditAlone({ ...base, gate: gateDecision, outcome: "error", error: typed });
     throw typed;
   };
+
+  if (decision === "review" && !ctx.approval) {
+    let queued: Awaited<ReturnType<typeof prepareQueuedAction>>;
+    try {
+      const overlay = await loadSessionOverlay(ctx.db.query, ctx.origin.sessionId, now);
+      queued = await prepareQueuedAction({
+        op,
+        rawInput,
+        input,
+        db: ctx.db,
+        actor: ctx.actor,
+        user: ctx.user,
+        origin: ctx.origin,
+        grantedPermissions: ctx.grantedPermissions,
+        reason: ctx.reason,
+        bulkSize,
+        now,
+        expiryDays: ctx.approvalExpiryDays,
+        overlay,
+        dryRun: async (): Promise<DryRunResult> => {
+          const dryChanges: RecordChange[] = [];
+          const dryCtx: HandlerContext = {
+            ...handlerCtx,
+            write: () => {},
+            recordChange: (change) => {
+              dryChanges.push(change);
+            },
+            postActivity: () => newId("activity"),
+            simulation: overlay,
+          };
+          const result = await op.handler(input, dryCtx);
+          let output: unknown = null;
+          if (!isAfterCommit(result)) {
+            const checked = op.output.safeParse(result);
+            output = checked.success ? checked.data : null;
+          }
+          return { output, changes: dryChanges };
+        },
+      });
+    } catch (error) {
+      return fail(error, "review");
+    }
+    try {
+      await ctx.db.batch([
+        ...queued.statements,
+        auditInsert(ctx.db, {
+          ...base,
+          pendingActionId: queued.actionId,
+          gate: "review",
+          outcome: "review",
+          result: { pendingActionId: queued.actionId, changeSetId: queued.pending.changeSetId },
+        }),
+      ]);
+    } catch (error) {
+      return fail(error, "review");
+    }
+    throw new PendingApprovalError(queued.pending);
+  }
+
+  // Reads by an MCP session see its pending actions applied (ADR 0022).
+  if (op.risk === "read" && ctx.origin.sessionId && isSimulatedRead(op.name)) {
+    const overlay = await loadSessionOverlay(ctx.db.query, ctx.origin.sessionId, now);
+    if (!overlay.empty) {
+      let output: unknown;
+      try {
+        output = await overlayRead(op.name, input as Record<string, unknown>, overlay, async () => {
+          const checked = op.output.safeParse(await op.handler(input, handlerCtx));
+          if (!checked.success) {
+            throw new OperationError("invalid_output", `${op.name} returned an invalid result`, {
+              issues: checked.error.issues,
+            });
+          }
+          return checked.data;
+        });
+      } catch (error) {
+        return fail(error);
+      }
+      if (audited) {
+        await auditAlone({
+          ...base,
+          gate: decision,
+          outcome: "ok",
+          result: { simulated: true, ...((defaultSummary(output, []) as object | null) ?? {}) },
+        });
+      }
+      return output as OperationOutput<O>;
+    }
+  }
 
   let result: unknown;
   try {
     result = await op.handler(input, handlerCtx);
   } catch (error) {
-    return fail(error);
+    return fail(error, decision);
   }
 
   if (op.risk === "read" && (writes.length || changes.length || activities.length)) {
     return fail(new OperationError("internal", `${op.name} is a read but queued writes`));
+  }
+
+  let bindings: Record<string, string> = {};
+  if (ctx.approval) {
+    try {
+      assertUnchangedSincePreview(ctx.approval, changes);
+    } catch (error) {
+      return fail(error, decision);
+    }
+    bindings = bindProvisional(ctx.approval, changes);
   }
 
   const deferred = isAfterCommit(result) ? result : null;
@@ -406,14 +615,30 @@ export async function invokeOperation<O extends AnyOperation>(
   }
   statements.push(...activities);
 
+  const summary =
+    op.auditSummary && !deferred ? op.auditSummary(output, input) : defaultSummary(output, changes);
   if (audited) {
-    const summary =
-      op.auditSummary && !deferred
-        ? op.auditSummary(output, input)
-        : defaultSummary(output, changes);
     statements.push(
-      auditInsert(ctx.db, { ...base, gate: "auto", outcome: "ok", result: summary ?? null }),
+      auditInsert(ctx.db, { ...base, gate: decision, outcome: "ok", result: summary ?? null }),
       ...auditChangeInserts(ctx.db, auditId, now, changeRows),
+    );
+  }
+  if (ctx.approval) {
+    // Applied: the pending action and its audit row commit with the change itself.
+    statements.push(
+      ctx.db.query
+        .updateTable("core_pending_action")
+        .set({
+          status: "applied",
+          status_reason: null,
+          applied_audit_id: audited ? auditId : null,
+          bindings: JSON.stringify(bindings),
+          result: JSON.stringify(summary ?? null),
+          decided_by: ctx.approval.approvedBy,
+          decided_at: now,
+        })
+        .where("id", "=", ctx.approval.actionId)
+        .where("status", "=", "pending"),
     );
   }
 
@@ -421,7 +646,7 @@ export async function invokeOperation<O extends AnyOperation>(
     try {
       await ctx.db.batch(statements);
     } catch (error) {
-      return fail(error);
+      return fail(error, decision);
     }
   }
 

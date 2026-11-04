@@ -6,7 +6,7 @@ import {
   type ActingUser,
   ForbiddenError,
   invoke,
-  ReviewNotYetSupportedError,
+  PendingApprovalError,
   ValidationError,
 } from "../src/index.ts";
 import { insertActivity, insertTask } from "./fixtures.ts";
@@ -200,7 +200,7 @@ describe("person.merge", () => {
         { survivorId: a.id, mergedId: b.id },
         context(member, { actor: "mcp" }),
       ),
-    ).rejects.toBeInstanceOf(ReviewNotYetSupportedError);
+    ).rejects.toBeInstanceOf(PendingApprovalError);
     expect((await invoke("person.get", { id: b.id }, ctx())).deletedAt).toBeNull();
   });
 });

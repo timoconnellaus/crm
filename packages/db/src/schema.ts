@@ -273,6 +273,8 @@ export interface CoreAuditTable {
   gate_decision: AuditGateDecision;
   outcome: AuditOutcome;
   error: JsonText | null;
+  /** The pending action this row queued (outcome review) or applied (migration 0010). */
+  pending_action_id: Defaulted<string | null>;
 }
 
 export interface CoreAuditChangesTable {
@@ -514,6 +516,94 @@ export interface CoreExtensionFieldsTable {
 /**
  * Every core table and crm_* view, keyed by name. Extension (`x_*`) tables are never listed here.
  */
+export type ChangeSetState = "open" | "committed" | "closed";
+export type PendingActionStatus =
+  | "pending"
+  | "applied"
+  | "failed"
+  | "skipped"
+  | "rejected"
+  | "expired";
+
+/** A group of pending actions reviewed together (migration 0010, ADR 0022). */
+export interface CoreChangeSetTable {
+  id: string;
+  title: string | null;
+  session_id: string | null;
+  client_id: string | null;
+  client_name: string | null;
+  user_id: string;
+  actor: AuditActor;
+  origin: JsonText;
+  explicit: Defaulted<number>;
+  state: Defaulted<ChangeSetState>;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  committed_at: Defaulted<Timestamp | null>;
+  closed_at: Defaulted<Timestamp | null>;
+}
+
+/** One queued operation call (migration 0010). */
+export interface CorePendingActionTable {
+  id: string;
+  change_set_id: string;
+  operation: string;
+  risk: AuditRisk;
+  input: JsonText;
+  reason: string;
+  actor: AuditActor;
+  user_id: string;
+  origin: JsonText;
+  granted_permissions: JsonText | null;
+  bulk_size: Defaulted<number>;
+  preview: JsonText;
+  simulated: JsonText;
+  provisional: Defaulted<JsonText>;
+  depends_on: Defaulted<JsonText>;
+  status: Defaulted<PendingActionStatus>;
+  status_reason: Defaulted<string | null>;
+  error: Defaulted<JsonText | null>;
+  bindings: Defaulted<JsonText | null>;
+  result: Defaulted<JsonText | null>;
+  request_audit_id: Defaulted<string | null>;
+  applied_audit_id: Defaulted<string | null>;
+  decided_by: Defaulted<string | null>;
+  decided_at: Defaulted<Timestamp | null>;
+  created_at: Timestamp;
+  expires_at: Timestamp;
+}
+
+export interface CorePendingActionRecordsTable {
+  action_id: string;
+  object_type: string;
+  record_id: string;
+  action: string;
+}
+
+/** An OAuth authorization a user gave an MCP client (migration 0011). */
+export interface CoreConnectedAppTable {
+  id: string;
+  user_id: string;
+  client_id: string;
+  client_name: string;
+  client_uri: Defaulted<string | null>;
+  redirect_host: Defaulted<string | null>;
+  /** JSON array of scopes. */
+  scopes: JsonText;
+  grant_id: Defaulted<string | null>;
+  created_at: Timestamp;
+  last_used_at: Defaulted<Timestamp | null>;
+  revoked_at: Defaulted<Timestamp | null>;
+  revoked_by: Defaulted<string | null>;
+  revoke_reason: Defaulted<string | null>;
+}
+
+export interface CoreRateLimitTable {
+  key: string;
+  window_start: string;
+  count: Defaulted<number>;
+}
+
 export interface CoreDatabase {
   core_meta: CoreMetaTable;
   core_migrations: CoreMigrationsTable;
@@ -539,6 +629,11 @@ export interface CoreDatabase {
   core_audit: CoreAuditTable;
   core_audit_changes: CoreAuditChangesTable;
   core_audit_redactions: CoreAuditRedactionsTable;
+  core_change_set: CoreChangeSetTable;
+  core_pending_action: CorePendingActionTable;
+  core_pending_action_records: CorePendingActionRecordsTable;
+  core_connected_app: CoreConnectedAppTable;
+  core_rate_limit: CoreRateLimitTable;
   core_search_docs: CoreSearchDocsTable;
   core_search: CoreSearchTable;
   core_extensions: CoreExtensionsTable;

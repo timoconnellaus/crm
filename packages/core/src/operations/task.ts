@@ -244,11 +244,12 @@ export const taskCreate = defineOperation({
   output: taskSchema,
   permission: "records:write",
   risk: "write",
+  mcp: { curated: true },
   async handler(input, ctx) {
     const assigneeId = input.assigneeId === undefined ? ctx.user.id : input.assigneeId;
     await assertUserExists(ctx.db, assigneeId);
     const links = uniqueRefs(input.links ?? []);
-    await assertLinkTargets(ctx.db, links);
+    await assertLinkTargets(ctx.db, links, ctx.simulation);
     const id = newId("task");
     const row = {
       id,
@@ -324,7 +325,7 @@ export const taskUpdate = defineOperation({
     let afterLinks = beforeLinks;
     if (input.links !== undefined) {
       const links = uniqueRefs(input.links);
-      await assertLinkTargets(ctx.db, links);
+      await assertLinkTargets(ctx.db, links, ctx.simulation);
       queueLinks(ctx, input.id, links);
       afterLinks = linkKeys(links);
     }
@@ -349,7 +350,7 @@ export const taskComplete = defineOperation({
   output: taskSchema,
   permission: "records:write",
   risk: "write",
-  mcp: { idempotent: true },
+  mcp: { curated: true, idempotent: true },
   async handler(input, ctx) {
     const task = await requireTask(ctx.db, input.id);
     if (task.status === "done") return task;
@@ -481,7 +482,7 @@ export const taskList = defineOperation({
   output: pageSchema(taskSchema.partial().required({ id: true })),
   permission: "records:read",
   risk: "read",
-  mcp: { idempotent: true },
+  mcp: { curated: true, idempotent: true },
   async handler(input, ctx) {
     const page = await runListQuery(
       ctx.db.selectFrom("crm_tasks").selectAll(),

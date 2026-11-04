@@ -54,6 +54,14 @@ crm-runner against the shared D1 database (the runner applies the same `APPROVAL
 `codemode:ai` maps the summarise/extract/classify roles to Workers AI (through AI Gateway when
 `AI_GATEWAY_ID` is set) and fails clearly without an `ai` binding.
 
+**Approval queue (stage 2).** A gate `review` on an `extension`-actor call queues a pending action
+like any other (migration 0020 also lets `core_change_set` and `core_pending_action` hold actor
+`extension`); the tool sees a `CrmCallError` with code `pending_approval` and the action id. When
+an admin approves it, the pipeline re-runs the call as the extension principal and loads its
+declared permissions from the installed manifest, so the grant check still applies. Extension
+tools are listed by MCP's `describe_operations` and `crm://schema` and run through
+`call_operation`; a write tool called by an MCP client is gated and queued like any operation.
+
 **Failures.** Every run is a `core_extension_runs` row (duration, outcome, logs, operations called).
 Failures other than the caller's (invalid input, unknown tool) count; three in a row quarantine the
 extension (status `quarantined`, reason recorded, shown on Settings → Extensions). A successful run

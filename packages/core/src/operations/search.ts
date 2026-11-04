@@ -218,7 +218,7 @@ export const searchGlobal = defineOperation({
   output: z.object({ hits: z.array(searchHitSchema) }),
   permission: "records:read",
   risk: "read",
-  mcp: { idempotent: true },
+  mcp: { curated: true, idempotent: true },
   async handler(input, ctx) {
     const terms = searchTerms(input.query);
     if (!terms.length) return { hits: [] };

@@ -1,7 +1,7 @@
 // defineOperation (ADR 0003, ADR 0016): every operation is defined once with zod schemas, a
 // model-facing description, a permission and a risk class. Adapters (server functions now, MCP in
 // stage 2, the `codemode:crm` host module in stage 3) are generated from these definitions.
-import type { AuditChangeAction, CoreDatabase } from "@crm/db";
+import type { AuditChangeAction, CoreDatabase, CrmDb } from "@crm/db";
 import type { PermissionsManifest } from "@crm/sdk";
 import type { Compilable, CompiledQuery, Kysely } from "kysely";
 import type { z } from "zod";
@@ -96,6 +96,17 @@ export interface HandlerContext {
   postActivity(activity: SystemActivityInput): string;
   /** Wrap the handler's return value to read the output after the commit (see afterCommit). */
   afterCommit: typeof afterCommit;
+  /**
+   * Present only while a call is being simulated for the approval queue (a dry run whose writes
+   * are discarded). It shows the records the session's earlier pending actions created, changed
+   * or deleted, so checks such as link targets accept provisional ids (`per_pending_…`).
+   */
+  readonly simulation?: SimulationView;
+  /**
+   * Trusted pipeline access for the approval operations, which re-run queued actions through
+   * the pipeline on approval. Other handlers never need it.
+   */
+  readonly pipeline: PipelineAccess;
   /** The extension runtime, when the adapter provides one (extension.* and x.* operations). */
   readonly extensionHost?: ExtensionHost;
   /** For actor `extension`: the calling extension. */
@@ -108,10 +119,64 @@ export interface ExtensionCaller {
   permissions: PermissionsManifest;
 }
 
-/** Stage-2 MCP metadata. Present now so definitions don't change when the adapter lands. */
+/** A record as a session's pending actions would leave it (ADR 0022). */
+export interface SimulatedRecord {
+  object: string;
+  /** Real id, or a provisional id for a pending create. */
+  id: string;
+  state: "live" | "deleted";
+  /** The record as `<object>.get` would return it, when it can be simulated. */
+  record: Record<string, unknown> | null;
+  /** The pending action that last changed it. */
+  actionId: string;
+  changeSetId: string;
+}
+
+export interface SimulationView {
+  record(object: string, id: string): SimulatedRecord | undefined;
+  records(): SimulatedRecord[];
+}
+
+export interface PipelineAccess {
+  readonly crm: CrmDb;
+  /**
+   * Runs another operation through the full pipeline (gate, audit, one batch) with a different
+   * actor, user and origin. Used to apply approved pending actions.
+   */
+  invoke(name: string, input: unknown, ctx: NestedInvocation): Promise<unknown>;
+}
+
+export interface NestedInvocation {
+  actor: Actor;
+  user: ActingUser;
+  origin: Origin;
+  grantedPermissions?: readonly Permission[] | undefined;
+  approval?: ApplyingApproval;
+}
+
+/** Set when a call is the approved application of a pending action. */
+export interface ApplyingApproval {
+  actionId: string;
+  /** The human who approved it. */
+  approvedBy: string;
+  /** Provisional ids the action created when it was simulated, in creation order. */
+  provisional: readonly { object: string; id: string }[];
+  /**
+   * The diff preview the human approved. When a field's current value no longer matches the
+   * preview's `before`, the record changed meanwhile and the action fails with a conflict.
+   */
+  preview: readonly { object: string; id: string; action: string; diff: FieldDiff }[];
+}
+
+/** MCP metadata (ADR 0021). */
 export interface McpOptions {
-  /** Default true. False keeps the operation off the MCP tool list. */
+  /** Default true. False keeps the operation invisible to MCP and uncallable from it. */
   expose?: boolean;
+  /**
+   * A curated tool: listed as its own MCP tool. Everything else MCP may call is reached through
+   * `describe_operations` / `call_operation`. (The spec's `mcp: "curated"` flag.)
+   */
+  curated?: boolean;
   /** Short human title for the tool. */
   title?: string;
   /** MCP tool annotations; risk class supplies sensible defaults. */
@@ -137,6 +202,12 @@ export interface OperationDefinition<
   bulkSize?: (input: z.output<In>) => number;
   /** Extra input keys to redact in the audit log (secrets matching common names always are). */
   redact?: readonly string[];
+  /**
+   * The operation only changes approval or connection bookkeeping (opening a change set,
+   * revoking a token), never records, so the gate never queues it for review. A `deny` from the
+   * policy or floor still applies.
+   */
+  bookkeeping?: boolean;
   /** A small JSON summary of the result for the audit log. Default: touched records or id. */
   auditSummary?: (output: z.output<Out>, input: z.output<In>) => unknown;
   mcp?: McpOptions;

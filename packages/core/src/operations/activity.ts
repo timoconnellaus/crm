@@ -271,12 +271,13 @@ export const activityLog = defineOperation({
   output: activitySchema,
   permission: "records:write",
   risk: "write",
+  mcp: { curated: true },
   async handler(input, ctx) {
     const subject = input.subject?.trim() || null;
     const body = input.body?.trim() ? input.body : null;
     requireContent(input.type, subject, body);
     const links = uniqueRefs(input.links);
-    await assertLinkTargets(ctx.db, links);
+    await assertLinkTargets(ctx.db, links, ctx.simulation);
 
     const id = newId("activity");
     const occurredAt = input.occurredAt ?? ctx.now;
@@ -364,7 +365,7 @@ export const activityUpdate = defineOperation({
     let afterLinks = beforeLinks;
     if (input.links !== undefined) {
       const links = uniqueRefs(input.links);
-      await assertLinkTargets(ctx.db, links);
+      await assertLinkTargets(ctx.db, links, ctx.simulation);
       queueLinks(ctx, input.id, links);
       afterLinks = linkKeys(links);
     }
@@ -465,7 +466,7 @@ export const activityListForRecord = defineOperation({
   output: pageSchema(activitySchema),
   permission: "records:read",
   risk: "read",
-  mcp: { idempotent: true },
+  mcp: { curated: true, idempotent: true },
   async handler(input, ctx) {
     let query = activityQuery(ctx.db)
       .where("a.deleted_at", "is", null)

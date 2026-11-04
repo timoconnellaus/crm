@@ -1,5 +1,7 @@
 // @crm/core: the operations registry and everything an operation needs. See README.md.
 
+export { DEFAULT_APPROVAL_EXPIRY_DAYS } from "./approvals/queue.ts";
+export { isSimulatedRead } from "./approvals/simulation.ts";
 export * from "./diff.ts";
 export * from "./errors.ts";
 export * from "./extensions/host.ts";
@@ -20,7 +22,9 @@ export * from "./models.ts";
 export * from "./operation.ts";
 export * from "./operations/activity.ts";
 export * from "./operations/affiliation.ts";
+export * from "./operations/approval.ts";
 export * from "./operations/audit.ts";
+export * from "./operations/connected-app.ts";
 export * from "./operations/export.ts";
 export * from "./operations/extension.ts";
 export * from "./operations/import.ts";

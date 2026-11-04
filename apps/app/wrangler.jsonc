@@ -25,6 +25,9 @@
   // .dev.vars.example and docs/deploying.md.
   "secrets": { "required": ["BETTER_AUTH_SECRET"] },
   "services": [{ "binding": "RUNNER", "service": "crm-runner" }],
+  // OAuth 2.1 for /mcp (ADR 0021): clients, grants and hashed tokens. Provisioned by name on
+  // first deploy, like the D1 database.
+  "kv_namespaces": [{ "binding": "OAUTH_KV" }],
   "vars": {
     // better-auth (default) or cloudflare-access. See docs/deploying.md.
     "IDENTITY_PROVIDER": "better-auth",
@@ -32,6 +35,13 @@
     "AUTH_ALLOW_SIGNUP": "false",
     // Approval-policy floor (ADR 0011): JSON rules the org's preset can never loosen, e.g.
     // {"*":{"destructive":"review"}}. Empty means no floor. See docs/deploying.md.
-    "APPROVAL_FLOOR": ""
+    "APPROVAL_FLOOR": "",
+    // Days before a pending action (an AI change waiting for approval) expires (ADR 0022).
+    "APPROVAL_EXPIRY_DAYS": "7",
+    // Per-connected-app MCP rate limits, per minute (ADR 0032).
+    "MCP_RATE_LIMIT_REQUESTS": "120",
+    "MCP_RATE_LIMIT_WRITES": "30",
+    // MCP access token lifetime in seconds; refresh tokens last 30 days.
+    "MCP_ACCESS_TOKEN_TTL": "3600"
   }
 }

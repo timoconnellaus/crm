@@ -14,12 +14,17 @@ import {
   toOperationError,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
+import { deleteGrantTokens } from "./mcp/handler.ts";
 import { runner } from "./runner.ts";
 
 export interface OperationsEnv {
   DB: D1Database;
   /** Deploy-time approval floor (ADR 0011), JSON. Empty means none. */
   APPROVAL_FLOOR?: string;
+  /** Days before a pending action expires (ADR 0022). Default 7. */
+  APPROVAL_EXPIRY_DAYS?: string;
+  /** The OAuth provider's store, so revoking a connected app also deletes its tokens. */
+  OAUTH_KV?: KVNamespace;
   /** crm-runner: the extension host (ADR 0025). */
   RUNNER?: Fetcher;
 }
@@ -105,8 +110,15 @@ export async function runOperation(
       db,
       floor: parseFloor(env.APPROVAL_FLOOR),
       ...(extensionHost ? { extensionHost } : {}),
+      approvalExpiryDays: Number.parseInt(env.APPROVAL_EXPIRY_DAYS ?? "", 10) || undefined,
     };
-    return toWire({ ok: true, data: await invokeByName(call.name, call.input, ctx) });
+    const data = await invokeByName(call.name, call.input, ctx);
+    if (call.name === "connectedApp.revoke" && env.OAUTH_KV) {
+      // Core marks the connection revoked, which already stops it; also delete its tokens.
+      const revoked = data as { grantId: string | null; userId: string };
+      await deleteGrantTokens({ ...env, OAUTH_KV: env.OAUTH_KV }, revoked.grantId, revoked.userId);
+    }
+    return toWire({ ok: true, data });
   } catch (error) {
     const typed = toOperationError(error);
     if (typed.code === "internal" || typed.code === "config") {

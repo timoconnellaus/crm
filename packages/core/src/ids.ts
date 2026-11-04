@@ -21,6 +21,9 @@ export const ID_PREFIXES = {
   record: "rec",
   /** Extension run history rows. */
   extensionRun: "xrn",
+  changeSet: "chs",
+  pendingAction: "pac",
+  connectedApp: "cap",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
@@ -93,4 +96,55 @@ export function idTimestamp(id: string): Date | null {
   let time = 0;
   for (const char of ulidPart.slice(0, 10)) time = time * 32 + ALPHABET.indexOf(char);
   return new Date(time);
+}
+
+/** Matches a provisional id: `<prefix>_pending_<ulid>` (ADR 0022). */
+export const PROVISIONAL_ID_RE = /^[a-z]{2,4}_pending_[0-9A-HJKMNP-TV-Z]{26}$/;
+const PROVISIONAL_ANYWHERE_RE = /[a-z]{2,4}_pending_[0-9A-HJKMNP-TV-Z]{26}/g;
+const ANY_ID_RE = /[a-z]{2,4}_(?:pending_)?[0-9A-HJKMNP-TV-Z]{26}/g;
+
+/**
+ * The provisional id for a record a pending action would create: its dry-run id with `_pending`
+ * after the prefix (`per_01J…` → `per_pending_01J…`). It passes the same `startsWith("per_")`
+ * input checks, so later pending actions can refer to it, and is bound to the real id on apply.
+ */
+export function toProvisionalId(id: string): string {
+  const at = id.indexOf("_");
+  return at < 0 ? id : `${id.slice(0, at)}_pending_${id.slice(at + 1)}`;
+}
+
+export function isProvisionalId(value: unknown): value is string {
+  return typeof value === "string" && PROVISIONAL_ID_RE.test(value);
+}
+
+/** Every provisional id mentioned anywhere in a JSON-like value. */
+export function findProvisionalIds(value: unknown): string[] {
+  const text = JSON.stringify(value ?? null);
+  return [...new Set(text.match(PROVISIONAL_ANYWHERE_RE) ?? [])];
+}
+
+/** Every record id (real or provisional) mentioned anywhere in a JSON-like value. */
+export function findIds(value: unknown): string[] {
+  const text = JSON.stringify(value ?? null);
+  return [...new Set(text.match(ANY_ID_RE) ?? [])];
+}
+
+/**
+ * Deep-replaces ids using `map`, in string values, inside strings such as link keys
+ * (`person:per_…`) and in object keys.
+ */
+export function replaceIds<T>(value: T, map: ReadonlyMap<string, string>): T {
+  if (!map.size) return value;
+  const inString = (text: string) => text.replace(ANY_ID_RE, (id) => map.get(id) ?? id);
+  const walk = (v: unknown): unknown => {
+    if (typeof v === "string") return inString(v);
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === "object") {
+      return Object.fromEntries(
+        Object.entries(v as Record<string, unknown>).map(([k, x]) => [inString(k), walk(x)]),
+      );
+    }
+    return v;
+  };
+  return walk(value) as T;
 }

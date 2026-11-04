@@ -146,6 +146,32 @@ Configurable per org ([ADR 0011](adr/0011-approval-pipeline.md)):
 
 Only human admins can change the policy. Every decision is audited.
 
+The human queue is built (stage 2, [ADR 0022](adr/0022-approval-queue-and-simulation.md),
+[ADR 0032](adr/0032-mcp-sessions-and-approval-mechanics.md)); the adjudicator comes in stage 7.
+A `review` decision dry-runs the operation and records a **pending action** (diff preview,
+simulated result, dependencies, the agent's reason) in a **change set**, then returns
+`pending_approval`. The originating MCP session's reads (`get`, `list`, `search.global`,
+`activity.listForRecord`) see its pending actions applied, with **provisional IDs** for creates;
+everyone else reads real data. A person approves or rejects (`approval.approve` / `reject`):
+approval re-runs each action through the pipeline as the original actor, binding provisional to
+real ids, and fails an action cleanly if its record changed or was deleted meanwhile. Rejection
+cascades to dependents; pending actions expire after `APPROVAL_EXPIRY_DAYS` (default 7).
+
+### MCP
+
+`/mcp` on `crm-app` ([ADR 0021](adr/0021-mcp-surface.md), ADR 0032): `workers-oauth-provider`
+wraps the Worker (OAuth 2.1, dynamic client registration, PKCE, one-hour access tokens and
+30-day refresh tokens in the `OAUTH_KV` namespace). `/oauth/consent` signs the user in through
+the identity adapter and grants scopes `read`, `write` and (admins only) `admin`; effective
+permission is role ∩ scopes. Each authorization is a **connected app** (`core_connected_app`),
+which is also the MCP session; revoking it stops its tokens at once. `/mcp` is the Agents SDK's
+stateless Streamable HTTP handler with an MCP SDK v2 server per request
+(`apps/app/src/server/mcp/`): curated tools (operations flagged `mcp: { curated: true }`),
+`describe_operations` / `call_operation` for every other MCP-exposed operation, the
+`crm://schema` resource and server instructions. Calls run as actor `mcp` with origin
+`{ surface: "mcp", clientId, clientName, sessionId }`, rate-limited per connected app. See
+[`docs/mcp.md`](mcp.md).
+
 ### 7. Identity
 
 A deploy-time **identity adapter** ([ADR 0008](adr/0008-identity-adapters.md)): Better Auth (the
@@ -155,7 +181,8 @@ login to the active adapter. Identity is never runtime-pluggable.
 In `crm-app`, one TanStack Start request middleware resolves the **Principal** for every page
 route, server route and server function call. Everything is private by default: only `/sign-in`,
 `/api/health`, the adapter's own routes (`/api/auth/*`) and server functions in `*.public.ts` files
-are reachable without one. A request without a Principal is redirected to sign-in (pages, Better
+are reachable without one. The OAuth routes (`/oauth/*`, `/.well-known/oauth-*`) and `/mcp`
+are handled before TanStack Start by the OAuth provider, which checks Bearer tokens itself. A request without a Principal is redirected to sign-in (pages, Better
 Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Access).
 
 ### 8. AI

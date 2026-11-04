@@ -8,7 +8,7 @@ import {
   ForbiddenError,
   invoke,
   NotFoundError,
-  ReviewNotYetSupportedError,
+  PendingApprovalError,
   ValidationError,
 } from "../src/index.ts";
 import {
@@ -140,7 +140,7 @@ describe("gate for batch operations", () => {
     await invoke("person.updateMany", { ids: ids.slice(0, 25), set: { timezone: "UTC" } }, ai);
     await expect(
       invoke("person.updateMany", { ids, set: { timezone: "Australia/Perth" } }, ai),
-    ).rejects.toBeInstanceOf(ReviewNotYetSupportedError);
+    ).rejects.toBeInstanceOf(PendingApprovalError);
     const rows = await auditRows("person.updateMany", member.id);
     expect(rows.slice(-2).map((r) => [r.gate_decision, r.outcome])).toEqual([
       ["auto", "ok"],
@@ -161,13 +161,13 @@ describe("gate for batch operations", () => {
     await setPreset("balanced");
     const small = await people(2);
     await expect(invoke("person.deleteMany", { ids: small }, ai)).rejects.toBeInstanceOf(
-      ReviewNotYetSupportedError,
+      PendingApprovalError,
     );
     await setPreset("autonomous");
     await invoke("person.deleteMany", { ids: small }, ai);
     const big = await people(11);
     await expect(invoke("person.deleteMany", { ids: big }, ai)).rejects.toBeInstanceOf(
-      ReviewNotYetSupportedError,
+      PendingApprovalError,
     );
     const last = (await auditRows("person.deleteMany", member.id)).at(-1);
     expect(last).toMatchObject({ gate_decision: "review", actor: "mcp", risk: "destructive" });

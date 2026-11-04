@@ -147,7 +147,7 @@ nothing from a formula reaches SQL verbatim.
 
 | `ctx.` | Module | |
 | --- | --- | --- |
-| `crm.call(operation, input)` | `crm` | Any operation the extension's permissions allow, as principal `extension:<id>`, actor `extension`, through the approval gate (like an automation). Failures throw `CrmCallError` with the pipeline's `code`. |
+| `crm.call(operation, input)` | `crm` | Any operation the extension's permissions allow, as principal `extension:<id>`, actor `extension`, through the approval gate (like an automation). Failures throw `CrmCallError` with the pipeline's `code`; a call the gate sends to review is queued for approval and throws code `pending_approval` (`details.actionId`). |
 | `storage.get/set/delete/list` | `storage` | Per-extension key-value storage (JSON values ≤ 128 KB). |
 | `log.info/warn/error(message, data?)` | `log` | Shown in the extension's run history. |
 | `ai.summarise/extract/classify` | `ai` | Model roles (ADR 0009); Workers AI by default, through AI Gateway when configured. Fails with a clear error when the deployment has no AI binding. |

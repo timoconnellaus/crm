@@ -27,12 +27,16 @@ CREATE TABLE core_audit_next (
   result TEXT CHECK (result IS NULL OR json_valid(result)),
   gate_decision TEXT NOT NULL CHECK (gate_decision IN ('auto', 'review', 'deny')),
   outcome TEXT NOT NULL CHECK (outcome IN ('ok', 'forbidden', 'denied', 'review', 'error')),
-  error TEXT CHECK (error IS NULL OR json_valid(error))
+  error TEXT CHECK (error IS NULL OR json_valid(error)),
+  -- Migration 0010: the pending action an audit row queued or applied.
+  pending_action_id TEXT
 );
 
 INSERT INTO core_audit_next
-  (id, at, operation, risk, actor, user_id, origin, input, result, gate_decision, outcome, error)
-SELECT id, at, operation, risk, actor, user_id, origin, input, result, gate_decision, outcome, error
+  (id, at, operation, risk, actor, user_id, origin, input, result, gate_decision, outcome, error,
+   pending_action_id)
+SELECT id, at, operation, risk, actor, user_id, origin, input, result, gate_decision, outcome, error,
+  pending_action_id
 FROM core_audit;
 
 DROP TABLE core_audit;
@@ -42,6 +46,69 @@ CREATE INDEX core_audit_at_idx ON core_audit (at, id);
 CREATE INDEX core_audit_user_idx ON core_audit (user_id, at);
 CREATE INDEX core_audit_operation_idx ON core_audit (operation, at);
 CREATE INDEX core_audit_actor_idx ON core_audit (actor, at);
+CREATE INDEX core_audit_pending_action_idx ON core_audit (pending_action_id)
+  WHERE pending_action_id IS NOT NULL;
+
+-- The approval queue (migration 0010) accepts actor `extension` too: a gate `review` on an
+-- extension's call queues a pending action like any other. Same rebuild, same deferred keys.
+CREATE TABLE core_change_set_next (
+  id TEXT PRIMARY KEY NOT NULL,
+  title TEXT,
+  session_id TEXT,
+  client_id TEXT,
+  client_name TEXT,
+  user_id TEXT NOT NULL,
+  actor TEXT NOT NULL CHECK (actor IN ('human', 'assistant', 'mcp', 'automation', 'extension')),
+  origin TEXT NOT NULL CHECK (json_valid(origin)),
+  explicit INTEGER NOT NULL DEFAULT 0 CHECK (explicit IN (0, 1)),
+  state TEXT NOT NULL DEFAULT 'open' CHECK (state IN ('open', 'committed', 'closed')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  committed_at TEXT,
+  closed_at TEXT
+);
+INSERT INTO core_change_set_next SELECT * FROM core_change_set;
+DROP TABLE core_change_set;
+ALTER TABLE core_change_set_next RENAME TO core_change_set;
+CREATE INDEX core_change_set_session_idx ON core_change_set (session_id, state, created_at);
+CREATE INDEX core_change_set_state_idx ON core_change_set (state, created_at);
+CREATE INDEX core_change_set_user_idx ON core_change_set (user_id, created_at);
+
+CREATE TABLE core_pending_action_next (
+  id TEXT PRIMARY KEY NOT NULL,
+  change_set_id TEXT NOT NULL REFERENCES core_change_set (id),
+  operation TEXT NOT NULL,
+  risk TEXT NOT NULL
+    CHECK (risk IN ('read', 'write', 'bulk-write', 'destructive', 'schema', 'extension', 'outbound')),
+  input TEXT NOT NULL CHECK (json_valid(input)),
+  reason TEXT NOT NULL,
+  actor TEXT NOT NULL CHECK (actor IN ('human', 'assistant', 'mcp', 'automation', 'extension')),
+  user_id TEXT NOT NULL,
+  origin TEXT NOT NULL CHECK (json_valid(origin)),
+  granted_permissions TEXT CHECK (granted_permissions IS NULL OR json_valid(granted_permissions)),
+  bulk_size INTEGER NOT NULL DEFAULT 1,
+  preview TEXT NOT NULL CHECK (json_valid(preview)),
+  simulated TEXT NOT NULL CHECK (json_valid(simulated)),
+  provisional TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(provisional)),
+  depends_on TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(depends_on)),
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'applied', 'failed', 'skipped', 'rejected', 'expired')),
+  status_reason TEXT,
+  error TEXT CHECK (error IS NULL OR json_valid(error)),
+  bindings TEXT CHECK (bindings IS NULL OR json_valid(bindings)),
+  result TEXT CHECK (result IS NULL OR json_valid(result)),
+  request_audit_id TEXT,
+  applied_audit_id TEXT,
+  decided_by TEXT,
+  decided_at TEXT,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+INSERT INTO core_pending_action_next SELECT * FROM core_pending_action;
+DROP TABLE core_pending_action;
+ALTER TABLE core_pending_action_next RENAME TO core_pending_action;
+CREATE INDEX core_pending_action_set_idx ON core_pending_action (change_set_id, id);
+CREATE INDEX core_pending_action_status_idx ON core_pending_action (status, expires_at);
 
 CREATE TRIGGER core_audit_no_update BEFORE UPDATE ON core_audit
 WHEN NOT (

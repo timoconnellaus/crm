@@ -30,7 +30,15 @@ export function createInvoker<Ops extends readonly AnyOperation[]>(
     // Extension tools (`x.<extension>.<tool>`) are resolved from installed manifests.
     const op = registry.get(name) ?? (await resolveExtensionOperation(ctx.db.query, name));
     if (!op) throw new UnknownOperationError(name);
-    return invokeOperation(op, input, ctx);
+    // Approvals re-run queued actions by name, synchronously; queued extension tools must
+    // resolve too, so load them first.
+    const extensionOps = name.startsWith("approval.")
+      ? new Map((await loadExtensionOperations(ctx.db.query)).map((o) => [o.name, o]))
+      : null;
+    return invokeOperation(op, input, {
+      resolveOperation: (other: string) => registry.get(other) ?? extensionOps?.get(other),
+      ...ctx,
+    });
   };
   const invoke = <N extends keyof Map & string>(
     name: N,
