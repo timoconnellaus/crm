@@ -183,6 +183,11 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
     if (vendor === "fake") {
       if (this.env.INTEGRATIONS_FAKE_PROVIDER !== "true")
         return new Response("Not found", { status: 404 });
+      // Development and e2e only, like the rest of the fake provider: run the minute cron now
+      // (local dev has no cron ticks), so a test can turn stored webhook events into runs.
+      if (new URL(request.url).pathname === "/gatekeeper/fake/cron" && request.method === "POST") {
+        return Response.json(await minuteTick(this.env, new Date()));
+      }
       return fakeProviderFetch(this.env, request);
     }
     if (!availableVendors(this.env).includes(vendor)) {
@@ -232,24 +237,12 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
 
   /**
    * `* * * * *`: schedules and the daily date-relative scan (ADR 0130), the automation events
-   * outbox retry (ADR 0171) and integration events (webhooks, sync) as triggers (ADR 0173). Each
+   * outbox retry (ADR 0171), integration events (webhooks, sync) as triggers (ADR 0173) and
+   * notification delivery (ADR 0172). Each
    * step is independent: one failing is logged and does not stop the others.
    */
   override async scheduled(controller: ScheduledController): Promise<void> {
-    const at = new Date(controller.scheduledTime);
-    await minuteStep("schedules", () => runAutomationCron(this.env, at));
-    await minuteStep("outbox", () =>
-      retryOutbox(
-        createCrmDb(this.env.DB),
-        async (messages) => {
-          await dispatchAutomationMessages(this.env, messages, { now: at });
-        },
-        { now: at },
-      ),
-    );
-    await minuteStep("integration events", () => pollIntegrationEvents(this.env, { now: at }));
-    // Notification delivery (ADR 0172): email / Slack per preferences, escalation, the digest.
-    await minuteStep("notifications", () => runNotificationCron(this.env, at));
+    await minuteTick(this.env, new Date(controller.scheduledTime));
   }
 
   override async fetch(_request: Request): Promise<Response> {
@@ -257,10 +250,31 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
   }
 }
 
-async function minuteStep(name: string, run: () => Promise<unknown>): Promise<void> {
+/** One minute cron tick: each step's result, or null when it failed (logged). */
+export async function minuteTick(env: Env, at: Date) {
+  const schedules = await minuteStep("schedules", () => runAutomationCron(env, at));
+  const outbox = await minuteStep("outbox", () =>
+    retryOutbox(
+      createCrmDb(env.DB),
+      async (messages) => {
+        await dispatchAutomationMessages(env, messages, { now: at });
+      },
+      { now: at },
+    ),
+  );
+  const integrationEvents = await minuteStep("integration events", () =>
+    pollIntegrationEvents(env, { now: at }),
+  );
+  // Notification delivery (ADR 0172): email / Slack per preferences, escalation, the digest.
+  const notifications = await minuteStep("notifications", () => runNotificationCron(env, at));
+  return { schedules, outbox, integrationEvents, notifications };
+}
+
+async function minuteStep<T>(name: string, run: () => Promise<T>): Promise<T | null> {
   try {
-    await run();
+    return await run();
   } catch (error) {
     console.error(`minute cron: ${name} failed`, error);
+    return null;
   }
 }

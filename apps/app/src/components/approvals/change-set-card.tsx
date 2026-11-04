@@ -361,7 +361,7 @@ function ActionItem({
         {action.outbound ? (
           <OutboundPreview outbound={action.outbound} />
         ) : action.operation === "extension.apply" ? (
-          <ExtensionProposal actionId={action.id} />
+          <ExtensionProposal actionId={action.id} status={action.status} />
         ) : (
           <ChangePreview groups={groups} names={names} />
         )}
