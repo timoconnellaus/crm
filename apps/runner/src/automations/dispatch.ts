@@ -32,6 +32,7 @@ import {
 import { type CrmDb, createCrmDb } from "@crm/db";
 import type { AutomationJournalEntry, AutomationTriggerType } from "@crm/sdk";
 import { sql } from "kysely";
+import { deliverNotificationRoutes } from "../notifications/deliver.ts";
 
 /** What a run's Workflow instance is created with (and what a retry or replay reuses). */
 export interface AutomationRunParams {
@@ -497,6 +498,8 @@ export async function dispatchAutomationMessages(
     total.dropped.push(...started.dropped);
     total.paused.push(...started.paused);
   }
+  // Admin Slack channel routes (ADR 0172); never throws.
+  await deliverNotificationRoutes(env, messages, options);
   return total;
 }
 
