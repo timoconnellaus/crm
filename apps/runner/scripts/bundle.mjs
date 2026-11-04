@@ -5,13 +5,17 @@
 // 2. Every shipped extension under extensions/<id>/ as source text (its .ts files, minus tests
 //    and config), so it goes through the same transpile → check → sandbox path as runtime
 //    extensions. There is no static fast path.
+// 3. The declarations for the in-Worker type check of extension source (sdk-types.ts).
+// 4. The TypeScript compiler as an ES module the Worker can load (typescript.js).
 //
-// Writes src/generated/{sdk-bundle,shipped}.ts (gitignored). Runs before typecheck, test, dev and
-// build (see package.json).
+// Writes src/generated/{sdk-bundle,shipped,sdk-types}.ts and typescript.{js,d.ts} (gitignored).
+// Runs before typecheck, test, dev and build (see package.json).
+import { realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import ts from "typescript";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..", "..");
@@ -57,8 +61,114 @@ for (const entry of (await readdir(extensionsDir, { withFileTypes: true })).sort
   shipped.push({ id: entry.name, version: pkg.version, files: await sourceFiles(dir) });
 }
 
+// 3. The declarations the in-Worker type checker needs (src/extensions/typecheck.ts): @crm/sdk's
+//    .d.ts (emitted from packages/sdk/src), the zod .d.ts files they reach, and the ES2022 lib
+//    files (no DOM), comments stripped, at virtual paths, plus every import's resolution between
+//    them, so the Worker needs no module resolution of its own for these files.
+const sdkTypes = (() => {
+  const sdkSrc = realpathSync(join(root, "packages", "sdk", "src"));
+  const program = ts.createProgram([join(sdkSrc, "index.ts")], {
+    target: ts.ScriptTarget.ES2022,
+    lib: ["lib.es2022.d.ts"],
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    allowImportingTsExtensions: true,
+    strict: true,
+    skipLibCheck: true,
+    types: [],
+    declaration: true,
+    emitDeclarationOnly: true,
+    removeComments: true,
+  });
+  const errors = ts.getPreEmitDiagnostics(program);
+  if (errors.length) {
+    throw new Error(
+      ts.formatDiagnostics(errors, {
+        getCanonicalFileName: (f) => f,
+        getCurrentDirectory: () => root,
+        getNewLine: () => "\n",
+      }),
+    );
+  }
+  const emitted = {};
+  program.emit(undefined, (fileName, text) => {
+    emitted[fileName] = text;
+  });
+  const printer = ts.createPrinter({ removeComments: true });
+  const strip = (sf) => printer.printFile(sf);
+  const toVirtual = (real) => {
+    if (real.startsWith(`${sdkSrc}/`) && real.endsWith(".ts") && !real.endsWith(".d.ts")) {
+      return `/sdk/${relative(sdkSrc, real).replace(/\.ts$/, ".d.ts")}`;
+    }
+    const zod = real.indexOf("/node_modules/zod/");
+    if (zod !== -1) return real.slice(zod);
+    throw new Error(`typecheck declarations: unexpected file ${real}`);
+  };
+  const files = {};
+  const sources = []; // [virtual path, real path the imports resolve from, text]
+  for (const sf of program.getSourceFiles()) {
+    if (program.isSourceFileDefaultLibrary(sf)) {
+      files[`/lib/${basename(sf.fileName)}`] = strip(sf);
+      continue;
+    }
+    const virtual = toVirtual(sf.fileName);
+    const text = virtual.startsWith("/sdk/")
+      ? emitted[sf.fileName.replace(/\.ts$/, ".d.ts")]
+      : strip(sf);
+    if (text === undefined) throw new Error(`typecheck declarations: no .d.ts for ${sf.fileName}`);
+    files[virtual] = text;
+    sources.push([virtual, sf.fileName, text]);
+  }
+  const resolutions = {};
+  for (const [virtual, real, text] of sources) {
+    const info = ts.preProcessFile(text, true, true);
+    if (info.referencedFiles.length || info.typeReferenceDirectives.length) {
+      throw new Error(`typecheck declarations: ${virtual} has reference directives`);
+    }
+    const map = {};
+    for (const { fileName: specifier } of info.importedFiles) {
+      const resolved = ts.resolveModuleName(specifier, real, program.getCompilerOptions(), ts.sys)
+        .resolvedModule?.resolvedFileName;
+      if (!resolved) throw new Error(`typecheck declarations: ${specifier} from ${real}`);
+      const target = toVirtual(realpathSync(resolved));
+      if (!Object.hasOwn(files, target)) throw new Error(`typecheck declarations: ${target}`);
+      map[specifier] = target;
+    }
+    if (Object.keys(map).length) resolutions[virtual] = map;
+  }
+  return { entry: "/sdk/index.d.ts", files, resolutions };
+})();
+const sdkTypesJson = JSON.stringify(sdkTypes);
+
+// 4. The TypeScript compiler as an ES module for the Worker, minified. typescript.js picks Node's
+//    `ts.sys` when `process` and `require` exist, which nodejs_compat provides, and that path reads
+//    `__filename` at load and fails; `process.browser` set to true makes it skip `ts.sys` (the
+//    checker uses its own in-memory host). Its Node-only requires are never reached.
+const typescript = await build({
+  entryPoints: [fileURLToPath(import.meta.resolve("typescript"))],
+  bundle: true,
+  format: "esm",
+  platform: "neutral",
+  target: "es2022",
+  minify: true,
+  write: false,
+  legalComments: "none",
+  define: { "process.browser": "true" },
+  external: ["fs", "path", "os", "crypto", "inspector", "perf_hooks", "source-map-support"],
+});
+const typescriptSource = typescript.outputFiles[0].text;
+
 await mkdir(out, { recursive: true });
 const banner = "// Generated by apps/runner/scripts/bundle.mjs. Do not edit.\n";
+await writeFile(join(out, "typescript.js"), typescriptSource);
+await writeFile(
+  join(out, "typescript.d.ts"),
+  `${banner}import ts from "typescript";\nexport default ts;\n`,
+);
+await writeFile(
+  join(out, "sdk-types.ts"),
+  `${banner}/** Declarations for the extension type checker: @crm/sdk, zod and the ES2022 libs. */\nexport const SDK_TYPES: { entry: string; files: Record<string, string>; resolutions: Record<string, Record<string, string>> } = ${sdkTypesJson};\n`,
+);
 await writeFile(
   join(out, "sdk-bundle.ts"),
   `${banner}/** @crm/sdk as one ES module, for the sandbox (specifier \`crm-sdk\`). */\nexport const SDK_BUNDLE: string = ${JSON.stringify(sdkSource)};\n`,
@@ -68,5 +178,5 @@ await writeFile(
   `${banner}/** Shipped extensions (extensions/<id>/), as source. */\nexport const SHIPPED_EXTENSIONS: readonly { id: string; version: string; files: Record<string, string> }[] = ${JSON.stringify(shipped, null, 2)};\n`,
 );
 console.log(
-  `bundled crm-sdk (${(sdkSource.length / 1024).toFixed(0)} KiB) and ${shipped.length} shipped extension(s)`,
+  `bundled crm-sdk (${(sdkSource.length / 1024).toFixed(0)} KiB), its type declarations (${Object.keys(sdkTypes.files).length} files, ${(sdkTypesJson.length / 1024).toFixed(0)} KiB), typescript (${(typescriptSource.length / 1024).toFixed(0)} KiB) and ${shipped.length} shipped extension(s)`,
 );

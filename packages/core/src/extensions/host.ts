@@ -5,7 +5,7 @@
 
 /** A problem found evaluating extension source (before the manifest exists). */
 export interface SourceIssue {
-  code: "syntax" | "import" | "entry" | "evaluate" | "too_large";
+  code: "syntax" | "import" | "entry" | "evaluate" | "too_large" | "type";
   path: string;
   message: string;
 }
