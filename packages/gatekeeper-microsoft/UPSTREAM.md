@@ -37,7 +37,11 @@ edit them by hand. The `*types.txt -> *types.d.ts` symlinks (the agent-facing AP
   in `__tests__/frame-host.ts`, and the configurator modules need them for `clearTimeout`'s
   signature. It leaves out the files we don't run (below).
 - **Test configs.** `vitest.config.ts` (Node) is upstream's except that it excludes the three
-  `__tests__/*-configurator-frame.test.ts` suites. `vitest.worker.config.ts` takes `assert-workerd`
+  `__tests__/*-configurator-frame.test.ts` suites and raises `testTimeout` from vitest's 5s
+  default to 60s, because the CPU-heavy content suites (large DOCX, PPTX and XLSX writes and edits)
+  time out when `pnpm test` runs every package at once. The wall-clock bounds some of those tests
+  assert themselves (`pathological.test.ts`: 200ms per hostile input) are upstream's, unchanged.
+  They assume a machine that isn't saturated. `vitest.worker.config.ts` takes `assert-workerd`
   from `@crm/gatekeeper-interface` instead of `../../scripts/assert-workerd.ts`.
 - **Added** `test/vendor.test.ts` with `vitest.smoke.config.ts`: a workerd smoke test of the
   `GatekeeperVendor` entrypoint against the real `wrangler.jsonc`, with remote bindings off (the

@@ -24,7 +24,9 @@
   scripts for Turborepo), and `tsconfig.json` (extends `@crm/config/tsconfig.vendored.json`
   instead of upstream's root config; no `paths`).
 - **Removed:** `vite.config.ts`, which holds upstream's Vite+ task definitions.
-- **Test configs:** `vitest.config.ts` is upstream's, unchanged. `vitest.worker.config.ts` takes
+- **Test configs:** `vitest.config.ts` is upstream's except `testTimeout` raised to 30s: the
+  CPU-heavy `ci.test.ts` stream test timed out at vitest's 5s default once `pnpm test` ran all
+  twelve vendored packages at once. `vitest.worker.config.ts` takes
   `assert-workerd` from `@crm/gatekeeper-interface/testing/assert-workerd` instead of
   `@gadgets/scripts`.
 - **Not vendored:** `plans/gatekeeper-kit.md` (the Layer 2 proposal), which the README links to.
