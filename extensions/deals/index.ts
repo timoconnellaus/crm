@@ -200,7 +200,7 @@ export default defineExtension({
         nextStep: { type: "text", label: "Next step" },
         nextStepDate: { type: "date", label: "Next step date" },
         closedAt: {
-          type: "date",
+          type: "datetime",
           label: "Won/lost date",
           readOnly: true,
           description: "Set when the deal enters a won or lost stage; cleared when it reopens.",

@@ -497,7 +497,7 @@ export function generateSeed(options: SeedOptions = {}): SeedResult {
         final.type === "lost" ? pick(LOST_REASONS) : null,
         closed ? null : pick(NEXT_STEPS),
         closed ? null : day(until + Math.floor(rand() * 14) * DAY),
-        closed ? day(lastEntered) : null,
+        closed ? new Date(lastEntered).toISOString() : null,
       ],
     );
     insert(

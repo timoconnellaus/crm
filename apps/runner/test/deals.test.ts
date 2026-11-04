@@ -224,7 +224,7 @@ describe("the shipped Deals extension", () => {
     });
     const lost = await updateDeal(deal.id, { stage: S.lost, lostReason: "price" });
     expect(lost.values).toMatchObject({ status: "lost", probability: 0 });
-    expect(lost.values.closedAt).toBe(new Date().toISOString().slice(0, 10));
+    expect(String(lost.values.closedAt).slice(0, 10)).toBe(new Date().toISOString().slice(0, 10));
     // The lost reason cannot be cleared while lost.
     await expect(updateDeal(deal.id, { lostReason: null })).rejects.toMatchObject({
       details: { field: "lostReason" },
