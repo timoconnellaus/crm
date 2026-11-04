@@ -4,7 +4,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "crm-app",
-  "main": "@tanstack/react-start/server-entry",
+  // TanStack Start's entry plus a `scheduled` handler (src/server.ts).
+  "main": "./src/server.ts",
+  // Daily Trash purge: hard-deletes records soft-deleted more than 30 days ago (ADR 0018).
+  "triggers": { "crons": ["17 3 * * *"] },
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
