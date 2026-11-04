@@ -4,6 +4,7 @@
 //   export default defineExtension({ id: "example", version: "1.0.0", contractVersion: 1, ... });
 export { z } from "zod";
 export * from "./automation.ts";
+export * from "./automation-check.ts";
 export * from "./contract.ts";
 export * from "./field-types.ts";
 export * from "./manifest.ts";

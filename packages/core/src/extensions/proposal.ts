@@ -2,6 +2,7 @@
 // installed version, and the impact the host computes from the manifests and the reconcile plan
 // (never from anything the extension says about itself).
 import type { ExtensionManifest, PermissionsManifest } from "@crm/sdk";
+import { automationSummary, manifestSummaryContext, triggerText } from "../automations/summary.ts";
 import type { SchemaChange } from "./reconciler.ts";
 
 // --- Diff --------------------------------------------------------------------------------------
@@ -254,8 +255,11 @@ export interface ExtensionImpact {
   };
   /** Host modules the code can import (`crm`, `storage`, `log`, `ai`). */
   modules: string[];
-  /** Automations and their triggers (they fire from stage 5). */
-  triggers: { name: string; trigger: string }[];
+  /**
+   * Automations: the trigger in one line and the host-generated plain-English summary (ADR 0131),
+   * rendered from the declarations, never from AI.
+   */
+  triggers: { name: string; label: string; trigger: string; summary: string }[];
   tools: { name: string; risk: string; change: "added" | "changed" | "removed" | "unchanged" }[];
   views: string[];
   files: { changed: number; additions: number; deletions: number };
@@ -280,12 +284,6 @@ function delta(a: PermissionsManifest, b: PermissionsManifest): PermissionDelta 
 
 const deltaSize = (d: PermissionDelta) =>
   d.read.length + d.write.length + d.operations.length + d.modules.length;
-
-function triggerText(trigger: unknown): string {
-  const t = trigger as { type?: string; object?: string; cron?: string };
-  if (t.type === "schedule") return `schedule ${t.cron ?? ""}`.trim();
-  return [t.type, t.object].filter(Boolean).join(" on ");
-}
 
 function describeChange(change: SchemaChange): string {
   const where = change.field ? `${change.object}.${change.field}` : change.object;
@@ -364,10 +362,15 @@ export function computeImpact(input: {
       widens: Boolean(previous) && deltaSize(widened) > 0,
     },
     modules: [...requested.modules],
-    triggers: Object.entries(manifest.automations).map(([name, a]) => ({
-      name,
-      trigger: triggerText(a.trigger),
-    })),
+    triggers: Object.entries(manifest.automations).map(([name, a]) => {
+      const labels = manifestSummaryContext(manifest);
+      return {
+        name,
+        label: a.label,
+        trigger: triggerText(a, labels),
+        summary: automationSummary(a, labels).text,
+      };
+    }),
     tools,
     views: Object.keys(manifest.views),
     files: {
