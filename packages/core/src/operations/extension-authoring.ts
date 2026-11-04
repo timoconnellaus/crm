@@ -15,7 +15,7 @@ import {
   PendingApprovalError,
   ValidationError,
 } from "../errors.ts";
-import type { ExtensionHost, WorkingCopy } from "../extensions/host.ts";
+import type { ExtensionHost, WorkingCopy, WorkspaceWrite } from "../extensions/host.ts";
 import {
   type CheckIssue,
   type CheckResult,
@@ -24,6 +24,7 @@ import {
   requireHost,
 } from "../extensions/install.ts";
 import {
+  capDiff,
   computeImpact,
   diffFiles,
   type ExtensionImpact,
@@ -57,9 +58,39 @@ const workingCopySchema = z.object({
   ref: z.string().describe('"working" for the working copy, else the commit read'),
   head: z.string().nullable().describe("The latest commit of the extension, if any"),
   files: z.record(z.string(), z.string()),
-  changed: z.array(z.string()).describe("Working-copy paths that differ from head"),
+  changed: z
+    .array(z.string())
+    .describe(
+      "Working-copy paths that differ from head (only when reading the whole working copy)",
+    ),
   ejected: z.boolean(),
 });
+
+/** What extension.write and extension.eject return: paths, not contents (ADR 0043). */
+const writeSchema = z.object({
+  id: z.string(),
+  ref: z.literal("working"),
+  head: z.string().nullable().describe("The latest commit of the extension, if any"),
+  paths: z.array(z.string()).describe("Every file in the working copy now"),
+  written: z.array(z.string()).describe("Files this call wrote"),
+  deleted: z.array(z.string()).describe("Files this call deleted"),
+  changed: z.boolean().describe("The working copy has edits since its last commit"),
+  ejected: z.boolean(),
+});
+
+function writeView(result: WorkspaceWrite, files: Record<string, string | null>) {
+  const entries = Object.entries(files);
+  return {
+    id: result.id,
+    ref: "working" as const,
+    head: result.head,
+    paths: result.paths,
+    written: entries.filter(([, text]) => text !== null).map(([path]) => path),
+    deleted: entries.filter(([, text]) => text === null).map(([path]) => path),
+    changed: result.changed,
+    ejected: result.ejected,
+  };
+}
 
 // --- Helpers -----------------------------------------------------------------------------------
 
@@ -82,7 +113,8 @@ async function shippedRefusal(
   if (!shipped.some((s) => s.id === id)) return null;
   const row = await installedRow(ctx, id);
   if (row?.source === "runtime") return null;
-  const copy = wc ?? (await host.workingCopy(id));
+  // Only the ejected flag is needed: no file reads, no git status.
+  const copy = wc ?? (await host.workingCopy(id, { paths: [], status: false }));
   if (copy.ejected) return null;
   return (
     `${id} is a shipped extension, so it cannot be modified in place. Extend it from your own ` +
@@ -140,7 +172,16 @@ export const extensionRead = defineOperation({
   mcp: { curated: true, idempotent: true, title: "Read extension files" },
   async handler(input, ctx) {
     const host = requireHost(ctx);
-    const wc = await host.workingCopy(input.id);
+    // Read only what is asked: one file, or nothing of the working copy for a commit read; git
+    // status (which reads every file) only for a whole working-copy read.
+    const wc = await host.workingCopy(
+      input.id,
+      input.commit
+        ? { paths: [], status: false }
+        : input.path
+          ? { paths: [input.path], status: false }
+          : {},
+    );
     let view = viewOf(wc);
     if (input.commit) {
       let files: Record<string, string>;
@@ -170,7 +211,8 @@ export const extensionWrite = defineOperation({
     "issues, then extension.propose to send it for approval. files maps paths relative to the " +
     "extension root to their full new contents (index.ts is the entry, whose default export is " +
     "defineExtension({...}) from @crm/sdk); null deletes a file. replace: true deletes every " +
-    "other file. Shipped extensions cannot be written unless ejected. Returns the working copy.",
+    "other file. Shipped extensions cannot be written unless ejected. Returns the working copy's " +
+    "paths (use extension.read for contents).",
   input: z.object({
     id: extensionId,
     files: z
@@ -181,7 +223,7 @@ export const extensionWrite = defineOperation({
       .describe("Path → full file contents, or null to delete"),
     replace: z.boolean().default(false).describe("Delete files not listed (default false)"),
   }),
-  output: workingCopySchema,
+  output: writeSchema,
   permission: "extensions:manage",
   risk: "write",
   // It changes only the draft in the workspace, never the live CRM, so it is never queued.
@@ -192,8 +234,12 @@ export const extensionWrite = defineOperation({
     const host = requireHost(ctx);
     const refusal = await shippedRefusal(ctx, host, input.id);
     if (refusal) throw new ForbiddenError(refusal, { id: input.id });
-    const wc = await host.writeFiles({ id: input.id, files: input.files, replace: input.replace });
-    return viewOf(wc);
+    const written = await host.writeFiles({
+      id: input.id,
+      files: input.files,
+      replace: input.replace,
+    });
+    return writeView(written, input.files);
   },
 });
 
@@ -206,7 +252,7 @@ export const extensionEject = defineOperation({
     "extending it from your own extension (fields on its objects, views, tools) when that is " +
     "enough. Nothing changes in the live CRM until a proposal is approved.",
   input: z.object({ id: extensionId }),
-  output: workingCopySchema.extend({ warning: z.string() }),
+  output: writeSchema.extend({ warning: z.string() }),
   permission: "extensions:manage",
   risk: "write",
   bookkeeping: true,
@@ -221,9 +267,9 @@ export const extensionEject = defineOperation({
     if (row?.source === "runtime") {
       throw new ConflictError(`${input.id} has already been ejected`, { id: input.id });
     }
-    const wc = await host.eject(input.id);
+    const written = await host.eject(input.id);
     return {
-      ...viewOf(wc),
+      ...writeView(written, Object.fromEntries(written.paths.map((p) => [p, ""]))),
       warning:
         `${input.id} is now editable in the workspace. When a proposal for it is approved it ` +
         "becomes a runtime extension and stops receiving upstream updates with new releases.",
@@ -353,7 +399,7 @@ export const extensionPropose = defineOperation({
   mcp: { curated: true, title: "Propose an extension change", requireReason: true },
   async handler(input, ctx) {
     const host = requireHost(ctx);
-    const wc = await host.workingCopy(input.id);
+    const wc = await host.workingCopy(input.id, { status: false });
     if (!wc.exists || !Object.keys(wc.files).length) {
       throw new NotFoundError("extension in the workspace (write its files first)", input.id);
     }
@@ -390,7 +436,8 @@ export const extensionPropose = defineOperation({
       row ? host.files(input.id, row.commit_oid) : Promise.resolve(null),
       host.files(input.id, commit),
     ]);
-    const diff = diffFiles(before, after);
+    // Bounded (total LCS work) and capped (stored size) at write time (ADR 0043).
+    const diff = capDiff(diffFiles(before, after));
     const impact = computeImpact({
       manifest: check.manifest,
       previous,
@@ -400,7 +447,12 @@ export const extensionPropose = defineOperation({
     });
     let ai: { text: string; model: string } | null = null;
     try {
-      ai = await host.describeChange(summaryPrompt(impact, diff));
+      ai = await host.describeChange({
+        id: input.id,
+        commit,
+        base: row?.commit_oid ?? null,
+        prompt: summaryPrompt(impact, diff),
+      });
     } catch {
       ai = null;
     }
@@ -442,7 +494,7 @@ export const extensionPropose = defineOperation({
         source: "runtime",
         version: check.manifest.version,
         message: input.message ?? ctx.reason ?? `Update ${input.id}`,
-        // Capped so the row stays far below D1's 2 MB limit (ADR 0055).
+        // Capped so the row stays far below D1's 2 MB limit (ADR 0090).
         diff: JSON.stringify(capFileDiffs(diff)),
         impact: JSON.stringify(impact),
         check_result: JSON.stringify({ ok: checkResult.ok, issues, plan: checkResult.plan }),

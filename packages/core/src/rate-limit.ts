@@ -1,4 +1,4 @@
-// Rate limits through the Workers Rate Limiting binding (ADR 0056,
+// Rate limits through the Workers Rate Limiting binding (ADR 0091,
 // https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/). A binding is
 // declared in wrangler.jsonc `ratelimits` with a fixed `limit` per `period` (10 or 60 seconds);
 // code only picks the key. Counts are per Cloudflare location and eventually consistent, so a

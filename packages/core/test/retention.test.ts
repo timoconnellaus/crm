@@ -1,4 +1,4 @@
-// Storage retention (ADR 0055): the audit retention setting and its sanctioned purge path through
+// Storage retention (ADR 0090): the audit retention setting and its sanctioned purge path through
 // the append-only triggers, run history purge, pending action compaction and caps, the storage
 // gauge, and that the retention queries keep to their indexes (EXPLAIN QUERY PLAN, rows read).
 import { env } from "cloudflare:workers";

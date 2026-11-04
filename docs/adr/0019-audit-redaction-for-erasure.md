@@ -83,7 +83,7 @@ refused on both tables, unconditionally.
   rows, so markers and guarded triggers apply unchanged. `packages/core/test/erase.test.ts` covers
   notes, tasks, a CSV import and search together.
 
-## Amendment, 2026-11-04 (storage retention, ADR 0055)
+## Amendment, 2026-11-04 (storage retention, ADR 0090)
 - **Redaction markers can now be purged.** When audit retention is set, the retention purge
   deletes a redaction marker together with the audit or change row it redacted (its foreign key
   would otherwise pin that row forever). The guard allows this only for markers whose target is

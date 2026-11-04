@@ -1,4 +1,4 @@
-# ADR 0055: Storage retention under D1's 10 GB cap
+# ADR 0090: Storage retention under D1's 10 GB cap
 
 Status: accepted, 2026-11-04 (cost audit follow-up, decision D3 of
 [the Cloudflare cost audit](../research/cloudflare-cost-audit.md)). Amends ADR 0017. Builds on

@@ -37,7 +37,7 @@ export function formatValue(value: unknown): string {
 
 /** One value of a diff as display text (lists of emails/phones show their main value). */
 export function diffValue(value: unknown): string {
-  // A long value a pending action's stored preview cut short (ADR 0055).
+  // A long value a pending action's stored preview cut short (ADR 0090).
   if (
     value &&
     typeof value === "object" &&

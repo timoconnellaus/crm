@@ -1,4 +1,4 @@
-// Size caps for what a pending action stores (ADR 0055, cost audit F17). D1 rejects a row over
+// Size caps for what a pending action stores (ADR 0090, cost audit F17). D1 rejects a row over
 // 2 MB, so a bulk preview or a large inline input must never get near that. Caps apply when the
 // action is queued:
 //

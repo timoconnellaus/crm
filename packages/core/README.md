@@ -54,17 +54,17 @@ src/
   operations/connected-app.ts connectedApp.list/listAll/revoke/register, and the per-request
                        helpers /mcp uses (loadConnection, touchConnection)
   operations/retention.ts audit.retention/setRetention/purge/readCounts, storage.status/refresh
-                       (ADR 0055)
+                       (ADR 0090)
   approvals/queue.ts   prepareQueuedAction: dry run → diff preview, simulated records,
                        provisional ids, dependencies, change set
   approvals/simulation.ts the session overlay: SIMULATED_OBJECTS, overlayRead for get/list/
                        search.global/activity.listForRecord
   purge.ts             runTrashPurge: the scheduled purge, as an automation through invoke()
   retention.ts         the daily cron's storage retention: runAuditPurge, purgeRunHistory,
-                       compactPendingActions, measureStorage (ADR 0055)
+                       compactPendingActions, measureStorage (ADR 0090)
   approvals/caps.ts    size caps on what a pending action stores (input, preview, simulated)
   rate-limit.ts        rateLimit(binding, key) over the Workers Rate Limiting binding, and
-                       memoryRateLimit for tests (ADR 0056)
+                       memoryRateLimit for tests (ADR 0091)
   ids.ts               newId("person") → per_01J…
   errors.ts            typed errors (NotFoundError, ConflictError, ValidationError, …)
   users.ts             resolveActingUser (Principal → core_user)

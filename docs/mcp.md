@@ -18,7 +18,7 @@ for a person to approve it. Below, "the client" means the MCP client and the mod
 | Resource | `crm://schema`: objects and fields, operations, their risk classes and whether you may call them. |
 | Approvals | Under the approval policy, a change may come back as `pending_approval` instead of applying. It waits in a Change set until a person approves it in the Approvals inbox. |
 | Provisional IDs | A queued create gets a Provisional ID (`per_pending_…`) that the client can keep using in the same session. |
-| Rate limits | Per Connected app: about 120 requests and 30 changes per minute by default (approximate, per Cloudflare location; ADR 0056). |
+| Rate limits | Per Connected app: about 120 requests and 30 changes per minute by default (approximate, per Cloudflare location; ADR 0091). |
 | Tokens | Access tokens last an hour, refresh tokens 30 days. |
 | Revocation | Settings → Connected apps. Revoking stops the app's access and refresh tokens on their next use. |
 

@@ -1,5 +1,5 @@
 -- Migration 0061: audit retention, a sanctioned purge path through the append-only triggers
--- (ADR 0055; amends ADR 0017, in the spirit of ADR 0019's redaction markers).
+-- (ADR 0090; amends ADR 0017, in the spirit of ADR 0019's redaction markers).
 --
 -- Retention is an org setting, `audit_retention` = {"years": null | 1 | 2 | 7}. null (the
 -- default, and the meaning of a missing row) keeps the audit log forever. Only a human admin can

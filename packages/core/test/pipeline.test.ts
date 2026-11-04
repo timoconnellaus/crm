@@ -157,7 +157,7 @@ describe("gate", () => {
     expect((await invoke("person.get", { id: person.id }, context(member))).deletedAt).toBeNull();
   });
 
-  it("lets AI reads through and counts them per hour instead of auditing each (ADR 0055)", async () => {
+  it("lets AI reads through and counts them per hour instead of auditing each (ADR 0090)", async () => {
     const person = await invoke("person.create", { displayName: unique("R") }, context(member));
     const mcp = context(member, { actor: "mcp", origin: { surface: "mcp", clientId: "claude" } });
     await invoke("person.get", { id: person.id }, mcp);

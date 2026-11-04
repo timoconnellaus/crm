@@ -283,8 +283,10 @@ test("People with the 10k seed scrolls smoothly with a bounded DOM", async ({ pa
     type: "scroll",
     description: `median frame ${median.toFixed(1)} ms (${fps.toFixed(0)} fps), rows ≤ ${Math.max(...result.rows)}, DOM ${Math.min(...result.nodes)}–${Math.max(...result.nodes)} nodes`,
   });
-  // 60 fps (a 16.7 ms frame, with a little slack for the measuring itself).
-  expect(median).toBeLessThan(18);
+  // 60 fps locally (a 16.7 ms frame, with a little slack for the measuring itself). Headless Chrome
+  // on shared CI runners can't hold 60 fps whatever the page does, so CI only guards against the
+  // regression that matters: rendering every row would cost hundreds of ms per frame.
+  expect(median).toBeLessThan(process.env.CI ? 50 : 18);
   // Rendered rows and DOM size stay bounded while thousands of rows go by.
   expect(Math.max(...result.rows)).toBeLessThan(80);
   expect(Math.max(...result.nodes) - Math.min(...result.nodes)).toBeLessThan(1500);

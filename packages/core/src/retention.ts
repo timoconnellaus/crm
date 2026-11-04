@@ -1,4 +1,4 @@
-// Storage retention (ADR 0055, docs/research/cloudflare-cost-audit.md decision D3): the audit
+// Storage retention (ADR 0090, docs/research/cloudflare-cost-audit.md decision D3): the audit
 // retention setting, and the daily cron's housekeeping that keeps D1 under its 10 GB cap:
 //
 // - runAuditPurge: deletes write audits older than the retention setting through the sanctioned

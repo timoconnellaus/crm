@@ -1,4 +1,4 @@
-// Audit retention, read counts and the storage gauge (ADR 0055):
+// Audit retention, read counts and the storage gauge (ADR 0090):
 // - audit.retention / audit.setRetention: how long write audits are kept (human admins only);
 // - audit.purge: one round of the retention purge, run by the daily cron as an automation;
 // - audit.readCounts: hourly counts of non-human reads, which replaced one audit row per read;

@@ -30,7 +30,7 @@ export async function runScheduledPurge(env: PurgeEnv, clock?: () => Date) {
 }
 
 /**
- * The daily cron: the Trash purge, expiring pending approvals, then storage retention (ADR 0055):
+ * The daily cron: the Trash purge, expiring pending approvals, then storage retention (ADR 0090):
  * the audit retention purge, run history, compacting old pending actions, and measuring the
  * database for the storage gauge. Each step is chunked and bounded; what is left is picked up
  * the next day. A failing step is logged and does not stop the others.

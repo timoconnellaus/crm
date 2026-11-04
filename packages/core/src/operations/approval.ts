@@ -66,7 +66,7 @@ export const pendingActionSchema = z.object({
   requestAuditId: z.string().nullable(),
   appliedAuditId: z.string().nullable(),
   /**
-   * Set when what was stored was capped at queue time (ADR 0055): preview entries and simulated
+   * Set when what was stored was capped at queue time (ADR 0090): preview entries and simulated
    * records left out. Long before/after values in the preview read
    * `{ "$truncated": true, head, length, hash }`.
    */

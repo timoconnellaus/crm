@@ -37,7 +37,7 @@ export const MCP_PATH = "/mcp";
 export interface McpEnv extends IdentityEnv, OperationsEnv {
   OAUTH_KV: KVNamespace;
   APPROVAL_EXPIRY_DAYS?: string;
-  /** Every /mcp request, per connected app (Workers Rate Limiting, ADR 0056). */
+  /** Every /mcp request, per connected app (Workers Rate Limiting, ADR 0091). */
   MCP_RATE_LIMIT?: RateLimitBinding;
   /** Non-read operations over MCP, per connected app. */
   MCP_WRITE_RATE_LIMIT?: RateLimitBinding;
@@ -97,7 +97,7 @@ export async function serveMcp(
   };
 
   const now = clock().toISOString();
-  // Keyed per connected app, so refreshing a token does not reset the budget (ADR 0056).
+  // Keyed per connected app, so refreshing a token does not reset the budget (ADR 0091).
   const requests = await rateLimit(env.MCP_RATE_LIMIT, connection.id);
   if (!requests.ok) {
     return rpcError(

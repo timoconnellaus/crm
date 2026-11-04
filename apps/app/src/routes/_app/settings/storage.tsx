@@ -1,5 +1,5 @@
 // Settings → Storage (admins): the D1 database's size against its 10 GB cap, row counts of the
-// big tables (measured daily, cached), and how long audit history is kept (ADR 0055).
+// big tables (measured daily, cached), and how long audit history is kept (ADR 0090).
 import {
   AlertDialog,
   AlertDialogAction,

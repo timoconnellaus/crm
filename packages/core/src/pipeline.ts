@@ -123,7 +123,7 @@ export function redactInput(value: unknown, extra: readonly string[] = []): unkn
 
 /**
  * Reads by humans are not audited; every write, refusal and non-human call is. A non-human read
- * that succeeds is counted in core_audit_read_counts instead of getting its own row (ADR 0055);
+ * that succeeds is counted in core_audit_read_counts instead of getting its own row (ADR 0090);
  * one that fails or is refused still gets a full audit row.
  */
 function isAudited(op: AnyOperation, actor: Actor): boolean {
@@ -668,7 +668,7 @@ export async function invokeOperation<O extends AnyOperation>(
   const summary =
     op.auditSummary && !deferred ? op.auditSummary(output, input) : defaultSummary(output, changes);
   if (audited && op.risk === "read") {
-    // A successful non-human read: counted, not audited row by row (ADR 0055).
+    // A successful non-human read: counted, not audited row by row (ADR 0090).
     await countRead(op, ctx, now, false);
   } else if (audited) {
     statements.push(

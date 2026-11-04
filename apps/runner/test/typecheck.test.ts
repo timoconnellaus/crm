@@ -1,5 +1,9 @@
-// The in-Worker type check of extension source (src/extensions/typecheck.ts), run in workerd.
+// The in-Worker type check of extension source (src/extensions/typecheck.ts), run in workerd:
+// directly (this test bundle imports the compiler), and as crm-runner runs it, in the checker's
+// Dynamic Worker (LOADER.get with a stable id, ADR 0043).
+import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
+import { typecheck } from "../src/executor/build-cache.ts";
 import { MAX_TYPE_ISSUES, typecheckExtension } from "../src/extensions/typecheck.ts";
 import { SHIPPED_EXTENSIONS } from "../src/generated/shipped.ts";
 
@@ -15,6 +19,29 @@ async function timed<T>(run: () => T): Promise<[T, number]> {
   await scheduler.wait(1);
   return [result, Date.now() - start - 1];
 }
+
+describe("the checker worker", () => {
+  it("checks in its own Dynamic Worker, cold and warm", async () => {
+    const timedAsync = async <T>(run: () => Promise<T>): Promise<[T, number]> => {
+      const start = Date.now();
+      const result = await run();
+      return [result, Date.now() - start];
+    };
+    const [cold, coldMs] = await timedAsync(() => typecheck(env.LOADER, files));
+    expect(cold).toEqual([]);
+    const warm: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const [issues, ms] = await timedAsync(() => typecheck(env.LOADER, files));
+      expect(issues).toEqual([]);
+      warm.push(ms);
+    }
+    const bad = await typecheck(env.LOADER, { "index.ts": "const x: number = 'a';\n" });
+    expect(bad[0]?.message).toMatch(/TS2322/);
+    console.log(
+      `checker worker, example: cold ${coldMs} ms (load the compiler + parse the declarations), warm ${warm.join(" / ")} ms`,
+    );
+  });
+});
 
 describe("typecheckExtension", () => {
   it("checks the example extension clean, cold and warm", async () => {

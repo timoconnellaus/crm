@@ -1,5 +1,7 @@
 // crm-runner entrypoint. crm-app calls it over the RUNNER service binding using RPC: liveness, the
-// stage 0 Workflow, and the extension host, which forwards to the extension workspace DO.
+// stage 0 Workflow, and the extension host. Since ADR 0043 the host is split: code runs here, in
+// the stateless entrypoint (the executor: tools, manifest evaluation, type checks, Code Mode), so
+// runs proceed in parallel; git, working copies and the build cache stay in the workspace DO.
 import { WorkerEntrypoint } from "cloudflare:workers";
 import {
   type CodeResult,
@@ -13,41 +15,49 @@ import {
   type ShippedExtension,
   type ShippedInstallResult,
   type WorkingCopy,
+  type WorkingCopyOptions,
   type WorkspaceEntry,
+  type WorkspaceWrite,
 } from "@crm/core";
 import { createCrmDb } from "@crm/db";
+import { Executor, type ExecutorOptions } from "./executor/executor.ts";
 import type { HelloOutput } from "./hello-workflow.ts";
 import type { PingResult, RunnerRpc, WorkflowRunStatus } from "./rpc.ts";
 
+export { CodeModeGate } from "./executor/code-gate.ts";
 export { ExtensionWorkspace } from "./extensions/workspace.ts";
 export { HelloWorkflow } from "./hello-workflow.ts";
 export type { PingResult, RunnerRpc, WorkflowRunStatus } from "./rpc.ts";
 
-/** The deployment's one extension workspace. */
+/** The deployment's one extension workspace: git, working copies, the build cache. */
 export function extensionWorkspace(
   env: Env,
 ): DurableObjectStub<import("./extensions/workspace.ts").ExtensionWorkspace> {
   return env.EXTENSION_WORKSPACE.getByName("workspace");
 }
 
-/** The extension host as plain async functions over the workspace stub. */
-export function extensionHost(env: Env): ExtensionHost {
+/**
+ * The extension host: execution in this isolate (the executor), storage in the workspace DO.
+ * `options` is for tests (a counting loader, short timeouts).
+ */
+export function extensionHost(env: Env, options: ExecutorOptions = {}): ExtensionHost {
   const ws = () => extensionWorkspace(env);
+  const executor = new Executor(env, options);
   return {
     commit: (input) => ws().commit(input),
     shipped: () => ws().shipped(),
     commitShipped: (id) => ws().commitShipped(id),
-    evaluate: (input) => ws().evaluate(input) as Promise<EvaluateResult>,
-    runTool: (input) => ws().runTool(input) as Promise<RunToolResult>,
+    evaluate: (input) => executor.evaluate(input),
+    runTool: (input) => executor.runTool(input),
     versions: (id) => ws().versions(id),
     files: (id, commit) => ws().files(id, commit),
     listWorkspace: () => ws().listWorkspace(),
-    workingCopy: (id) => ws().workingCopy(id),
+    workingCopy: (id, opts) => ws().workingCopy(id, opts),
     writeFiles: (input) => ws().writeFiles(input),
     commitWorkingCopy: (input) => ws().commitWorkingCopy(input),
     eject: (id) => ws().eject(id),
-    runCode: (input) => ws().runCode(input) as Promise<CodeResult>,
-    describeChange: (prompt) => ws().describeChange(prompt),
+    runCode: (input) => executor.runCode(input),
+    describeChange: (input) => executor.describeChange(input),
   };
 }
 
@@ -72,7 +82,7 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
     };
   }
 
-  // ExtensionHost (ADR 0025), forwarded to the workspace DO.
+  // ExtensionHost (ADR 0025, ADR 0043).
   commit(input: Parameters<ExtensionHost["commit"]>[0]) {
     return extensionHost(this.env).commit(input);
   }
@@ -97,23 +107,23 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
   listWorkspace(): Promise<WorkspaceEntry[]> {
     return extensionHost(this.env).listWorkspace();
   }
-  workingCopy(id: string): Promise<WorkingCopy> {
-    return extensionHost(this.env).workingCopy(id);
+  workingCopy(id: string, options?: WorkingCopyOptions): Promise<WorkingCopy> {
+    return extensionHost(this.env).workingCopy(id, options);
   }
-  writeFiles(input: Parameters<ExtensionHost["writeFiles"]>[0]): Promise<WorkingCopy> {
+  writeFiles(input: Parameters<ExtensionHost["writeFiles"]>[0]): Promise<WorkspaceWrite> {
     return extensionHost(this.env).writeFiles(input);
   }
   commitWorkingCopy(input: Parameters<ExtensionHost["commitWorkingCopy"]>[0]) {
     return extensionHost(this.env).commitWorkingCopy(input);
   }
-  eject(id: string): Promise<WorkingCopy> {
+  eject(id: string): Promise<WorkspaceWrite> {
     return extensionHost(this.env).eject(id);
   }
   runCode(input: Parameters<ExtensionHost["runCode"]>[0]): Promise<CodeResult> {
     return extensionHost(this.env).runCode(input);
   }
-  describeChange(prompt: string) {
-    return extensionHost(this.env).describeChange(prompt);
+  describeChange(input: Parameters<ExtensionHost["describeChange"]>[0]) {
+    return extensionHost(this.env).describeChange(input);
   }
 
   /** Installs or upgrades the shipped extensions bundled with this release (boot / deploy). */

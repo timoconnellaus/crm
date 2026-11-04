@@ -1,4 +1,4 @@
--- Migration 0063: compacting decided pending actions (ADR 0055, cost audit F17).
+-- Migration 0063: compacting decided pending actions (ADR 0090, cost audit F17).
 --
 -- 30 days after a pending action was decided (applied, failed, skipped, rejected) or expired,
 -- the daily cron replaces its input, preview and simulated records with empty values and keeps

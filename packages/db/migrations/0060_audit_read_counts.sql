@@ -1,4 +1,4 @@
--- Migration 0060: hourly read counts instead of one audit row per non-human read (ADR 0055,
+-- Migration 0060: hourly read counts instead of one audit row per non-human read (ADR 0090,
 -- docs/research/cloudflare-cost-audit.md finding F6, decision D3).
 --
 -- Before this, every successful read by an MCP client, extension, automation or the assistant

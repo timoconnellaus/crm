@@ -27,3 +27,18 @@ approve will call are described in [ADR 0040](0040-extension-runtime-build.md).
 - **The AI-written summary** uses model role `build`, Workers AI by default; with no AI configured
   the screen says none is available.
 - **Code Mode** is built as ADR 0042 describes.
+
+## Amendment, 2026-11-04 (runtime rework, [ADR 0043](0043-extension-executor-and-stable-loader-ids.md))
+- **Where code runs.** Code runs in the stateless runner entrypoint (and, from stage 5, in Workflow
+  steps), not in the workspace DO. Runs no longer queue behind each other org-wide. The DO keeps
+  git, working copies, and the build and summary caches.
+- **What is unchanged.** Every guarantee above still holds:
+  - no network (`globalOutbound: null`);
+  - only the declared host modules, refused by a per-run host `RpcTarget` as well as left out of
+    the entry module;
+  - `codemode:crm` calls are gated as `extension:<id>`;
+  - deadlines, run history, the failure counter, quarantine and rollback.
+- **Reuse.** A tool's Dynamic Worker is reused across runs of the same extension version (one
+  stable id per extension, commit and host-module set). Run state lives only in the per-run host.
+- **Code Mode** needs `records:write`. It runs one script per user at a time, and is rate limited
+  per user.

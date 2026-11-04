@@ -104,11 +104,11 @@ Like audit redaction this is over-inclusive: an action that mentions the subject
 input. Free-text names are not matched (ADR 0019).
 
 ## Amendment, 2026-11-04 (cost audit follow-up)
-- **Rate limits** moved from D1 to the Workers Rate Limiting binding (ADR 0056): `MCP_RATE_LIMIT`
+- **Rate limits** moved from D1 to the Workers Rate Limiting binding (ADR 0091): `MCP_RATE_LIMIT`
   (requests) and `MCP_WRITE_RATE_LIMIT` (writes), still per connected app, now approximate and
   configured under `ratelimits` in `wrangler.jsonc`. `core_rate_limit` and the
   `MCP_RATE_LIMIT_*` vars are gone.
-- **Stored pending actions are capped and compacted** (ADR 0055). An input over 1 MB is not
+- **Stored pending actions are capped and compacted** (ADR 0090). An input over 1 MB is not
   queued. Long preview values are truncated with a marker whose hash still drives the "changed
   since queued" check. Actions decided or expired more than 30 days ago keep a summary instead of
   their input, preview and simulated records.

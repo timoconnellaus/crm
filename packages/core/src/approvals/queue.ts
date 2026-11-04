@@ -361,7 +361,7 @@ export async function prepareQueuedAction(req: QueueRequest): Promise<QueuedActi
     }
   }
 
-  // Stored copies are capped so the row stays far below D1's 2 MB limit (ADR 0055).
+  // Stored copies are capped so the row stays far below D1's 2 MB limit (ADR 0090).
   const stored = capPreview(preview);
   const storedSim = capSimulated(simulatedOutput ?? null, records);
   const truncated =

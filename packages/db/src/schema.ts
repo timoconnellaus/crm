@@ -619,7 +619,7 @@ export interface CoreConnectedAppTable {
   revoke_reason: Defaulted<string | null>;
 }
 
-/** Hourly counts of successful non-human reads (migration 0060, ADR 0055). */
+/** Hourly counts of successful non-human reads (migration 0060, ADR 0090). */
 export interface CoreAuditReadCountsTable {
   hour: string;
   actor: AuditActor;
@@ -632,7 +632,7 @@ export interface CoreAuditReadCountsTable {
   last_at: Timestamp;
 }
 
-/** Append-only markers that authorise an audit retention purge (migration 0061, ADR 0055). */
+/** Append-only markers that authorise an audit retention purge (migration 0061, ADR 0090). */
 export interface CoreAuditPurgesTable {
   id: Generated<number>;
   cutoff: Timestamp;

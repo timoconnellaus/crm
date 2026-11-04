@@ -1,4 +1,4 @@
-# ADR 0056: Rate limits through the Workers Rate Limiting binding
+# ADR 0091: Rate limits through the Workers Rate Limiting binding
 
 Status: accepted, 2026-11-04 (cost audit follow-up, decision D4 of
 [the Cloudflare cost audit](../research/cloudflare-cost-audit.md)). Supersedes the rate-limit

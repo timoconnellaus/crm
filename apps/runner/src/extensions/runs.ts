@@ -5,6 +5,8 @@ import { createCrmDb } from "@crm/db";
 import type { RunResponse } from "@crm/sdk";
 
 export interface RunRecord {
+  /** The run id, when the caller made it before the run (it is passed to the worker). */
+  id?: string;
   extensionId: string;
   commit: string | null;
   kind: "tool" | "manifest" | "automation";
@@ -17,7 +19,7 @@ export interface RunRecord {
 }
 
 export async function recordRun(env: { DB: D1Database }, run: RunRecord): Promise<string> {
-  const id = newId("extensionRun");
+  const id = run.id ?? newId("extensionRun");
   const outcome = run.response.ok
     ? "ok"
     : run.response.error.code === "timeout"

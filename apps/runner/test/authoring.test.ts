@@ -92,14 +92,21 @@ beforeAll(async () => {
 describe("the working copy", () => {
   it("writes, reads and checks files without committing or installing", async () => {
     const id = unique("wc").slice(0, 20);
-    const written = await call<{ files: Record<string, string>; changed: string[]; head: null }>(
-      admin,
-      "extension.write",
-      { id, files: projects(id) },
-    );
-    expect(Object.keys(written.files)).toEqual(["index.ts"]);
-    expect(written.changed).toEqual(["index.ts"]);
-    expect(written.head).toBeNull();
+    // extension.write returns paths, not contents, and a dirty flag rather than git status.
+    const written = await call<{
+      paths: string[];
+      written: string[];
+      deleted: string[];
+      changed: boolean;
+      head: null;
+    }>(admin, "extension.write", { id, files: projects(id) });
+    expect(written).toMatchObject({
+      paths: ["index.ts"],
+      written: ["index.ts"],
+      deleted: [],
+      changed: true,
+      head: null,
+    });
 
     // Add a helper, delete it again, and read one file back.
     await call(admin, "extension.write", { id, files: { "lib/util.ts": "export const x = 1;\n" } });
@@ -107,7 +114,10 @@ describe("the working copy", () => {
     expect(Object.keys(read.files).sort()).toEqual(["index.ts", "lib/util.ts"]);
     await call(admin, "extension.write", { id, files: { "lib/util.ts": null } });
     read = await call(admin, "extension.read", { id, path: "index.ts" });
+    expect(Object.keys(read.files)).toEqual(["index.ts"]);
     expect(read.files["index.ts"]).toContain("defineExtension");
+    const whole = await call<{ changed: string[] }>(admin, "extension.read", { id });
+    expect(whole.changed).toEqual(["index.ts"]);
 
     const check = await call<{ ok: boolean; plan: { changes: { kind: string }[] } }>(
       admin,
@@ -387,13 +397,19 @@ describe("shipped extensions: extend, don't modify; eject", () => {
 
   it("ejects: the working copy becomes editable, approval makes it a runtime extension", async () => {
     const ejected = await call<{
-      files: Record<string, string>;
+      paths: string[];
       ejected: boolean;
+      changed: boolean;
       warning: string;
     }>(admin, "extension.eject", { id: "example" });
-    expect(ejected.ejected).toBe(true);
+    expect(ejected).toMatchObject({ ejected: true, changed: true });
+    expect(ejected.paths).toContain("index.ts");
     expect(ejected.warning).toMatch(/upstream updates/);
-    const index = ejected.files["index.ts"] as string;
+    const read = await call<{ files: Record<string, string> }>(admin, "extension.read", {
+      id: "example",
+      path: "index.ts",
+    });
+    const index = read.files["index.ts"] as string;
     await call(admin, "extension.write", {
       id: "example",
       files: { "index.ts": index.replace('version: "1.0.0"', 'version: "1.1.0"') },

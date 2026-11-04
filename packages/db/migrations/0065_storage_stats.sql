@@ -1,4 +1,4 @@
--- Migration 0065: the storage gauge's cache (ADR 0055). The daily cron, or an admin's refresh,
+-- Migration 0065: the storage gauge's cache (ADR 0090). The daily cron, or an admin's refresh,
 -- records the database size and the row counts of the big tables here, so Settings → Storage
 -- reads one row instead of counting millions on every page view.
 CREATE TABLE core_storage_stats (
