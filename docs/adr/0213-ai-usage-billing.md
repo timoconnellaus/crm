@@ -30,3 +30,28 @@ per deployment).
   storage) and that `cost` is populated for Workers AI. Logs without a cost are counted as
   `unpriced` and shown in the admin console; if Workers AI has no cost, price it from tokens.
 - The 20-gateways-per-account limit (ADR 0210) affects this design directly.
+
+> **Amended 2026-11-05 (user decision): one shared platform gateway, and BYOK outside it.**
+> This replaces "each hosted deployment has its own AI Gateway" for hosted customers, and resolves
+> the 20-gateway limit (go-live blocker B1). Not built yet; to be built after Stage 7b reworks the
+> model registry.
+> - **Platform AI** (the AI we pay for and bill) goes through **one shared gateway** in our
+>   account. Every call carries a tenant tag (`cf-aig-metadata`: tenant id and plan), and the daily
+>   metering filters that gateway's logs by tenant. The billing rules above (what is billed, the 20%
+>   markup, allowances, Free credit) are unchanged.
+> - **Conditions on the shared gateway**, because it serves every tenant:
+>   - caching is **off**, or keyed per tenant, so no tenant can receive another's cached response;
+>   - **prompt and response logging is off**, keeping only metadata, tokens and cost, so the
+>     control plane still never holds customer data;
+>   - the tenant tag is set by host code in the model client, never by extension code or anything
+>     reachable through `codemode:ai`, so a tenant cannot bill its usage to another.
+> - **The customer's own key (BYOK)** is configured in the app, in Settings → AI, and called
+>   **directly** at the provider, not through our gateway. The key is never stored in D1: Settings
+>   hands it to the control plane, which sets it as a secret on that tenant's Worker, through the
+>   Workers for Platforms script-secrets API. BYOK usage is shown to the customer and never billed.
+> - **Optional: the customer's own AI Gateway.** A customer who wants logs and spend tracking for
+>   their own keys can connect their own gateway (id and token, stored the same way as a key).
+> - **Same codebase, a placement setting.** "Platform AI" is one more provider in the model registry
+>   (the shared gateway plus the tenant tag), switched on for hosted deployments by their
+>   entitlements. Self-hosted installs keep their own per-deployment gateway (ADR 0180). There is
+>   no hosted-only fork.
