@@ -55,7 +55,8 @@ const balancedAi: Record<RiskClass, GateRule> = {
 /**
  * Balanced for external MCP clients (stage 2, ADR 0022, ADR 0018 amendment): every bulk write
  * goes to review whatever its size, as do destructive and merge operations (merges are
- * `destructive`). The in-app assistant keeps the stage-1 threshold until stage 7.
+ * `destructive`). The in-app assistant keeps its own column (stage 7b, ADR 0200): bulk writes of
+ * up to 25 records apply, because the person is in the conversation and sees each change.
  */
 const balancedMcp: Record<RiskClass, GateRule> = { ...balancedAi, "bulk-write": "review" };
 const autonomousAi: Record<RiskClass, GateRule> = {
