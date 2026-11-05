@@ -136,3 +136,8 @@ eval harnesses take their default model from the registry (`@relationship-os/cor
 > provider, custom providers (`custom-<slug>/<model>`, a new `custom` provider) and the gateway's
 > own model ids. Workers AI keeps the binding with the `gateway` option. Gateway headers are no
 > longer sent to providers called directly.
+
+> Amended 2026-11-05 ([ADR 0230](0230-jev-as-the-typed-judge.md), proposed with stage 11): the
+> `jev` provider, the `judgement` capability, `AI_KEY_JEV` and the `jev` entry of `AI_PROVIDERS`
+> are removed. They were never wired: `client.ts` would have called Jev as an OpenAI-compatible
+> chat endpoint, which it is not. Jev is the judge, a separate seam (`packages/core/src/judge/`).

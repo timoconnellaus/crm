@@ -9,10 +9,11 @@ correct, and its host summary must state the intent, judged by a rubric. The tar
 The eval reuses `evals/mcp`'s client: sign-in, the OAuth flow, the MCP session, the
 OpenAI-compatible model client, tool conversion and the tool-use loop. It uses Workers AI by
 default, or any OpenAI-compatible endpoint. Per ADR 0009 it never uses Claude or Anthropic. The
-same model is the summary judge.
+summary judge is the model under test unless `--judge-model` (or `EVAL_JUDGE_MODEL`) names
+another; the report says which, since a model judging its own work is not independent.
 
-**It has not been run yet.** See [REPORT.md](REPORT.md). The harness and graders are unit-tested
-with a stand-in model and an in-memory deployment (`test/`).
+See [REPORT.md](REPORT.md) for the latest real runs. The harness and graders are unit-tested with
+a stand-in model and an in-memory deployment (`test/`).
 
 ## How a run goes
 
@@ -91,7 +92,9 @@ The grader calls operations as their curated MCP tool when the server lists one 
 
    Options: `--only id,id` (all of them must pass), `--approval-minutes`, `--model` (default
    `@cf/moonshotai/kimi-k2.6`, or `EVAL_MODEL`), `--temperature`, `--max-tokens`,
-   `--reasoning-effort`, `--max-turns` (model requests per case, default 30), `--email` /
+   `--reasoning-effort`, `--thinking on|off` (or `EVAL_THINKING`: DeepSeek's thinking switch,
+   sent only when set), `--judge-model` (or `EVAL_JUDGE_MODEL`), `--max-turns` (model requests
+   per case, default 30), `--email` /
    `--password` (or `EVAL_ADMIN_EMAIL` / `EVAL_ADMIN_PASSWORD`). Without credentials it exits 2
    and writes nothing. It exits 0 when the target is met, 1 otherwise. Reports go to
    `reports/<timestamp>.md` and `.json`. Commit the first real run's report and update
@@ -99,6 +102,13 @@ The grader calls operations as their curated MCP tool when the server lists one 
 
 The environment variables are those of `evals/mcp`; see
 [evals/mcp/README.md](../mcp/README.md#the-model).
+
+**Keep the machine awake for the whole run** (plugged in, lid open; `caffeinate -ims` stops idle
+sleep but not a closed lid on battery). A run takes 30 to 60 minutes, mostly waiting for the
+model and for approvals. A laptop that sleeps has no network: every model or judge request made
+in its brief dark wakes fails, and the case fails as `error`. The 2026-11-05 05:58 run lost 5
+cases this way (see REPORT.md). Failures now name the underlying cause (DNS, refused connection,
+timeout) and say when the machine slept during the failed work.
 
 ## Layout
 

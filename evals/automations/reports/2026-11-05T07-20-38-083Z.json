@@ -1,0 +1,672 @@
+{
+  "startedAt": "2026-11-05T07:20:38.083Z",
+  "finishedAt": "2026-11-05T07:26:05.064Z",
+  "model": "deepseek-flash",
+  "judgeModel": "deepseek-v4-pro",
+  "provider": "OpenAI-compatible (api.deepseek.com)",
+  "params": {},
+  "baseUrl": "http://localhost:5185",
+  "target": 8,
+  "total": 10,
+  "passed": 7,
+  "results": [
+    {
+      "requestedId": "wonthanksgibopen",
+      "request": "Automate this: When a deal is won, create a task for the deal's owner to send the customer a thank-you note, linked to the deal, and notify the owner.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `wonthanksgibopen`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "deals.deal",
+        "id": "rec_01M6N99GHG9BFREBREHABRMCV6"
+      },
+      "proposal": {
+        "extensionId": "wonthanksgibopen",
+        "turn": 5,
+        "changeSetId": "chs_01M6N99WJSHHAH0104AAQCNRCD",
+        "actionId": "pac_01M6N99WJSHHAH0104AAQCNRCE",
+        "commit": "c8c47ed41b4fbc0efe059ab8b87dba039af8e62d"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 7
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by looking at the existing extensions to see how automations are written.\n\nNow let me read an existing similar runtime extension to match the shape.\n\nNo existing `wonthanksgibopen` extension. Writing the new one with a single automation.\n\nCheck passed with no issues. Proposing it for approval.\n\nDone — the extension is written, checks clean, and is now **waiting for approval** (not installed yet).\n\n**What I built** — extension `wonthanksgibopen` v1.0.0, one automation `wonThankYou` (\"Won deal → thank-you note\"):\n\n- **Trigger:** when a Deal's stage changes to a **won** stage.\n- **Step 1 — `createThankYouTask`:** creates a task \"Send the customer a thank-you note\" assigned to the deal's **owner**, linked to the deal. Declared as a write: 1 task, assigned to `{ field: \"owner\" }`, `linkedToTrigger: true`.\n- **Step 2 — `notifyOwner`:** notifies the deal's owner that the task is ready. Declared as a notification to `{ field: \"owner\" }`.\n\nNo waits, no conditions, no extra recipients or steps — exactly the three things you asked for (task for the owner, linked to the deal, notify the owner).\n\n**Host-written summary the approver will read:** *\"When a Deal's stage changes to a won stage, it creates a thank-you task linked to the deal for the deal's owner and notifies them.\"*\n\n**Permissions requested:** read `deals.deal`, write `task`, operation `notification.send`, module `crm`. No schema changes, no new objects or fields.\n\n**Status:** queued as pending action `pac_01M6N99WJSHHAH0104AAQCNRCE` in change set `chs_01M6N99WJSHHAH0104AAQCNRCD` — a person needs to approve it in the CRM's Approvals inbox before it goes live. Once approved, I can dry-run it against a deal with `automation_test` if you'd like.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 15112,
+      "usage": {
+        "inputTokens": 186023,
+        "outputTokens": 1891
+      },
+      "id": "won-thank-you",
+      "title": "Won deal: a thank-you task and a notification for the owner",
+      "covers": ["fieldChanged", "stageType won", "write task", "notify field"],
+      "extensionId": "wonthanksgibopen",
+      "automationId": "wonthanksgibopen.wonThankYou",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "fieldChanged",
+      "test": {
+        "matched": true,
+        "writes": {
+          "task": 1
+        },
+        "notifications": 1,
+        "waits": 0
+      },
+      "summary": "When a Deal's stage changes to a won stage, it creates a thank-you task linked to the deal for the deal's owner and notifies them.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary matches the requested trigger, creates the linked thank-you task for the deal owner, and notifies the owner with no extra actions."
+      }
+    },
+    {
+      "requestedId": "lostalertgibopen",
+      "request": "Automate this: When a deal is lost, notify the admins with the deal's name.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `lostalertgibopen`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "deals.deal",
+        "id": "rec_01M6N99GJEPNY7BFRW84JA9XD3"
+      },
+      "proposal": {
+        "extensionId": "lostalertgibopen",
+        "turn": 5,
+        "changeSetId": "chs_01M6N9A9GCN9PYHXKXDF8M46DN",
+        "actionId": "pac_01M6N9A9GCN9PYHXKXDF8M46DP",
+        "commit": "fc6a69eb42983bf30669979fc77187c1e6c2e076"
+      },
+      "failures": [
+        {
+          "kind": "summary",
+          "message": "the judge: The summary omits that the notification should include the deal's name."
+        }
+      ],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 7
+      },
+      "toolCalls": [
+        "extension_list",
+        "automation_list",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by looking at the existing extensions and the deals automation API.\n\nLet me read the existing similar extension source to match the API exactly.\n\nThe template is clear. Now I'll write the extension for `lostalertgibopen`.\n\nCheck passed with no issues. Now proposing for approval.\n\nDone — the extension is written, checked clean, and queued for approval.\n\n**What it does (one automation, `lostalertgibopen.lostDealAlert`)**\n- **Trigger:** when a Deal's stage changes to a lost stage (`fieldChanged` on `deals.deal`, field `stage`, `to: { stageType: \"lost\" }`).\n- **Step `notifyAdmins`** (declared intent: notifies): notifies **the admins** — recipient `\"admins\"` (every admin, no other recipients, no condition beyond the lost-stage trigger). The notification is titled `Deal lost: <deal name>` with body `The deal \"<deal name>\" was marked lost.`; if a name were ever missing it falls back to \"Deal lost\".\n- **Nothing else:** no writes, no tasks, no waits, no other assignees or recipients. Permissions are read `deals.deal` and the `notification.send` operation.\n\n**Verification:** `extension.check` returned `ok: true` with zero issues. The proposed change's impact summary reads: *\"When a Deal's stage changes to a lost stage, it notifies the admins.\"*\n\n**Status:** `pending_approval` — version 1.0.0, pending action `pac_01M6N9A9GCN9PYHXKXDF8M46DP` in change set `chs_01M6N9A9GCN9PYHXKXDF8M46DN`. It is **not installed or active yet**; a person needs to approve it in the CRM's Approvals inbox, after which the automation becomes live.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 14148,
+      "usage": {
+        "inputTokens": 184287,
+        "outputTokens": 1685
+      },
+      "id": "lost-deal-admins",
+      "title": "Lost deal: tell the admins",
+      "covers": ["fieldChanged", "stageType lost", "notify admins"],
+      "extensionId": "lostalertgibopen",
+      "automationId": "lostalertgibopen.lostDealAlert",
+      "passed": false,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "fieldChanged",
+      "test": {
+        "matched": true,
+        "writes": {},
+        "notifications": 1,
+        "waits": 0
+      },
+      "summary": "When a Deal's stage changes to a lost stage, it notifies the admins.",
+      "judge": {
+        "pass": false,
+        "reason": "The summary omits that the notification should include the deal's name."
+      }
+    },
+    {
+      "requestedId": "welcomegibopen",
+      "request": "Automate this: Whenever a new person is added, create a task to send them a welcome email, linked to the person.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `welcomegibopen`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "person",
+        "id": "per_01M6N99GJSWG8Y7AMCKCD8P89S"
+      },
+      "proposal": {
+        "extensionId": "welcomegibopen",
+        "turn": 5,
+        "changeSetId": "chs_01M6N9APM3G2VSN44NFKDPWH7M",
+        "actionId": "pac_01M6N9APM3G2VSN44NFKDPWH7N",
+        "commit": "9d6112a27fc00d9eb2ea106492c80c7b2f771ed0"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 7
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by looking at the SDK and a shipped extension to get the API shape right.\n\nLet me look at an existing similar automation for the exact shape of a record-created trigger.\n\nNow I'll write the extension. The request has no wait, no notification and no assignee, so the automation declares exactly one step: a task write linked to the triggering person.\n\nCheck passed. Now proposing for approval.\n\nDone — the extension is written, passes check, and is queued for approval.\n\n**What it does (one automation, `welcomeEmailTask`)**\n- **Trigger:** when a Person is created (`{ type: \"record\", object: \"person\", on: [\"created\"] }`).\n- **One step** (`createWelcomeTask`): creates a task titled **\"Send welcome email\"**, with notes naming the person (\"Send *Ada Lovelace* a welcome email\"), **linked to that person**.\n- That's the whole of it — no assignee, no wait, no notification, since you didn't ask for any.\n\n**Declared intents (what the host summary reports):**\n> When a Person is created, it creates a welcome email task linked to the person.\n\n**Permissions requested:** read `person`, write `task` (module `crm`). No schema changes, no new objects or fields.\n\n**Status: `pending_approval`** — this is *not* installed yet. Action `pac_01M6N9APM3G2VSN44NFKDPWH7N` in change set `chs_01M6N9APM3G2VSN44NFKDPWH7M` is waiting in the CRM's Approvals inbox for a person to approve. Once approved, new people will get the task automatically.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 11978,
+      "usage": {
+        "inputTokens": 183788,
+        "outputTokens": 1384
+      },
+      "id": "new-person-welcome",
+      "title": "New person: a welcome-email task",
+      "covers": ["record created", "core object", "write task"],
+      "extensionId": "welcomegibopen",
+      "automationId": "welcomegibopen.welcomeEmailTask",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "record",
+      "test": {
+        "matched": true,
+        "writes": {
+          "task": 1
+        },
+        "notifications": 0,
+        "waits": 0
+      },
+      "summary": "When a Person is created, it creates a welcome email task linked to the person.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary matches the requested trigger and action: on person creation, create a welcome email task linked to the person."
+      }
+    },
+    {
+      "requestedId": "checkingibopen",
+      "request": "Automate this: When an organisation is created, wait 2 days and then create a task to check in with them, linked to the organisation.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `checkingibopen`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "organisation",
+        "id": "org_01M6N99GK36WKQZQMJZK4DWM3A"
+      },
+      "proposal": {
+        "extensionId": "checkingibopen",
+        "turn": 5,
+        "changeSetId": "chs_01M6N9B4P5MNX54QKYCHXBPS9A",
+        "actionId": "pac_01M6N9B4P5MNX54QKYCHXBPS9B",
+        "commit": "2bf6c943bbd60f5f4683af3015febdb1961739ee"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 7
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by looking at how automations are written in this SDK, then build the extension.\n\nDone — the extension is written, passes check, and is now queued for approval.\n\n**Extension:** `checkingibopen` v1.0.0 — one automation, `checkInTask`\n\nDeclared steps and intents (as the host renders them):\n- Trigger: **When an Organisation is created**\n- Step `wait` — kind `sleep`, duration **2 days** (a wait)\n- Step `createCheckInTask` — **writes** 1 **task** titled \"Check in with <organisation name>\", **linked to the trigger record** (the organisation)\n\nThe host's summary: *\"When an Organisation is created, after 2 days, it creates a check-in task linked to the organisation.\"* — that covers the trigger, the 2-day wait, the one task write and its link, and adds nothing else (no assignee, no notification, no conditions).\n\nPermissions requested: read `organisation`, write `task`, module `crm`. No new objects or fields, no schema changes.\n\n`extension_check` returned `ok: true` with no issues. `extension_propose` queued it as pending action `pac_01M6N9B4P5MNX54QKYCHXBPS9B` in change set `chs_01M6N9B4P5MNX54QKYCHXBPS9A` (commit `2bf6c943`).\n\n**Nothing is live yet** — it waits for a person to approve it in the CRM's Approvals inbox; only then is it installed and the automation active.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 14832,
+      "usage": {
+        "inputTokens": 184506,
+        "outputTokens": 1593
+      },
+      "id": "org-check-in",
+      "title": "New organisation: check in after two days",
+      "covers": ["record created", "sleep", "write task"],
+      "extensionId": "checkingibopen",
+      "automationId": "checkingibopen.checkInTask",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "record",
+      "test": {
+        "matched": true,
+        "writes": {
+          "task": 1
+        },
+        "notifications": 0,
+        "waits": 1
+      },
+      "summary": "When an Organisation is created, after 2 days, it creates a check-in task linked to the organisation.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary matches the requested trigger, 2-day wait, and creation of one linked check-in task with no extras."
+      }
+    },
+    {
+      "requestedId": "closesoongibopen",
+      "request": "Automate this: Seven days before a deal's expected close date, notify the deal's owner so they can prepare.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `closesoongibopen`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "deals.deal",
+        "id": "rec_01M6N99GM1R5ABWGTVCH3MC862"
+      },
+      "proposal": {
+        "extensionId": "closesoongibopen",
+        "turn": 5,
+        "changeSetId": "chs_01M6N9BHDE3RPPSDJ0B6KGVD2P",
+        "actionId": "pac_01M6N9BHDE3RPPSDJ0B6KGVD2Q",
+        "commit": "9645c2aca92e3c1c0bf17ad2552b682876dee161"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 6
+      },
+      "toolCalls": [
+        "extension_read",
+        "extension_list",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by looking at the existing deals extension to see the API shape, then write the automation.\n\nLet me look at an existing similar runtime extension for the exact pattern.\n\nCheck passes. Now proposing for approval.\n\nDone — the extension is written, passes `check` cleanly, and is **queued for approval (not yet installed)**.\n\n**What I built** — extension `closesoongibopen` v1.0.0, with one automation, `closingSoonReminder`:\n\n- **Trigger:** 7 days before a Deal's expected close date (`dateRelative` on `deals.deal.expectedClose`, `offsetDays: -7`).\n- **Step `notifyOwner`:** notifies the deal's owner with \"«deal»: expected to close in 7 days\", suggesting they prepare to close or update the expected close date.\n- **Permissions:** read `deals.deal`, operation `notification.send`, module `crm`. No writes; no other objects touched.\n\n**Host-written summary the approver will see:** \"7 days before a Deal's expected close date, it notifies the deal's owner.\" That covers exactly what you asked — one trigger, one recipient (the owner), one notification — and adds no conditions, filters, tasks or extra recipients.\n\n**Status:** pending action `pac_01M6N9BHDE3RPPSDJ0B6KGVD2Q` in change set `chs_01M6N9BHDE3RPPSDJ0B6KGVD2P` (expires 12 Nov 2026). A person needs to approve it in the CRM's Approvals inbox before the automation starts running.\n\nOne note: the workspace already has two installed extensions doing this same job (`closesoonzonezon`, `closesoongulalor`). Once this one is approved, deal owners would get three notifications per deal — you may want to disable or delete the older two.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 13628,
+      "usage": {
+        "inputTokens": 182004,
+        "outputTokens": 1427
+      },
+      "id": "close-date-reminder",
+      "title": "A week before the expected close date: remind the owner",
+      "covers": ["dateRelative", "negative offset", "notify field"],
+      "extensionId": "closesoongibopen",
+      "automationId": "closesoongibopen.closingSoonReminder",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "dateRelative",
+      "test": {
+        "matched": true,
+        "writes": {},
+        "notifications": 1,
+        "waits": 0
+      },
+      "summary": "7 days before a Deal's expected close date, it notifies the deal's owner.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary matches the requested trigger and notification exactly."
+      }
+    },
+    {
+      "requestedId": "bigdealgibopen",
+      "request": "Automate this: When a deal worth more than 50,000 is created, notify the admins. Smaller deals should not notify anyone.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `bigdealgibopen`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "deals.deal",
+        "id": "rec_01M6N99GMZ55153B9ZAQNBJQZE"
+      },
+      "proposal": {
+        "extensionId": "bigdealgibopen",
+        "turn": 6,
+        "changeSetId": "chs_01M6N9BSZZ415HP1B4H48ADJ77",
+        "actionId": "pac_01M6N9C0ZPRHX6WXK7ZSEMN013",
+        "commit": "931ca2a1732424e5fec40fc7b7cec0c71acb61bd"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 9
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read",
+        "changeset_begin",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳",
+        "changeset_commit"
+      ],
+      "finalText": "I'll start by looking at an existing extension to see the defineAutomation API shape.\n\nNow let me look at a similar existing automation's source for the exact API shape.\n\nDone — the extension is written, passes check, and is **queued for approval (not installed yet)**.\n\n**What was built** — extension `bigdealgibopen`, version 1.0.0, one automation `bigDealAdminAlert` (\"Big deal created → notify admins\"):\n\n- **Trigger:** a Deal is created (`record` trigger on `deals.deal`, `on: [\"created\"]`).\n- **Condition:** the deal's `value` is `gt 50000` — strictly more than 50,000, so a deal at exactly 50,000 or below matches nothing and notifies no one.\n- **One step, `notifyAdmins`:** notifies `admins` (every admin) with the message \"New deal over 50,000: {record}\", sending the deal's name and value in the body.\n- No waits, no tasks, no writes to records, no other recipients.\n\n**Declarations** — the step declares only a `notifies` intent (`to: \"admins\"`); there are no `writes` or sleeps. Permissions requested: read `deals.deal`, operation `notification.send`, module `crm`. No schema changes (no objects, fields or views).\n\nThe host's summary of it, which the approver will read:\n\n> When a Deal is created, if its value is more than 50000, it notifies the admins.\n\nThat covers the trigger, the >50,000 condition and the single notify recipient, and adds nothing you didn't ask for.\n\n**Status:** pending action `pac_01M6N9C0ZPRHX6WXK7ZSEMN013` in change set `chs_01M6N9BSZZ415HP1B4H48ADJ77` (\"Automation: notify admins when a deal over 50,000 is created\"), awaiting a person's decision in the Approvals inbox. It only becomes live once approved.",
+      "turns": 8,
+      "stopReason": "stop",
+      "durationMs": 17290,
+      "usage": {
+        "inputTokens": 256945,
+        "outputTokens": 1928
+      },
+      "id": "big-deal-alert",
+      "title": "A deal over 50,000 is created: tell the admins",
+      "covers": ["record created", "conditions", "notify admins"],
+      "extensionId": "bigdealgibopen",
+      "automationId": "bigdealgibopen.bigDealAdminAlert",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "record",
+      "test": {
+        "matched": true,
+        "writes": {},
+        "notifications": 1,
+        "waits": 0
+      },
+      "summary": "When a Deal is created, if its value is more than 50000, it notifies the admins.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary accurately captures that a deal creation over 50,000 notifies admins and excludes smaller deals."
+      }
+    },
+    {
+      "requestedId": "weeklygibopen",
+      "request": "Automate this: Every Monday at 9am, send the admins a notification to review the pipeline.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `weeklygibopen`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": null,
+      "proposal": {
+        "extensionId": "weeklygibopen",
+        "turn": 5,
+        "changeSetId": "chs_01M6N9CFS1RCDD1E4SD7AZC4S9",
+        "actionId": "pac_01M6N9CFS1RCDD1E4SD7AZC4SA",
+        "commit": "486fff261edc947a0f5c66f16fd47153e2a197ff"
+      },
+      "failures": [
+        {
+          "kind": "summary",
+          "message": "the judge: The summary omits the notification's purpose, which should be to review the pipeline."
+        }
+      ],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 7
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read ✗",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll look at the available extensions and the SDK's automation API first.\n\nThere are existing similar runtime extensions. Let me read one to follow the exact schedule/notify shape.\n\nNow I'll write the extension following that shape.\n\nCheck passes. Proposing it for approval now.\n\nDone — the extension is written, passes check, and is queued for approval (it is **not** installed yet).\n\n**Extension `weeklygibopen` v1.0.0** — \"Weekly pipeline review reminder\", one automation:\n\n- **Trigger:** schedule, cron `0 9 * * 1` — every Monday at 9am.\n- **Steps (one):** `notifyAdmins` — a notification, declared as `notifies: [{ to: \"admins\", message: \"Review the pipeline\" }]`.\n- Nothing else: no conditions, no reads, no writes, no waits, no other recipients.\n- **Permissions:** `notification.send` only, `crm` module. No schema changes (the DDL plan is only the runtime rebuilding the standard views).\n\n**Host-written impact summary the approver will read:** \"Every Monday at 09:00 (UTC), it notifies the admins.\" That covers the timing (Mondays 9am), the single action (a notification) and the recipient (the admins), and adds nothing you didn't ask for.\n\n**Status:** `pending_approval` — action `pac_01M6N9CFS1RCDD1E4SD7AZC4SA` in change set `chs_01M6N9CFS1RCDD1E4SD7AZC4S9`. A person needs to approve it in the CRM's Approvals inbox before the automation starts running. Note the schedule is interpreted in UTC (9am UTC), so the notification will arrive at 9am UTC rather than the org's local time — tell me if you'd like it adjusted to a different timezone.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 13332,
+      "usage": {
+        "inputTokens": 183883,
+        "outputTokens": 1426
+      },
+      "id": "weekly-digest",
+      "title": "Every Monday at 9: a pipeline review reminder",
+      "covers": ["schedule", "cron", "notify admins"],
+      "extensionId": "weeklygibopen",
+      "automationId": "weeklygibopen.weeklyPipelineReview",
+      "passed": false,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "schedule",
+      "test": {
+        "matched": true,
+        "writes": {},
+        "notifications": 1,
+        "waits": 0
+      },
+      "summary": "Every Monday at 09:00 (UTC), it notifies the admins.",
+      "judge": {
+        "pass": false,
+        "reason": "The summary omits the notification's purpose, which should be to review the pipeline."
+      }
+    },
+    {
+      "requestedId": "renewbtngibopen",
+      "request": "Automate this: Add a button called \"Create renewal task\" on organisation pages that creates a task to discuss the renewal, linked to the organisation.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `renewbtngibopen`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "organisation",
+        "id": "org_01M6N99GNA6Z5JF2CPA8FRW0M6"
+      },
+      "proposal": {
+        "extensionId": "renewbtngibopen",
+        "turn": 6,
+        "changeSetId": "chs_01M6N9CX8ZJP6X7VQGWEGXFY48",
+        "actionId": "pac_01M6N9CYWGKXFB1B7TFCZ7RCP9",
+        "commit": "17791195da64d6ef5884dc77d9f9cd8425924db9"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 9
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "changeset_begin",
+        "extension_propose ⏳",
+        "changeset_commit"
+      ],
+      "finalText": "Done — written, checked, and proposed. It is **not installed yet**: it waits for a person to approve it in the CRM's Approvals inbox.\n\n**Extension `renewbtngibopen` v1.0.0 — \"Renewal task button\"** (change set `chs_01M6N9CX8ZJP6X7VQGWEGXFY48`, pending action `pac_01M6N9CYWGKXFB1B7TFCZ7RCP9`)\n\nOne automation, `renewalTask`:\n\n- **Trigger:** manual — a **\"Create renewal task\"** button on organisation pages. Only runs when a person clicks it; no schedule, no conditions.\n- **Steps / intents declared:**\n  - `createRenewalTask` — \"Create the renewal discussion task\": `writes` 1 `task` titled **\"Discuss the renewal\"**, `linkedToTrigger: true` (so it is linked to the organisation it was pressed on). Notes mention the organisation's name.\n- **Permissions:** read `organisation`, write `task`, module `crm`. No notifications, no waits, no SQL, no other records touched.\n\nHost-written summary as the approver will read it: *\"When someone clicks Create renewal task on an Organisation, it creates a renewal discussion task linked to the organisation.\"* — which matches the request exactly, with nothing added.\n\n`extension_check` returned `ok: true` with no issues; `extension_propose` queued the install (schema impact: no objects or fields added, so no DDL changes). Once approved, the button appears on organisation record pages.",
+      "turns": 8,
+      "stopReason": "stop",
+      "durationMs": 16634,
+      "usage": {
+        "inputTokens": 260756,
+        "outputTokens": 1735
+      },
+      "id": "manual-renewal-task",
+      "title": "A button on organisations: create a renewal task",
+      "covers": ["manual", "write task"],
+      "extensionId": "renewbtngibopen",
+      "automationId": "renewbtngibopen.renewalTask",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "manual",
+      "test": {
+        "matched": true,
+        "writes": {
+          "task": 1
+        },
+        "notifications": 0,
+        "waits": 0
+      },
+      "summary": "When someone clicks Create renewal task on an Organisation, it creates a renewal discussion task linked to the organisation.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary matches the requested button trigger on organisation pages and the creation of one renewal discussion task linked to the organisation."
+      }
+    },
+    {
+      "requestedId": "rejectedgibopen",
+      "request": "Automate this: Whenever a change waiting for approval is rejected, notify the admins.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `rejectedgibopen`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": null,
+      "proposal": {
+        "extensionId": "rejectedgibopen",
+        "turn": 5,
+        "changeSetId": "chs_01M6N9DCFGPFAKDN6EV51KZYRG",
+        "actionId": "pac_01M6N9DCFGPFAKDN6EV51KZYRH",
+        "commit": "b0829b7564cfd1b12f9b17a7f628cc8562be3931"
+      },
+      "failures": [
+        {
+          "kind": "test",
+          "message": "expected 1 notification(s), the test run had 0"
+        },
+        {
+          "kind": "summary",
+          "message": "the summary does not mention approv"
+        }
+      ],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 7
+      },
+      "toolCalls": [
+        "extension_list",
+        "describe_operations",
+        "extension_read",
+        "extension_read ✗",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "Done — the extension is written, passes `extension.check`, and is queued for approval (not installed yet).\n\n**What I built** — `rejectedgibopen` v1.0.0, one automation `rejectedChangeAlert`:\n\n- **Trigger:** when a pending change is rejected (`approvalDecided`, decision `rejected`).\n- **Steps / declared intents:**\n  1. `notifyAdmins` — *notifies* `admins` (all admins), with the rejected operation name, the action id, and any records the change concerned. No writes, no waits, no other recipients.\n- **Permissions:** `notification.send`, module `crm`. No schema changes, no new objects or fields.\n\n**Host-written summary for the approver:** *\"When a pending change is rejected, it notifies the admins.\"* — that covers everything you asked for and adds nothing.\n\n**Status:** pending approval — action `pac_01M6N9DCFGPFAKDN6EV51KZYRH` in change set `chs_01M6N9DCFGPFAKDN6EV51KZYRG`. Nothing is live until a person approves it in the CRM's Approvals inbox.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 12191,
+      "usage": {
+        "inputTokens": 122225,
+        "outputTokens": 1338
+      },
+      "id": "rejected-change",
+      "title": "A change is rejected: tell the admins",
+      "covers": ["approvalDecided", "notify admins"],
+      "extensionId": "rejectedgibopen",
+      "automationId": "rejectedgibopen.rejectedChangeAlert",
+      "passed": false,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "approvalDecided",
+      "test": {
+        "matched": true,
+        "writes": {},
+        "notifications": 0,
+        "waits": 0
+      },
+      "summary": "When a pending change is rejected, it notifies the admins.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary matches the requested trigger and notification to admins."
+      }
+    },
+    {
+      "requestedId": "kickoffgibopen",
+      "request": "Automate this: When a deal is created, create two tasks for its owner, \"Qualify the lead\" and \"Book a demo\", linked to the deal. One day later, notify the owner to follow up.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `kickoffgibopen`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "deals.deal",
+        "id": "rec_01M6N99GP4HQ4RNVFNJV5FKQ3X"
+      },
+      "proposal": {
+        "extensionId": "kickoffgibopen",
+        "turn": 6,
+        "changeSetId": "chs_01M6N9DTBR82235H5EFJ0GD1MV",
+        "actionId": "pac_01M6N9DW4W7WMWVKR9BXZGEDXC",
+        "commit": "cb580d3540f24e0ec320c9ea53299de6bfcaa00b"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 9
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "changeset_begin",
+        "extension_propose ⏳",
+        "changeset_commit"
+      ],
+      "finalText": "I'll start by looking at the existing deals extension to see the API shape for automations, and check the extension workspace.\n\nI can see similar existing extensions (`kickoffgulalor`). Let me read one as reference for the exact API shape.\n\nI have the exact API shape. Now I'll write the extension.\n\nCheck passes with no issues. Let me group this under a change set and propose it.\n\nDone — the extension is written, passes its check, and is now **waiting for approval** (it is not installed yet).\n\n**What was built** — extension `kickoffgibopen` v1.0.0, one automation `kickoffgibopen.kickoffTasks` (\"New deal → kickoff tasks and follow-up\"):\n\n- **Trigger:** a Deal is created.\n- **Step `createTasks`** — *writes 2 tasks*, \"Qualify the lead\" and \"Book a demo\", assigned to the deal's owner and linked to the trigger deal.\n- **Step `wait`** — *waits 1 day*.\n- **Step `notifyOwner`** — *notifies the deal's owner* with \"{record}: follow up on the new deal\".\n\nThe host's generated summary reads: *\"When a Deal is created, it creates 2 kickoff tasks linked to the deal for the deal's owner. After 1 day, it notifies the deal's owner.\"* — that covers the trigger, the two task titles, the owner as assignee, the link to the deal, the one-day delay and the single recipient, and adds nothing else (no conditions, no extra recipients or assignees).\n\n**Permissions requested:** read `deals.deal`, write `task`, operation `notification.send` (module `crm`). No schema changes, no new objects or fields.\n\n**Check:** `ok: true`, zero issues.\n\n**Approval:** queued as pending action `pac_01M6N9DW4W7WMWVKR9BXZGEDXC` in change set `chs_01M6N9DTBR82235H5EFJ0GD1MV` (commit `cb580d3`). Someone needs to approve it in the CRM's Approvals inbox before it takes effect.",
+      "turns": 8,
+      "stopReason": "stop",
+      "durationMs": 18222,
+      "usage": {
+        "inputTokens": 266660,
+        "outputTokens": 2158
+      },
+      "id": "new-deal-kickoff",
+      "title": "New deal: two tasks, then a reminder a day later",
+      "covers": ["record created", "write ×2", "sleep", "notify field"],
+      "extensionId": "kickoffgibopen",
+      "automationId": "kickoffgibopen.kickoffTasks",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "record",
+      "test": {
+        "matched": true,
+        "writes": {
+          "task": 2
+        },
+        "notifications": 1,
+        "waits": 1
+      },
+      "summary": "When a Deal is created, it creates 2 kickoff tasks linked to the deal for the deal's owner. After 1 day, it notifies the deal's owner.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary triggers on deal creation, creates two owner-linked tasks, and notifies the owner after one day, matching the requested behavior."
+      }
+    }
+  ]
+}

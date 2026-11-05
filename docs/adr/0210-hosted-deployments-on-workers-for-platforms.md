@@ -80,3 +80,9 @@ ADR 0191 decided one isolated deployment per customer in our account, on Workers
 - An update of a namespaced tenant has no "staged version" step, so the gap between first and last
   Worker switching is an upload, not a deployment call. The smoke check and bookmark still cover it.
 - One minute cron fans out to every running tenant: at ~1,000 tenants it needs sharding over a queue.
+
+> **Amended 2026-11-05: no gateway per hosted deployment.** Hosted deployments no longer get their own AI
+> Gateway (`<tenant>-ros`). Platform AI goes through one shared gateway with a tenant tag, and a
+> customer's own keys are set as secrets on their tenant Worker and called directly (see the
+> amendment to ADR 0213). This removes the 20-gateways-per-account limit as a go-live blocker.
+> Provisioning stops creating a per-tenant gateway and token when that change is built.

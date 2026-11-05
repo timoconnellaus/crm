@@ -2,10 +2,13 @@
 import { describe, expect, it } from "vitest";
 import {
   chatCompletionsModel,
+  describeError,
   isFatalModelError,
   ModelApiError,
+  ModelNetworkError,
   type Provider,
   resolveProvider,
+  samplingFields,
 } from "../lib/model.ts";
 
 function provider(env: Record<string, string>): Provider {
@@ -120,5 +123,92 @@ describe("chatCompletionsModel", () => {
     expect(error.message).toContain("401");
     expect(isFatalModelError(error)).toBe(true);
     expect(isFatalModelError(new ModelApiError(400, "bad request"))).toBe(false);
+  });
+
+  it("retries network errors and reports their cause, not just 'fetch failed'", async () => {
+    const offline = () =>
+      new TypeError("fetch failed", {
+        cause: Object.assign(new Error("getaddrinfo ENOTFOUND api.example.test"), {
+          code: "ENOTFOUND",
+        }),
+      });
+    let calls = 0;
+    const retries: string[] = [];
+    const flaky = chatCompletionsModel(p, {
+      sleep: async () => {},
+      onRetry: ({ reason }) => retries.push(reason),
+      fetch: async () => {
+        calls += 1;
+        if (calls < 3) throw offline();
+        return ok(completion);
+      },
+    });
+    await expect(flaky.createCompletion({ model: "m", messages: [] })).resolves.toBeTruthy();
+    expect(retries).toEqual([
+      "fetch failed, caused by getaddrinfo ENOTFOUND api.example.test",
+      "fetch failed, caused by getaddrinfo ENOTFOUND api.example.test",
+    ]);
+
+    const down = chatCompletionsModel(p, {
+      retries: 2,
+      sleep: async () => {},
+      fetch: async () => {
+        throw offline();
+      },
+    });
+    const error = await down.createCompletion({ model: "m", messages: [] }).catch((e) => e);
+    expect(error).toBeInstanceOf(ModelNetworkError);
+    expect(error.message).toMatch(/failed after 3 attempt\(s\)/);
+    expect(error.message).toContain("ENOTFOUND api.example.test");
+  });
+
+  it("retries a timed-out attempt, and passes each attempt a timeout signal", async () => {
+    const signals: (AbortSignal | null | undefined)[] = [];
+    let calls = 0;
+    const model = chatCompletionsModel(p, {
+      sleep: async () => {},
+      timeoutMs: 1000,
+      fetch: async (_url, init) => {
+        signals.push(init?.signal);
+        calls += 1;
+        if (calls === 1) throw new DOMException("The operation timed out.", "TimeoutError");
+        return ok(completion);
+      },
+    });
+    await expect(model.createCompletion({ model: "m", messages: [] })).resolves.toBeTruthy();
+    expect(signals).toHaveLength(2);
+    expect(signals.every((s) => s instanceof AbortSignal)).toBe(true);
+  });
+});
+
+describe("describeError", () => {
+  it("follows causes, codes and aggregate errors", () => {
+    const error = new TypeError("fetch failed", {
+      cause: new AggregateError(
+        [
+          Object.assign(new Error("connect ECONNREFUSED ::1:443"), { code: "ECONNREFUSED" }),
+          Object.assign(new Error("connect timed out"), { code: "ETIMEDOUT" }),
+        ],
+        "",
+      ),
+    });
+    expect(describeError(error)).toBe(
+      "fetch failed, caused by AggregateError [connect ECONNREFUSED ::1:443; ETIMEDOUT: connect timed out]",
+    );
+    expect(describeError("plain")).toBe("plain");
+  });
+});
+
+describe("samplingFields", () => {
+  it("sends DeepSeek's thinking switch only when configured", () => {
+    expect(samplingFields({})).toEqual({});
+    expect(samplingFields({ thinking: "off", temperature: 0 })).toEqual({
+      temperature: 0,
+      thinking: { type: "disabled" },
+    });
+    expect(samplingFields({ thinking: "on", reasoningEffort: "high" })).toEqual({
+      reasoning_effort: "high",
+      thinking: { type: "enabled" },
+    });
   });
 });

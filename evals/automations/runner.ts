@@ -46,6 +46,8 @@ export interface CliOptions {
   baseUrl: string;
   only: string[] | null;
   model: string;
+  /** The summary judge's model: --judge-model, else EVAL_JUDGE_MODEL, else the model under test. */
+  judgeModel: string;
   params: ModelParams;
   maxTurns: number;
   /** Minutes to wait for the proposals to be approved. */
@@ -63,6 +65,7 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliOptions {
       "approval-minutes": { type: "string", default: "30" },
       email: { type: "string" },
       password: { type: "string" },
+      "judge-model": { type: "string" },
       ...modelCliOptions,
     },
   });
@@ -74,6 +77,8 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliOptions {
       cases.map((c) => c.id),
     ),
     model,
+    judgeModel:
+      (values["judge-model"] as string | undefined) || env.EVAL_JUDGE_MODEL?.trim() || model,
     params,
     maxTurns: parsePositiveInt(values["max-turns"] as string, "--max-turns"),
     approvalMinutes: parsePositiveInt(values["approval-minutes"] as string, "--approval-minutes"),
@@ -136,8 +141,14 @@ async function main(): Promise<number> {
 
   const deps: AutomationsHarnessDeps = {
     openSession,
-    model: chatCompletionsModel(provider),
+    model: chatCompletionsModel(provider, {
+      onRetry: ({ attempt, delayMs, reason }) =>
+        console.error(
+          `model request failed (${reason}); retry ${attempt} in ${Math.round(delayMs / 1000)} s`,
+        ),
+    }),
     modelId: options.model,
+    judgeModelId: options.judgeModel,
     params: options.params,
     maxTurns: options.maxTurns,
     userEmail: options.user.email,
@@ -183,6 +194,7 @@ async function main(): Promise<number> {
     startedAt,
     finishedAt: new Date().toISOString(),
     model: options.model,
+    judgeModel: options.judgeModel,
     provider: provider.label,
     params: options.params,
     baseUrl: options.baseUrl,

@@ -37,7 +37,13 @@ import {
   MAX_CASCADE_DEPTH,
   type RunStatus,
 } from "../automations/types.ts";
-import { ConfigError, ForbiddenError, NotFoundError, ValidationError } from "../errors.ts";
+import {
+  ConfigError,
+  ForbiddenError,
+  NotFoundError,
+  OperationError,
+  ValidationError,
+} from "../errors.ts";
 import { refreshSchemaRegistry } from "../extensions/schema.ts";
 import { getObject } from "../fields/index.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
@@ -353,6 +359,20 @@ export const automationTest = defineOperation({
   async handler(input, ctx) {
     const record = input.record ? { record: input.record } : {};
     if (!input.proposal) {
+      // An unknown id (e.g. an automation whose extension is still waiting for approval) is a
+      // typed not_found here, before ros-runner is asked, not an internal error from the runner.
+      // A proposed automation is tested with `proposal` instead.
+      await loadAutomation(ctx.db, input.id as string).catch((error: unknown) => {
+        if (!(error instanceof NotFoundError)) throw error;
+        throw new OperationError(
+          "not_found",
+          `No installed automation with id ${input.id}. An automation exists only once its ` +
+            "extension is installed (after its proposal is approved); automation.list shows " +
+            "the installed ones and their ids. To test a proposed one, pass proposal " +
+            "{ actionId, key } instead of id.",
+          { object: "automation", id: input.id },
+        );
+      });
       const report = await host(ctx).testAutomation({
         automationId: input.id as string,
         ...record,

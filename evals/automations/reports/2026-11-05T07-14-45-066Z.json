@@ -1,0 +1,678 @@
+{
+  "startedAt": "2026-11-05T07:14:45.066Z",
+  "finishedAt": "2026-11-05T07:20:25.589Z",
+  "model": "deepseek-flash",
+  "judgeModel": "deepseek-flash",
+  "provider": "OpenAI-compatible (api.deepseek.com)",
+  "params": {},
+  "baseUrl": "http://localhost:5185",
+  "target": 8,
+  "total": 10,
+  "passed": 6,
+  "results": [
+    {
+      "requestedId": "wonthanksgulalor",
+      "request": "Automate this: When a deal is won, create a task for the deal's owner to send the customer a thank-you note, linked to the deal, and notify the owner.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `wonthanksgulalor`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "deals.deal",
+        "id": "rec_01M6N8YQV2C9MP1VKBY9SFZC5C"
+      },
+      "proposal": {
+        "extensionId": "wonthanksgulalor",
+        "turn": 5,
+        "changeSetId": "chs_01M6N8Z2HCH1AVQ8VFWXVTFE74",
+        "actionId": "pac_01M6N8Z2HCH1AVQ8VFWXVTFE75",
+        "commit": "362380920c0bc3b8527500acfbcdc55d139c3868"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 6
+      },
+      "toolCalls": [
+        "extension_read",
+        "extension_list",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by looking at the existing deals extension to see the API shape for automations.\n\nThe shape is clear. I'll write the extension with one automation.\n\nCheck passes. Now proposing for approval.\n\nDone — the extension `wonthanksgulalor` (v1.0.0) is written, passes `extension.check` with no issues, and its proposal is **queued for approval**, not installed yet.\n\n**What it does (one automation, `wonthanksgulalor.wonThankYou`)**\n\nTrigger: when a Deal's stage changes to a won stage.\n\nSteps, as declared to the host — whose summary reads: *\"When a Deal's stage changes to a won stage, it creates a thank-you task linked to the deal for the deal's owner and notifies them.\"*\n\n1. **`createThankYouTask`** — creates **1 task** titled \"Send the customer a thank-you note\", assigned to the deal's **owner**, **linked to the deal** (the trigger record).\n2. **`notifyOwner`** — sends a notification to the deal's **owner**.\n\nNothing else is added: no wait, no condition, no other recipients (no admins, no manager), no other records touched. Permissions requested are minimal for that: read `deals.deal`, write `task`, operation `notification.send`.\n\n**Next step:** a person must approve pending action `pac_01M6N8Z2HCH1AVQ8VFWXVTFE75` in change set `chs_01M6N8Z2HCH1AVQ8VFWXVTFE74` (Approvals inbox; expires 12 Nov 2026). Until then nothing runs.\n\nOne note: there's already an active extension `wonthankszonezon` doing the same thing (\"Won deal thank-you note\"). If you want only one of them, disable one before approving this — otherwise both will create a thank-you task and notify the owner on every won deal.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 13996,
+      "usage": {
+        "inputTokens": 171725,
+        "outputTokens": 1828
+      },
+      "id": "won-thank-you",
+      "title": "Won deal: a thank-you task and a notification for the owner",
+      "covers": ["fieldChanged", "stageType won", "write task", "notify field"],
+      "extensionId": "wonthanksgulalor",
+      "automationId": "wonthanksgulalor.wonThankYou",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "fieldChanged",
+      "test": {
+        "matched": true,
+        "writes": {
+          "task": 1
+        },
+        "notifications": 1,
+        "waits": 0
+      },
+      "summary": "When a Deal's stage changes to a won stage, it creates a thank-you task linked to the deal for the deal's owner and notifies them.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary matches the trigger (deal stage changes to won), creates one thank-you task linked to the deal for the owner, and notifies the owner, with nothing extra added."
+      }
+    },
+    {
+      "requestedId": "lostalertgulalor",
+      "request": "Automate this: When a deal is lost, notify the admins with the deal's name.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `lostalertgulalor`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "deals.deal",
+        "id": "rec_01M6N8YQW5RREH7N7252ZWPZ15"
+      },
+      "proposal": {
+        "extensionId": "lostalertgulalor",
+        "turn": 5,
+        "changeSetId": "chs_01M6N8ZDDX674TH019PK4975WA",
+        "actionId": "pac_01M6N8ZH7YZKD1E7EGXQA1F1CE",
+        "commit": "6230d7feb8bd226f2b6ab697d33aaa9f4ab33b70"
+      },
+      "failures": [
+        {
+          "kind": "summary",
+          "message": "the judge: The trigger and recipients match, but the summary omits that the notification must include the deal's name."
+        }
+      ],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 10
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read",
+        "changeset_begin",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳",
+        "automation_get",
+        "changeset_commit"
+      ],
+      "finalText": "I'll start by looking at the deals extension to understand the deal object and automation API shape.\n\nLet me look at the existing similar automations for the exact API shape.\n\nNow I'll write the extension.\n\nCheck passes cleanly. Now I'll propose it for approval.\n\nDone — the extension passes check and is queued for approval, **not installed yet**.\n\n**What I built** — `lostalertgulalor` v1.0.0, one automation, `lostDealAlert`:\n\n- **Trigger:** when a Deal's `stage` field changes to a stage of type **lost** (`fieldChanged`, `object: \"deals.deal\"`, `field: \"stage\"`, `to: { stageType: \"lost\" }`).\n- **Steps / intents declared:** one step, `notifyAdmins` — a `notifies` intent with recipient `\"admins\"` and message `Deal lost: {record}`, so the host renders the summary and diagram from the declarations.\n- **What the run does:** reads the deal's name and sends a notification to every admin, titled `Deal lost: <deal name>` (body: `The deal \"<name>\" was marked lost.`), falling back to a generic \"Deal lost\" if the name is missing.\n- **Permissions requested:** read `deals.deal`, operation `notification.send`, module `crm`. No writes, no waits, no conditions, no links — nothing beyond what you asked.\n\n**Host-written summary the approver will read:** \"When a Deal's stage changes to a lost stage, it notifies the admins.\" The step diagram shows the recipient and message: *Step 1 · notify — Admins: \"Deal lost: {deal}\"*, which is where the deal's name is conveyed.\n\n**Status:** `extension_check` returned ok with no issues; `extension_propose` queued action `pac_01M6N8ZH7YZKD1E7EGXQA1F1CE` in change set `chs_01M6N8ZDDX674TH019PK4975WA` (\"Lost deal admin alert automation (lostalertgulalor)\"), now committed and awaiting review in the CRM's Approvals inbox. Reach out if you'd like the message wording changed before someone approves it.\n\nOne thing worth flagging: the org already has an active runtime extension `lostalertzonezon` doing exactly this (same trigger, same admin notification). Once this one is approved you'll get two notifications per lost deal unless you disable one of them.",
+      "turns": 8,
+      "stopReason": "stop",
+      "durationMs": 23503,
+      "usage": {
+        "inputTokens": 242717,
+        "outputTokens": 2648
+      },
+      "id": "lost-deal-admins",
+      "title": "Lost deal: tell the admins",
+      "covers": ["fieldChanged", "stageType lost", "notify admins"],
+      "extensionId": "lostalertgulalor",
+      "automationId": "lostalertgulalor.lostDealAlert",
+      "passed": false,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "fieldChanged",
+      "test": {
+        "matched": true,
+        "writes": {},
+        "notifications": 1,
+        "waits": 0
+      },
+      "summary": "When a Deal's stage changes to a lost stage, it notifies the admins.",
+      "judge": {
+        "pass": false,
+        "reason": "The trigger and recipients match, but the summary omits that the notification must include the deal's name."
+      }
+    },
+    {
+      "requestedId": "welcomegulalor",
+      "request": "Automate this: Whenever a new person is added, create a task to send them a welcome email, linked to the person.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `welcomegulalor`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "person",
+        "id": "per_01M6N8YQWJR5VX4NK9AS6FEKWQ"
+      },
+      "proposal": {
+        "extensionId": "welcomegulalor",
+        "turn": 5,
+        "changeSetId": "chs_01M6N90715FWXNV95MC5GTQ7JH",
+        "actionId": "pac_01M6N90715FWXNV95MC5GTQ7JJ",
+        "commit": "ad93763db55f601ce93c2a179c1e16c913d1be48"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 7
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by looking at the existing extensions and the SDK's automation API.\n\nThere's an existing similar extension; let me read it for the exact shape of a person-created trigger.\n\nNow I'll write the extension with a single automation.\n\nCheck passes. Now proposing it for approval.\n\nDone — the extension is written, passes check, and is queued for approval.\n\n**What I built** — extension `welcomegulalor` v1.0.0, containing exactly one automation:\n\n**`welcomeEmailTask` — \"New person → welcome email task\"**\n- **Trigger:** when a **Person is created**.\n- **Step:** `createWelcomeTask` — creates **one task**, titled \"Send welcome email\", **linked to the person** (declared as `writes: [{ object: \"task\", count: 1, titles: [\"Send welcome email\"], linkedToTrigger: true }]`).\n- The task notes name the person (\"Send *Ada Lovelace* a welcome email\"), falling back to generic wording if no name is set.\n- **Permissions:** reads `person`, writes `task`, module `crm`. No notifications, no waits, no extra conditions, no assignee — nothing you didn't ask for.\n\n**Host-written approval summary (verbatim):** *\"When a Person is created, it creates a welcome email task linked to the person.\"* — that covers the trigger, the record created and the link, and adds nothing extra.\n\n**Status: not installed yet.** It's waiting for a person to approve it in the CRM's **Approvals inbox** — action `pac_01M6N90715FWXNV95MC5GTQ7JJ`, in change set `chs_01M6N90715FWXNV95MC5GTQ7JH` (expires 2026-11-12).\n\nOne thing worth flagging: an existing extension, **`welcomezonezon`**, is already installed and active with the identical behaviour (\"Whenever a new person is added, creates a task to send them a welcome email\"). Once you approve `welcomegulalor`, new people will get **two** welcome-email tasks. If that's not intended, either disable `welcomezonezon` before approving, or tell me and I'll withdraw this one.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 14313,
+      "usage": {
+        "inputTokens": 174089,
+        "outputTokens": 1612
+      },
+      "id": "new-person-welcome",
+      "title": "New person: a welcome-email task",
+      "covers": ["record created", "core object", "write task"],
+      "extensionId": "welcomegulalor",
+      "automationId": "welcomegulalor.welcomeEmailTask",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "record",
+      "test": {
+        "matched": true,
+        "writes": {
+          "task": 1
+        },
+        "notifications": 0,
+        "waits": 0
+      },
+      "summary": "When a Person is created, it creates a welcome email task linked to the person.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary matches the trigger of a new Person being created and creates a single welcome email task linked to that person."
+      }
+    },
+    {
+      "requestedId": "checkingulalor",
+      "request": "Automate this: When an organisation is created, wait 2 days and then create a task to check in with them, linked to the organisation.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `checkingulalor`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "organisation",
+        "id": "org_01M6N8YQX0WK77JD06SMJ4CJX9"
+      },
+      "proposal": {
+        "extensionId": "checkingulalor",
+        "turn": 8,
+        "changeSetId": "chs_01M6N90SG2Y969KDBC0N2SS9N9",
+        "actionId": "pac_01M6N90V0FSWPDR02DGQPRE2V3",
+        "commit": "8bb3382443ecfbdf734590539e73127a7de154c0"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 11
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "automation_get ✗",
+        "extension_write",
+        "extension_check",
+        "query_sql",
+        "automation_test ✗",
+        "changeset_begin",
+        "extension_propose ⏳",
+        "changeset_commit"
+      ],
+      "finalText": "I'll start by looking at how automations are written in the shipped `deals` extension.\n\nThe same automation already exists as `checkinzonezon`. Let me read it to match the established shape.\n\nThe pattern is clear. Now I'll write the extension `checkingulalor` with a single automation.\n\nCheck passes with no issues. Let me dry-run it against a real organisation before proposing.\n\nTest mode only works once installed. I'll group this as a change set and propose it for approval.\n\nDone — the extension is written, passes its check, and is queued for approval.\n\n**Extension `checkingulalor`** (version 1.0.0, one automation `checkInTask`)\n\n- **Trigger:** when an Organisation is created.\n- **Step 1 — Wait 2 days** (kind: `sleep`, duration `2 days`).\n- **Step 2 — Create the check-in task** (write: 1 `task`, titled `Check in with <organisation name>`, linked to the trigger organisation, notes naming the organisation and noting it was added 2 days ago).\n\nThat is all it does: no notification, no assignee, no conditions — nothing you didn't ask for.\n\nThe host-computed summary reads exactly: *\"When an Organisation is created, after 2 days, it creates a check-in task linked to the organisation.\"* Permissions requested: read `organisation`, write `task` (no operations, `crm` module only). `extension_check` returned `ok: true` with zero issues.\n\n**Status: waiting for approval, not installed.** It's pending action `pac_01M6N90V0FSWPDR02DGQPRE2V3` in change set `chs_01M6N90SG2Y969KDBC0N2SS9N9` (\"Automation: organisation check-in task after 2 days\"). A person needs to approve it in the CRM's Approvals inbox before the automation goes live. One note: `automation_test` only works on installed automations, so the dry run has to wait until after approval.\n\nAlso worth knowing: there's already an active automation doing the same thing, in extension `checkinzonezon`. You may want to disable that one after this is approved, or skip this proposal — your call.",
+      "turns": 10,
+      "stopReason": "stop",
+      "durationMs": 21241,
+      "usage": {
+        "inputTokens": 307097,
+        "outputTokens": 2194
+      },
+      "id": "org-check-in",
+      "title": "New organisation: check in after two days",
+      "covers": ["record created", "sleep", "write task"],
+      "extensionId": "checkingulalor",
+      "automationId": "checkingulalor.checkInTask",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "record",
+      "test": {
+        "matched": true,
+        "writes": {
+          "task": 1
+        },
+        "notifications": 0,
+        "waits": 1
+      },
+      "summary": "When an Organisation is created, after 2 days, it creates a check-in task linked to the organisation.",
+      "judge": {
+        "pass": true,
+        "reason": "The automation triggers on organisation creation, waits 2 days, and creates a single check-in task linked to the organisation, exactly as requested with no extra actions."
+      }
+    },
+    {
+      "requestedId": "closesoongulalor",
+      "request": "Automate this: Seven days before a deal's expected close date, notify the deal's owner so they can prepare.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `closesoongulalor`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "deals.deal",
+        "id": "rec_01M6N8YQY206BZ4H21GXZ0PGEZ"
+      },
+      "proposal": {
+        "extensionId": "closesoongulalor",
+        "turn": 5,
+        "changeSetId": "chs_01M6N91AEGFFY6XEPJG31MPF78",
+        "actionId": "pac_01M6N91AEGFFY6XEPJG31MPF79",
+        "commit": "899aad63e930659830f46fbd112dcd81e9ec584a"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 7
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by inspecting the shipped `deals` extension to learn the SDK shape for deal objects and automations.\n\nThe shipped Deals extension shows exactly the trigger type I need (`dateRelative`). Let me also read the existing `closesoonzonezon` runtime extension, which does the same job, to match the working pattern.\n\nNow I'll write the extension with one automation.\n\nCheck passed with no issues. Proposing for approval.\n\nI've written the extension and it passed the check with no issues. It's now **queued for approval — nothing is installed yet**.\n\n**Extension `closesoongulalor` v1.0.0 — \"Closing soon reminder\"**\n\nOne automation, `closingSoonReminder`:\n\n- **Trigger:** 7 days before a Deal's expected close date (`dateRelative` on `deals.deal.expectedClose`, offset −7 days).\n- **Step `notifyOwner`** — intent: *notifies*. Sends a notification to the deal's owner (`{ field: \"owner\" }`) with the title \"{record}: expected to close in 7 days\" and a body prompting them to prepare to close or update the expected close date.\n\nNo writes, no waits, no conditions, no extra recipients — just the one notification the task asked for.\n\n**Permissions requested:** read `deals.deal`, operation `notification.send`, module `crm` (no write permissions).\n\n**Host-generated summary for the approver:**\n> \"7 days before a Deal's expected close date, it notifies the deal's owner.\"\n\n**Status:** pending approval as action `pac_01M6N91AEGFFY6XEPJG31MPF79` in change set `chs_01M6N91AEGFFY6XEPJG31MPF78`. A person needs to approve it in the CRM's Approvals inbox before the automation becomes active.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 13916,
+      "usage": {
+        "inputTokens": 175859,
+        "outputTokens": 1632
+      },
+      "id": "close-date-reminder",
+      "title": "A week before the expected close date: remind the owner",
+      "covers": ["dateRelative", "negative offset", "notify field"],
+      "extensionId": "closesoongulalor",
+      "automationId": "closesoongulalor.closingSoonReminder",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "dateRelative",
+      "test": {
+        "matched": true,
+        "writes": {},
+        "notifications": 1,
+        "waits": 0
+      },
+      "summary": "7 days before a Deal's expected close date, it notifies the deal's owner.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary matches the requested trigger, timing, recipient, and notification with nothing extra."
+      }
+    },
+    {
+      "requestedId": "bigdealgulalor",
+      "request": "Automate this: When a deal worth more than 50,000 is created, notify the admins. Smaller deals should not notify anyone.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `bigdealgulalor`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "deals.deal",
+        "id": "rec_01M6N8YQYXK3H53PE15VY2D3JW"
+      },
+      "proposal": {
+        "extensionId": "bigdealgulalor",
+        "turn": 5,
+        "changeSetId": "chs_01M6N91RSS5Y1YRVC2Y4JCYP4H",
+        "actionId": "pac_01M6N91RSS5Y1YRVC2Y4JCYP4J",
+        "commit": "82797c297b418539ffea55c32a23fe90e04dfa2c"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 7
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by looking at the existing deals extension to learn the SDK shape, and check what's installed.\n\nLet me read the existing big-deal and close-soon extensions, which are close to what's asked.\n\nThe pattern is clear. I'll write one automation in a new extension `bigdealgulalor`.\n\nCheck passes with no issues. Now I'll propose it for approval.\n\nDone — the extension is queued for approval, not installed yet.\n\n**What I built:** one automation, `bigDealAdminAlert`, in extension `bigdealgulalor` (v1.0.0).\n\n- **Trigger:** a Deal is created.\n- **Condition:** its value is more than 50,000 (strictly greater, so exactly 50,000 does not notify).\n- **Step:** `notifyAdmins` — sends a notification to `admins`, naming the deal (\"New deal over 50,000: {deal name}\").\n- **No writes, no waits, no other recipients** — smaller deals notify no one. Permissions are read-only on `deals.deal` plus the `notification.send` operation.\n\n**Check:** passed with no issues.\n\n**Host summary the approver will see:** *\"When a Deal is created, if its value is more than 50000, it notifies the admins.\"*\n\n**Status:** `pending_approval` — action `pac_01M6N91RSS5Y1YRVC2Y4JCYP4J` in change set `chs_01M6N91RSS5Y1YRVC2Y4JCYP4H`. A person needs to approve it in the CRM's Approvals inbox; until then nothing is installed or running.\n\nOne thing worth flagging: there is already an active extension `bigdealzonezon` (\"Big deal admin alert\") that does exactly this — so if this gets approved, admins will receive two notifications for each big deal. Let me know if you'd like me to disable or remove the old one.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 15222,
+      "usage": {
+        "inputTokens": 176540,
+        "outputTokens": 1771
+      },
+      "id": "big-deal-alert",
+      "title": "A deal over 50,000 is created: tell the admins",
+      "covers": ["record created", "conditions", "notify admins"],
+      "extensionId": "bigdealgulalor",
+      "automationId": "bigdealgulalor.bigDealAdminAlert",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "record",
+      "test": {
+        "matched": true,
+        "writes": {},
+        "notifications": 1,
+        "waits": 0
+      },
+      "summary": "When a Deal is created, if its value is more than 50000, it notifies the admins.",
+      "judge": {
+        "pass": true,
+        "reason": "The automation triggers when a deal is created, applies the over-50,000 value condition, and notifies only the admins as requested."
+      }
+    },
+    {
+      "requestedId": "weeklygulalor",
+      "request": "Automate this: Every Monday at 9am, send the admins a notification to review the pipeline.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `weeklygulalor`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": null,
+      "proposal": {
+        "extensionId": "weeklygulalor",
+        "turn": 5,
+        "changeSetId": "chs_01M6N926HBZJ5VW548CVAGG6HM",
+        "actionId": "pac_01M6N926HBZJ5VW548CVAGG6HN",
+        "commit": "7ded3a1af821d29d088df93aaece42a7f7234883"
+      },
+      "failures": [
+        {
+          "kind": "summary",
+          "message": "the judge: It says it notifies the admins but omits that the notification is to review the pipeline, which the user specifically asked for."
+        }
+      ],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 7
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_read ✗",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by looking at the existing extensions and the SDK's automation API.\n\nThere's already a similar automation (`weeklyzonezon`). Let me read its source to match the SDK shape.\n\nI have the pattern. Now I'll write the `weeklygulalor` extension with a single automation.\n\nCheck passes. Now proposing it for approval.\n\nDone — `weeklygulalor` 1.0.0 passes check and is queued for approval (it is **not** installed yet).\n\n**What it declares**\n\n- **Trigger:** schedule, cron `0 9 * * 1` → every Monday at 09:00 (UTC).\n- **One step, `notifyAdmins`** — intent: *notifies* `admins` (the plain `\"admins\"` recipient = every admin), message \"Review the pipeline\".\n- **Writes:** none. No waits, no conditions, no other recipients, no other steps.\n\nThe host's summary of the automation reads: *\"Every Monday at 09:00 (UTC), it notifies the admins.\"*\n\n**Review details**\n\n- Change: install `weeklygulalor` v1.0.0 (1 file, +38 lines).\n- Permissions requested: `notification.send` operation, `crm` module; read/write scopes empty; schema changes none.\n- Pending action: `pac_01M6N926HBZJ5VW548CVAGG6HN`, in change set `chs_01M6N926HBZJ5VW548CVAGG6HM`. A person must approve it in the CRM's Approvals inbox; once approved, the automation registers and starts running.\n\n**Two things worth flagging**\n\n1. **Time zone:** you said 9am without naming a zone, so it's 9am **UTC**, which is what the scheduler and the approval summary show. If you meant a local time (e.g. 9am Sydney), say which and I'll adjust the cron and re-propose.\n2. **Possible duplicate:** there is already an installed runtime extension `weeklyzonezon` whose automation does exactly this (every Monday 9am, notify admins to review the pipeline). I built `weeklygulalor` as you asked, but if that older one is live you'd get two reminders each Monday — you may want to disable or remove it.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 15453,
+      "usage": {
+        "inputTokens": 174111,
+        "outputTokens": 1772
+      },
+      "id": "weekly-digest",
+      "title": "Every Monday at 9: a pipeline review reminder",
+      "covers": ["schedule", "cron", "notify admins"],
+      "extensionId": "weeklygulalor",
+      "automationId": "weeklygulalor.weeklyPipelineReview",
+      "passed": false,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "schedule",
+      "test": {
+        "matched": true,
+        "writes": {},
+        "notifications": 1,
+        "waits": 0
+      },
+      "summary": "Every Monday at 09:00 (UTC), it notifies the admins.",
+      "judge": {
+        "pass": false,
+        "reason": "It says it notifies the admins but omits that the notification is to review the pipeline, which the user specifically asked for."
+      }
+    },
+    {
+      "requestedId": "renewbtngulalor",
+      "request": "Automate this: Add a button called \"Create renewal task\" on organisation pages that creates a task to discuss the renewal, linked to the organisation.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `renewbtngulalor`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "organisation",
+        "id": "org_01M6N8YQZ737BJF19JXF1WDJG5"
+      },
+      "proposal": {
+        "extensionId": "renewbtngulalor",
+        "turn": 5,
+        "changeSetId": "chs_01M6N92P7248KFHNGC2V2X4899",
+        "actionId": "pac_01M6N92P7248KFHNGC2V2X489A",
+        "commit": "7a13d81c5c55139ab6ec369c5efd27f8d0758b34"
+      },
+      "failures": [],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 6
+      },
+      "toolCalls": [
+        "extension_read",
+        "extension_list",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by reading the shipped `deals` extension to see the SDK shapes for manual automations.\n\nThere's a similar installed extension (`renewbtnzonezon`). Let me read it for the manual-button shape.\n\nNow I'll write the extension.\n\nCheck passed with no issues. Now proposing it for approval.\n\nDone — the extension is written, passes check, and is queued for approval.\n\n**What it does** (one automation, `renewalTask`, in extension `renewbtngulalor`):\n\n- **Trigger:** manual — a button labelled **\"Create renewal task\"** on **organisation** records. Nothing runs on its own: no schedule, no field conditions.\n- **Step `createRenewalTask`** (declared intent: **writes** 1 `task`, titled \"Discuss the renewal\", linked to the trigger record):\n  - creates an open task titled **\"Discuss the renewal\"**, with notes naming the organisation (\"Discuss the renewal with <org name>.\"), linked to that organisation.\n  - It does nothing else: no notification, no wait, no assignee or due date (you didn't ask for any, so none was invented).\n\n**Permissions requested:** read `organisation`, write `task`, module `crm`.\n\n**Status:** not installed yet — it's waiting for a person in the CRM's Approvals inbox.\n- Change: `renewbtngulalor` 1.0.0 (new install, no schema changes)\n- Action: `pac_01M6N92P7248KFHNGC2V2X489A` in change set `chs_01M6N92P7248KFHNGC2V2X4899`\n\nThe host's summary for the approver reads: *\"When someone clicks Create renewal task on an Organisation, it creates a renewal discussion task linked to the organisation.\"* Once approved, the button appears on organisation pages.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 14448,
+      "usage": {
+        "inputTokens": 174831,
+        "outputTokens": 1528
+      },
+      "id": "manual-renewal-task",
+      "title": "A button on organisations: create a renewal task",
+      "covers": ["manual", "write task"],
+      "extensionId": "renewbtngulalor",
+      "automationId": "renewbtngulalor.renewalTask",
+      "passed": true,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "manual",
+      "test": {
+        "matched": true,
+        "writes": {
+          "task": 1
+        },
+        "notifications": 0,
+        "waits": 0
+      },
+      "summary": "When someone clicks Create renewal task on an Organisation, it creates a renewal discussion task linked to the organisation.",
+      "judge": {
+        "pass": true,
+        "reason": "The summary matches the requested button trigger on organisations and creates one renewal discussion task linked to the organisation without adding unrequested actions."
+      }
+    },
+    {
+      "requestedId": "rejectedgulalor",
+      "request": "Automate this: Whenever a change waiting for approval is rejected, notify the admins.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `rejectedgulalor`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": null,
+      "proposal": {
+        "extensionId": "rejectedgulalor",
+        "turn": 5,
+        "changeSetId": "chs_01M6N934BNG36C4Y7ZV51KYGXK",
+        "actionId": "pac_01M6N934BNG36C4Y7ZV51KYGXM",
+        "commit": "a858531451e039dc0e4ef4b50a5f821a2df0d865"
+      },
+      "failures": [
+        {
+          "kind": "test",
+          "message": "expected 1 notification(s), the test run had 0"
+        },
+        {
+          "kind": "summary",
+          "message": "the summary does not mention approv"
+        }
+      ],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 6
+      },
+      "toolCalls": [
+        "extension_list",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll check the SDK and an existing extension to see how automations are declared, especially the trigger for approval rejections.\n\nThe shipped `rejectedzonezon` extension is the same shape of automation — I'll model mine on that trigger (`approvalDecided` with `decision: \"rejected\"`), under the id you asked for.\n\nDone — the extension passes check and is queued for approval.\n\n**Extension `rejectedgulalor` v1.0.0** — one automation:\n\n- **`rejectedChangeAlert` — \"Rejected change → notify admins\"**\n  - **Trigger:** when a pending change is rejected (`approvalDecided`, `decision: \"rejected\"`).\n  - **Step:** `notifyAdmins` — a notification to `admins`; the host's summary reads: *\"When a pending change is rejected, it notifies the admins.\"*\n  - **Intent declared:** notifies the admins only — no writes, no waits, no other steps or recipients.\n  - The message names the rejected operation (e.g. \"Change rejected: person.update\") and, when the decision carries them, the records involved.\n\n**Permissions:** `notification.send` only, module `crm`; no schema changes (no objects or fields).\n\n**Status: pending approval, not installed.** It's queued as action `pac_01M6N934BNG36C4Y7ZV51KYGXM` in change set `chs_01M6N934BNG36C4Y7ZV51KYGXK`; a person must approve it in the CRM's Approvals inbox before it runs. There's also a separate, already-installed extension `rejectedzonezon` that does the same thing — once this one is approved you'd get duplicate admin notifications, so you may want to disable one of them.",
+      "turns": 6,
+      "stopReason": "stop",
+      "durationMs": 14662,
+      "usage": {
+        "inputTokens": 174354,
+        "outputTokens": 1528
+      },
+      "id": "rejected-change",
+      "title": "A change is rejected: tell the admins",
+      "covers": ["approvalDecided", "notify admins"],
+      "extensionId": "rejectedgulalor",
+      "automationId": "rejectedgulalor.rejectedChangeAlert",
+      "passed": false,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "approvalDecided",
+      "test": {
+        "matched": true,
+        "writes": {},
+        "notifications": 0,
+        "waits": 0
+      },
+      "summary": "When a pending change is rejected, it notifies the admins.",
+      "judge": {
+        "pass": true,
+        "reason": "The automation triggers when a pending change is rejected and notifies the admins, matching the user's request exactly."
+      }
+    },
+    {
+      "requestedId": "kickoffgulalor",
+      "request": "Automate this: When a deal is created, create two tasks for its owner, \"Qualify the lead\" and \"Book a demo\", linked to the deal. One day later, notify the owner to follow up.\n\nDo it with one automation (defineAutomation) in a CRM extension whose id is `kickoffgulalor`. Declare its steps and their intents (writes, notifies, waits) so the host can summarise it. Make sure it passes check, then propose it for approval.",
+      "seeded": {
+        "object": "deals.deal",
+        "id": "rec_01M6N8YR02X58X0ZT42P5830PV"
+      },
+      "proposal": {
+        "extensionId": "kickoffgulalor",
+        "turn": 7,
+        "changeSetId": "chs_01M6N93R0GXCT1353KQJT7JCZN",
+        "actionId": "pac_01M6N93R0GXCT1353KQJT7JCZP",
+        "commit": "01f83c3c69e8999dd55c5380cddda11c928504f2"
+      },
+      "failures": [
+        {
+          "kind": "summary",
+          "message": "the judge: The summary omits the required task names \"Qualify the lead\" and \"Book a demo,\" so it does not fully match the requested tasks."
+        }
+      ],
+      "notes": [],
+      "issuesSeen": [],
+      "counts": {
+        "writes": 1,
+        "checks": 1,
+        "proposes": 1,
+        "toolCalls": 9
+      },
+      "toolCalls": [
+        "extension_list",
+        "automation_list",
+        "extension_read",
+        "extension_read ✗",
+        "extension_read",
+        "extension_read",
+        "extension_write",
+        "extension_check",
+        "extension_propose ⏳"
+      ],
+      "finalText": "I'll start by looking at the existing deals extension to see how automations are written against the SDK.\n\nThere's a similar existing extension I can learn from. Let me read it and the deals extension for the SDK API.\n\nNow let me look at the shipped deals extension's automation declarations to confirm the SDK's step/declaration API.\n\nI have the API. Now I'll write the extension.\n\nCheck passes with no issues. Now proposing for approval.\n\nDone — the extension is written, passes check, and is **waiting for approval** (nothing is installed yet).\n\n**Extension** `kickoffgulalor` v1.0.0 — one automation, `kickoffTasks` (\"New deal → kickoff tasks and follow-up\"):\n\n| Step | Intent | Declaration |\n|---|---|---|\n| `createTasks` | writes | 2 tasks on `task`, titles \"Qualify the lead\" and \"Book a demo\", assigned to the deal's `owner` field, linked to the triggering deal |\n| `wait` | waits | 1 day |\n| `notifyOwner` | notifies | to the deal's `owner` field: \"{record}: follow up on the new deal\" |\n\nTrigger: record created on `deals.deal`. Permissions requested: read `deals.deal`, write `task`, operation `notification.send`, module `crm`.\n\n**Host-written summary the approver will see:** \"When a Deal is created, it creates 2 kickoff tasks linked to the deal for the deal's owner. After 1 day, it notifies the deal's owner.\" — it matches the request exactly: trigger on deal creation, two tasks for the owner, linked to the deal, one follow-up notification to the owner one day later, and no extra conditions, assignees or recipients.\n\nApproval details:\n- Action: `pac_01M6N93R0GXCT1353KQJT7JCZP`\n- Change set: `chs_01M6N93R0GXCT1353KQJT7JCZN`\n- Commit: `01f83c3c69e8999dd55c5380cddda11c928504f2`\n- Expires: 2026-11-12\n\nTwo notes for you:\n1. There's already an identical extension in the workspace, `kickoffzonezon` (also v1.0.0), whose automation is currently **disabled** — if it's a leftover, you may want it removed so two kickoffs don't both fire once this one is approved.\n2. Because the automation isn't installed yet, I couldn't dry-run it with test mode; I can do that once a person approves it.",
+      "turns": 8,
+      "stopReason": "stop",
+      "durationMs": 20266,
+      "usage": {
+        "inputTokens": 204196,
+        "outputTokens": 2480
+      },
+      "id": "new-deal-kickoff",
+      "title": "New deal: two tasks, then a reminder a day later",
+      "covers": ["record created", "write ×2", "sleep", "notify field"],
+      "extensionId": "kickoffgulalor",
+      "automationId": "kickoffgulalor.kickoffTasks",
+      "passed": false,
+      "check": {
+        "ok": true,
+        "issues": []
+      },
+      "triggerType": "record",
+      "test": {
+        "matched": true,
+        "writes": {
+          "task": 2
+        },
+        "notifications": 1,
+        "waits": 1
+      },
+      "summary": "When a Deal is created, it creates 2 kickoff tasks linked to the deal for the deal's owner. After 1 day, it notifies the deal's owner.",
+      "judge": {
+        "pass": false,
+        "reason": "The summary omits the required task names \"Qualify the lead\" and \"Book a demo,\" so it does not fully match the requested tasks."
+      }
+    }
+  ]
+}

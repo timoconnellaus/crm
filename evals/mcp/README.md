@@ -33,8 +33,16 @@ The API token needs the Workers AI permission. The default model is
 `EVAL_MODEL`) picks another Workers AI model with function calling (see the catalogue), e.g.
 `@cf/openai/gpt-oss-120b`; with `EVAL_BASE_URL`, pass that server's model name.
 
-Requests answered 429 or 5xx are retried with backoff. A 401, 403 or 404 (bad token, wrong
-account, unknown model) stops the run, since no task could pass.
+Requests answered 429 or 5xx, and requests that get no answer at all (a network error or the
+10-minute per-attempt timeout), are retried up to 6 times with backoff from 2 s doubling to 60 s,
+about two minutes in all. The runner logs each retry with its cause; a request that still fails
+reports the cause (Node's fetch alone says only "fetch failed") and whether the machine slept
+meanwhile. A 401, 403 or 404 (bad token, wrong account, unknown model) stops the run, since no
+task could pass.
+
+`--thinking on|off` (or `EVAL_THINKING`) sends DeepSeek's `thinking: { type: "enabled" |
+"disabled" }`. Unset, nothing is sent and the server's default applies: DeepSeek thinks by
+default, and the thinking counts against `max_tokens`.
 
 ### Credentials file (shared by every worktree)
 
@@ -81,7 +89,7 @@ EVAL_MODEL=deepseek-flash      # DeepSeek V4.1 Flash; deepseek-v4-pro also avail
    Options: `--only id,id` runs some tasks (all of them must pass), `--model` (default
    `@cf/moonshotai/kimi-k2.6`), `--temperature` (0–2; the provider's default when omitted),
    `--max-tokens` (per model response, default 16000), `--reasoning-effort` (sent as
-   `reasoning_effort` to models that take it), `--max-turns` (model requests per task, default
+   `reasoning_effort` to models that take it), `--thinking on|off`, `--max-turns` (model requests per task, default
    20), `--email` / `--password` (or `MCP_EVAL_EMAIL` / `MCP_EVAL_PASSWORD`) for the eval user.
    Without credentials it exits with code 2 and writes nothing. It exits 0 when the target is
    met, 1 otherwise.

@@ -395,8 +395,17 @@ function conditionText(filter: ViewFilter, object: string, labels: Labels): Text
       const [from, to] = Array.isArray(filter.value) ? filter.value : [filter.value, undefined];
       return out.t("is between ").b(value(from)).t(" and ").b(value(to));
     }
-    default:
-      return out.t(`${OP_WORDS[filter.op] ?? filter.op} `).b(value(filter.value));
+    default: {
+      // "after" and "before" read as dates; a number is "more than" or "less than".
+      const numeric = typeof filter.value === "number";
+      const words =
+        numeric && filter.op === "gt"
+          ? "is more than"
+          : numeric && filter.op === "lt"
+            ? "is less than"
+            : (OP_WORDS[filter.op] ?? filter.op);
+      return out.t(`${words} `).b(value(filter.value));
+    }
   }
 }
 
@@ -438,7 +447,10 @@ function qualifier(step: DoStep, write: WriteIntent, labels: Labels): string {
   const nouns = new Set([lower(label), lower(many)]);
   const at = words.findIndex((w, i) => i > 0 && nouns.has(w.toLowerCase()));
   if (at <= 1) return "";
-  const between = words.slice(1, at).filter((w) => !/^(a|an|the|\d+)$/i.test(w));
+  // Counts come from `count`: "Create two kickoff tasks" qualifies as "kickoff", not "two kickoff".
+  const between = words
+    .slice(1, at)
+    .filter((w) => !/^(a|an|the|\d+|one|two|three|four|five|six|seven|eight|nine|ten)$/i.test(w));
   return between.join(" ").toLowerCase();
 }
 
@@ -471,6 +483,11 @@ function writeClause(
     out.t("the ").b(noun(1));
   } else {
     out.b(noun(undefined));
+  }
+  // Where the new records are linked is part of what they are (the diagram says it too).
+  const linked = write.linkedToTrigger ?? (write.object === "task" || write.object === "activity");
+  if (action === "create" && linked && trigger && write.object !== trigger) {
+    out.t(` linked to the ${labels.noun(trigger)}`);
   }
   if (write.assignTo) {
     out.t(" for ").add(recipientText(write.assignTo, trigger, labels));
@@ -541,7 +558,13 @@ export function automationSummary(
   for (const step of spec.steps) {
     switch (step.kind) {
       case "sleep":
-        close(new Text().t("After ").b(durationText(step.duration)).t(", "));
+        // A wait before anything happens joins the trigger's sentence ("When …, after 2 days,
+        // it creates …") rather than leaving "When …, it ends." behind.
+        if (!current.clauses.length) {
+          current.prefix.t("after ").b(durationText(step.duration)).t(", ");
+        } else {
+          close(new Text().t("After ").b(durationText(step.duration)).t(", "));
+        }
         break;
       case "waitForEvent":
         close(

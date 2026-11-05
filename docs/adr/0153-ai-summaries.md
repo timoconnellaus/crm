@@ -57,3 +57,11 @@ labelled AI-generated, and must not cost a model call per page view or keystroke
 - Summaries quote facts that may name people. The erase rule above covers summaries built from the
   subject's records; a summary of another record that mentions the subject only by name in free
   text is not found (the same limit as ADR 0019's free-text rule).
+
+> Amended 2026-11-05 ([ADR 0230](0230-jev-as-the-typed-judge.md), proposed with stage 11): when
+> the judge is on and placement `summary.statements` is switched on, `summary.generate` asks Jev
+> about each statement against the facts it was written from (supported, adds, contradicts, not a
+> claim). Statements that add to or contradict the facts are removed before the summary is stored,
+> and it is flagged. The verdicts are stored with the cached row, so reading a summary still makes
+> no model or judge call. A change-set summary that could not be checked is withheld from the
+> approver.
