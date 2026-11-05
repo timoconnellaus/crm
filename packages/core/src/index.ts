@@ -166,7 +166,6 @@ export * from "./registry.ts";
 export * from "./relative.ts";
 export * from "./retention.ts";
 export {
-  AI_MODES,
   AI_SETTINGS,
   BASE_CURRENCY_SETTING,
   type GeneralSettings,

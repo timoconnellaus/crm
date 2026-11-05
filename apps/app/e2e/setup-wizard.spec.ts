@@ -1,5 +1,6 @@
 // The first-run setup wizard (stage 8, AC6), at desktop and phone size: it opens for the admin,
-// is resumable across reloads, records the organisation, uses Workers AI only, keeps the approval
+// is resumable across reloads, records the organisation, states the deployment's real AI setup
+// (here the local stand-ins on the shipped defaults: Workers AI) and links to Settings → AI, keeps the approval
 // policy, and installs and removes sample data in one click (in the wizard and from Settings →
 // General). global-setup skipped it once; this spec reopens it.
 import { expect, test } from "@playwright/test";
@@ -29,10 +30,16 @@ test("an admin sets up the CRM end to end", async ({ page }) => {
   await page.getByLabel("Organisation name").fill(orgName);
   await page.getByTestId("setup-next").click();
 
-  // Step 3: Workers AI only.
+  // Step 3: AI, as this deployment resolves it (ai.settings), with Settings → AI one click away.
   await expect(page.getByTestId("setup-step-ai")).toBeVisible();
-  await expect(page.getByText("Use Workers AI only for now")).toBeVisible();
-  await page.getByTestId("setup-next").click();
+  await expect(page.getByTestId("setup-ai-line").first()).toContainText(
+    "This deployment is set up for Workers AI in your Cloudflare account on every role, from the shipped defaults.",
+  );
+  await expect(page.getByTestId("setup-ai-ready")).toBeVisible();
+  await expect(page.getByText("Use Workers AI only for now")).toHaveCount(0);
+  await expect(page.getByTestId("setup-ai-settings")).toHaveAttribute("href", "/settings/ai");
+  await expectNoHorizontalScroll(page);
+  await page.getByRole("button", { name: "Keep this and continue" }).click();
   await expect(page.getByTestId("setup-step-policy")).toBeVisible();
 
   // Resumable: a reload comes back to the same step.
@@ -67,7 +74,7 @@ test("an admin sets up the CRM end to end", async ({ page }) => {
   // Settings → General shows what was set, and removes the sample data in one click.
   await open(page, "/settings/general");
   await expect(page.getByText(orgName)).toBeVisible();
-  await expect(page.getByText(/AI: Workers AI/)).toBeVisible();
+  await expect(page.getByText(/AI: Workers AI/)).toHaveCount(0);
   await page.getByTestId("remove-sample-data").click();
   await expect(page.getByTestId("remove-sample-data")).toHaveCount(0);
   await open(page, "/organisations");

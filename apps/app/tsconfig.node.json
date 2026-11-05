@@ -1,0 +1,7 @@
+{
+  // ros-app's Node-side tooling (vite.config.ts helpers) and its tests, apart from the Worker's
+  // types: Node's globals would clash with workerd's.
+  "extends": "@relationship-os/config/tsconfig.base.json",
+  "compilerOptions": { "types": ["node"] },
+  "include": ["dev-secrets.ts", "test-node", "vitest.node.config.ts"]
+}

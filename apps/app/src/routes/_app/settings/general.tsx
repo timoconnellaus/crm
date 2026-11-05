@@ -111,8 +111,7 @@ function GeneralPage() {
         <CardHeader>
           <CardTitle>Organisation</CardTitle>
           <CardDescription>
-            {settings.data?.orgName ?? "No name yet"} · {settings.data?.timezone ?? "UTC"} · AI:{" "}
-            {settings.data?.aiMode === "workers-ai" ? "Workers AI" : settings.data?.aiMode}
+            {settings.data?.orgName ?? "No name yet"} · {settings.data?.timezone ?? "UTC"}
           </CardDescription>
         </CardHeader>
         {settings.data?.logo && (

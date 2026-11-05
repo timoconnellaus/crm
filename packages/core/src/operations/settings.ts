@@ -1,15 +1,14 @@
 // settings.* operations: the org's general settings (Settings → General and the setup wizard):
 // the base currency (ADR 0101: every currency field without its own currency displays in it;
 // changing it relabels amounts, it never converts them), and since stage 8 the organisation's
-// name, logo and timezone and the AI mode (ADR 0167), and since stage 7b the assistant's name (ADR 0200).
+// name, logo and timezone (ADR 0167), and since stage 7b the assistant's name (ADR 0200). Which
+// models run is not here: that is the model registry (ai.settings, Settings → AI).
 import { z } from "zod";
 import { defineOperation } from "../operation.ts";
 
 export { COMMON_CURRENCIES } from "../currencies.ts";
 
 import {
-  AI_MODE_SETTING,
-  AI_MODES,
   ASSISTANT_NAME_SETTING,
   BASE_CURRENCY_SETTING,
   type GeneralSettings,
@@ -40,9 +39,6 @@ const generalSettings = z.object({
     .max(64)
     .refine(isTimezone, "Unknown IANA timezone")
     .describe("IANA timezone the organisation works in, e.g. Europe/London"),
-  aiMode: z
-    .enum(AI_MODES)
-    .describe("workers-ai: every model role uses Workers AI in this account (no third-party keys)"),
   assistantName: z
     .string()
     .trim()
@@ -56,7 +52,7 @@ export const settingsGet = defineOperation({
   name: "settings.get",
   description:
     "Get the org's general settings: the base currency every currency field (deal values, " +
-    "budgets) is shown in, the organisation's name, logo and timezone, and the AI mode. Read-only.",
+    "budgets) is shown in, the organisation's name, logo and timezone, and the assistant's name. Read-only.",
   input: z.object({}),
   output: generalSettings,
   permission: "records:read",
@@ -72,7 +68,6 @@ const SETTING_KEYS: Record<keyof GeneralSettings, string> = {
   orgName: ORG_NAME_SETTING,
   logo: ORG_LOGO_SETTING,
   timezone: ORG_TIMEZONE_SETTING,
-  aiMode: AI_MODE_SETTING,
   assistantName: ASSISTANT_NAME_SETTING,
 };
 
@@ -81,7 +76,10 @@ export const settingsUpdate = defineOperation({
   description:
     "Change the org's general settings (admins). baseCurrency is the ISO 4217 code currency " +
     "fields display in; changing it relabels amounts and does not convert them. orgName, logo " +
-    "(a data: URL) and timezone describe the organisation; aiMode chooses the AI provider; assistantName renames the in-app assistant.",
+    "(a data: URL) and timezone describe the organisation; assistantName renames the in-app " +
+    "assistant. AI models are chosen in Settings → AI, not here.",
+  // Unknown keys are stripped, not rejected: older clients that still send the removed aiMode
+  // (ADR 0167's amendment) keep working, and it is ignored.
   input: generalSettings.partial(),
   output: generalSettings,
   permission: "settings:manage",

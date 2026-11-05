@@ -24,10 +24,11 @@ import {
 } from "@relationship-os/ui/components/select";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2Icon, CpuIcon, FileUpIcon, PlugZapIcon } from "lucide-react";
+import { CheckCircle2Icon, FileUpIcon, PlugZapIcon, SparklesIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageLayout } from "#/components/layout/page-layout";
+import { AiSetupSummaryView } from "#/components/setup/ai-summary";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
 
 export const Route = createFileRoute("/_app/setup")({ component: SetupPage });
@@ -369,43 +370,46 @@ function AiStep({
   onNext: (data?: Record<string, unknown>) => void;
   onBack?: (() => void) | undefined;
 }) {
-  const update = useOpMutation("settings.update", { invalidates: ["settings."] });
-  async function save() {
-    try {
-      await update.mutateAsync({ aiMode: "workers-ai" });
-      onNext({ aiMode: "workers-ai" });
-    } catch (error) {
-      toast.error(errorMessage(error));
-    }
-  }
+  // What the deployment's model roles resolve to, as Settings → AI shows them. Nothing is saved
+  // here: the step describes the real configuration and links to where it is changed.
+  const settings = useOp("ai.settings", {});
   return (
     <StepCard
       title="AI"
-      description="The assistant, summaries and widget descriptions use AI models through named roles."
+      description="The assistant, summaries, search and widget descriptions use AI models through named roles. This is how this deployment is set up."
       onBack={onBack}
-      onNext={save}
-      busy={update.isPending}
+      onNext={() => onNext({ ai: true })}
+      nextLabel="Keep this and continue"
+      busy={settings.isPending}
     >
-      <RadioGroup value="workers-ai" aria-label="AI provider">
-        <Label
-          htmlFor="ai-workers"
-          className="flex cursor-pointer items-start gap-3 rounded-lg border p-3"
-        >
-          <RadioGroupItem id="ai-workers" value="workers-ai" className="mt-0.5" />
-          <div className="grid gap-1">
-            <span className="flex items-center gap-2 font-medium">
-              <CpuIcon className="size-4" aria-hidden /> Use Workers AI only for now
-            </span>
-            <span className="text-sm font-normal text-muted-foreground">
-              Models run in your own Cloudflare account. No third-party keys, and nothing leaves
-              Cloudflare.
-            </span>
-          </div>
-        </Label>
-      </RadioGroup>
-      <p className="text-sm text-muted-foreground">
-        To choose other providers per role and add their keys, open Settings → AI after setup.
-      </p>
+      {settings.isPending ? (
+        <Skeleton className="h-24 w-full" />
+      ) : settings.data ? (
+        <AiSetupSummaryView settings={settings.data} />
+      ) : (
+        <p className="text-sm text-destructive" role="alert">
+          {errorMessage(settings.error)}
+        </p>
+      )}
+      <div className="grid gap-2 text-sm text-muted-foreground">
+        <p>
+          To switch a role to another model or provider, or to add a provider key (kept as a secret,
+          never in the database), use Settings → AI, now or any time later.
+        </p>
+        <p>
+          Model role presets, such as <code>deepseek-flash</code>, are chosen when the deployment is
+          installed or redeployed (<code>create-relationship-os --model-roles</code>).
+        </p>
+      </div>
+      <Button variant="outline" asChild className="h-auto w-fit justify-start gap-3 p-3">
+        <Link to="/settings/ai" target="_blank" data-testid="setup-ai-settings">
+          <SparklesIcon className="size-5" aria-hidden />
+          <span className="grid text-left">
+            <span>Change models or add a key</span>
+            <span className="text-xs font-normal text-muted-foreground">Settings → AI</span>
+          </span>
+        </Link>
+      </Button>
     </StepCard>
   );
 }

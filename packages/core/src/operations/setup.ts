@@ -19,7 +19,7 @@ const statusSchema = z.enum(["pending", "in_progress", "completed", "skipped"]);
 const setupOutput = z.object({
   status: statusSchema,
   step: z.enum(SETUP_STEPS),
-  /** Answers so far (non-secret), e.g. { aiMode: "workers-ai", policy: "balanced" }. */
+  /** Answers so far (non-secret), e.g. { organisation: true, policy: "balanced" }. */
   data: z.record(z.string(), z.unknown()),
   /** True while the wizard should open on an admin's first visit. */
   open: z.boolean(),
