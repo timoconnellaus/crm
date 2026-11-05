@@ -206,9 +206,9 @@ function describeResult(text: string): string {
     if (o.error && typeof o.error === "object") {
       return `That didn't work: ${String((o.error as Record<string, unknown>).message ?? "error")}`;
     }
+    if (Array.isArray(o.widgets)) return "Done: the dashboard is ready.";
     const name = o.displayName ?? o.name ?? o.title;
     if (typeof name === "string") return `Here is what I found about ${name}.`;
-    if (Array.isArray(o.widgets)) return "Done: the dashboard is ready.";
   }
   return text.startsWith("ERROR") ? `That didn't work: ${text.slice(7, 200)}` : "Done.";
 }
