@@ -15,12 +15,17 @@
 // settings come from each app's `deploy-inputs.json` (`features.ai`, `vectorize`), which the
 // release manifest reads too, so `create-crm` installs the same thing (ADR 0160).
 //
+// This deployment's model roles (ADR 0192), also written into wrangler.deploy.jsonc, so nothing is
+// committed: CRM_AI_MODEL_ROLES is a preset (`deepseek-flash`), a JSON file, inline JSON or
+// `default`, and becomes AI_MODEL_ROLES on both Workers. CRM_AI_GATEWAY_BYOK lists providers whose
+// key is stored in AI Gateway (e.g. `deepseek`) and becomes AI_GATEWAY_BYOK.
+//
 // crm-app's secrets are read from the environment (see docs/deploying.md). They are passed with
 // --secrets-file, which a first deploy needs; later deploys keep the secrets already set.
 //
 // Usage: pnpm run deploy [-- --dry-run]
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,6 +34,28 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dryRun = process.argv.includes("--dry-run");
 const aiOn = (process.env.CRM_AI ?? "on").toLowerCase() !== "off";
 const indexName = process.env.CRM_VECTORIZE_INDEX?.trim() || "crm-records";
+
+/** AI_MODEL_ROLES and AI_GATEWAY_BYOK for this deployment, from CRM_AI_MODEL_ROLES / _GATEWAY_BYOK. */
+async function aiVars() {
+  const vars = {};
+  const roles = process.env.CRM_AI_MODEL_ROLES?.trim();
+  if (roles) {
+    // The registry is erasable TypeScript, so Node 24 imports it as is (type stripping).
+    const { modelRolesVar, ROLE_PRESETS } = await import("../packages/core/src/ai/roles.ts");
+    const isFile = roles !== "default" && !ROLE_PRESETS[roles] && !/^[[{]/.test(roles);
+    if (isFile && !existsSync(roles)) {
+      throw new Error(`CRM_AI_MODEL_ROLES: no preset or file "${roles}"`);
+    }
+    vars.AI_MODEL_ROLES = modelRolesVar(isFile ? readFileSync(roles, "utf8") : roles);
+    console.log(
+      `\nmodel roles (AI_MODEL_ROLES): ${vars.AI_MODEL_ROLES ? roles : "shipped defaults"}`,
+    );
+  }
+  const byok = process.env.CRM_AI_GATEWAY_BYOK?.trim();
+  if (byok !== undefined) vars.AI_GATEWAY_BYOK = byok;
+  return vars;
+}
+const extraVars = aiOn ? await aiVars() : {};
 
 const APP_SECRETS = [
   "BETTER_AUTH_SECRET",
@@ -84,7 +111,10 @@ function parseJsonc(text) {
 const deployInputs = (app) =>
   JSON.parse(readFileSync(join(root, app, "deploy-inputs.json"), "utf8"));
 
-/** Writes <app>/wrangler.deploy.jsonc: wrangler.jsonc plus the AI bindings. Returns its name. */
+/**
+ * Writes <app>/wrangler.deploy.jsonc: wrangler.jsonc plus the AI bindings and this deployment's
+ * AI vars. Returns its name.
+ */
 function deployConfig(app) {
   const config = parseJsonc(readFileSync(join(root, app, "wrangler.jsonc"), "utf8"));
   const feature = deployInputs(app).features?.ai ?? {};
@@ -92,6 +122,7 @@ function deployConfig(app) {
   if (feature.vectorize) {
     config.vectorize = feature.vectorize.map((index) => ({ ...index, index_name: indexName }));
   }
+  if (Object.keys(extraVars).length) config.vars = { ...config.vars, ...extraVars };
   const file = "wrangler.deploy.jsonc";
   writeFileSync(
     join(root, app, file),

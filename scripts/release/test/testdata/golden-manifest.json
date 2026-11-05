@@ -1,14 +1,6 @@
 {
   "aiGateway": {
-    "customProviders": [
-      {
-        "baseUrl": "https://api.together.xyz",
-        "description": "Together AI (OpenAI-compatible), e.g. custom-together/deepseek-ai/DeepSeek-V4.1-Flash-1017",
-        "link": "https://www.together.ai",
-        "name": "Together AI",
-        "slug": "together"
-      }
-    ],
+    "customProviders": [],
     "settings": {
       "cache_invalidate_on_update": true,
       "cache_ttl": 0,
@@ -82,6 +74,26 @@
       "description": "AI Gateway every model call goes through (usage and spend per role, BYOK)",
       "kind": "var",
       "name": "AI_GATEWAY_ID",
+      "workers": [
+        "crm-app",
+        "crm-runner"
+      ]
+    },
+    {
+      "default": "",
+      "description": "Deploy-config layer of the model registry: a preset (create-crm --model-roles) or JSON (ADR 0150, ADR 0192)",
+      "kind": "var",
+      "name": "AI_MODEL_ROLES",
+      "workers": [
+        "crm-app",
+        "crm-runner"
+      ]
+    },
+    {
+      "default": "",
+      "description": "Providers whose key AI Gateway holds as BYOK, comma-separated (ADR 0192)",
+      "kind": "var",
+      "name": "AI_GATEWAY_BYOK",
       "workers": [
         "crm-app",
         "crm-runner"
@@ -452,6 +464,11 @@
           "type": "plain_text"
         },
         {
+          "name": "AI_GATEWAY_BYOK",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "AI_GATEWAY_ID",
           "text": "",
           "type": "plain_text"
@@ -653,7 +670,7 @@
           "source": "user"
         }
       ],
-      "sha256": "6283ec66921b250ccac40be1e630b33239bd47501f83e490c48cfaf8ae448e9c"
+      "sha256": "8ec123e67e8e80583420fc048831f4ea1d94b39a192d809d43e71dd7cdded41c"
     },
     {
       "bindings": [
@@ -738,6 +755,11 @@
         {
           "name": "LOADER",
           "type": "worker_loader"
+        },
+        {
+          "name": "AI_GATEWAY_BYOK",
+          "text": "",
+          "type": "plain_text"
         },
         {
           "name": "AI_GATEWAY_ID",
@@ -849,7 +871,7 @@
       ],
       "role": "runner",
       "secrets": [],
-      "sha256": "61943936112f8583b3b6e19934c19a9afacff27340540bc0b827fa4cd56591fb"
+      "sha256": "66f100e943419a81f45b2ef82d1cb1d0cae10aa3a2020ee0b78c2200ba553aba"
     },
     {
       "bindings": [],

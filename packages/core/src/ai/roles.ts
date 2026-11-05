@@ -32,6 +32,7 @@ export const PROVIDERS = [
   "openai",
   "google",
   "openrouter",
+  "deepseek",
   "anthropic",
   "jev",
   "openai-compatible",
@@ -82,6 +83,18 @@ export const PROVIDER_INFO: Record<ProviderId, ProviderInfo> = {
     baseURL: "https://openrouter.ai/api/v1",
     gatewaySlug: "openrouter",
   },
+  // A built-in AI Gateway provider, slug `deepseek`
+  // (https://developers.cloudflare.com/ai-gateway/usage/providers/deepseek/), OpenAI-compatible
+  // at https://api.deepseek.com. Optional: a deployment chooses it (the `deepseek-flash` preset,
+  // ADR 0192). Never a shipped default.
+  deepseek: {
+    id: "deepseek",
+    label: "DeepSeek",
+    needsKey: true,
+    secretName: "AI_KEY_DEEPSEEK",
+    baseURL: "https://api.deepseek.com",
+    gatewaySlug: "deepseek",
+  },
   // Optional, admin-configured only. Never a default for any role.
   anthropic: {
     id: "anthropic",
@@ -107,7 +120,13 @@ export interface ModelCapabilities {
   /** Chat / text generation. */
   chat: boolean;
   toolUse: boolean;
+  /** Schema-constrained output (`response_format: json_schema`). Implies `jsonObject`. */
   jsonSchema: boolean;
+  /**
+   * JSON mode (`response_format: json_object`): the reply is valid JSON, but no schema is
+   * enforced. Unset means "only if `jsonSchema`".
+   */
+  jsonObject?: boolean;
   vision: boolean;
   /** An embedding model; `dimensions` says its vector size. */
   embedding: boolean;
@@ -270,6 +289,19 @@ export const MODEL_CATALOGUE: readonly CatalogueModel[] = [
     label: "text-embedding-3-small",
     capabilities: { ...embedding(1536, 8191), maxBatch: 2048 },
   },
+  // Probed against https://api.deepseek.com on 2026-11-05 (ADR 0192). `GET /models` lists a
+  // 1,048,576-token context, 393,216 max output tokens and text + image input. Tool calls work.
+  // `json_object` works, but `json_schema` is refused ("This response_format type is unavailable
+  // now"). A base64 PNG is read correctly. `deepseek-flash` is an alias that tracks DeepSeek's
+  // latest Flash (V4.1 Flash on that date); the platform has no dated id. It is a reasoning
+  // model: thinking tokens count against max_tokens unless `params.thinking` is false.
+  {
+    provider: "deepseek",
+    model: "deepseek-flash",
+    label: "DeepSeek V4.1 Flash",
+    capabilities: chat(1_048_576, { toolUse: true, jsonObject: true, vision: true }),
+    note: "An alias for DeepSeek's latest Flash model. JSON mode only (no json_schema). Thinks by default.",
+  },
   {
     provider: "google",
     model: "gemini-2.5-flash",
@@ -283,6 +315,12 @@ export interface RoleRequirements {
   description: string;
   chat?: boolean;
   toolUse?: boolean;
+  /**
+   * JSON output: the caller asks for JSON in the prompt, then parses and validates the reply
+   * itself, so JSON mode is enough (a `jsonSchema` model qualifies too).
+   */
+  json?: boolean;
+  /** Schema-constrained output: the caller sends `response_format: json_schema`. */
   jsonSchema?: boolean;
   vision?: boolean;
   embedding?: boolean;
@@ -296,14 +334,15 @@ export const ROLE_REQUIREMENTS: Record<ModelRole, RoleRequirements> = {
   build: {
     description: "Writes widgets, extension code summaries and other build output as JSON",
     chat: true,
-    jsonSchema: true,
+    // widget.describe parses the reply and validates the widget, retrying once (ADR 0192).
+    json: true,
     minContextTokens: 16_000,
   },
   assistant: {
     description: "The in-app assistant: a multi-turn agent calling the CRM's tools",
     chat: true,
+    // Its structured output is the tool calls themselves (ADR 0192).
     toolUse: true,
-    jsonSchema: true,
     minContextTokens: 64_000,
   },
   summarise: {
@@ -314,7 +353,8 @@ export const ROLE_REQUIREMENTS: Record<ModelRole, RoleRequirements> = {
   extract: {
     description: "Pulls structured fields out of text (extension code)",
     chat: true,
-    jsonSchema: true,
+    // codemode:ai's extract parses the first JSON object in the reply (ADR 0192).
+    json: true,
     minContextTokens: 8_000,
   },
   classify: {
@@ -336,16 +376,23 @@ export const ROLE_REQUIREMENTS: Record<ModelRole, RoleRequirements> = {
   review: {
     description: "The policy adjudicator (stage 7b): judges pending changes against the policy",
     chat: true,
-    jsonSchema: true,
+    // A verdict is parsed and validated, and one that fails escalates (ADR 0192).
+    json: true,
     minContextTokens: 16_000,
     judgement: true,
   },
 };
 
 export interface ModelParams {
-  /** Upper bound on generated tokens. */
+  /** Upper bound on generated tokens (a reasoning model's thinking tokens count against it). */
   maxTokens?: number;
   temperature?: number;
+  /**
+   * Reasoning models: false asks the provider to skip thinking (DeepSeek:
+   * `thinking: {"type":"disabled"}`). Unset keeps the provider's default. Providers without such
+   * a switch ignore it, including the Workers AI fallbacks.
+   */
+  thinking?: boolean;
 }
 
 export interface ModelRef {
@@ -463,6 +510,10 @@ export function capabilityProblems(
   if (need.jsonSchema && !caps.jsonSchema && !(need.judgement && caps.judgement)) {
     problems.push(`${name} does not support JSON schema output`);
   }
+  const jsonOutput = caps.jsonSchema || caps.jsonObject === true;
+  if (need.json && !need.jsonSchema && !jsonOutput && !(need.judgement && caps.judgement)) {
+    problems.push(`${name} does not support JSON output`);
+  }
   if (need.vision && !caps.vision) problems.push(`${name} cannot read images`);
   if (caps.contextTokens < need.minContextTokens) {
     problems.push(
@@ -514,7 +565,7 @@ export interface ResolvedRole {
   provider: ProviderId;
   model: string;
   capabilities: ModelCapabilities;
-  params: Required<Pick<ModelParams, "maxTokens" | "temperature">>;
+  params: Required<Pick<ModelParams, "maxTokens" | "temperature">> & Pick<ModelParams, "thinking">;
   fallback: (ModelRef & { capabilities: ModelCapabilities }) | null;
   source: ConfigLayer;
   /** Problems with a layer that was skipped (e.g. an admin override for a model now rejected). */
@@ -610,4 +661,105 @@ export function parseRoleLayer(json: string | null | undefined): RoleLayer {
   } catch {
     return {};
   }
+}
+
+// ---- Deploy-config presets (ADR 0192) -------------------------------------------------------
+//
+// A preset is a ready deploy layer (AI_MODEL_ROLES) that one deployment can choose with
+// `create-crm --model-roles <name>` or `CRM_AI_MODEL_ROLES=<name> pnpm run deploy`. The shipped
+// defaults never change: a preset is per-deployment config.
+
+/** A role on DeepSeek V4.1 Flash, falling back to the role's shipped Workers AI model. */
+function onDeepSeekFlash(role: ModelRole, params: ModelParams): Partial<RoleConfig> {
+  return {
+    provider: "deepseek",
+    model: "deepseek-flash",
+    params,
+    fallback: { provider: "workers-ai", model: SHIPPED_ROLES[role].model },
+  };
+}
+
+export interface RolePreset {
+  description: string;
+  roles: RoleLayer;
+}
+
+export const ROLE_PRESETS: Record<string, RolePreset> = {
+  // Every role but `embed` on deepseek-flash, with thinking off where a short, direct answer is
+  // wanted (it costs tokens and latency, and counts against maxTokens). The assistant and the
+  // reviewer keep thinking, with room for it. `embed` stays on Workers AI (bge-small, 384 dims),
+  // because DeepSeek has no embedding model.
+  "deepseek-flash": {
+    description:
+      "DeepSeek V4.1 Flash for every role except embed, each with its Workers AI default as the fallback; embed stays on Workers AI",
+    roles: {
+      build: onDeepSeekFlash("build", { maxTokens: 1200, temperature: 0.1, thinking: false }),
+      assistant: onDeepSeekFlash("assistant", { maxTokens: 8000, temperature: 0.2 }),
+      summarise: onDeepSeekFlash("summarise", {
+        maxTokens: 500,
+        temperature: 0.2,
+        thinking: false,
+      }),
+      extract: onDeepSeekFlash("extract", { maxTokens: 512, temperature: 0, thinking: false }),
+      classify: onDeepSeekFlash("classify", { maxTokens: 64, temperature: 0, thinking: false }),
+      vision: onDeepSeekFlash("vision", { maxTokens: 800, temperature: 0.1, thinking: false }),
+      review: onDeepSeekFlash("review", { maxTokens: 4000, temperature: 0 }),
+    },
+  },
+};
+
+/** Thrown when operator input for AI_MODEL_ROLES is not a usable deploy layer. */
+export class RoleLayerError extends Error {
+  override name = "RoleLayerError";
+  readonly problems: readonly string[];
+  constructor(problems: readonly string[]) {
+    super(`Model roles: ${problems.join("; ")}`);
+    this.problems = problems;
+  }
+}
+
+/**
+ * The AI_MODEL_ROLES value for operator input: a preset name (`deepseek-flash`), a JSON role
+ * layer, or `default` (or empty) for the shipped defaults (""). Strict, unlike parseRoleLayer,
+ * which drops bad input at run time: bad JSON, an unknown role, a model the role would reject,
+ * or a fallback it would drop all throw a RoleLayerError, so a typo fails the deploy instead of
+ * being ignored quietly.
+ */
+export function modelRolesVar(input: string, options: { vectorDimensions?: number } = {}): string {
+  const text = input.trim();
+  if (!text || text === "default") return "";
+  const preset = ROLE_PRESETS[text];
+  let value: unknown = preset?.roles;
+  if (!preset) {
+    if (!/^[[{]/.test(text)) {
+      throw new RoleLayerError([
+        `unknown preset "${text}" (presets: ${Object.keys(ROLE_PRESETS).join(", ")}, or default)`,
+      ]);
+    }
+    try {
+      value = JSON.parse(text);
+    } catch (error) {
+      throw new RoleLayerError([`not valid JSON: ${(error as Error).message}`]);
+    }
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new RoleLayerError(["expected a JSON object of role → configuration"]);
+  }
+  const problems: string[] = [];
+  for (const [role, config] of Object.entries(value as Record<string, unknown>)) {
+    if (!isModelRole(role)) problems.push(`unknown role "${role}"`);
+    else if (!config || typeof config !== "object" || Array.isArray(config)) {
+      problems.push(`${role}: expected an object`);
+    }
+  }
+  if (problems.length) throw new RoleLayerError(problems);
+  const layer = value as RoleLayer;
+  const resolved = resolveRoles({ deploy: layer }, options);
+  for (const role of MODEL_ROLES) {
+    for (const ignored of resolved[role].ignored) {
+      problems.push(`${role}: ${ignored.problems.join(", ")}`);
+    }
+  }
+  if (problems.length) throw new RoleLayerError(problems);
+  return JSON.stringify(layer);
 }

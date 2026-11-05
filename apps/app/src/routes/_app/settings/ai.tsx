@@ -188,7 +188,8 @@ function DocsLink() {
 function CapabilityBadges({ capabilities }: { capabilities: Capabilities }) {
   const flags: [boolean, string][] = [
     [capabilities.toolUse, "Tools"],
-    [capabilities.jsonSchema, "JSON"],
+    [capabilities.jsonSchema, "JSON schema"],
+    [!capabilities.jsonSchema && capabilities.jsonObject === true, "JSON mode"],
     [capabilities.vision, "Vision"],
     [capabilities.embedding, "Embeddings"],
   ];
@@ -373,6 +374,7 @@ const CUSTOM_DEFAULT: Capabilities = {
   chat: true,
   toolUse: false,
   jsonSchema: false,
+  jsonObject: false,
   vision: false,
   embedding: false,
   contextTokens: 32_000,
@@ -490,7 +492,9 @@ function EditRoleDialog({
             Needs:{" "}
             {[
               role.requirements.toolUse && "tool use",
-              role.requirements.jsonSchema && "JSON output",
+              role.requirements.jsonSchema
+                ? "JSON schema output"
+                : role.requirements.json && "JSON output",
               role.requirements.vision && "vision",
               role.requirements.embedding && "embeddings",
               `${contextLabel(role.requirements.minContextTokens)} or more`,
@@ -557,14 +561,15 @@ function EditRoleDialog({
                 {(
                   [
                     ["toolUse", "Tool use"],
-                    ["jsonSchema", "JSON output"],
+                    ["jsonSchema", "JSON schema"],
+                    ["jsonObject", "JSON mode"],
                     ["vision", "Vision"],
                     ["embedding", "Embeddings"],
                   ] as const
                 ).map(([key, label]) => (
                   <Label key={key} className="flex items-center gap-2 font-normal">
                     <Checkbox
-                      checked={caps[key]}
+                      checked={caps[key] === true}
                       onCheckedChange={(checked) =>
                         setCaps((c) => ({ ...c, [key]: checked === true }))
                       }

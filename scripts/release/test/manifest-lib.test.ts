@@ -232,21 +232,34 @@ describe("release manifest", () => {
   it("carries the AI Gateway set-up from deploy-inputs.json (ADR 0180)", async () => {
     const manifest = await fixtureManifest();
     expect(manifest.aiGateway?.settings).toMatchObject({ collect_logs: true });
-    expect(manifest.aiGateway?.customProviders).toEqual([
-      expect.objectContaining({ slug: "together", baseUrl: "https://api.together.xyz" }),
-    ]);
+    // No custom provider ships: DeepSeek is built in to AI Gateway (ADR 0192).
+    expect(manifest.aiGateway?.customProviders).toEqual([]);
+    // Per-deployment AI vars the installer sets (create-crm --model-roles, --provider-key).
+    for (const name of ["AI_MODEL_ROLES", "AI_GATEWAY_BYOK"]) {
+      expect(manifest.inputs.find((i) => i.name === name)).toMatchObject({
+        kind: "var",
+        workers: ["crm-app", "crm-runner"],
+        default: "",
+      });
+    }
     const app = manifest.workers.find((w) => w.role === "app");
     expect(app?.secrets.find((s) => s.name === "AI_GATEWAY_TOKEN")?.source).toBe("installer");
   });
 
   it("refuses a bad AI Gateway set-up", () => {
-    const provider = { slug: "together", name: "Together", baseUrl: "https://api.together.xyz" };
+    const provider = {
+      slug: "example-llm",
+      name: "Example LLM",
+      baseUrl: "https://llm.example.com",
+    };
     expect(() => checkAiGateway("apps/app", { customProviders: [provider] })).not.toThrow();
     expect(() =>
       checkAiGateway("apps/app", { customProviders: [{ ...provider, baseUrl: "http://x" }] }),
     ).toThrow(/https/);
     expect(() =>
-      checkAiGateway("apps/app", { customProviders: [{ ...provider, slug: "custom-together" }] }),
+      checkAiGateway("apps/app", {
+        customProviders: [{ ...provider, slug: "custom-example-llm" }],
+      }),
     ).toThrow(/bad slug/);
     expect(() => checkAiGateway("apps/app", { customProviders: [provider, provider] })).toThrow(
       /twice/,

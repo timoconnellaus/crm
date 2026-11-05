@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@crm/config": "workspace:*",
+    "@crm/core": "workspace:*",
     "@crm/release": "workspace:*",
     "@types/node": "24.19.2",
     "esbuild": "0.28.2",

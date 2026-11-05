@@ -384,10 +384,19 @@ The core table (`packages/core/src/ai/roles.ts`) that resolves each model role t
 `{ provider, model, params, fallback }` through three layers: shipped defaults (every role on
 Workers AI), deploy config (`AI_MODEL_ROLES`) and admin overrides (Settings → AI, stored in
 `core_settings`, settings only). Each role declares the capabilities it needs (tool use, JSON
-schema, context size, vision, embeddings); the registry rejects a model that lacks one. Calls run
-through the AI SDK and AI Gateway (ADR 0150). Provider keys are Workers secrets or AI Gateway
-BYOK, never D1 (ADR 0151).
+output, context size, vision, embeddings); the registry rejects a model that lacks one. "JSON
+output" is met by JSON mode (`json_object`) or a JSON schema; no role sends a schema yet
+(ADR 0192). Calls run through the AI SDK and AI Gateway (ADR 0150). Provider keys are Workers
+secrets or AI Gateway BYOK, never D1 (ADR 0151).
 _Avoid_: model config, LLM settings
+
+**Model role preset**
+A named, ready deploy-config layer (`ROLE_PRESETS` in `roles.ts`) that one deployment chooses
+with `create-crm --model-roles <name>` (or `CRM_AI_MODEL_ROLES` for `pnpm run deploy`). It
+becomes that deployment's `AI_MODEL_ROLES` and never changes the shipped defaults. The first is
+`deepseek-flash`: every role but `embed` on DeepSeek V4.1 Flash with Workers AI fallbacks
+(ADR 0192).
+_Avoid_: profile, model pack
 
 **AI summary**
 Text written by the `summarise` role about a record, a meeting (meeting prep), a long activity

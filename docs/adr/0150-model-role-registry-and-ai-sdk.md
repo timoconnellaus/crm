@@ -119,3 +119,11 @@ eval harnesses take their default model from the registry (`@crm/core/ai-roles`,
 > above are the default. Custom providers (`custom-together` for Together AI) are created from
 > `deploy-inputs.json`. Stage 7b makes the registry gateway-first, including addressing models
 > as `custom-<slug>/<model>`.
+
+> Amended 2026-11-05 ([ADR 0192](0192-deepseek-provider-and-model-role-presets.md)): a
+> `deepseek` provider (built in to AI Gateway) and a `deepseek-flash` catalogue entry. The JSON
+> requirement now matches the code: `build`, `extract` and `review` need **JSON output**, which
+> JSON mode (`jsonObject`) or a schema satisfies, because no caller sends `json_schema`. The
+> `assistant` needs tool use only. `params.thinking` switches a reasoning model's thinking off.
+> **Model role presets** (`ROLE_PRESETS`) are ready deploy layers that one deployment picks
+> with `create-crm --model-roles <name>`. The shipped defaults are unchanged.

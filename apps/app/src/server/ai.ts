@@ -67,6 +67,7 @@ export function aiEnvView(env: AiAppEnv): AiEnv {
     ...(env.CLOUDFLARE_ACCOUNT_ID ? { CLOUDFLARE_ACCOUNT_ID: env.CLOUDFLARE_ACCOUNT_ID } : {}),
     ...(env.AI_MODEL_ROLES ? { AI_MODEL_ROLES: env.AI_MODEL_ROLES } : {}),
     ...(env.AI_PROVIDERS ? { AI_PROVIDERS: env.AI_PROVIDERS } : {}),
+    ...(env.AI_GATEWAY_BYOK ? { AI_GATEWAY_BYOK: env.AI_GATEWAY_BYOK } : {}),
     ...(env.VECTORIZE_DIMENSIONS ? { VECTORIZE_DIMENSIONS: env.VECTORIZE_DIMENSIONS } : {}),
     ...(env.AI_FAKE_MODEL ? { AI_FAKE_MODEL: env.AI_FAKE_MODEL } : {}),
   };

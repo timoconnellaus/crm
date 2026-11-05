@@ -61,7 +61,10 @@ export interface FixtureOptions {
 /** The AI Gateway set-up fixture releases carry (the shape of apps/app/deploy-inputs.json). */
 export const FIXTURE_AI_GATEWAY = {
   settings: { collect_logs: true, cache_ttl: 0 },
-  customProviders: [{ slug: "together", name: "Together AI", baseUrl: "https://api.together.xyz" }],
+  // A fixture custom provider: the shipped release has none (ADR 0192), but the mechanism stays.
+  customProviders: [
+    { slug: "example-llm", name: "Example LLM", baseUrl: "https://llm.example.com" },
+  ],
 };
 
 const enc = new TextEncoder();
@@ -118,6 +121,8 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       { type: "plain_text", name: "CRM_RELEASE_VERSION", text: version },
       { type: "plain_text", name: "CRM_ACCOUNT_ID", text: "$ACCOUNT_ID" },
       { type: "plain_text", name: "AI_GATEWAY_ID", text: "" },
+      { type: "plain_text", name: "AI_MODEL_ROLES", text: "" },
+      { type: "plain_text", name: "AI_GATEWAY_BYOK", text: "" },
       { type: "secret_text", name: "BETTER_AUTH_SECRET", text: "$SECRET(BETTER_AUTH_SECRET)" },
       { type: "secret_text", name: "BETTER_AUTH_URL", text: "$SECRET(BETTER_AUTH_URL)" },
       ...(options.appSecrets ?? []).map((s) => ({
@@ -186,6 +191,8 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       { type: "ai", name: "AI", feature: "ai" },
       { type: "plain_text", name: "APP_ORIGIN", text: "https://$HOSTNAME" },
       { type: "plain_text", name: "AI_GATEWAY_ID", text: "" },
+      { type: "plain_text", name: "AI_MODEL_ROLES", text: "" },
+      { type: "plain_text", name: "AI_GATEWAY_BYOK", text: "" },
     ],
     secrets: [],
     crons: [],
@@ -327,6 +334,20 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
         workers: ["crm-app", "crm-runner"],
         default: "",
         description: "AI Gateway every model call goes through",
+      },
+      {
+        name: "AI_MODEL_ROLES",
+        kind: "var",
+        workers: ["crm-app", "crm-runner"],
+        default: "",
+        description: "Deploy-config layer of the model registry",
+      },
+      {
+        name: "AI_GATEWAY_BYOK",
+        kind: "var",
+        workers: ["crm-app", "crm-runner"],
+        default: "",
+        description: "Providers whose key AI Gateway holds as BYOK",
       },
     ],
     assets: Object.fromEntries([...assets].map(([hash, bytes]) => [hash, { size: bytes.length }])),
