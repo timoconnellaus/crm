@@ -1,0 +1,7 @@
+{
+  "extends": "@relationship-os/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "@cloudflare/workers-types"]
+  },
+  "include": ["*.ts", "lib", "sets", "test"]
+}

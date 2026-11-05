@@ -81,7 +81,7 @@ describe("the state", () => {
             path: "steps[0].notifies[0]",
             kind: "notifies",
             to: "the owner's manager",
-            message: "Big deal: {record}",
+            message: "Big deal: {the deal's name}",
           },
         ],
       },
@@ -119,7 +119,7 @@ describe("the state", () => {
         count: 1,
         titles: ["Check in"],
         assignedTo: "nobody",
-        linkedTo: "the organisation that started it",
+        linkedTo: "the organisation record it runs for",
       },
       {
         path: "steps[2].writes[0]",

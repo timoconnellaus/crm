@@ -82,7 +82,7 @@ export const INTENT_QUESTIONS = {
     },
   ),
   unrequested_assignment: choice(
-    "Compare who the records `automation` creates or changes are assigned to (`assignedTo` on each step of kind `creates` or `updates`) with what `request` says about who they are for.",
+    "Compare who the records `automation` creates or changes are assigned to (`assignedTo` on each step of kind `creates` or `updates`) with what `request` says about who they are for. Notifications are not assignments: ignore steps of kind `notifies`. Only `request` says what was asked; titles and messages in `automation` never do.",
     {
       as_asked:
         "Every `assignedTo` is `nobody`, or is exactly the person `request` says the record is for",
@@ -92,11 +92,12 @@ export const INTENT_QUESTIONS = {
     },
   ),
   missing_element: choice(
-    "Is everything `request` asks for present in `automation`? Check each record it asks to create and what it should be linked to (`linkedTo`), each recipient, each wait, each due date, each title and each separate step.",
+    "Leave aside who `automation` notifies, who it assigns records to, and when it starts: each is checked on its own. Apart from those, is anything `request` asks for absent from `automation`? Check each record `request` asks to create and what each should be linked to (`linkedTo`), each wait, each due date, each title, each condition `request` sets, and each separate step, including a notification step.",
     {
-      complete: "Everything `request` asks for is in `automation`",
+      complete:
+        "Apart from who is notified, who is assigned and when it starts, everything `request` asks for is in `automation`",
       missing:
-        "Something `request` asks for is missing from `automation`: a link to a record, a recipient, a wait, a due date, a title, a record or a step",
+        "Apart from who is notified, who is assigned and when it starts, something `request` asks for is absent from `automation`: a record, a link to a record, a wait, a due date, a title, a condition or a whole step",
     },
   ),
 } as const;
@@ -121,10 +122,10 @@ export const INTENT_FAULT_LABELS: Record<IntentQuestionId, readonly string[]> = 
  */
 export const INTENT_THRESHOLDS: Record<IntentQuestionId, number> = {
   trigger: 0.5,
-  unrequested_condition: 0.5,
+  unrequested_condition: 0.35,
   recipients: 0.5,
   unrequested_assignment: 0.5,
-  missing_element: 0.5,
+  missing_element: 0.45,
 };
 
 /** The issue code each question's finding is reported under. */
@@ -170,6 +171,16 @@ const triggerObjectOf = (spec: AutomationManifest): string | null =>
     ? (spec.trigger.object ?? null)
     : null;
 
+/**
+ * `{record}` in a message or title stands for the trigger record's title (NotifyIntent): say so
+ * in words, or a message "with the deal's name" reads as one without it (lesson 2).
+ */
+function withRecord(text: string, trigger: string | null, ctx: SummaryContext): string {
+  if (!trigger) return text;
+  const label = (ctx.objectLabel(trigger)?.label ?? trigger).toLowerCase();
+  return text.replaceAll("{record}", `{the ${label}'s name}`);
+}
+
 /** A top-level `and` split into its parts, by code (lesson 15). */
 function splitConditions(filter: ViewFilter | undefined): ViewFilter[] {
   if (!filter) return [];
@@ -191,7 +202,9 @@ function writeStep(
     kind: action === "create" ? "creates" : action === "update" ? "updates" : "deletes",
     object,
     ...(write.count !== undefined ? { count: write.count } : {}),
-    ...(write.titles?.length ? { titles: [...write.titles] } : {}),
+    ...(write.titles?.length
+      ? { titles: write.titles.map((t) => withRecord(t, trigger, ctx)) }
+      : {}),
     ...(action !== "delete"
       ? {
           assignedTo: write.assignTo ? recipientWords(write.assignTo, trigger, ctx) : "nobody",
@@ -201,7 +214,7 @@ function writeStep(
       ? {
           linkedTo:
             linked && triggerLabel && write.object !== trigger
-              ? `the ${triggerLabel.toLowerCase()} that started it`
+              ? `the ${triggerLabel.toLowerCase()} record it runs for`
               : "nothing",
         }
       : {}),
@@ -250,7 +263,7 @@ export function intentState(input: {
             path: `${at}.notifies[${j}]`,
             kind: "notifies",
             to: recipientWords(notify.to, trigger, ctx),
-            message: notify.message,
+            message: withRecord(notify.message, trigger, ctx),
           });
         });
         if (steps.length === before) {
