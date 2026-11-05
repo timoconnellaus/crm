@@ -8,17 +8,21 @@
 // locally.
 import { waitUntil } from "cloudflare:workers";
 import {
+  type AdjudicatorDeps,
   type AiAdmin,
   type AiEnv,
+  adjudicatePendingAction,
   backfillEmbeddingQueue,
   type CommitEvent,
   cloudflareAiAdmin,
   drainAllEmbeddings,
   fakeModels,
+  type InvocationContext,
   loadAiSettings,
   type ModelRunner,
   memoryVectorStore,
   modelRunnerFromEnv,
+  type QueuedEvent,
   type VectorizeLike,
   type VectorStore,
   vectorizeStore,
@@ -146,6 +150,35 @@ export async function runEmbeddingCron(env: AiAppEnv & { DB: D1Database }) {
   }
 }
 
+/**
+ * The post-queue hook (ADR 0204): when the review path queued a pending action, the policy
+ * adjudicator judges it in the background after the response, with the caller's context minus the
+ * caller. With the adjudicator off that is one settings read and nothing else. The 10-minute
+ * cron's sweep catches up whatever this misses.
+ */
+export function adjudicationHook(): (event: QueuedEvent, ctx: InvocationContext) => void {
+  return (event, ctx) => {
+    const {
+      actor: _actor,
+      user: _user,
+      origin: _origin,
+      approval: _approval,
+      reason: _reason,
+      grantedPermissions: _granted,
+      extension: _extension,
+      simulate: _simulate,
+      onQueued: _onQueued,
+      ...deps
+    } = ctx;
+    const run = adjudicatePendingAction(deps satisfies AdjudicatorDeps, event.actionId);
+    try {
+      waitUntil(run);
+    } catch {
+      // Outside a request (tests): the promise still runs.
+    }
+  };
+}
+
 /** The AI part of an InvocationContext. */
 export function aiContextFor(env: AiAppEnv, db: CrmDb) {
   const models = modelsFor(env, db);
@@ -160,6 +193,7 @@ export function aiContextFor(env: AiAppEnv, db: CrmDb) {
     ...(vectors ? { vectors } : {}),
     ...(viaEvents ? { embedViaEvents: true } : {}),
     ...(onCommitted ? { onCommitted } : {}),
+    ...(models ? { onQueued: adjudicationHook() } : {}),
     aiAdmin: aiAdminFor(env),
     aiEnv: aiEnvView(env),
   };

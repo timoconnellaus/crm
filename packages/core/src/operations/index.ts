@@ -4,6 +4,7 @@
 
 import { syncOperations } from "../sync/ingest.ts";
 import { activityOperations } from "./activity.ts";
+import { adjudicatorOperations } from "./adjudicator.ts";
 import { affiliationOperations } from "./affiliation.ts";
 import { aiOperations } from "./ai.ts";
 import { approvalOperations } from "./approval.ts";
@@ -76,6 +77,7 @@ export const coreOperations = [
   ...updateOperations,
   ...setupOperations,
   ...aiOperations,
+  ...adjudicatorOperations,
   ...summaryOperations,
   ...automationOperations,
   ...automationBindingOperations,

@@ -1,5 +1,8 @@
 // @relationship-os/core: the operations registry and everything an operation needs. See README.md.
 
+export * from "./adjudicator/agreement.ts";
+export * from "./adjudicator/judge.ts";
+export * from "./adjudicator/run.ts";
 export * from "./ai/admin.ts";
 export * from "./ai/embedding.ts";
 export * from "./ai/hybrid.ts";
@@ -60,6 +63,7 @@ export * from "./notifications/send.ts";
 export * from "./notifications/types.ts";
 export * from "./operation.ts";
 export * from "./operations/activity.ts";
+export * from "./operations/adjudicator.ts";
 export * from "./operations/affiliation.ts";
 export * from "./operations/ai.ts";
 export * from "./operations/approval.ts";
@@ -99,6 +103,7 @@ export {
   type CommitEvent,
   type InvocationContext,
   invokeOperation,
+  type QueuedEvent,
   operationObject,
   readCountHour,
   redactInput,

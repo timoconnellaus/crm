@@ -39,6 +39,8 @@ export const ID_PREFIXES = {
   outbox: "obx",
   /** Admin notification channel routes (ADR 0172). */
   notificationRoute: "nrt",
+  /** Policy adjudicator verdicts (ADR 0204). */
+  adjudication: "adj",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
