@@ -102,6 +102,12 @@ export interface CodeCaller {
   grantedPermissions?: string[];
   /** Stored on anything the script's calls queue for approval. */
   reason?: string;
+  /**
+   * The person's own words (`ctx.personsWords`, set by the assistant's Durable Object; never a
+   * model's). The script's gatekeeper calls carry them to `outbound.message`, which checks a
+   * message's recipients against them, as `integration.call` does (ADR 0238).
+   */
+  request?: string;
   approvalExpiryDays?: number;
 }
 

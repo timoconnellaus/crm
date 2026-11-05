@@ -46,7 +46,7 @@ test("approving a whole change set applies it and lowers the count", async ({ pa
   await expect(set).toContainText("2 need review");
   const tag = item(set, TAG);
   await expect(tag.getByTestId("risk-badge")).toHaveText("bulk-write");
-  await expect(tag).toContainText("Reason: Tag everyone from the event list");
+  await expect(tag).toContainText("Agent's reason: Tag everyone from the event list");
   await expect(tag.getByTestId("change-preview")).toContainText(`+ Tags: ${seeded.tag}`);
   await expect(tag).toContainText("on 2 records");
   await tag.getByRole("button", { name: "show list" }).click();
@@ -143,7 +143,7 @@ test("records show their pending changes", async ({ page, baseURL }) => {
   const popover = page.getByRole("dialog");
   await expect(popover).toContainText("Update person");
   await expect(popover).toContainText("Delete person");
-  await expect(popover).toContainText("Reason: Duplicate created by the CSV import");
+  await expect(popover).toContainText("Agent's reason: Duplicate created by the CSV import");
   await popover.getByRole("link", { name: "Review" }).first().click();
   await expect(page).toHaveURL(new RegExp(`/approvals\\?set=${seeded.changeSetId}`));
   await expect(changeSet(page, seeded)).toBeVisible();

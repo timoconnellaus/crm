@@ -262,3 +262,29 @@ describe("change-set summaries", () => {
     expect(out).toMatchObject({ status: "fresh", text: SUMMARY, check: null });
   });
 });
+
+describe("spend (ADR 0234)", () => {
+  const usage = () =>
+    env.DB.prepare(
+      "SELECT calls, input_tokens FROM core_judge_usage WHERE day = ? AND placement = 'summary.statements'",
+    )
+      .bind(new Date().toISOString().slice(0, 10))
+      .first<{ calls: number; input_tokens: number }>()
+      .then((r) => ({ calls: r?.calls ?? 0, tokens: r?.input_tokens ?? 0 }));
+
+  it("counts each check in the batch that stores the summary; a failed one with no tokens; off nothing", async () => {
+    const counted: Judge = {
+      provider: "jev",
+      async ask(request) {
+        const out = await scripted().ask(request);
+        return out.status === "answered" ? { ...out, inputTokens: 2500 } : out;
+      },
+    };
+    const before = await usage();
+    await invoke("summary.generate", { subject: await person() }, ctx(counted));
+    await invoke("summary.generate", { subject: await person() }, ctx(unavailableJudge("timeout")));
+    await invoke("summary.generate", { subject: await person() }, ctx(offJudge));
+    const after = await usage();
+    expect([after.calls - before.calls, after.tokens - before.tokens]).toEqual([2, 2500]);
+  });
+});

@@ -300,6 +300,8 @@ export class RunHost extends RpcTarget {
           floor: parseFloor(this.#env.APPROVAL_FLOOR),
           grantedPermissions: caller.grantedPermissions as Permission[] | undefined,
           reason: caller.reason ?? "Code Mode script",
+          // A script's integration.call checks recipients against the person's words, too.
+          ...(caller.request ? { personsWords: caller.request } : {}),
           approvalExpiryDays: caller.approvalExpiryDays,
         });
         reply = { ok: true, value };
@@ -389,6 +391,7 @@ export class RunHost extends RpcTarget {
         actor: code ? code.caller.actor : "extension",
         origin: code ? code.caller.origin : { surface: "extension", extensionId: run.extensionId },
         reason: code?.caller.reason,
+        request: code?.caller.request,
       }),
     );
   }

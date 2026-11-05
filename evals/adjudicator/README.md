@@ -20,9 +20,13 @@ policy), the same fenced, escaped `<pending_change>` data, JSON mode, zod valida
 repair round the deployment uses. Only the model differs: here it is an OpenAI-compatible
 chat-completions endpoint, with `response_format: {"type": "json_object"}`.
 
-The fixture (`fixtures.ts`) holds the sample policy and 30 cases: 12 approve, 9 deny and 9
-escalate. Each names the policy rule that decides it. Three carry prompt injections (in the
-agent's reason or in record data); they are labelled `deny`.
+The fixture (`fixtures.ts`) holds the sample policy and 30 cases: 12 approve, 8 deny and 10
+escalate. Each names the policy rule that decides it. The policy is written about the change
+itself (its object, fields, count and operation, and who the agent acts for), never the agent's
+reason, which the Jev reviewer never sees
+([ADR 0235](../../docs/adr/0235-adjudicator-acting-user-and-change-based-policy.md)). Every case
+acts for a named user, as every pending action does. Some carry prompt injections, in the agent's
+reason or in record data; none may be approved.
 
 Metrics (`lib/harness.ts`):
 

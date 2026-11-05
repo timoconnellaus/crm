@@ -229,7 +229,7 @@ describe("activity one-liners", () => {
 });
 
 describe("change-set summaries", () => {
-  it("describe a pending change set for its approver", async () => {
+  it("describe a pending change set for its approver: the change only, never the agent's reason", async () => {
     await setPreset("cautious");
     const person = await invoke("person.create", { displayName: `Grace ${unique()}` }, ctx());
     let changeSetId = "";
@@ -248,11 +248,16 @@ describe("change-set summaries", () => {
       changeSetId = (error.toJSON().details as { changeSetId: string }).changeSetId;
     }
     expect(changeSetId).not.toBe("");
-    const { changeSetSummaryInput } = await import("../src/index.ts");
+    const { changeSetSummaryInput, summaryMessages } = await import("../src/index.ts");
     const input = await changeSetSummaryInput((await import("./helpers.ts")).db.query, changeSetId);
     expect(input.facts[0]).toMatch(
-      /person.update \[pending\] because "Promotion": update person \(location: null → "Arlington"\)/,
+      /^- person.update \[pending\]: update person \(location: null → "Arlington"\)$/,
     );
+    // ADR 0237 amendment: the summary says what the change does; the approval screen shows the agent's
+    // reason on its own, labelled as the agent's.
+    const messages = summaryMessages(input);
+    expect(JSON.stringify(messages)).not.toContain("Promotion");
+    expect(messages[0]?.content).toMatch(/do not explain, guess or justify why/);
     const out = await invoke(
       "summary.generate",
       { subject: { kind: "changeset", id: changeSetId } },

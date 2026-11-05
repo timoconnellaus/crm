@@ -30,10 +30,13 @@ pnpm --filter @relationship-os/evals-judge probe     # one call through judgeRou
 - `sets/`: one labelled set per placement, written before its first run. Each case is a state
   built by the product's own function with an expected side per question.
   `sets/authoring-intent.ts` holds the five real failures of the 5 November 2026 automations eval
-  with their requests verbatim, and a correct twin of each. `sets/adjudicator-policy.ts` holds 52
-  pending changes against three written policies (the adjudicator eval's sample, a sales team's, a
-  clinic's), with planted instructions, limits, deletes, outbound and schema changes; its policies
-  are the ones `evals/adjudicator` reads, and a test runs the Jev reviewer end to end over it.
+  with their requests verbatim, and a correct twin of each. `sets/adjudicator-policy.ts` holds 69
+  pending changes against five written policies (the adjudicator eval's sample, about the change;
+  its earlier text, about the reason; a sales team's; a clinic's; and a studio's whose rules turn
+  on who the AI acts for and their role), with planted instructions, limits, deletes, outbound and
+  schema changes. Its sample policy is the one `evals/adjudicator` reads, and a test runs the Jev
+  reviewer end to end over it. `sets/sync-job-change.ts` holds 29 changed signatures (the same
+  employer written differently, a new title, a new employer, not a signature, planted text).
 - `lib/calibrate.ts`: medians, close calls, gaps, records and the report.
 - `lib/recorder.ts`: record and replay at the `fetch` level, keyed by the request as sent.
 - `calibrate.ts`: the CLI. `probe.ts`: the route probe (ADR 0230's gateway checks).

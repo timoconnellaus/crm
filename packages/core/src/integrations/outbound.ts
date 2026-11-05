@@ -10,8 +10,13 @@ import { addDays, DEFAULT_APPROVAL_EXPIRY_DAYS, targetChangeSet } from "../appro
 import type { PendingApproval } from "../errors.ts";
 import { evaluateGate, type GateDecision, type GateFloor } from "../gate.ts";
 import { findIds, findProvisionalIds, newId } from "../ids.ts";
-import { holdsForReview, type OutboundCheck } from "../judge/questions/outbound-message.ts";
-import type { Judge } from "../judge/types.ts";
+import {
+  holdsForReview,
+  OUTBOUND_PLACEMENT,
+  type OutboundCheck,
+} from "../judge/questions/outbound-message.ts";
+import type { Judge, JudgeCallUsage } from "../judge/types.ts";
+import { judgeUsageStatement } from "../judge/usage.ts";
 import { type ActingUser, type Actor, type Origin, originSchema } from "../principals.ts";
 import { jsonList } from "../records/common.ts";
 import { loadApprovalPolicy } from "../settings.ts";
@@ -65,7 +70,11 @@ export interface OutboundSubmission {
 }
 
 export type OutboundDecision =
-  | { decision: "auto" }
+  /**
+   * `judgeUsage`: the outbound.message call made for it, counted in the batch that audits it once
+   * applied (`auditOutboundApplied`, ADR 0234).
+   */
+  | { decision: "auto"; judgeUsage?: JudgeCallUsage | undefined }
   | { decision: "review"; pending: PendingApproval }
   | { decision: "deny"; reason: string };
 
@@ -229,6 +238,7 @@ export async function submitOutbound(db: CrmDb, s: OutboundSubmission): Promise<
   // outbound.message (ADR 0238): a message an AI actor wrote is read before it leaves. A finding,
   // or no answer, turns an automatic send into a review; Jev never lets one through.
   let check: OutboundCheck | null = null;
+  let judgeUsage: JudgeCallUsage | undefined;
   if (decision !== "deny" && s.judge && textFromAi(s.actor, s.origin)) {
     const checked = await checkOutbound({
       judge: s.judge,
@@ -241,6 +251,7 @@ export async function submitOutbound(db: CrmDb, s: OutboundSubmission): Promise<
       const hold = decision === "auto" && holdsForReview(checked);
       if (hold) decision = "review";
       check = { ...checked.check, turnedToReview: hold };
+      judgeUsage = checked.usage;
     }
   }
 
@@ -255,7 +266,7 @@ export async function submitOutbound(db: CrmDb, s: OutboundSubmission): Promise<
   }
   if (decision === "auto") {
     if (kindRow) await db.batch([kindRow]);
-    return { decision: "auto" };
+    return { decision: "auto", ...(judgeUsage ? { judgeUsage } : {}) };
   }
 
   const dependsOn = await creatorsOf(db, provisional, now);
@@ -298,6 +309,8 @@ export async function submitOutbound(db: CrmDb, s: OutboundSubmission): Promise<
       outbound_check: check ? JSON.stringify(check) : null,
     }),
     auditRow(db, s, input, now, "review", "review", { pendingActionId: actionId }),
+    // The judge's spend (ADR 0234), in the batch that writes the pending action.
+    ...(judgeUsage ? [judgeUsageStatement(db.query, OUTBOUND_PLACEMENT, judgeUsage, now)] : []),
   ];
   // Record badges: the CRM records the action mentions.
   for (let i = 0; i < referenced.length; i += 20) {
@@ -350,10 +363,13 @@ export async function auditOutboundApplied(
   db: CrmDb,
   s: OutboundSubmission,
   outcome: { ok: true } | { ok: false; message: string },
+  /** The outbound.message call `submitOutbound` made for it, counted here (ADR 0234). */
+  judgeUsage?: JudgeCallUsage,
 ): Promise<void> {
   const now = s.now ?? new Date().toISOString();
   const input = outboundInput(s);
   await db.batch([
+    ...(judgeUsage ? [judgeUsageStatement(db.query, OUTBOUND_PLACEMENT, judgeUsage, now)] : []),
     auditRow(
       db,
       s,

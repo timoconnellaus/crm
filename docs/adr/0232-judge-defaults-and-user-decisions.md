@@ -99,3 +99,8 @@ fresh install" could only be done by an admin clicking after every install.
 > setting is read. `policyRules` now lets a section heading qualify the rules beneath it ("Never:
 > Delete any record"); a level-1 title qualifies nothing. A hosted workspace sets its judge key from
 > Settings → AI over the deployment channel, which now allows `TYPESAFE_API_KEY`.
+
+> Amended 2026-11-06 (stage 11 step 8, [ADR 0236](0236-sync-job-change-placement.md)):
+> `sync.jobChange` is built, so the user's `JUDGE_PLACEMENTS` value now turns it on there too. It
+> is asked only for mailboxes that share full content, and it stays off on hosted deployments
+> like the other record-content placements.

@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   type ActingUser,
   type Actor,
+  auditOutboundApplied,
   choiceAnswer,
   type FakeJudgeCall,
   fakeJudge,
@@ -265,5 +266,60 @@ describe("outbound.message in submitOutbound", () => {
       sentences: ["Hi there.", "See you soon ."],
     });
     expect(messageOf({ fields: [{ label: "Calendar ID", value: "primary" }] })).toBeNull();
+  });
+});
+
+describe("spend (ADR 0234)", () => {
+  const usage = () =>
+    env.DB.prepare(
+      "SELECT calls, input_tokens FROM core_judge_usage WHERE day = ? AND placement = 'outbound.message'",
+    )
+      .bind(new Date().toISOString().slice(0, 10))
+      .first<{ calls: number; input_tokens: number }>()
+      .then((r) => ({ calls: r?.calls ?? 0, tokens: r?.input_tokens ?? 0 }));
+  const withTokens = (judge: Judge, inputTokens: number): Judge => ({
+    provider: "jev",
+    async ask(request) {
+      const out = await judge.ask(request);
+      return out.status === "answered" ? { ...out, inputTokens } : out;
+    },
+  });
+
+  it("counts a held message's call in the batch that writes its pending action", async () => {
+    const before = await usage();
+    const decision = await submitOutbound(
+      db,
+      submission(20, "Hi Sam. We can offer you a 20% discount.", {
+        judge: withTokens(scripted(), 2100),
+      }),
+    );
+    expect(decision.decision).toBe("review");
+    const after = await usage();
+    expect([after.calls - before.calls, after.tokens - before.tokens]).toEqual([1, 2100]);
+  });
+
+  it("carries an automatic send's call to the batch that audits it once applied", async () => {
+    const before = await usage();
+    const decision = await submitOutbound(
+      db,
+      submission(21, "Hi Sam. Thanks for your time on Monday.", {
+        judge: withTokens(scripted(), 1500),
+      }),
+    );
+    if (decision.decision !== "auto") throw new Error(`expected auto, got ${decision.decision}`);
+    expect(decision.judgeUsage).toEqual({ calls: 1, inputTokens: 1500 });
+    // Nothing is counted until the host applies it and audits the outcome.
+    expect(await usage()).toEqual(before);
+    await auditOutboundApplied(db, submission(21, "."), { ok: true }, decision.judgeUsage);
+    const after = await usage();
+    expect([after.calls - before.calls, after.tokens - before.tokens]).toEqual([1, 1500]);
+  });
+
+  it("counts a call that failed with no tokens, and nothing when the placement is off", async () => {
+    const before = await usage();
+    await submitOutbound(db, submission(22, "Hi Sam.", { judge: unavailableJudge("timeout") }));
+    await submitOutbound(db, submission(23, "Hi Sam.", { judge: offJudge }));
+    const after = await usage();
+    expect([after.calls - before.calls, after.tokens - before.tokens]).toEqual([1, 0]);
   });
 });

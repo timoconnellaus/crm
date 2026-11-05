@@ -42,3 +42,7 @@ through the existing retry; advice fails open.
 - A describe costs one judge call (about 500 tokens) and up to 3 s before the model starts, and at
   most one extra model call on a mismatch.
 - The dashboards eval's describe mode does not ask the judge; it measures the model alone.
+
+> Amended 2026-11-06 ([ADR 0234](0234-judge-settings-spend-and-key.md) amendment): its calls are
+> not counted in `core_judge_usage`, because `widget.describe` writes nothing to count them in.
+> They are in the Workers log only, and Settings → AI says so.

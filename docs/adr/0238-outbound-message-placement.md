@@ -66,3 +66,12 @@ templates are not checked; off by default in a fresh install, switched on per de
   their recipients are not checked; their parts are.
 - Turning the placement off loosens approval (fewer messages wait), so it stays a human-admin
   switch (ADR 0232).
+
+> Amended 2026-11-06 (stage 11 finish): **Code Mode's gatekeeper sends carry the person's words.**
+> `code.run` passes `ctx.personsWords` as `CodeCaller.request`. The runner's `codemode:<gatekeeper>`
+> calls hand it to the integration host as `IntegrationCaller.request`, as `integration.call` does,
+> and a script's own `integration.call` inherits it. So the recipients of an assistant's Code Mode
+> send are checked. An MCP client's script carries no words, and only its parts are checked
+> (runner test). Spend is now counted ([ADR 0234](0234-judge-settings-spend-and-key.md)
+> amendment): a held message's call in the batch that writes its pending action, an automatic
+> send's in the batch that audits it once applied.

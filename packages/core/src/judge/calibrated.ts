@@ -10,6 +10,7 @@ import {
 } from "./questions/authoring-intent.ts";
 import { OUTBOUND_CALIBRATED } from "./questions/outbound-message.ts";
 import { STATEMENTS_CALIBRATED } from "./questions/summary-statements.ts";
+import { JOB_CHANGE_CALIBRATED } from "./questions/sync-job-change.ts";
 import { SHAPE_CALIBRATED } from "./questions/widget-shape.ts";
 import type { Question } from "./types.ts";
 
@@ -24,4 +25,5 @@ export const CALIBRATED: Record<string, { question: Question; threshold: number 
   ...STATEMENTS_CALIBRATED,
   ...OUTBOUND_CALIBRATED,
   ...SHAPE_CALIBRATED,
+  ...JOB_CHANGE_CALIBRATED,
 };

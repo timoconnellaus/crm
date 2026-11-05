@@ -156,6 +156,15 @@ export function isAnswered<Q extends Questions>(outcome: JudgeOutcome<Q>): outco
   return outcome.status === "answered";
 }
 
+/**
+ * The judge calls a placement made for one stored result, for its spend count (ADR 0234): a call
+ * that failed counts with no tokens; `off` makes no call and counts nothing.
+ */
+export interface JudgeCallUsage {
+  calls: number;
+  inputTokens: number;
+}
+
 /** Why a non-answer happened, as one word for notes and logs (`fault` for a JudgeFault). */
 export function failureOf(
   outcome: JudgeUnavailable | JudgeFault,

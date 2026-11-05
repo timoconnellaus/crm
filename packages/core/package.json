@@ -15,6 +15,7 @@
     "./judge-summary-statements": "./src/judge/questions/summary-statements.ts",
     "./judge-outbound-message": "./src/judge/questions/outbound-message.ts",
     "./judge-widget-shape": "./src/judge/questions/widget-shape.ts",
+    "./judge-sync-job-change": "./src/judge/questions/sync-job-change.ts",
     "./adjudicator-agreement": "./src/adjudicator/agreement.ts",
     "./cron": "./src/automations/cron.ts"
   },

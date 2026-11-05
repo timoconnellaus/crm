@@ -42,3 +42,12 @@ the eval must be provable without a model and runnable later against the real `r
 > live results, 5 November 2026: the LLM (`deepseek-flash`) precision 1.00, recall 1.00, accuracy
 > 1.00; Jev no auto-approval and none unsafe, because this policy allows changes only on the
 > agent's reason, which Jev never sees. See `evals/adjudicator/REPORT.md`.
+
+> Amended 2026-11-06 ([ADR 0235](0235-adjudicator-acting-user-and-change-based-policy.md)): the
+> sample policy is written about the change (object, fields, count, operation, who the agent acts
+> for), never the reason, and every case acts for a named user. Labels are now 12 approve, 8 deny
+> and 10 escalate: an email change, and the injection that was in an email change's reason, now
+> escalate under "Changing the email address of an existing person or organisation", and a
+> location change with a vague reason is approved. Live results, both reviewers: Jev precision
+> 1.00, recall 0.92 (11 of 12), accuracy 0.90; the LLM (`deepseek-flash`) precision 1.00, recall
+> 1.00, accuracy 0.97. Both pass. See `evals/adjudicator/REPORT.md`.
