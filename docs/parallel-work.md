@@ -11,7 +11,7 @@ commit**, by editing this table. Use the next free block. Unused numbers in a bl
 | --- | --- | --- | --- | --- |
 | A | 0200–0219 | 0200–0209 | Stage 7b | merged |
 | B | 0220–0239 | 0210–0219 | Stage 10 | merged |
-| C | 0250–0259 | 0230–0239 | Stage 11 (Jev): #52, #55, #56 and the finish (`stage-11-finish`); migrations 0250–0252 and 0255–0256 used, ADRs 0230–0239 | merged |
+| C | 0250–0259 | 0230–0239 | Stage 11 (Jev): #52, #55, #56, #58; migrations 0250–0252 and 0255–0256 used, ADRs 0230–0239 | merged |
 | D | — | 0240–0249 | Specs, stages 12–16 (ADRs 0240–0247 used; the stages' ADRs) | in flight |
 | E | 0260–0269 | 0250–0254 | Hosted platform AI | in flight |
 | F | 0270–0279 | 0255–0259 | Core fixes (erase, automations) | merged |
