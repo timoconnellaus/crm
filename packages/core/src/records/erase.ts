@@ -2,11 +2,15 @@
 // about them through the sanctioned path (markers in core_audit_redactions; migration 0008).
 import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, type SqlBool, sql } from "kysely";
+import { z } from "zod";
 import { enqueueEmbeddings } from "../ai/embedding.ts";
 import { deleteSummariesStatement } from "../ai/summaries.ts";
 import { queueScrubConversations } from "../assistant/erase.ts";
 import type { HandlerContext } from "../operation.ts";
 import { chunk, jsonList } from "./common.ts";
+import { drainAllBlobDeletions, writeEraseLog } from "./erase-log.ts";
+import { queueEraseExtensions, queueEraseRuns, queueEraseSync } from "./erase-stores.ts";
+import { ERASED, MIN_TERM_LENGTH, scrubJson, subjectMatcher } from "./erase-subject.ts";
 import { findOwnedActivitiesAndTasks } from "./links.ts";
 
 export interface EraseRequest {
@@ -26,6 +30,8 @@ export interface EraseRequest {
    * is about them (ADR 0019 amendment, 2026-11-05).
    */
   names?: readonly string[];
+  /** A person's email addresses, current and former, for the erased-address list. */
+  addresses?: readonly string[];
 }
 
 export interface EraseCounts {
@@ -33,9 +39,58 @@ export interface EraseCounts {
   tasks: number;
   /** Assistant conversations that referenced the subject and were scrubbed. */
   conversations: number;
+  /** Suggested contacts removed (people). */
+  suggestions: number;
+  /** Extension rows deleted or scrubbed. */
+  extensionRows: number;
+  /** Automation runs redacted. */
+  runs: number;
+  /** Notifications deleted. */
+  notifications: number;
 }
 
-const MIN_TERM_LENGTH = 6;
+/** The counts person.erase and organisation.erase report beyond the audit and conversations. */
+export const eraseCountsOutput = {
+  suggestionsRemoved: z.number().describe("Suggested contacts removed (people)"),
+  extensionRowsErased: z.number().describe("Extension rows deleted or scrubbed"),
+  runsRedacted: z.number().describe("Automation runs redacted"),
+  notificationsDeleted: z.number(),
+  bodiesDeleted: z
+    .number()
+    .describe("Synced email bodies deleted from blob storage now (the rest are retried)"),
+};
+
+/**
+ * After the commit: the reported counts, and the R2 bodies the erase queued for deletion are
+ * deleted now (core_blob_deletion). A failure here leaves them queued for the 10-minute cron's
+ * retry; the erase itself has committed.
+ */
+export async function afterErase(
+  ctx: HandlerContext,
+  counts: EraseCounts,
+): Promise<{
+  suggestionsRemoved: number;
+  extensionRowsErased: number;
+  runsRedacted: number;
+  notificationsDeleted: number;
+  bodiesDeleted: number;
+}> {
+  let bodiesDeleted = 0;
+  if (ctx.blobs && !ctx.simulation) {
+    try {
+      bodiesDeleted = (await drainAllBlobDeletions(ctx.db, ctx.blobs)).deleted;
+    } catch {
+      // Left queued for the cron.
+    }
+  }
+  return {
+    suggestionsRemoved: counts.suggestions,
+    extensionRowsErased: counts.extensionRows,
+    runsRedacted: counts.runs,
+    notificationsDeleted: counts.notifications,
+    bodiesDeleted,
+  };
+}
 
 /**
  * Queues the erase: redaction markers for every audit row and field-change row that mentions the
@@ -177,6 +232,24 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
     names: request.names ?? [],
   });
 
+  // 3e. Everything else that copied the subject (ADR 0320): sync's suggestions, signatures and
+  // job-change signals and the erased-address list; extension data; automation runs,
+  // notifications, integration events and the outbox. All in this batch.
+  const subject = {
+    object,
+    recordIds,
+    terms,
+    names: request.names ?? [],
+    addresses: request.addresses ?? [],
+  };
+  const suggestions = await queueEraseSync(ctx, subject);
+  const extensionRows = await queueEraseExtensions(ctx, subject);
+  const { runs, notifications } = await queueEraseRuns(ctx, subject);
+
+  // 3f. The erase log outside D1 (R2), so an erasure can be re-applied after a restore. Written
+  // before the commit: if it cannot be written the erase fails and can be retried.
+  if (!ctx.simulation) await writeEraseLog(ctx, subject);
+
   // 4. The records. Merged-away records first: they point at the survivor.
   const ordered = [...recordIds.filter((id) => id !== recordId), recordId];
   for (const ids of chunk(ordered)) {
@@ -192,67 +265,15 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
   // results. (Linear in index size; erase is rare.)
   const optimize = sql`INSERT INTO core_search (core_search) VALUES ('optimize')`.compile(ctx.db);
   ctx.write({ compile: () => optimize });
-  return { activities: activityIds.length, tasks: taskIds.length, conversations };
-}
-
-const ERASED = "[erased]";
-const digitsOf = (value: string) => value.replace(/\D/g, "");
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-/** Recognises and blanks out the subject's identifying strings (lower-cased terms). */
-function subjectMatcher(terms: readonly string[]) {
-  const phoneDigits = new Set(
-    terms.map(digitsOf).filter((digits) => digits.length >= MIN_TERM_LENGTH),
-  );
-  const pattern = new RegExp(
-    [...terms]
-      .sort((a, b) => b.length - a.length)
-      .map(escapeRegExp)
-      .join("|"),
-    "gi",
-  );
   return {
-    /** A whole value that is the subject's email, phone number (any formatting) or id. */
-    identifies(value: string): boolean {
-      if (terms.includes(value.trim().toLowerCase())) return true;
-      return !/[a-z@]/i.test(value) && phoneDigits.has(digitsOf(value));
-    },
-    text(value: string | null): string | null {
-      return value === null ? null : value.replace(pattern, ERASED);
-    },
+    activities: activityIds.length,
+    tasks: taskIds.length,
+    conversations,
+    suggestions,
+    extensionRows,
+    runs,
+    notifications,
   };
-}
-type SubjectMatcher = ReturnType<typeof subjectMatcher>;
-
-/**
- * Removes the subject from a JSON payload: array items and properties whose value identifies
- * them, or that are objects holding such a value (`{ email, name }`, an attendee), are dropped;
- * mentions inside other strings are blanked out.
- */
-function scrubJson(value: unknown, m: SubjectMatcher): { value: unknown; identifies: boolean } {
-  if (typeof value === "string") {
-    return m.identifies(value)
-      ? { value, identifies: true }
-      : { value: m.text(value), identifies: false };
-  }
-  if (Array.isArray(value)) {
-    const kept = value.map((v) => scrubJson(v, m)).filter((r) => !r.identifies);
-    return { value: kept.map((r) => r.value), identifies: false };
-  }
-  if (value && typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    let identifies = false;
-    for (const [key, child] of Object.entries(value)) {
-      const r = scrubJson(child, m);
-      if (r.identifies) {
-        if (typeof child === "string") identifies = true;
-        continue;
-      }
-      out[key] = r.value;
-    }
-    return { value: out, identifies };
-  }
-  return { value, identifies: false };
 }
 
 /** Queues updates that strip the subject from activities and tasks that survive the erase. */
@@ -272,7 +293,7 @@ async function queueScrubShared(
 
   const activities = await ctx.db
     .selectFrom("core_activity as a")
-    .select(["a.id", "a.subject", "a.body", "a.payload"])
+    .select(["a.id", "a.subject", "a.body", "a.payload", "a.body_ref"])
     .where("a.id", "not in", jsonList(removed.activityIds))
     .where((eb) =>
       eb.or([
@@ -286,11 +307,15 @@ async function queueScrubShared(
     const subject = m.text(a.subject);
     const body = m.text(a.body);
     const payload = JSON.stringify(scrubJson(JSON.parse(a.payload), m).value);
-    if (subject === a.subject && body === a.body && payload === a.payload) continue;
+    // The full email body in R2 is dropped, not rewritten: a body is mostly about its sender and
+    // recipients (greetings, signatures, quoted replies) and names are not matched in shared
+    // text, so a rewrite would leave them. The scrubbed snippet stays; the R2 object is queued
+    // for deletion by trigger (core_blob_deletion, ADR 0320).
+    if (subject === a.subject && body === a.body && payload === a.payload && !a.body_ref) continue;
     ctx.write(
       ctx.db
         .updateTable("core_activity")
-        .set({ subject, body, payload, updated_at: ctx.now })
+        .set({ subject, body, payload, body_ref: null, updated_at: ctx.now })
         .where("id", "=", a.id),
     );
   }

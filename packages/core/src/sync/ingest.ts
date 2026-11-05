@@ -21,6 +21,7 @@ import { newId } from "../ids.ts";
 import { eventInsert, type IntegrationEventInput } from "../integrations/events.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import { jsonList } from "../records/common.ts";
+import { erasedAddressHash } from "../records/erase-subject.ts";
 import {
   domainOf,
   isAutomatedAddress,
@@ -726,6 +727,61 @@ function deleteItem(ing: Ingest, item: DeleteItem) {
   ing.out.deleted++;
 }
 
+/**
+ * The addresses in `addresses` that belong to erased people (ADR 0320): looked up by hash in
+ * core_erased_address (primary key), so the list never holds an address.
+ */
+export async function erasedAddresses(
+  db: Kysely<CoreDatabase>,
+  addresses: readonly string[],
+): Promise<Set<string>> {
+  if (!addresses.length) return new Set();
+  const hashes = await Promise.all(
+    addresses.map(async (a) => ({ address: a, hash: await erasedAddressHash(a) })),
+  );
+  const rows = await db
+    .selectFrom("core_erased_address")
+    .select("hash")
+    .where("hash", "in", jsonList(hashes.map((h) => h.hash)))
+    .execute();
+  const found = new Set(rows.map((r) => r.hash));
+  return new Set(hashes.filter((h) => found.has(h.hash)).map((h) => h.address));
+}
+
+/**
+ * An item with erased addresses removed: from participants, attendees and bounce reports. A
+ * message from an erased sender also loses its snippet, body and signature (their own words), and
+ * a meeting they organised its description.
+ */
+export function withoutErased(item: Item, erased: ReadonlySet<string>): Item {
+  if (item.op === "delete") return item;
+  const keep = (a: { email: string }) => !erased.has(a.email);
+  if (item.kind === "email") {
+    const fromErased = item.from ? erased.has(item.from.email) : false;
+    return {
+      ...item,
+      from: fromErased ? null : item.from,
+      to: item.to.filter(keep),
+      cc: item.cc.filter(keep),
+      ...(fromErased ? { snippet: null, hasBody: false, signature: null } : {}),
+      ...(item.bounce
+        ? {
+            bounce: {
+              failedRecipients: item.bounce.failedRecipients.filter((e) => !erased.has(e)),
+            },
+          }
+        : {}),
+    };
+  }
+  const organiserErased = item.organizer ? erased.has(item.organizer.email) : false;
+  return {
+    ...item,
+    organizer: organiserErased ? null : item.organizer,
+    attendees: item.attendees.filter(keep),
+    ...(organiserErased ? { description: null } : {}),
+  };
+}
+
 const ingestOutput = z.object({
   created: z.number(),
   updated: z.number(),
@@ -770,7 +826,6 @@ export const syncIngest = defineOperation({
     if (conn.owner_user_id !== ctx.user.id) {
       throw new ValidationError("Sync runs as the connection's owner");
     }
-    const items = input.items as Item[];
     const out: Ingest["out"] = {
       created: 0,
       updated: 0,
@@ -781,19 +836,27 @@ export const syncIngest = defineOperation({
     };
     // "Don't sync" writes nothing at all, not even suggestions.
     if (conn.sharing_level === "none" || conn.status === "disconnected") {
-      return { ...out, skipped: items.length };
+      return { ...out, skipped: input.items.length };
     }
     const sharing = conn.sharing_level === "full" ? "full" : "metadata";
-    const internal = await internalDomains(ctx.db);
-    const addresses = [
+    const addressesOf = (list: readonly Item[]) => [
       ...new Set([
-        ...items.flatMap(emailsOf),
+        ...list.flatMap(emailsOf),
         // Bounced addresses are looked up too, for job-change signals.
-        ...items.flatMap((i) =>
+        ...list.flatMap((i) =>
           i.op === "upsert" && i.kind === "email" ? (i.bounce?.failedRecipients ?? []) : [],
         ),
       ]),
     ];
+    // Erased people's addresses (ADR 0320) are dropped before anything else sees the batch.
+    const [internal, erased] = await Promise.all([
+      internalDomains(ctx.db),
+      erasedAddresses(ctx.db, addressesOf(input.items as Item[])),
+    ]);
+    const items = erased.size
+      ? (input.items as Item[]).map((item) => withoutErased(item, erased))
+      : (input.items as Item[]);
+    const addresses = addressesOf(items);
     const domains = [
       ...new Set(
         addresses

@@ -114,6 +114,35 @@ only be fixed inside vendored code, so we propose them upstream instead of patch
   `syncToken`, which returns cancelled items). Until then the CRM reconciles deletes by listing
   windows (ADR 0112), which is complete but slower (hours, not seconds).
 
+- **V4, erasure inside gatekeeper storage** (found in the erase-completeness audit, ADR 0019
+  amendment). Each bound resource is a Durable Object facet of the connection's `IntegrationHost`,
+  with its own storage that only the vendored gatekeeper code can read. Some of it can hold mail
+  to or from a person after a CRM erase, and no gatekeeper offers a way to remove it:
+
+  | Where | What it holds | Retention today |
+  | --- | --- | --- |
+  | `gatekeeper-email-send` journal (`ActionJournal`, `worker.ts`) | a queued send: sender, recipients, subject, body | retired on apply or reject; failed records kept in a bounded allowance (2 × 50) |
+  | `gatekeeper-email-send` `history:` (`worker.ts` `#record`) | recipients and subject of each sent or rejected email | the last 200 entries, no age limit |
+  | `mcp-shared` `ActionStore` (`mcp_actions`) | MCP tool call arguments and results | the last 100 settled actions, no age limit |
+  | `gatekeeper-microsoft` journals (`retainApplied: true`) | applied Outlook, Calendar and SharePoint actions (mail args) | 30 days after apply (`RETAINED_ACTION_TTL_MS`, housekeeping in `binding.ts`) |
+  | `gatekeeper-google` Gmail store (`gmail.ts`, `gmail-state.ts`) | pending actions, CRM-created draft state (recipients), forward sources and uploaded attachment chunks | actions until decided; files pruned when unreferenced (50 MiB cap); draft state until the draft is deleted; sent receipts (message ids only) kept |
+  | `KvTtlCache` entries (`gatekeeper-kit/src/cache.ts`), e.g. Outlook `wroteTo:<address>` | a correspondent's address in the key | stale entries are not swept, only overwritten or dropped by `invalidateAll()` |
+
+  Proposed: a `redact(match: (text: string) => boolean)` on `ActionJournal` (rewrite a matching
+  record's action payload to a tombstone, keeping its id, state and fence so no decision is lost
+  or replayed), a `redact(terms)` on `mcp-shared`'s `ActionStore` (args and result to
+  `{"erased":true}`), a bounded `forget(terms)` on the email-send history, a `sweepExpired()` on
+  `KvTtlCache`, and one facet RPC, `eraseSubject({ terms, names })`, that a gatekeeper implements
+  over all of these. The host would call it on every facet before an erase commits, failing the
+  erase if one cannot be reached, as it does for assistant conversations.
+
+  Until then (our side): the host stores nothing from mail itself (sync state holds cursors, and
+  its error text has mail addresses replaced, `syncErrorText` in `apps/runner`); the mirrored
+  outbound actions in D1 (`core_pending_action`) are redacted by erase; and the windows above are
+  documented in ADR 0019's amendment. Disconnecting a connection deletes all of its facets and
+  their storage (`IntegrationHost.disconnect`), which is the complete remedy an admin can apply
+  today when an erasure request must reach these stores.
+
 ## Local changes to vendored code
 
 - `packages/ui` shadcn components: the CLI resolved the `cn` helper to a bare `"cn"` package; imports

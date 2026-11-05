@@ -22,7 +22,14 @@ import {
   uniqueIds,
   withPrimary,
 } from "../records/common.ts";
-import { countRedactions, queueErase, withMergedRecords } from "../records/erase.ts";
+import {
+  afterErase,
+  countRedactions,
+  eraseCountsOutput,
+  queueErase,
+  withMergedRecords,
+} from "../records/erase.ts";
+import { personSubject } from "../records/erase-subject.ts";
 import { countLinks, queueClearTags, queueMoveLinks } from "../records/links.ts";
 import { loadTags, queueSetTags, tagsInputSchema } from "../records/tags.ts";
 import {
@@ -1108,6 +1115,7 @@ export const personErase = defineOperation({
     tasksDeleted: z.number(),
     auditRowsRedacted: z.number(),
     conversationsScrubbed: z.number(),
+    ...eraseCountsOutput,
   }),
   permission: "records:erase",
   risk: "destructive",
@@ -1115,34 +1123,14 @@ export const personErase = defineOperation({
   async handler(input, ctx) {
     await requirePerson(ctx.db, input.id, { includeDeleted: true });
     const ids = await withMergedRecords(ctx, "person", input.id);
-    const [names, emails, phones] = await Promise.all([
-      ctx.db
-        .selectFrom("core_person")
-        .select(["display_name", "given_name", "family_name"])
-        .where("id", "in", ids)
-        .execute(),
-      ctx.db
-        .selectFrom("core_person_emails")
-        .select("email")
-        .where("person_id", "in", ids)
-        .execute(),
-      ctx.db
-        .selectFrom("core_person_phones")
-        .select(["number", "number_normalised"])
-        .where("person_id", "in", ids)
-        .execute(),
-    ]);
+    const subject = await personSubject(ctx.db, ids);
     const counts = await queueErase(ctx, {
       object: "person",
       recordId: input.id,
       recordIds: ids,
-      terms: [
-        ...emails.map((e) => e.email),
-        ...phones.flatMap((p) => [p.number, p.number_normalised]),
-      ],
-      names: names.flatMap((n) =>
-        [n.display_name, n.given_name, n.family_name].filter((v): v is string => Boolean(v)),
-      ),
+      terms: subject.terms,
+      names: subject.names,
+      addresses: subject.addresses,
     });
     for (const id of ids) ctx.recordChange({ object: "person", id, action: "erase", diff: {} });
     return ctx.afterCommit(async () => ({
@@ -1152,6 +1140,7 @@ export const personErase = defineOperation({
       tasksDeleted: counts.tasks,
       auditRowsRedacted: await countRedactions(ctx.db, "person", input.id),
       conversationsScrubbed: counts.conversations,
+      ...(await afterErase(ctx, counts)),
     }));
   },
 });
