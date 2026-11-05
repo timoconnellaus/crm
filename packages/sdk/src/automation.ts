@@ -236,6 +236,8 @@ export interface NotifyIntent {
   to: Recipient;
   /** The title as written, with `{record}` standing for the trigger record's title. */
   message: string;
+  /** The body as written, when it sends one (shortened in the host summary). */
+  body?: string;
 }
 
 interface StepBase {
@@ -507,7 +509,11 @@ const writeIntentSchema = z
   .strict();
 
 const notifyIntentSchema = z
-  .object({ to: recipientSchema, message: z.string().min(1).max(500) })
+  .object({
+    to: recipientSchema,
+    message: z.string().min(1).max(500),
+    body: z.string().min(1).max(2000).optional(),
+  })
   .strict();
 
 const stepName = z.string().min(1).max(60);

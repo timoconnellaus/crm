@@ -496,6 +496,31 @@ function writeClause(
   return out;
 }
 
+/** Shortens declared wording at a word: "Send the kickoff pack within a week…". */
+export function shortenWording(text: string, max: number): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:.\-–—]+$/, "")}…`;
+}
+
+const TITLE_MAX = 80;
+const BODY_MAX = 120;
+
+/** The `{record}` placeholder as the summary and diagram show it: `{deal}`, `{record}`. */
+const recordToken = (trigger: string | null, labels: Labels) =>
+  trigger ? `{${labels.noun(trigger)}}` : "{record}";
+
+/** What a notification says, quoted: ` with “Deal won: {deal}” (“Send the kickoff pack…”)`. */
+function wordingText(notify: NotifyIntent, trigger: string | null, labels: Labels): string {
+  const token = recordToken(trigger, labels);
+  const fill = (text: string) => text.replaceAll("{record}", token);
+  let out = ` with “${shortenWording(fill(notify.message), TITLE_MAX)}”`;
+  if (notify.body?.trim()) out += ` (“${shortenWording(fill(notify.body), BODY_MAX)}”)`;
+  return out;
+}
+
 function notifyClause(
   notify: NotifyIntent,
   ctx: { trigger: string | null; labels: Labels; last: { person: string | null } },
@@ -505,7 +530,7 @@ function notifyClause(
   if (ctx.last.person === key) out.t("them");
   else out.add(recipientText(notify.to, ctx.trigger, ctx.labels));
   ctx.last.person = key;
-  return out;
+  return out.t(wordingText(notify, ctx.trigger, ctx.labels));
 }
 
 function stepClauses(
@@ -747,7 +772,7 @@ export function automationDiagram(spec: AutomationManifest, ctx: SummaryContext)
       }),
     );
   }
-  const recordToken = trigger ? `{${labels.noun(trigger)}}` : "{record}";
+  const token = recordToken(trigger, labels);
   let n = 0;
   for (const step of spec.steps) {
     switch (step.kind) {
@@ -796,12 +821,12 @@ export function automationDiagram(spec: AutomationManifest, ctx: SummaryContext)
           ...writes.map((w) => writeText(w, trigger, labels)),
           ...notifies.map(
             (m) =>
-              `${capitalise(recipientShort(m.to, trigger, labels))}: “${m.message.replaceAll("{record}", recordToken)}”`,
+              `${capitalise(recipientShort(m.to, trigger, labels))}: “${m.message.replaceAll("{record}", token)}”`,
           ),
         ];
         const titles = writes
           .flatMap((w) => w.titles ?? [])
-          .map((t) => t.replaceAll("{record}", recordToken));
+          .map((t) => t.replaceAll("{record}", token));
         const extra = [
           step.reads?.length
             ? `reads ${step.reads.map((o) => labels.object(o).plural).join(", ")}`

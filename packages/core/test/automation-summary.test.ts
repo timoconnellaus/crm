@@ -87,19 +87,74 @@ describe("phrasing an automation as asked", () => {
   });
 });
 
+describe("what notifications say", () => {
+  it("quotes each notification's title and body, shortened, with {record} as the trigger", () => {
+    const body =
+      "Ask the owner why it was lost, record the reason on the deal and decide whether to " +
+      "follow up with the customer next quarter.";
+    expect(
+      automationSummary(
+        spec({
+          steps: [
+            {
+              name: "tellAdmins",
+              notifies: [
+                { to: "admins", message: "Deal lost: {record}", body },
+                {
+                  to: { field: "owner" },
+                  message:
+                    "A very long notification title that goes on well past what a summary " +
+                    "sentence should quote",
+                },
+              ],
+            },
+          ],
+        }),
+        ctx,
+      ).text,
+    ).toBe(
+      "When a Deal is created, it notifies the admins with “Deal lost: {deal}” (“Ask the owner " +
+        "why it was lost, record the reason on the deal and decide whether to follow up with " +
+        "the customer next…”) and notifies the deal's owner with “A very long notification title that " +
+        "goes on well past what a summary sentence…”.",
+    );
+  });
+
+  it("keeps {record} when there is no trigger record", () => {
+    expect(
+      automationSummary(
+        spec({
+          trigger: { type: "approvalDecided", decision: "rejected" },
+          steps: [
+            {
+              name: "tellAdmins",
+              notifies: [{ to: "admins", message: "Rejected: {record}", body: "Check the queue." }],
+            },
+          ],
+        }),
+        ctx,
+      ).text,
+    ).toBe(
+      "When a pending change is rejected, it notifies the admins with “Rejected: {record}” " +
+        "(“Check the queue.”).",
+    );
+  });
+});
+
 describe("Deals onboarding (the reference design)", () => {
   const won = automation("wonOnboarding");
 
   it("reads exactly as the reference summary", () => {
     expect(automationSummary(won, ctx).text).toBe(
       "When a Deal's stage changes to a won stage, it creates 3 onboarding tasks linked to the " +
-        "deal for the deal's owner and notifies them. After 3 days, if any of those tasks are still open, it notifies " +
-        "the owner's manager.",
+        "deal for the deal's owner and notifies them with “Deal won 🎉 onboarding tasks created”. After 3 days, if " +
+        "any of those tasks are still open, it notifies the owner's manager with “Onboarding not started for {deal}”.",
     );
     expect(html(won)).toBe(
       "When a <b>Deal</b>'s <b>stage</b> changes to a <b>won</b> stage, it creates <b>3 onboarding " +
-        "tasks</b> linked to the deal for the deal's <b>owner</b> and notifies them. After <b>3 days</b>, if any of " +
-        "those tasks are still open, it notifies the owner's <b>manager</b>.",
+        "tasks</b> linked to the deal for the deal's <b>owner</b> and notifies them with “Deal won 🎉 onboarding " +
+        "tasks created”. After <b>3 days</b>, if any of those tasks are still open, it notifies the owner's " +
+        "<b>manager</b> with “Onboarding not started for {deal}”.",
     );
   });
 
@@ -197,7 +252,7 @@ describe("the other Deals automations", () => {
     const passed = automation("closeDatePassed");
     expect(html(passed)).toBe(
       "<b>1 day</b> after a <b>Deal</b>'s <b>expected close date</b>, if its <b>status</b> is " +
-        "<b>Open</b>, it notifies the deal's <b>owner</b>.",
+        "<b>Open</b>, it notifies the deal's <b>owner</b> with “{deal}: the expected close date has passed”.",
     );
     expect(
       automationDiagram(passed, ctx).map((n) => [n.kind, n.heading, n.text, n.code]),
@@ -338,7 +393,7 @@ describe("every trigger type", () => {
       trigger,
       steps: [{ name: "tellAdmins", notifies: [{ to: "admins", message: "Something happened" }] }],
     });
-    expect(html(automation)).toBe(`${summary}, it notifies the <b>admins</b>.`);
+    expect(html(automation)).toBe(`${summary}, it notifies the <b>admins</b> with “Something happened”.`);
     const [first] = automationDiagram(automation, ctx);
     expect(first?.kind).toBe("trigger");
     expect(first?.text).toBe(diagram);
@@ -387,10 +442,11 @@ describe("every step kind and intent", () => {
       "When someone clicks <b>Escalate</b> on a <b>Deal</b>, if its <b>value</b> is at least " +
         "<b>10000</b> and (its <b>owner</b> is set or its <b>stage</b> is <b>a</b> or <b>b</b>), " +
         "it checks <b>Deals</b> and <b>People</b>, updates the <b>deal</b>, creates <b>an " +
-        "escalation task</b> linked to the deal for the <b>person who started it</b> and notifies them. After the " +
+        "escalation task</b> linked to the deal for the <b>person who started it</b> and notifies them with " +
+        "“Escalated {deal}”. After the " +
         "<b>customer-reply</b> event (or <b>2 weeks</b> without it), if no reply yet, it deletes " +
         "<b>2 tasks</b> and runs <b>custom</b>. After <b>90 minutes</b>, it notifies user " +
-        "<b>usr_1</b>.",
+        "<b>usr_1</b> with “Done”.",
     );
   });
 
