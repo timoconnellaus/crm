@@ -365,7 +365,7 @@ export async function activitySummaryInput(
 /**
  * Facts for a change set: what each pending action would do, never why. The agent's reasons are
  * its own account (shown on the approval screen as "Agent's reason"), so the summary describes
- * only the change and the judge checks it against the same facts (ADR 0236).
+ * only the change and the judge checks it against the same facts (ADR 0237 amendment).
  */
 export async function changeSetSummaryInput(
   db: Kysely<CoreDatabase>,

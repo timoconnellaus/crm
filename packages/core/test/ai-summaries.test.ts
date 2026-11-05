@@ -253,7 +253,7 @@ describe("change-set summaries", () => {
     expect(input.facts[0]).toMatch(
       /^- person.update \[pending\]: update person \(location: null → "Arlington"\)$/,
     );
-    // ADR 0236: the summary says what the change does; the approval screen shows the agent's
+    // ADR 0237 amendment: the summary says what the change does; the approval screen shows the agent's
     // reason on its own, labelled as the agent's.
     const messages = summaryMessages(input);
     expect(JSON.stringify(messages)).not.toContain("Promotion");

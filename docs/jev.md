@@ -13,8 +13,13 @@ the calibration harness (`evals/judge`), and placement 1, `authoring.intent`, ca
 with the automations eval grading through the same questions. Later builds the same day added
 placement 2, `adjudicator.policy` (the Jev reviewer, ADR 0233), placements 3, 4 and 6
 (`summary.statements`, `outbound.message`, `widget.shape`; ADRs 0237 to 0239), each calibrated
-live, and Settings → AI's Judge section with spend per placement (ADR 0234). Placement 5
-(`sync.jobChange`, step 8) is still to come; where this guide describes it, it is the plan.
+live, and Settings → AI's Judge section with spend per placement (ADR 0234). On 6 November 2026
+the stage was finished: placement 5, `sync.jobChange` (ADR 0236), and the user's decisions on the
+others (ADR 0235 and amendments to 0233, 0234, 0237 and 0238). The reviewers are now told who
+the agent acts for, and the adjudicator eval's sample policy is written about the change. Change-set
+summaries describe only the change. Code Mode's sends carry the person's words. Every placement
+that stores a result counts its spend. Every placement is built; what is left is under "Open
+questions".
 It draws on the Jev placement guide in `channel-manager` (`docs/jev.md` there, about 1,570 measured
 calls and 30 labelled sets), the Jev skill (a snapshot for Jev 1.13 and 1.14 and
 `@typesafe-ai/sdk` 0.7.0), our own code, the automations eval report of 5 November 2026, and live
@@ -268,12 +273,19 @@ the hook, the sweep, storage and agreement all stay as ADR 0204 has them.
     min(1 − P(stopped), P(allowed)) held to the admin's threshold (default 0.8).
   - `change` also holds the arguments the operation runs with (capped, any `reason` key removed):
     some changes have no diff.
+  - `change.actsFor` is the CRM user the agent acts for, name and role, read in the adjudicator's
+    background read (ADR 0235). The LLM reviewer gets it too. Rules such as "a task assigned to
+    the user the agent acts for" or "when the AI acts for an admin" can be judged.
+  - An approval's confidence is P(allowed), held to the admin's threshold. `breaks` stays at its
+    calibrated 0.5 (ADR 0235). The earlier min(1 − P(stopped), P(allowed)) held P(stopped) to 0.2
+    under the default, below the 0.1 to 0.3 Jev leaves on the very rule that allows a change.
   - A section heading qualifies the rules beneath it, so "## Never" + "- Delete any record" is the
     rule "Never: Delete any record".
-  - **A rule that allows a change only on the agent's reason is never met.** The ADR 0205 sample
-    policy is written that way, so the Jev reviewer approves none of its 30 cases (and none
-    unsafely); the LLM, which reads the reason, approves all 12 it should. Write rules about the
-    change itself.
+  - **A rule that allows a change only on the agent's reason is never met.** Write rules about the
+    change itself: its object, fields, count and operation, and who the agent acts for. The ADR
+    0205 sample was rewritten that way on 6 November 2026 (the user's decision, ADR 0235). On it
+    the Jev reviewer auto-approves 11 of its 12 approvable cases with precision 1.00, and the LLM
+    12 of 12 with precision 1.00. Under the earlier, reason-based text, Jev approved none.
 - **Why Jev here:** ADR 0192 put the user's `review` role on the same model as the assistant, so
   the reviewer shares the actor's blind spots (ADR 0204 shows a warning). Jev is a different model
   by construction, it cannot be talked into writing an approval, and its answers are probabilities
@@ -312,6 +324,11 @@ approver reading a change-set summary decides from it.
   fact loses that statement. The flag reads "Some statements were removed: N statements said things
   the records do not." A withheld change-set summary is not stored, so the next request tries
   again. Calibrated with 55 statements, none wrong or close; threshold 0.5.
+- **Change-set summaries describe only the change** (6 November 2026, the user's decision, ADR 0237
+  amendment). Their facts have no reasons, and the prompt asks for the records, fields and values,
+  never why. The summarise model and the check read the same facts. The approval screen shows
+  the agent's reason on its own, labelled "Agent's reason". 59 statements now, none wrong or
+  close.
 
 ### 4. `outbound.message`: a model-written message before it leaves
 
@@ -342,8 +359,9 @@ Autonomous, the assistant's and MCP clients' outbound actions are `auto`.
   literal fields (body, subject, recipients; no body means no message), matches recipients to
   people by email, and takes facts from up to three records (the recipients, then records the
   message names). The parts are the subject and each body sentence (`message.body.m3`); `asked`
-  reaches the queue as `IntegrationCaller.request` from `integration.call` (Code Mode does not pass
-  it yet). Human approvers see the findings; the AI that wrote the message does not. Calibrated with
+  reaches the queue as `IntegrationCaller.request` from `integration.call` and from Code Mode's
+  `codemode:<gatekeeper>` calls (`CodeCaller.request`, 6 November 2026). Human approvers see the
+  findings; the AI that wrote the message does not. Calibrated with
   39 parts and 12 recipient cases, none wrong or close; thresholds 0.35 (parts) and 0.5
   (recipients).
 
@@ -364,6 +382,15 @@ signature whose company is on a line it skips is a missed one.
   threshold. The company name in the suggestion is still the value code parsed (Jev chooses; it
   does not extract). The verdict goes in the suggestion's payload, which is already written.
 - **If Jev fails:** open. Today's string compare decides, as now.
+- **As built** ([ADR 0236](adr/0236-sync-job-change-placement.md),
+  `questions/sync-job-change.ts`, 6 November 2026): asked only for a known person with a primary
+  affiliation whose signature hash changed, and only on a mailbox that **shares full content**
+  (a metadata-only mailbox's text never leaves), at most 5 times a batch. The old signature's
+  text is not kept, so `previousSignature` is the title and company code parsed from it. The new
+  block loses its phone, email and web lines by code (`isContactLine`). Labels: `same_employer`,
+  `new_title`, `different_employer`, `not_a_signature`. A suggestion needs P(`different_employer`)
+  ≥ 0.5, and the verdict is kept in its `evidence`. Erased senders are dropped before the judge,
+  with their signatures. Calibrated with 29 signature pairs, none wrong or close (0.01 → 0.95).
 
 ### 6. `widget.shape`: which shape of widget answers the request?
 
@@ -483,16 +510,17 @@ shown as the highest "below" median → the lowest "above" median):
 | `authoring.intent/unrequested_assignment` | 0.5 | 0.06 → 0.70 | none |
 | `authoring.intent/missing_element` | 0.45 | 0.38 → 0.45 | a missing wait (0.45, above); an unrequested "open deals" condition (0.38, below) |
 
-`adjudicator.policy` (5 November 2026, 52 cases over three policies, three runs each, none wrong;
-ADR 0233):
+`adjudicator.policy` (recalibrated 6 November 2026 with who the agent acts for in the state: 69
+cases over five policies, 13 of them about the acting user and their role, three runs each, none
+wrong; ADR 0235):
 
 | Question | Threshold | Gap | Close calls |
 | --- | --- | --- | --- |
-| `adjudicator.policy/breaks` (P(a rule stops it)) | 0.5 | 0.25 → 0.86 | none |
-| `adjudicator.policy/allowed_by` (P(the top rule allows it)) | 0.75 | 0.79 → 0.85 | a delete (0.58), a planted "pre-approved" description (0.79, which `breaks` stops at 1.00), a doctor's task titled as the coordinators' (0.62) |
+| `adjudicator.policy/breaks` (P(a rule stops it)) | 0.5 | 0.33 → 0.75 | none |
+| `adjudicator.policy/allowed_by` (P(the top rule allows it)) | 0.75 | 0.61 → 0.85 | four allowed changes at 0.85 to 0.89 (above); a doctor's task titled as the coordinators' (0.61, below) |
 
-End to end over the set (every run, the product's composition, the default threshold 0.8): 28
-approvals of 30 approvable, none unsafe.
+End to end over the set (every run, the product's composition, the default threshold 0.8): 66
+approvals of 66 approvable, none unsafe.
 
 Steps 6, 7 and 9 (the same day, jev-1.14.0, three runs a case, none wrong; reports
 `evals/judge/reports/2026-11-05T11-1*.md`):
@@ -503,6 +531,7 @@ Steps 6, 7 and 9 (the same day, jev-1.14.0, three runs a case, none wrong; repor
 | `outbound.message/part` (P(promises + unsupported)) | 0.35 | 0.16 → 0.51 | none |
 | `outbound.message/recipients` (P(someone_else)) | 0.5 | 0.03 → 0.82 | none |
 | `widget.shape/<shape>` (P(shape), five records) | 0.4 | at worst 0.24 → 0.62 | none |
+| `sync.jobChange/different_employer` (6 November 2026, 29 cases) | 0.5 | 0.01 → 0.95 | none |
 
 The first runs of these sets found three things, fixed before the recorded run: two cases shared a
 name (a slug of six words), so their answers were pooled; a planted note that itself *asserted* a
@@ -591,9 +620,12 @@ each carries, and what waits on them.
 - **Spend** is counted from the response's `usage.input_tokens` at the price in `JEV_PRICE`, per
   placement, and shown in Settings → AI's Judge section (ADR 0234). The count lives in
   `core_judge_usage` (day, placement → calls, input tokens), written by one upsert a placement adds
-  to the batch it already writes (the adjudicator's verdict batch, the extension proposal's
-  batch), never by a write of its own. A check whose result is not stored (`extension.check`, the
-  Test button) is in the Workers log only. Calibration runners print live and replayed tokens and
+  to the batch it already writes, never by a write of its own. Those batches are: the
+  adjudicator's verdict, the extension proposal, `summary.generate` (the summary and its audit
+  row), the outbound pending action or the audit of an automatic send, and `sync.ingest`. A check
+  whose result is not stored is in the Workers log only, and Settings → AI says "Not counted
+  here" for it: `extension.check`, `widget.shape` (`widget.describe` writes nothing), and the Test
+  button. Calibration runners print live and replayed tokens and
   dollars and take `--budget` (default $1).
 
 ## Data handling
@@ -610,7 +642,7 @@ model call.
 | `adjudicator.policy` | The policy rules, the operation, and the diff's before and after values (record data) | Jev is the adjudicator's reviewer by default when the judge has a key (ADR 0232); an admin can pick the LLM |
 | `summary.statements` | The summary and its facts: record fields, activity text, and email bodies where the mailbox shares full content | Off in a fresh install; on where the deployment's `JUDGE_PLACEMENTS` turns it on, or an admin does |
 | `outbound.message` | The message, the person's request, and facts about the records it names | As `summary.statements` |
-| `sync.jobChange` | Two signature blocks with phone, email and web lines removed, and a name and title | As `summary.statements` |
+| `sync.jobChange` | The new signature block with phone, email and web lines removed, what the last one said (title and company, as parsed), and the person's name, organisation and title; only from mailboxes that share full content | As `summary.statements` |
 | `widget.shape` | The person's prompt | On |
 | Graders and calibration | Hand-written fixtures only | Not in a deployment |
 
@@ -676,4 +708,22 @@ interface Judge {
   measured.
 - **Stability on our questions.** The first calibration (`authoring.intent`, 35 cases, three runs)
   never moved a case more than 0.13 between runs; after the summary change one case moved 0.28
-  (the missing wait, 0.40 to 0.68). Other placements' sets will say more.
+  (the missing wait, 0.40 to 0.68). Other placements' sets will say more. On 6 November 2026 the
+  `adjudicator.policy` recalibration moved one case up to 0.25 between runs, and `sync.jobChange`
+  no case more than 0.02.
+
+### Left after stage 11 (6 November 2026)
+- **The gateway checks** (stage 11 AC 2): no gateway was reachable from a build. The direct path
+  is the only one proven live.
+- **`authoring.intent` for extensions**: `unrequested_field` and `missing_field` are not built.
+  The placement checks automations only.
+- **The assistant eval's grader** (AC 11): there is no assistant eval package yet to grade.
+- **The timeline's one-line activity summaries** (`summary.activities`) are not checked.
+- **`widget.shape` spend** is not counted in `core_judge_usage`, because `widget.describe` writes
+  nothing to count it in. Its calls are in the Workers log only.
+- **Rules about a task's assignee on an update**: `task.update`'s diff and arguments do not show
+  an unchanged assignee, so "complete a task assigned to the requester" is met only where the
+  change itself shows the assignee. The preview could carry the record's assignee (a follow-up).
+- **Shadow logs**: the thresholds come from labelled sets only. Real decisions in shadow mode
+  should confirm where the boundaries sit (the missing wait, the outbound promises at 0.51 to
+  0.64, `log-call`-like changes at P(stopped) about 0.45).

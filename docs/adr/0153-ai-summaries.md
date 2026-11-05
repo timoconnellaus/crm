@@ -72,3 +72,8 @@ labelled AI-generated, and must not cost a model call per page view or keystroke
 > (migration 0255) and returned as `check` by `summary.get` and `summary.generate`. A change-set
 > summary's judge facts leave out the agent's reasons, and a withheld change-set summary is not
 > stored.
+
+> Amended 2026-11-06 ([ADR 0237](0237-summary-statements-placement.md) amendment): a change set's
+> facts are each pending action's operation, status and field changes. **The agent's reason is no
+> longer one of them**, and the prompt asks for what the change does, never why. The approval
+> screen shows the reason on its own as "Agent's reason".

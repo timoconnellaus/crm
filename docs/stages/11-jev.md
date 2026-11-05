@@ -1,5 +1,15 @@
 # Stage 11: Jev as the typed judge
 
+**Status: complete (6 November 2026).** Every placement is built and calibrated live, with none
+wrong: `authoring.intent`, `adjudicator.policy`, `summary.statements`, `outbound.message`,
+`sync.jobChange` and `widget.shape`. The eval graders are built for the automations and
+adjudicator evals, and Settings → AI has its Judge section with spend. The user's decisions of 6
+November are built (ADR 0235, ADR 0236 and amendments). The Jev reviewer meets AC 6's bar on the
+rewritten sample policy: precision 1.00, 11 of 12 auto-approved. What is left is listed in
+[`docs/jev.md`](../jev.md), "Left after stage 11": the gateway checks (AC 2), the extension field
+questions, the assistant eval's grader (there is no assistant eval yet), the timeline's one-line
+summaries, `widget.shape` spend, and an update's unchanged assignee.
+
 Read first: [`AGENTS.md`](../../AGENTS.md), [`docs/jev.md`](../jev.md) (the placement guide, in
 full), ADRs [0230](../adr/0230-jev-as-the-typed-judge.md) and
 [0231](../adr/0231-judge-calibration-and-replay.md), [0031](../adr/0031-policy-adjudicator.md),
@@ -167,6 +177,25 @@ CI never calls Jev.
 
 ## Suggested build order
 
+**Finished (6 November 2026, ADR 0235 and 0236).** These are the user's decisions of that day:
+- **The reason stays hidden from Jev, and rules are about the change.** ADR 0205's sample policy
+  was rewritten around object, fields, count, operation and who the agent acts for, and the eval
+  was relabelled (12 approve, 8 deny, 10 escalate). Jev's approval confidence is now P(allowed),
+  with `breaks` held at its calibrated 0.5.
+- **The reviewers are told who the agent acts for** (`change.actsFor`, name and role, joined in
+  the adjudicator's background read). `adjudicator.policy` was recalibrated live on 69 cases, 13
+  of them about the acting user and role: none wrong, `breaks` with no close calls. Live eval: Jev
+  precision 1.00 (11 of 12 approved), the LLM precision 1.00 (12 of 12).
+- **Change-set summaries describe only the change.** The approval screen shows the
+  "Agent's reason" on its own.
+- **Code Mode's sends carry the person's words**, so their recipients are checked.
+- **Spend is counted** for `summary.statements`, `outbound.message` and `sync.jobChange`, in the
+  batches they already write. `widget.shape` writes nothing, so it is not counted; the page says so.
+- **Step 8, `sync.jobChange`**: Jev reads a known person's changed signature, from full-sharing
+  mailboxes, with the string compare as the fallback. 29 signature pairs, none wrong or close.
+
+No migrations were needed: block C's 0253, 0254 and 0257 to 0259 stay unused.
+
 **Also built (5 November 2026, second build):** steps 6, 7 and 9, `summary.statements`
 ([ADR 0237](../adr/0237-summary-statements-placement.md)), `outbound.message`
 ([ADR 0238](../adr/0238-outbound-message-placement.md)) and `widget.shape`
@@ -191,7 +220,7 @@ other thing a rule can say. **AC 6's adjudicator-eval bar is not met by Jev**: o
 sample policy, whose allow rules depend on the agent's reason (which Jev never sees), it approves
 none of the 30 cases (none unsafely); the LLM reviewer scores precision 1.00. Over the labelled
 set's change-based policies, Jev approves 28 of 30 approvable runs, none unsafely. Still to come:
-steps 6 to 9.
+steps 6 to 9. (All met by 6 November 2026: see "Finished" above, and ADR 0235 for AC 6.)
 
 Steps 1 to 3 come first and in order. After them, the placements are independent and can be built
 in parallel worktrees, each with its labelled sets, its live calibration and its recordings in the
@@ -217,6 +246,8 @@ same PR.
 10. **Settings → AI's Judge section, spend and the data notes,** then the docs. (AC 13 to 15.)
 
 ## Open decisions for the user
+
+All answered: on 5 November 2026 (ADR 0232) and 6 November 2026 (ADR 0235 and 0236).
 - **Defaults.** Placements that send record content (summaries, outbound, signatures) default off
   in a fresh install. Should the user's own deployment turn them on?
 - **Data residency.** TypeSafe processes in the US, with zero retention only on request. Acceptable

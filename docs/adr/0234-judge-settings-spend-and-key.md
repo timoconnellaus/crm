@@ -77,3 +77,12 @@ button's placement and the eval graders are not listed.
 - The record-content placements' switches are still shown on hosted workspaces; enforcing that
   they stay off there until TypeSafe confirms zero retention (ADR 0232) comes with the first such
   placement.
+
+> Amended 2026-11-06 (stage 11 finish): **summaries, outbound messages and job-change signals are
+> counted**, each in the batch it already writes: `summary.generate`'s (the summary and its audit
+> row), the outbound pending action's insert or the `auditOutboundApplied` batch of an automatic
+> send, and `sync.ingest`'s. A call that failed counts with no tokens; `off` counts nothing.
+> **`widget.shape` is not counted**: `widget.describe` is a read and writes nothing, and a write of
+> its own would break the "no write outside a batch already made" rule (stage 11 AC 13). Its calls
+> are in the Workers log only. Placements carry `spendCounted`, and Settings → AI says "Not counted
+> here" for the ones that store nothing; the page's note lists what is counted.

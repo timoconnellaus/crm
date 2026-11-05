@@ -53,3 +53,14 @@ install and switched on per deployment.
   instructs; it does not assert.
 - A withheld change-set summary costs a model call each time it is asked for while the judge is
   failing.
+
+> Amended 2026-11-06 (the user's decision, stage 11 finish): **a change-set summary describes only
+> the change.** Its facts no longer carry the agent's reasons, and the `changeset` prompt asks for
+> the records created, changed or deleted and the fields and values, with "do not explain, guess
+> or justify why they are made". The summarise model and this check now read the same facts
+> (`SummaryInput.judgeFacts` is gone). The agent's reason is shown on its own on the approval
+> screen, labelled "Agent's reason", and the button reads "Describe these changes". The check
+> stays on the result. Its state is unchanged, so the question was not recalibrated. One summary
+> in the new style was added to the set (59 statements, none wrong or close, gap 0.22 → 1.00).
+> Spend is now counted ([ADR 0234](0234-judge-settings-spend-and-key.md) amendment): one upsert in
+> the batch `summary.generate` already writes, a withheld summary included (its audit row).

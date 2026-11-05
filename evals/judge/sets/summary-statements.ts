@@ -178,7 +178,7 @@ const SUMMARIES: Summary[] = [
     ],
   },
   {
-    // Written as the change-set prompt asks since 6 November 2026 (ADR 0236): the changes, their
+    // Written as the change-set prompt asks since 6 November 2026 (ADR 0237 amendment): the changes, their
     // fields and values, destructive first, and no reasons.
     name: "change-set, the change only",
     facts: CHANGE_SET,

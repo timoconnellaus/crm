@@ -219,7 +219,7 @@ describe("sync.jobChange in sync.ingest", () => {
     const conn = await seen();
     const judge: Judge =
       reason === "fault"
-        ? { provider: "fake", ask: async () => ({ status: "fault", detail: "malformed" }) }
+        ? fakeJudge({ status: "fault", httpStatus: 422, detail: "bad" })
         : unavailableJudge(reason);
     await ingest(conn, [signed(MOVED)], judge);
     expect(await jobChanges()).toEqual([

@@ -502,8 +502,7 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
 
 - **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
   [ADR 0232](adr/0232-judge-defaults-and-user-decisions.md), [`docs/jev.md`](jev.md); stage 11,
-  the seam, `authoring.intent`, `adjudicator.policy`, `summary.statements`, `outbound.message`,
-  `widget.shape` and the settings built, `sync.jobChange` to come): a seam beside the
+  complete: the seam, every placement and the settings): a seam beside the
   registry, not a model role (`packages/core/src/judge/`, `ctx.judge` built by `judgeFor`).
   Code asks it typed questions (Choice, Noul, Score) at a named **placement** and gets
   probabilities; code holds the thresholds and decides. Its provider is **Jev**, pinned in code,
@@ -522,21 +521,30 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   recordings ([ADR 0231](adr/0231-judge-calibration-and-replay.md)). The automations eval grades
   intent with the same questions. `summary.generate` checks each statement of a new summary and
   removes what the facts do not say, storing the verdicts with the cached row (`checks`); a
-  change-set summary the judge could not read is withheld ([ADR 0237](adr/0237-summary-statements-placement.md)).
+  change-set summary the judge could not read is withheld, and a change-set summary describes only
+  the change, never why: the approval screen shows the "Agent's reason" on its own
+  ([ADR 0237](adr/0237-summary-statements-placement.md)).
   `submitOutbound` (ros-runner's integration queue) reads a message an AI actor wrote: a finding
   or no answer turns an automatic send into a review, with the findings on the pending action
-  (`outbound_check`) for human approvers ([ADR 0238](adr/0238-outbound-message-placement.md)).
+  (`outbound_check`) for human approvers; the person's words reach it from `integration.call`
+  and from Code Mode's gatekeeper calls ([ADR 0238](adr/0238-outbound-message-placement.md)).
+  `sync.ingest` asks whether a known person's changed signature (from a mailbox that shares full
+  content) means a different employer, and suggests a job change only then; if the judge fails,
+  the old string compare decides ([ADR 0236](adr/0236-sync-job-change-placement.md)).
   `widget.describe` asks which shape the prompt wants before generation and sends a widget of a
   type that cannot show it back once ([ADR 0239](adr/0239-widget-shape-placement.md)). On a hosted
   deployment the placements that send record content stay off in code.
   `adjudicator.policy` ([ADR 0233](adr/0233-jev-policy-reviewer.md))
   is the adjudicator's default reviewer while the judge has a key: two Choices over the written
-  policy's rules (which rule stops the change, which allows it), never the agent's reason; approve
-  only where nothing stops it and a rule allows it; if Jev cannot answer, a person decides. Its raw
+  policy's rules (which rule stops the change, which allows it), never the agent's reason, with
+  the user the agent acts for (name and role) in its state; approve only where nothing stops it
+  and a rule allows it; if Jev cannot answer, a person decides
+  ([ADR 0235](adr/0235-adjudicator-acting-user-and-change-based-policy.md)). Its raw
   answer is on the verdict row. Settings → AI's Judge section ([ADR 0234](adr/0234-judge-settings-spend-and-key.md))
   holds the key (a Workers secret, or on a hosted workspace one set through the control plane), a
   Test call, the placement switches, the reviewer, and spend per placement, counted in
-  `core_judge_usage` by an upsert in the batch each placement already writes.
+  `core_judge_usage` by an upsert in the batch each placement already writes (`widget.shape` and
+  `extension.check` store nothing, so their calls are in the Workers log only).
 
 ```
  placement ── ctx.judge.ask({ placement, state, questions }) ──► off? JudgeUnavailable("off")

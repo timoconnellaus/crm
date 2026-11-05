@@ -139,3 +139,12 @@ assignee is named only as "the user the agent acts for", which the state does no
 - Rules that name "the user the agent acts for" cannot be checked until the state names that user
   (a follow-up).
 - One more upsert per Jev verdict (the spend count, ADR 0234), in the batch that writes it.
+
+> Amended 2026-11-06 ([ADR 0235](0235-adjudicator-acting-user-and-change-based-policy.md), the
+> user's decisions): the reviewers are told who the agent acts for (`change.actsFor`, name and
+> role). The sample policy is rewritten about the change. An approval's confidence is P(allowed),
+> not min(1 − P(stopped), P(allowed)), so the admin's threshold raises `allowed_by`'s and `breaks`
+> stays at its calibrated 0.5. Recalibrated live on 69 cases, none wrong. On the rewritten sample,
+> Jev's precision on approve is 1.00 with 11 of 12 auto-approved; the LLM's is 1.00 with 12 of 12.
+> **AC 6's bar is met.** The "Consequences" above about rules naming the user the agent acts for
+> no longer hold.

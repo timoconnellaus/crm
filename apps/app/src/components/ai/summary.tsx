@@ -161,7 +161,7 @@ export function SummaryBody({
   );
 }
 
-/** "Describe these changes" on a change set in Approvals: what it does, never why (ADR 0236). */
+/** "Describe these changes" on a change set: what it does, never why (ADR 0237 amendment). */
 export function ChangeSetExplanation({ changeSetId }: { changeSetId: string }) {
   const { generate, summary } = useSummary({ kind: "changeset", id: changeSetId });
   if (summary?.status === "unavailable" && !summary.text) return null;
