@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/gatekeeper-kit",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Building blocks for gatekeepers: connect-flow, credential, action, observation, and simulation primitives. Vendored from cloudflare-os. Not a deployable Worker.",
-  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     "./action-description": "./src/action-description.ts",

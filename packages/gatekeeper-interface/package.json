@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/gatekeeper-interface",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "The Cloudflare OS gatekeeper RPC interface (vendored from workshop-shared/src/gatekeeper.ts).",
-  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     "./gatekeeper": "./src/gatekeeper.ts",

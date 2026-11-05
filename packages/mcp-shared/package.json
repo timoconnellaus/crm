@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/mcp-shared",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "The library behind the MCP gatekeeper: MCP client, OAuth chain, account DO base, scope grammar and queued-action store. Vendored from cloudflare-os. Not a Worker.",
-  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     "./account": "./src/account.ts",

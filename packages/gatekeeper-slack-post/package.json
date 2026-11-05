@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/gatekeeper-slack-post",
   "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "description": "Gatekeeper Worker that posts Slack messages and DMs with a bot token, each post an approval-queue action. Shares the Slack app with the vendored read-only Slack gatekeeper.",
-  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/worker.ts",
   "exports": {

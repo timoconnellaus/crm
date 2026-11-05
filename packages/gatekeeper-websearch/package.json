@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/gatekeeper-websearch",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Gatekeeper Worker for web search through Workers AI's websearch() and AI Gateway. Vendored from cloudflare-os.",
-  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/worker.ts",
   "scripts": {

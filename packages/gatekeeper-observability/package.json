@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/gatekeeper-observability",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "The structured Worker logger the vendored gatekeepers log through (a subset of cloudflare-os packages/observability).",
-  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     "./logger": "./src/logger.ts",

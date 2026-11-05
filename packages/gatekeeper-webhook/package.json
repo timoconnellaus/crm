@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/gatekeeper-webhook",
   "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "description": "Gatekeeper Worker for inbound webhooks: verifies provider signatures and delivers typed events to a bound hook.",
-  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/worker.ts",
   "exports": {

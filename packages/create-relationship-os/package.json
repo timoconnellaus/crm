@@ -1,8 +1,8 @@
 {
   "name": "create-relationship-os",
   "version": "0.1.0",
+  "license": "FSL-1.1-ALv2",
   "description": "Install, upgrade and roll back the open-source CRM in your own Cloudflare account from a verified release bundle. No wrangler, no service of ours, no telemetry.",
-  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/timoconnellaus/relationship-os.git",

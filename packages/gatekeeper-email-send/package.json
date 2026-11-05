@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/gatekeeper-email-send",
   "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "description": "Gatekeeper Worker that sends email through Cloudflare Email Service, each send an approval-queue action.",
-  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/worker.ts",
   "exports": {

@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/gatekeeper-mcp",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Gatekeeper Worker that connects any MCP server an admin supplies. Vendored from cloudflare-os.",
-  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/mcp.ts",
   "scripts": {

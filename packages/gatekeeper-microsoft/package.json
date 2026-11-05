@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/gatekeeper-microsoft",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Gatekeeper Worker for Microsoft 365 (SharePoint and OneDrive, Outlook mail, Outlook Calendar). Vendored from cloudflare-os.",
-  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/microsoft.ts",
   "scripts": {

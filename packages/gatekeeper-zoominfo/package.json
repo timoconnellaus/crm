@@ -1,9 +1,9 @@
 {
   "name": "@relationship-os/gatekeeper-zoominfo",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Gatekeeper Worker for ZoomInfo (GTM API: lookup, search, enrich, Copilot, usage). Vendored from cloudflare-os.",
-  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/zoominfo.ts",
   "scripts": {

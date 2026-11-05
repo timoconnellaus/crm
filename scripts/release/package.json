@@ -1,6 +1,7 @@
 {
   "name": "@relationship-os/release-scripts",
   "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "type": "module",
   "description": "Builds release bundles and their manifest (ADR 0053, ADR 0160). See README.md.",

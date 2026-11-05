@@ -1,0 +1,39 @@
+Relationship OS
+Copyright 2026 Tim O'Connell
+
+Licence
+-------
+
+Relationship OS is licensed under the Functional Source License, Version 1.1, ALv2 Future License
+(FSL-1.1-ALv2); see LICENSE. Each version converts to the Apache License, Version 2.0 on the second
+anniversary of the date it is made available.
+
+Relicensing
+-----------
+
+The project was relicensed from Apache-2.0 to FSL-1.1-ALv2 by the commit that merged pull request
+#PR_NUMBER ("Stage 9: rename to Relationship OS, FSL-1.1-ALv2 licence + CLA, landing page") into the
+main branch of https://github.com/timoconnellaus/relationship-os (formerly
+https://github.com/timoconnellaus/crm), on or after 2026-11-05 (ADR 0190).
+
+Code published before that commit, that is every commit that is an ancestor of it, remains
+available under the Apache License, Version 2.0, as it was published. The relicensing does not
+withdraw that grant. Changes made from that commit on are FSL-1.1-ALv2.
+
+Third-party code
+----------------
+
+Code vendored from other projects keeps its own licence and notices. It is listed, with the
+upstream commit it tracks, in UPSTREAMS.md:
+
+- packages/gatekeeper-configurator-ui, packages/gatekeeper-email, packages/gatekeeper-google,
+  packages/gatekeeper-interface, packages/gatekeeper-kit, packages/gatekeeper-mcp,
+  packages/gatekeeper-microsoft, packages/gatekeeper-observability, packages/gatekeeper-slack,
+  packages/gatekeeper-websearch, packages/gatekeeper-zoominfo and packages/mcp-shared contain code
+  from Cloudflare OS (https://github.com/cloudflare/cloudflare-os), copyright the Cloudflare OS
+  authors, licensed under the Apache License, Version 2.0. Each of these directories carries the
+  upstream LICENSE and a NOTICE file, which are kept and apply to that code.
+- packages/ui/src/components and packages/ui/src/hooks are generated from shadcn/ui
+  (https://ui.shadcn.com), copyright shadcn, licensed under the MIT License.
+- @cloudflare/computer and other npm dependencies are used under their own licences and are not
+  part of this repository.
