@@ -23,7 +23,14 @@ import {
   uniqueIds,
   withPrimary,
 } from "../records/common.ts";
-import { countRedactions, queueErase, withMergedRecords } from "../records/erase.ts";
+import {
+  afterErase,
+  countRedactions,
+  eraseCountsOutput,
+  queueErase,
+  withMergedRecords,
+} from "../records/erase.ts";
+import { organisationSubject } from "../records/erase-subject.ts";
 import { countLinks, queueClearTags, queueMoveLinks } from "../records/links.ts";
 import { loadTags, queueSetTags, tagsInputSchema } from "../records/tags.ts";
 
@@ -1068,7 +1075,9 @@ export const organisationErase = defineOperation({
     "activities and tasks linked only to it are deleted, and its system activities are " +
     "removed from every timeline. Audit-log content that mentions it is replaced with " +
     '"[erased]" (who did what and when is kept), and so are in-app assistant conversations ' +
-    "that referenced it (its id and name). Cannot be undone; use organisation.delete for a " +
+    "that referenced it (its id and name). Its domains, website and street lines, current and " +
+    "former, are matched too, and extension data, run history and notifications about it are " +
+    "redacted or deleted. Cannot be undone; use organisation.delete for a " +
     "reversible delete.",
   input: z.object({ id: organisationId }),
   output: z.object({
@@ -1078,6 +1087,7 @@ export const organisationErase = defineOperation({
     tasksDeleted: z.number(),
     auditRowsRedacted: z.number(),
     conversationsScrubbed: z.number(),
+    ...eraseCountsOutput,
   }),
   permission: "records:erase",
   risk: "destructive",
@@ -1085,17 +1095,13 @@ export const organisationErase = defineOperation({
   async handler(input, ctx) {
     await requireOrganisation(ctx.db, input.id, { includeDeleted: true });
     const ids = await withMergedRecords(ctx, "organisation", input.id);
-    const names = await ctx.db
-      .selectFrom("core_organisation")
-      .select("name")
-      .where("id", "in", ids)
-      .execute();
+    const subject = await organisationSubject(ctx.db, ids);
     const counts = await queueErase(ctx, {
       object: "organisation",
       recordId: input.id,
       recordIds: ids,
-      terms: [],
-      names: names.map((n) => n.name),
+      terms: subject.terms,
+      names: subject.names,
     });
     for (const id of ids) {
       ctx.recordChange({ object: "organisation", id, action: "erase", diff: {} });
@@ -1107,6 +1113,7 @@ export const organisationErase = defineOperation({
       tasksDeleted: counts.tasks,
       auditRowsRedacted: await countRedactions(ctx.db, "organisation", input.id),
       conversationsScrubbed: counts.conversations,
+      ...(await afterErase(ctx, counts)),
     }));
   },
 });

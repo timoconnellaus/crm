@@ -4,6 +4,8 @@
 // so every round is gated by the approval policy and floor, and audited.
 import {
   compactPendingActions,
+  drainAllBlobDeletions,
+  errorForLog,
   expirePendingActions,
   measureStorage,
   parseFloor,
@@ -16,7 +18,7 @@ import {
   runTrashPurge,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
-import { integrationRuntimeFor } from "./integrations.ts";
+import { blobStoreFor, integrationRuntimeFor } from "./integrations.ts";
 
 export interface PurgeEnv {
   DB: D1Database;
@@ -90,4 +92,24 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   // Their delivery ledger goes with them (ADR 0172).
   await step("notification deliveries", () => purgeNotificationDeliveries(db.query, now));
   return { purge, expired, audit, runs, compacted, storage, events, notifications };
+}
+
+/**
+ * The 10-minute cron's blob step (ADR 0320): deletes the R2 objects (synced email bodies) that
+ * erases, the Trash purge and sync queued in core_blob_deletion, retrying what the post-commit
+ * drain missed. Never throws.
+ */
+export async function runBlobDeletionCron(env: { DB: D1Database; BLOBS?: R2Bucket }) {
+  const blobs = blobStoreFor(env);
+  if (!blobs) return null;
+  try {
+    const result = await drainAllBlobDeletions(createCrmDb(env.DB).query, blobs, 20);
+    if (result.deleted || result.failed) {
+      console.log(`blob deletions: ${result.deleted} deleted, ${result.failed} failed`);
+    }
+    return result;
+  } catch (error) {
+    console.error("blob deletion drain failed", errorForLog(error));
+    return null;
+  }
 }

@@ -142,4 +142,6 @@ export interface BlobStore {
   get(key: string): Promise<string | null>;
   put(key: string, value: string): Promise<void>;
   delete(keys: string[]): Promise<void>;
+  /** Keys under a prefix, a page at a time (the erase log, ADR 0320). */
+  list?(prefix: string, cursor?: string): Promise<{ keys: string[]; cursor?: string }>;
 }

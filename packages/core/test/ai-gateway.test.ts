@@ -143,6 +143,8 @@ describe("with AI Gateway", () => {
       aig: "Bearer aig-token",
       metadata: { role: "summarise" },
     });
+    // The gateway keeps metadata, tokens and cost, never the prompt (ADR 0320).
+    expect(server.calls[0]?.headers["cf-aig-collect-log-payload"]).toBe("false");
   });
 
   it("sends no provider Authorization header with BYOK", async () => {

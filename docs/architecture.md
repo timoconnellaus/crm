@@ -110,6 +110,17 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
   people, organisations, activities and tasks after 30 days through the operations pipeline
   (`trash.purge`), and admin erase redacts the append-only audit log through a sanctioned path
   ([ADR 0019](adr/0019-audit-redaction-for-erasure.md)).
+- **Erase reaches every store** ([ADR 0320](adr/0320-erase-reaches-every-store.md)): besides the
+  record and the audit log, an erase scrubs or deletes shared activities, pending actions, AI
+  summaries and vectors, assistant conversations, sync's suggestions and signatures, extension
+  data (generically, through relation metadata), automation run history, notifications,
+  integration events and the outbox, and the R2 bodies of synced email (through
+  `core_blob_deletion`, drained after the commit and by the 10-minute cron). Erased people's
+  addresses go on the **erased-address list** (`core_erased_address`, SHA-256 hashes only), which
+  `sync.ingest` checks so they are not collected again. Each erase writes an **erase log** entry
+  (hashes) to R2, outside D1, and `erasure.reapply` re-applies erasures after a restore. AI
+  Gateway calls with headers turn payload logging off, and errors reach Workers Logs masked
+  (`errorForLog`).
 - **Storage retention** ([ADR 0090](adr/0090-storage-retention.md)): D1 stops at 10 GB, so the same
   cron keeps growth bounded. Successful reads by AI, extensions and automations are counted per
   hour (`core_audit_read_counts`) rather than audited row by row. Write audits are kept forever by

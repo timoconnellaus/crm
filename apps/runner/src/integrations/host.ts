@@ -112,6 +112,21 @@ interface KindState {
   deleted?: number;
 }
 
+/** Longest sync error kept in the host's state and mirrored to D1. */
+const SYNC_ERROR_MAX = 500;
+
+/**
+ * The text a failed sync pass keeps (in the host's storage and mirrored to the connection row in
+ * D1). Provider and ingest errors can quote mail addresses; they are replaced so a sync error
+ * never holds an address an erase could not find (ADR 0019 amendment, erase completeness).
+ */
+export function syncErrorText(error: unknown): string {
+  const text = error instanceof Error ? error.message : String(error);
+  return text
+    .replace(/[^\s"'<>()[\]{},;:]+@[^\s"'<>()[\]{},;:]+\.[^\s"'<>()[\]{},;:]+/g, "[address]")
+    .slice(0, SYNC_ERROR_MAX);
+}
+
 async function sha256(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -931,7 +946,7 @@ export class IntegrationHost extends DurableObject<Env> {
         more = (await this.#pullKind(meta, kind, kindState, row.sharing_level)) || more;
         kindState.lastError = null;
       } catch (error) {
-        kindState.lastError = error instanceof Error ? error.message : String(error);
+        kindState.lastError = syncErrorText(error);
       }
       kindState.lastRunAt = new Date().toISOString();
     }

@@ -63,7 +63,9 @@ refused on both tables, unconditionally.
 - Erase scans the audit tables (`instr` over text), which is linear in audit size. Erase is rare
   and admin-only; revisit with an index on subject ids if it becomes slow.
 - D1's Time Travel and backups still contain the old values until they age out; this ADR covers
-  the live database only.
+  the live database only. (Amended 2026-11-05: see "Beyond use" in the amendment for ADR 0320
+  below. Erased data in Time Travel and Durable Object point-in-time recovery is put beyond use
+  for its 30 days, and an erase log outside D1 re-applies erasures after any restore.)
 
 ## Amendment, 2026-11-04 (stage 1 integration of the record and activity slices)
 - **Shared activities and tasks are scrubbed, not just unlinked.** An activity or task that is
@@ -149,3 +151,58 @@ An erase now removes them there too, redacting rather than deleting, consistent 
   can survive; erase is rare and admin-run. Other text the assistant repeated from a record (a job
   title, a city) stays where it is not inside an erased tool result. ADR 0153's summaries need
   nothing more: they live in D1 and are already deleted.
+
+## Amendment, 2026-11-05 (ADR 0320: erase reaches every store)
+An audit of every store found personal data an erase left behind. ADR 0320 records the decisions;
+in short, an erase now also:
+- matches a person's **former** emails, phone numbers and profile URLs (from their own change
+  rows), and an organisation's current and former domains, website and street lines (it passed no
+  terms before). Terms under 6 characters are still dropped, and names are still matched only in
+  rows known to be about the subject;
+- deletes the R2 bodies of the emails it deletes and **drops** (does not rewrite) the full body of
+  shared emails (`body_ref = null`; the scrubbed snippet stays), through a queue drained after the
+  commit and retried by the cron;
+- deletes the subject's suggested contacts, signatures and job-change suggestions, and puts their
+  addresses on the **erased-address list** (SHA-256 hashes only) that sync checks, so the next sync
+  pass does not collect them again;
+- deletes extension side-table rows, deletes or clears rows related to the subject through the
+  schema's relation metadata, scrubs extension text fields, key-value state and run logs;
+- redacts automation run history, deletes notifications about the subject (daily digests included),
+  clears delivery details, and scrubs integration events and the automation outbox;
+- writes an **erase log** entry (hashes only) to R2, outside D1, before it commits.
+
+### Beyond use
+Some copies cannot be erased from inside the application. They are put **beyond use**:
+- **D1 Time Travel** (30 days on Workers Paid) and **Durable Object point-in-time recovery**
+  (assistant conversations, integration hosts; 30 days) still hold erased data until they age out.
+  They are used only to recover from a failed update or an operational incident, never to browse
+  or extract records, and a restore is never put back into live use without first running
+  `erasure.reapply`, which reads the erase log (R2, not restored with D1) and erases again every
+  person and organisation it lists, and restores the erased-address list. Restoring a Durable
+  Object alone is not done.
+- **Exports** (`export.*` downloads, CSV), **notifications already delivered** by email or Slack,
+  and **mail in users' own mailboxes** are copies outside the deployment. An erase cannot reach
+  them; the admin handling the request must tell the people who hold them.
+- **Logs**: AI Gateway keeps metadata only for calls routed with headers (payload logging off).
+  Workers AI calls through the `AI` binding are logged with their prompts (ADR 0320,
+  Consequences). Workers Logs receive masked errors only.
+
+### Retention of short-lived stores
+What else can briefly hold an erased person's data, and for how long:
+
+| Store | Holds | Window | Where set |
+| --- | --- | --- | --- |
+| Automation events queue | record events (ids, change diffs) | until consumed; up to 5 retries, then the DLQ | `apps/runner/wrangler.jsonc` |
+| Its dead-letter queue | failed events | Cloudflare Queues' message retention (4 days by default, not yet verified for this queue); no consumer | Cloudflare |
+| Workflows instance state | an automation run's trigger and step outputs | Cloudflare's retention for completed instances (understood to be 30 days on Workers Paid, not yet verified); the readable copy, `core_automation_runs`, is redacted by erase | Cloudflare |
+| `core_automation_outbox` | unsent automation events | deleted when sent; erase drops messages that mention the subject; **dropped unsent after 7 days** (was: kept while failing) | `automations/outbox.ts` |
+| Dashboard widget cache | widget results | 60 seconds | `dashboards/cache.ts` |
+| `core_notifications`, `core_notification_delivery` | notices and delivery details | 90 days; erase deletes or clears those about the subject | `notifications/purge.ts`, `ledger.ts` |
+| `core_automation_runs` and run records | run history | 30 days (90 for failed); erase redacts | `retention.ts` |
+| `core_extension_runs` | extension run logs | 30 days (90 for errors); erase redacts | `retention.ts` |
+| `core_integration_event` | sync and webhook events | 90 days; erase scrubs | `integrations/events.ts` |
+| `core_blob_deletion`, `core_embedding_queue` | R2 keys and record ids | until drained (minutes) | ADR 0320, ADR 0154 |
+| Gatekeeper facets (vendored) | outbound mail actions, MCP actions, send history, caches | email-send journal: until decided, then a bounded failed allowance; send history: last 200; MCP actions: last 100 settled; Microsoft applied actions: 30 days; cache entries: overwritten, not swept | `UPSTREAMS.md` proposal V4 |
+
+The gatekeeper facets are the one place an erase cannot reach yet: disconnecting the connection
+deletes them, and `UPSTREAMS.md` (V4) proposes the scrub API upstream.

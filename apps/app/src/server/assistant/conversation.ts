@@ -17,6 +17,7 @@ import {
   assistantInstructions,
   type ConversationScrub,
   conversationRefs,
+  errorForLog,
   type InvocationContext,
   invokeByName,
   loadGeneralSettings,
@@ -452,7 +453,9 @@ export class AssistantConversation extends DurableObject<AssistantEnv> {
       }
     } catch (caught) {
       error = caught instanceof Error ? caught.message : "The assistant failed";
-      if (!(caught instanceof ConversationError)) console.error("assistant turn failed", caught);
+      if (!(caught instanceof ConversationError)) {
+        console.error("assistant turn failed", errorForLog(caught));
+      }
       this.#emit({ type: "error", message: error });
     }
     // An erase that arrived during the turn applies to what it is about to store.
