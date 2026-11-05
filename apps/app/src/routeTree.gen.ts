@@ -34,6 +34,7 @@ import { Route as AppOrganisationsIdRouteImport } from './routes/_app/organisati
 import { Route as AppPeopleIndexRouteImport } from './routes/_app/people/index'
 import { Route as AppPeopleIdRouteImport } from './routes/_app/people/$id'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
+import { Route as AppSettingsAdjudicatorRouteImport } from './routes/_app/settings/adjudicator'
 import { Route as AppSettingsAiRouteImport } from './routes/_app/settings/ai'
 import { Route as AppSettingsApprovalPolicyRouteImport } from './routes/_app/settings/approval-policy'
 import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
@@ -180,6 +181,11 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   path: '/settings/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsAdjudicatorRoute = AppSettingsAdjudicatorRouteImport.update({
+  id: '/settings/adjudicator',
+  path: '/settings/adjudicator',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsAiRoute = AppSettingsAiRouteImport.update({
   id: '/settings/ai',
   path: '/settings/ai',
@@ -314,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
+  '/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/settings/ai': typeof AppSettingsAiRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/settings/audit': typeof AppSettingsAuditRoute
@@ -361,6 +368,7 @@ export interface FileRoutesByTo {
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
+  '/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/settings/ai': typeof AppSettingsAiRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/settings/audit': typeof AppSettingsAuditRoute
@@ -410,6 +418,7 @@ export interface FileRoutesById {
   '/_app/dashboards/$id': typeof AppDashboardsIdRoute
   '/_app/organisations/$id': typeof AppOrganisationsIdRoute
   '/_app/people/$id': typeof AppPeopleIdRoute
+  '/_app/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/_app/settings/ai': typeof AppSettingsAiRoute
   '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/_app/settings/audit': typeof AppSettingsAuditRoute
@@ -459,6 +468,7 @@ export interface FileRouteTypes {
     | '/dashboards/$id'
     | '/organisations/$id'
     | '/people/$id'
+    | '/settings/adjudicator'
     | '/settings/ai'
     | '/settings/approval-policy'
     | '/settings/audit'
@@ -506,6 +516,7 @@ export interface FileRouteTypes {
     | '/dashboards/$id'
     | '/organisations/$id'
     | '/people/$id'
+    | '/settings/adjudicator'
     | '/settings/ai'
     | '/settings/approval-policy'
     | '/settings/audit'
@@ -554,6 +565,7 @@ export interface FileRouteTypes {
     | '/_app/dashboards/$id'
     | '/_app/organisations/$id'
     | '/_app/people/$id'
+    | '/_app/settings/adjudicator'
     | '/_app/settings/ai'
     | '/_app/settings/approval-policy'
     | '/_app/settings/audit'
@@ -770,6 +782,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/adjudicator': {
+      id: '/_app/settings/adjudicator'
+      path: '/settings/adjudicator'
+      fullPath: '/settings/adjudicator'
+      preLoaderRoute: typeof AppSettingsAdjudicatorRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/ai': {
       id: '/_app/settings/ai'
       path: '/settings/ai'
@@ -936,6 +955,7 @@ interface AppRouteChildren {
   AppDashboardsIdRoute: typeof AppDashboardsIdRoute
   AppOrganisationsIdRoute: typeof AppOrganisationsIdRoute
   AppPeopleIdRoute: typeof AppPeopleIdRoute
+  AppSettingsAdjudicatorRoute: typeof AppSettingsAdjudicatorRoute
   AppSettingsAiRoute: typeof AppSettingsAiRoute
   AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
@@ -975,6 +995,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardsIdRoute: AppDashboardsIdRoute,
   AppOrganisationsIdRoute: AppOrganisationsIdRoute,
   AppPeopleIdRoute: AppPeopleIdRoute,
+  AppSettingsAdjudicatorRoute: AppSettingsAdjudicatorRoute,
   AppSettingsAiRoute: AppSettingsAiRoute,
   AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
   AppSettingsAuditRoute: AppSettingsAuditRoute,

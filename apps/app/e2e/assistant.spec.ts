@@ -69,9 +69,7 @@ test("approves a pending change inline", async ({ page }) => {
   // Balanced: a destructive change by the assistant waits for approval.
   const pending = panel.getByTestId("assistant-pending");
   await expect(pending).toHaveAttribute("data-status", "pending");
-  await expect(panel.getByTestId("assistant-reply").last()).toContainText(
-    "waiting for approval",
-  );
+  await expect(panel.getByTestId("assistant-reply").last()).toContainText("waiting for approval");
   await pending.getByRole("button", { name: "Approve" }).click();
   await expect(pending).toHaveAttribute("data-status", "applied");
   await page.keyboard.press("Escape");

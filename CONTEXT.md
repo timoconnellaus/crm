@@ -131,7 +131,7 @@ Who initiated an operation: `human`, `assistant` (in-app AI), `mcp` (an external
 `automation`, `extension` (extension code through `codemode:crm`).
 
 **Approval pipeline**
-Gate → adjudicator → human queue, configured per org. It decides whether an operation applies
+Gate → policy adjudicator → human queue, configured per org. It decides whether an operation applies
 automatically, is denied, or waits.
 
 **Floor**
@@ -169,9 +169,29 @@ scopes they granted (`read`, `write`, `admin`). It is also the MCP session that 
 belong to. Users revoke their own in Settings → Connected apps; admins can revoke anyone's.
 _Avoid_: integration (that is a gatekeeper), token, client (when you mean the authorization)
 
-**Adjudicator**
-The optional AI reviewer (model role `review`) that judges pending changes against the org's
-**written policy**.
+**Policy adjudicator**
+The optional AI reviewer (model role `review`) that judges each pending action the gate routed to
+review against the org's **written policy**: `approve`, `deny` or `escalate`, with a confidence
+and a reason (ADR 0031, ADR 0204). Its mode is `off`, `shadow` or `active`. In active mode an
+`approve` at or above the confidence threshold is applied as the original actor and attributed to
+the adjudicator (`decided_by = adjudicator`); everything else, a `deny` included, stays for a
+person. It never approves what the **floor** or an always-reviewed operation (extension installs)
+routed to review, nor outbound, schema or extension changes. Its **verdicts** are shown to human
+approvers only, never to the actor, and every one is stored (`core_adjudication`) and audited
+(`adjudicator.verdict`).
+_Avoid_: adjudicator alone in UI copy, judge, AI approver
+
+**Shadow mode**
+The adjudicator's first mode once switched on: it judges and records verdicts, and approvers see
+them next to each item in the Approvals inbox, but it never acts. The **agreement rate** (how its
+approve and deny verdicts match people's decisions, with a verdict × decision confusion matrix, by
+day or week) shows whether to trust it. Only an admin switches it to active, and only from shadow.
+
+**Written policy**
+The org's plain-language rules the policy adjudicator judges by: what may be approved, what must be
+denied, what needs a person. Only human admins edit it (`adjudicator.setPolicy`, audited). Each
+save is a new version with a SHA-256 hash; every verdict records the version it used.
+_Avoid_: prompt, rules file
 
 **Extension**
 A unit of customisation written as code against the SDK contract (`defineObject`, `defineDashboard`,

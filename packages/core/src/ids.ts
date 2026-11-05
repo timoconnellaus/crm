@@ -41,6 +41,8 @@ export const ID_PREFIXES = {
   notificationRoute: "nrt",
   /** In-app assistant conversations (ADR 0200). */
   assistantConversation: "asc",
+  /** Policy adjudicator verdicts (ADR 0204). */
+  adjudication: "adj",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

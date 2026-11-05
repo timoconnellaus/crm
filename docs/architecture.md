@@ -314,7 +314,8 @@ Configurable per org ([ADR 0011](adr/0011-approval-pipeline.md)):
 Only human admins can change the policy. Every decision is audited.
 
 The human queue is built (stage 2, [ADR 0022](adr/0022-approval-queue-and-simulation.md),
-[ADR 0032](adr/0032-mcp-sessions-and-approval-mechanics.md)); the adjudicator comes in stage 7.
+[ADR 0032](adr/0032-mcp-sessions-and-approval-mechanics.md)); the policy adjudicator in stage 7b
+([ADR 0204](adr/0204-policy-adjudicator.md)), described at the end of this section.
 A `review` decision dry-runs the operation and records a **pending action** (diff preview,
 simulated result, dependencies, the agent's reason) in a **change set**, then returns
 `pending_approval`. The originating MCP session's reads (`get`, `list`, `search.global`,
@@ -327,6 +328,28 @@ People review in the **Approvals inbox** (`/approvals`: change sets with readabl
 reject whole or per item), with a count in the sidebar and **pending-change badges** on record
 headers and list rows (`approval.pendingForRecord`). An erase also scrubs pending actions that
 mention the erased record (ADR 0032 amendment).
+
+**Policy adjudicator** (stage 7b, [ADR 0031](adr/0031-policy-adjudicator.md),
+[ADR 0204](adr/0204-policy-adjudicator.md)). Admins set its mode (`off` / `shadow` / `active`,
+core_settings `adjudicator`), a confidence threshold and the **written policy**
+(`core_written_policy`, versioned and hashed) under Settings → Policy adjudicator, all through
+human-only `adjudicator.*` operations. The pipeline records on each pending action *why* it went to
+review (`review_source`: the preset, the floor, `alwaysReview`, or a pending dependency) and, after
+the review batch commits, calls the context's `onQueued` hook; ros-app's runs the adjudicator in
+the background (`waitUntil`), so the caller gets `pending_approval` exactly as before, and the
+10-minute cron sweeps up anything missed (ros-runner's queued actions included). With the mode off
+that is one settings read and no writes. The adjudicator asks the `review` role in JSON mode, with
+the policy and instructions as the system message and the change as fenced, escaped data
+(`judgePendingItem`), validates the reply with zod (one repair round; invalid, empty or cut off →
+`escalate`, confidence 0), and stores one verdict per action in `core_adjudication` with an
+`adjudicator.verdict` audit row. In shadow mode that is all. In active mode a valid `approve` at or
+above the threshold, for an action the preset (or a dependency) routed to review, whose risk is not
+outbound, schema or extension and whose dependencies are applied, is applied through the approval
+machinery as the original actor with `decided_by = adjudicator`; every other verdict, `deny`
+included, stays pending for a person with the reason shown. Verdicts appear beside each item in the
+Approvals inbox for people who may approve, and never in what `approval.*` or `audit.list` return
+to the assistant, MCP clients, automations or extensions. `adjudicator.agreement` (Settings) reports
+the agreement rate against people's decisions.
 
 ### MCP
 

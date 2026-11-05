@@ -6,7 +6,7 @@
 // D1 batch (one transaction). Refusals (role, actor, gate) and failures are audited separately.
 // A gate `review` dry-runs the handler and queues a pending action instead (approvals/queue.ts);
 // reads by an MCP session see its pending actions applied (approvals/simulation.ts).
-import type { AuditChangeAction, CrmDb } from "@relationship-os/db";
+import type { AuditChangeAction, CrmDb, ReviewSource } from "@relationship-os/db";
 import { checkGrant } from "@relationship-os/sdk";
 import { type Compilable, type CompiledQuery, sql } from "kysely";
 import type { AiAdmin } from "./ai/admin.ts";
@@ -142,6 +142,20 @@ export interface InvocationContext {
    * sink, and for operations that queue themselves: erase, sync).
    */
   onCommitted?: (event: CommitEvent) => void;
+  /**
+   * Called after a gate `review` committed a pending action (ADR 0204), with this context. ros-app
+   * runs the policy adjudicator on it in the background (`waitUntil`): never awaited, so the
+   * caller gets `pending_approval` exactly as before. Not called in test mode.
+   */
+  onQueued?: (event: QueuedEvent, ctx: InvocationContext) => void;
+}
+
+/** A pending action the pipeline just queued, for the post-queue hook. */
+export interface QueuedEvent {
+  actionId: string;
+  changeSetId: string;
+  operation: string;
+  reviewSource: ReviewSource;
 }
 
 /** What a committed call changed, for post-commit hooks. */
@@ -508,6 +522,14 @@ export async function invokeOperation<O extends AnyOperation>(
     op.alwaysReview === true ||
     (Array.isArray(op.alwaysReview) && op.alwaysReview.includes(ctx.actor));
   if (forced && decision === "auto" && !ctx.approval) decision = "review";
+  // What routed it to review (ADR 0204): the adjudicator never approves floor or forced reviews.
+  const reviewSource: ReviewSource = forced
+    ? "always"
+    : gate.floorDecision === "review"
+      ? "floor"
+      : gate.policyDecision === "review"
+        ? "policy"
+        : "dependency";
   // A write that refers to a record still pending creation can only be queued after it.
   const provisionalRefs = op.risk === "read" ? [] : findProvisionalIds(rawInput);
   // (Test mode reports what the gate decides: its provisional ids stand for real ones.)
@@ -630,6 +652,7 @@ export async function invokeOperation<O extends AnyOperation>(
           ...(ctx.aiAdmin ? { aiAdmin: ctx.aiAdmin } : {}),
           ...(ctx.aiEnv ? { aiEnv: ctx.aiEnv } : {}),
           ...(ctx.onCommitted ? { onCommitted: ctx.onCommitted } : {}),
+          ...(ctx.onQueued ? { onQueued: ctx.onQueued } : {}),
           ...(ctx.embedViaEvents ? { embedViaEvents: true } : {}),
           ...(ctx.events ? { events: ctx.events } : {}),
           ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
@@ -673,6 +696,7 @@ export async function invokeOperation<O extends AnyOperation>(
         now,
         expiryDays: ctx.approvalExpiryDays,
         overlay,
+        reviewSource,
         dryRun: async (): Promise<DryRunResult> => {
           const dryChanges: RecordChange[] = [];
           const dryCtx: HandlerContext = {
@@ -713,6 +737,21 @@ export async function invokeOperation<O extends AnyOperation>(
       ]);
     } catch (error) {
       return fail(error, "review");
+    }
+    if (ctx.onQueued) {
+      try {
+        ctx.onQueued(
+          {
+            actionId: queued.actionId,
+            changeSetId: queued.pending.changeSetId,
+            operation: op.name,
+            reviewSource,
+          },
+          ctx,
+        );
+      } catch (error) {
+        console.error("post-queue hook failed", op.name, error);
+      }
     }
     throw new PendingApprovalError(queued.pending);
   }

@@ -15,3 +15,11 @@ Pending actions are **simulated** so the actor can keep working (Cloudflare OS m
 - Its verdicts are hidden from the acting AI.
 - The policy matrix and the written policy are human-admin-only. Changes to them are audited operations.
 - Every decision is written to the audit log.
+
+## Amendment (2026-11-05, stage 7b, ADR 0204)
+The adjudicator is built. Two refinements: in active mode it **never rejects**: a `deny` verdict
+escalates to the human queue with its reasoning, like an escalation, and the only automatic effect
+is applying a confident `approve`. "Nothing overrides the floor" is enforced by recording why each
+pending action went to review (`review_source`); floor and always-reviewed items are never
+auto-approved, and neither are outbound, schema or extension items. It runs after the review path
+commits (a background hook plus a cron sweep), so the actor's `pending_approval` is unchanged.

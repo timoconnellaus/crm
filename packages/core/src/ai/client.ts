@@ -11,7 +11,14 @@
 // AI Gateway BYOK (no key sent at all). Nothing here reads or writes a key in D1 (ADR 0151).
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { JSONObject } from "@ai-sdk/provider";
-import { embedMany, generateText, type LanguageModel } from "ai";
+import {
+  embedMany,
+  generateText,
+  jsonSchema,
+  type LanguageModel,
+  NoObjectGeneratedError,
+  Output,
+} from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import {
   assertCapable,
@@ -39,6 +46,8 @@ export interface ModelRunResult {
   provider?: ProviderId | "fake";
   /** True when the primary failed and the fallback answered. */
   fellBack?: boolean;
+  /** Why generation stopped ("stop", "length", …), when the provider says. */
+  finishReason?: string;
 }
 
 export interface EmbedResult {
@@ -47,12 +56,22 @@ export interface EmbedResult {
   dimensions: number;
 }
 
+export interface ModelRunOptions {
+  maxTokens?: number;
+  /**
+   * Ask for a JSON object (JSON mode: `response_format: json_object` on OpenAI-compatible
+   * providers, a bare object schema on Workers AI). The reply is still text: callers parse and
+   * validate it, since JSON mode does not guarantee their shape (ADR 0204).
+   */
+  json?: boolean;
+}
+
 /** Runs model roles. Operations get one as `ctx.models` when the deployment has AI. */
 export interface ModelRunner {
   run(
     role: ModelRole,
     messages: readonly ModelMessage[],
-    options?: { maxTokens?: number },
+    options?: ModelRunOptions,
   ): Promise<ModelRunResult>;
   /** The `embed` role. */
   embed?(texts: readonly string[]): Promise<EmbedResult>;
@@ -382,6 +401,11 @@ function embeddingModel(options: ModelRunnerOptions, settings: AiAdminSettings, 
 
 const MAX_PROMPT_CHARS = 60_000;
 
+/** JSON mode with no shape: any JSON object (see ModelRunOptions.json). */
+const JSON_OBJECT_OUTPUT = Output.object({
+  schema: jsonSchema<Record<string, unknown>>({ type: "object" }),
+});
+
 /** Is this runner backed by the deterministic stand-ins? */
 function useFakes(options: ModelRunnerOptions): boolean {
   return !options.env.AI && options.env.AI_FAKE_MODEL === "true" && Boolean(options.fakes);
@@ -413,6 +437,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     ref: ModelRef & { capabilities?: ModelCapabilities },
     messages: readonly ModelMessage[],
     params: { maxTokens: number; temperature: number; thinking?: boolean | undefined },
+    json = false,
   ): Promise<ModelRunResult> => {
     if (useFakes(options) && ref.provider === "workers-ai") {
       const text = await (options.fakes as FakeModels).run(role, messages);
@@ -422,7 +447,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     // AI SDK 7 takes system text as `instructions`, the rest as messages.
     const system = messages.filter((m) => m.role === "system").map((m) => m.content);
     const providerOptions = providerBody(ref.provider, params);
-    const result = await generateText({
+    const call = generateText({
       model: languageModel(options, s, role, ref),
       ...(system.length ? { instructions: system.join("\n\n").slice(0, MAX_PROMPT_CHARS) } : {}),
       messages: messages
@@ -436,8 +461,27 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
       maxRetries: 1,
       ...(providerOptions ? { providerOptions } : {}),
       ...withHeaders(requestHeaders(options.env, ref, role)),
+      ...(json ? { output: JSON_OBJECT_OUTPUT } : {}),
     });
-    return { text: result.text.trim(), model: ref.model, provider: ref.provider };
+    try {
+      const result = await call;
+      return {
+        text: result.text.trim(),
+        model: ref.model,
+        provider: ref.provider,
+        finishReason: result.finishReason,
+      };
+    } catch (error) {
+      // JSON mode: a reply that is not a JSON object still comes back as text, for the caller to
+      // validate (and repair or reject).
+      if (!json || !NoObjectGeneratedError.isInstance(error)) throw error;
+      return {
+        text: (error.text ?? "").trim(),
+        model: ref.model,
+        provider: ref.provider,
+        ...(error.finishReason ? { finishReason: error.finishReason } : {}),
+      };
+    }
   };
 
   const embedWith = async (ref: ModelRef, texts: readonly string[]): Promise<EmbedResult> => {
@@ -500,12 +544,13 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
         ...config.params,
         maxTokens: runOptions.maxTokens ?? config.params.maxTokens,
       };
+      const json = runOptions.json === true;
       try {
-        return await generate(role, config, messages, params);
+        return await generate(role, config, messages, params, json);
       } catch (error) {
         if (!config.fallback || error instanceof AiNotConfiguredError) throw error;
         console.warn(`model role ${role}: ${config.model} failed, trying the fallback`, error);
-        const result = await generate(role, config.fallback, messages, params);
+        const result = await generate(role, config.fallback, messages, params, json);
         return { ...result, fellBack: true };
       }
     },

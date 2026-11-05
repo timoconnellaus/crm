@@ -2,6 +2,7 @@
 // (audit.listForRecord), both views over core_audit + core_audit_changes (ADR 0017, ADR 0018).
 import { sql } from "kysely";
 import { z } from "zod";
+import { VERDICT_OPERATION } from "../adjudicator/judge.ts";
 import { decodeCursor, encodeCursor, pageSchema } from "../list.ts";
 import { defineOperation } from "../operation.ts";
 import { ACTORS } from "../principals.ts";
@@ -83,6 +84,9 @@ export const auditList = defineOperation({
       .leftJoin("core_user as u", "u.id", "a.user_id")
       .selectAll("a")
       .select("u.name as user_name");
+    // Policy adjudicator verdicts are for people only (ADR 0204): an admin's MCP client or the
+    // assistant never reads them, so the actor whose work was judged cannot learn the verdicts.
+    if (ctx.actor !== "human") query = query.where("a.operation", "<>", VERDICT_OPERATION);
     if (input.userId) query = query.where("a.user_id", "=", input.userId);
     if (input.actor) query = query.where("a.actor", "=", input.actor);
     if (input.outcome) query = query.where("a.outcome", "=", input.outcome);

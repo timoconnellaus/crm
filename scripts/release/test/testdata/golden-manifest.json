@@ -239,6 +239,14 @@
       "sha256": "cdd5e527fcebdbe6450704f9996ce08fc30f2de1fc3288f25c72f294ed59cdc4"
     },
     {
+      "name": "0200_assistant_conversations.sql",
+      "sha256": "f0327029acf0cb3bfce4d838731d07cdd097aa7813738da280d0caafaa777cc2"
+    },
+    {
+      "name": "0205_policy_adjudicator.sql",
+      "sha256": "36197965e44392ad1a5bd08baa13b67f480bcb345074a2b57dd7f1472518f8f2"
+    },
+    {
       "name": "0210_daily_digest.sql",
       "sha256": "c89ba91b9d6b7436601a11bc74d78fc9d2b909369d93d8f514fd9f1fe009a988"
     }
@@ -255,6 +263,15 @@
       "usedBy": [
         "ros-app",
         "ros-runner"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "ros-app:AssistantConversation",
+      "optional": false,
+      "type": "durable_object",
+      "usedBy": [
+        "ros-app"
       ]
     },
     {
@@ -430,6 +447,11 @@
           "name": "RUNNER",
           "service": "$WORKER_NAME(ros-runner)",
           "type": "service"
+        },
+        {
+          "class_name": "AssistantConversation",
+          "name": "ASSISTANT",
+          "type": "durable_object_namespace"
         },
         {
           "name": "AUTOMATION_EVENTS",
@@ -611,7 +633,14 @@
       "dependsOn": [
         "ros-runner"
       ],
-      "durableObjectMigrations": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "AssistantConversation"
+          ],
+          "tag": "v1"
+        }
+      ],
       "mainModule": "index.js",
       "modules": [
         {
@@ -686,7 +715,7 @@
           "source": "installer"
         }
       ],
-      "sha256": "317da63e8d66ee693e66f4da698f897c9106d7f65d331d801ed632afb4884710"
+      "sha256": "d19473b6b5688936e46535c3cd83878146926bdcef9f84cd309cf2d855aa217f"
     },
     {
       "bindings": [

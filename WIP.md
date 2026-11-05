@@ -25,3 +25,12 @@ ADRs 0207–0209 spare. `CORE_SCHEMA_VERSION` = the highest migration after the 
 
 ## Next
 - see each stream's section below as it lands.
+
+## Policy adjudicator (stage-7b-adjudicator)
+Done: migration 0205 (`core_written_policy`, `core_adjudication`, `core_pending_action.review_source`),
+ADRs 0204 and 0205, `adjudicator.*` operations, the `onQueued` post-queue hook (wired in ros-app's
+`aiContextFor`), the 10-minute cron sweep, verdicts in the Approvals inbox, Settings → Policy
+adjudicator, `ModelRunner.run(..., { json: true })`, and `evals/adjudicator` (not run against a real
+model yet). Deny escalates; it never rejects. At merge: `CORE_SCHEMA_VERSION` and the release golden
+manifest (`UPDATE_GOLDEN=1`) take the highest migration; `routeTree.gen.ts` was edited by hand for
+`/settings/adjudicator` (a `vite dev` regenerates it).
