@@ -33,18 +33,72 @@ const spec = (partial: Partial<AutomationManifest>): AutomationManifest => ({
   ...partial,
 });
 
+describe("phrasing an automation as asked", () => {
+  it("says where new tasks are linked, unless they are not, or there is no trigger record", () => {
+    const task = (write: Record<string, unknown>) =>
+      automationSummary(
+        spec({
+          trigger: { type: "record", object: "organisation", on: ["created"] },
+          steps: [{ name: "createTask", writes: [{ object: "task", count: 1, ...write }] }],
+        }),
+        ctx,
+      ).text;
+    expect(task({})).toBe(
+      "When an Organisation is created, it creates a task linked to the organisation.",
+    );
+    expect(task({ linkedToTrigger: false })).toBe(
+      "When an Organisation is created, it creates a task.",
+    );
+  });
+
+  it("joins a first wait to the trigger's sentence", () => {
+    expect(
+      automationSummary(
+        spec({
+          trigger: { type: "record", object: "organisation", on: ["created"] },
+          steps: [
+            { name: "wait", kind: "sleep", duration: "2 days" },
+            { name: "createTask", writes: [{ object: "task", count: 1 }] },
+          ],
+        }),
+        ctx,
+      ).text,
+    ).toBe(
+      "When an Organisation is created, after 2 days, it creates a task linked to the organisation.",
+    );
+  });
+
+  it("compares numbers as more or less, and drops a spelled-out count from the label", () => {
+    expect(
+      automationSummary(
+        spec({
+          conditions: { field: "value", op: "gt", value: 50000 },
+          steps: [
+            {
+              name: "createTasks",
+              label: "Create two kickoff tasks",
+              writes: [{ object: "task", count: 2, linkedToTrigger: false }],
+            },
+          ],
+        }),
+        ctx,
+      ).text,
+    ).toBe("When a Deal is created, if its value is more than 50000, it creates 2 kickoff tasks.");
+  });
+});
+
 describe("Deals onboarding (the reference design)", () => {
   const won = automation("wonOnboarding");
 
   it("reads exactly as the reference summary", () => {
     expect(automationSummary(won, ctx).text).toBe(
-      "When a Deal's stage changes to a won stage, it creates 3 onboarding tasks for the deal's " +
-        "owner and notifies them. After 3 days, if any of those tasks are still open, it notifies " +
+      "When a Deal's stage changes to a won stage, it creates 3 onboarding tasks linked to the " +
+        "deal for the deal's owner and notifies them. After 3 days, if any of those tasks are still open, it notifies " +
         "the owner's manager.",
     );
     expect(html(won)).toBe(
       "When a <b>Deal</b>'s <b>stage</b> changes to a <b>won</b> stage, it creates <b>3 onboarding " +
-        "tasks</b> for the deal's <b>owner</b> and notifies them. After <b>3 days</b>, if any of " +
+        "tasks</b> linked to the deal for the deal's <b>owner</b> and notifies them. After <b>3 days</b>, if any of " +
         "those tasks are still open, it notifies the owner's <b>manager</b>.",
     );
   });
@@ -333,7 +387,7 @@ describe("every step kind and intent", () => {
       "When someone clicks <b>Escalate</b> on a <b>Deal</b>, if its <b>value</b> is at least " +
         "<b>10000</b> and (its <b>owner</b> is set or its <b>stage</b> is <b>a</b> or <b>b</b>), " +
         "it checks <b>Deals</b> and <b>People</b>, updates the <b>deal</b>, creates <b>an " +
-        "escalation task</b> for the <b>person who started it</b> and notifies them. After the " +
+        "escalation task</b> linked to the deal for the <b>person who started it</b> and notifies them. After the " +
         "<b>customer-reply</b> event (or <b>2 weeks</b> without it), if no reply yet, it deletes " +
         "<b>2 tasks</b> and runs <b>custom</b>. After <b>90 minutes</b>, it notifies user " +
         "<b>usr_1</b>.",
@@ -478,6 +532,8 @@ describe("extension proposals", () => {
       label: "Won deal → onboarding",
       trigger: "When a Deal's stage changes to a won stage",
     });
-    expect(won?.summary).toContain("it creates 3 onboarding tasks for the deal's owner");
+    expect(won?.summary).toContain(
+      "it creates 3 onboarding tasks linked to the deal for the deal's owner",
+    );
   });
 });

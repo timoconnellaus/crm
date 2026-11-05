@@ -1,6 +1,6 @@
 // Grading an automation: its test-mode report against the case's expected writes, notifications
-// and waits; its host summary against the case's keyword groups; and an LLM judge (the eval's own
-// model, Workers AI by default) that rules whether the summary states the intent, by a rubric.
+// and waits; its host summary against the case's keyword groups; and an LLM judge (the model under
+// test unless EVAL_JUDGE_MODEL names another) that rules whether the summary states the intent, by a rubric.
 import {
   type ModelClient,
   type ModelParams,
