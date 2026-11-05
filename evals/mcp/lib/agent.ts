@@ -2,6 +2,7 @@
 // client) proposes tool calls, the MCP session (behind ToolExecutor) runs them, and every call is
 // recorded for grading. The conversation is append-only: each assistant message goes back exactly
 // as it came (reasoning fields included), followed by one `tool` message per tool call.
+import { assistantDriver, runViaAssistant } from "./assistant.ts";
 import { parseResult, type ToolCallResult } from "./mcp.ts";
 import type { ChatMessage, ChatTool, ModelClient, ModelParams } from "./model.ts";
 
@@ -76,6 +77,9 @@ export function parseArguments(
 }
 
 export async function runAgent(options: RunAgentOptions): Promise<AgentRun> {
+  // EVAL_VIA=assistant (stage 7 AC 5): the deployment's in-app assistant does the work.
+  const via = assistantDriver();
+  if (via) return runViaAssistant(via, options.prompts);
   const messages: ChatMessage[] = options.system
     ? [{ role: "system", content: options.system }]
     : [];

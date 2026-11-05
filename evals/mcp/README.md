@@ -92,6 +92,29 @@ fresh database it is the first user and so an admin; otherwise it is a member, w
 `node evals/mcp/smoke.ts --base-url …` checks the plumbing without a model: sign-in, OAuth, MCP,
 tool conversion, and every task's fixture setup and outcome check against the untouched fixture.
 
+## Through the in-app assistant (stage 7 AC 5)
+
+Every eval set (`evals/{mcp,extensions,dashboards,automations}`) can run through the
+deployment's own **in-app assistant** instead of an external MCP client. Set `EVAL_VIA=assistant`:
+
+```sh
+EVAL_VIA=assistant node evals/mcp/runner.ts --base-url http://localhost:5173
+EVAL_VIA=assistant node evals/automations/runner.ts --base-url http://localhost:5173
+```
+
+The runner signs in as the eval user as usual (fixtures and checks still use their own MCP
+connections), but each task's prompts go to `POST /api/assistant/turn` as one conversation, and
+the tool calls the assistant streams back (`lib/assistant.ts`) are recorded and graded exactly as
+an MCP run's. The model is the deployment's `assistant` model role (Settings → AI, or
+`AI_MODEL_ROLES`), not `EVAL_MODEL`. The targets are each stage's own (17 of 20 here; the others'
+READMEs give theirs). Two differences: the assistant's pending actions belong to its conversation's
+change set, so checks that ask the agent's MCP session for `approval_status` see none; and under
+Balanced the assistant applies bulk writes of up to 25 records (its own policy column, ADR 0200).
+
+**No assistant report has been committed yet**: running it needs a deployment whose assistant
+role reaches a real model. Commit the four reports to each set's `reports/` with `-assistant` in
+the name when it has run.
+
 ## How a task runs
 
 - **Fixture.** Each task creates the records it needs over a separate setup connection. Names
