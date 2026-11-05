@@ -19,6 +19,7 @@ import { actionTitle, groupPreview, outboundTitle, summariseDecision } from "./d
 import { ExtensionProposal } from "./extension-proposal.tsx";
 import { decide, useRecordNames, useRefreshAfterDecision } from "./hooks.ts";
 import { OutboundPreview } from "./outbound-preview.tsx";
+import { VerdictNote } from "./verdict-note.tsx";
 
 type ChangeSet = CoreOutput<"approval.get">;
 type ChangeSetSummary = Omit<ChangeSet, "actions">;
@@ -360,6 +361,7 @@ function ActionItem({
         <p className="text-sm text-muted-foreground">
           <span className="sr-only">The agent's </span>Reason: {action.reason}
         </p>
+        {action.adjudication && <VerdictNote verdict={action.adjudication} />}
         {action.outbound ? (
           <OutboundPreview outbound={action.outbound} />
         ) : action.operation === "extension.apply" ? (

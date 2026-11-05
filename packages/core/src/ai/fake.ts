@@ -108,6 +108,13 @@ export function fakeModels(): FakeModels {
         }
         case "extract":
           return "{}";
+        case "review":
+          // The policy adjudicator's stand-in never approves: there is no real judgement here.
+          return JSON.stringify({
+            verdict: "escalate",
+            confidence: 0.5,
+            reason: "Local stand-in reviewer (no AI model): every change goes to a person.",
+          });
         default:
           return "OK";
       }
