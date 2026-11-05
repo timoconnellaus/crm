@@ -95,12 +95,19 @@ export interface DeployablePackage {
   aiGateway?: AiGatewayConfig;
 }
 
+/**
+ * Workers with a wrangler.jsonc that are not part of a deployment: the landing page
+ * (relationshiposcrm.com, ADR 0191) is deployed on its own by .github/workflows/marketing.yml.
+ */
+const NOT_RELEASED = new Set(["apps/marketing"]);
+
 /** Every wrangler.jsonc under apps/ and packages/, sorted by directory. */
 export function readDeployablePackages(root: string): DeployablePackage[] {
   const out: DeployablePackage[] = [];
   for (const parent of ["apps", "packages"]) {
     for (const name of readdirSync(join(root, parent)).sort()) {
       const dir = `${parent}/${name}`;
+      if (NOT_RELEASED.has(dir)) continue;
       const configPath = join(root, dir, "wrangler.jsonc");
       try {
         if (!statSync(configPath).isFile()) continue;
