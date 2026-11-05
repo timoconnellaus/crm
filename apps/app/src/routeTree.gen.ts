@@ -14,6 +14,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
+import { Route as AppAssistantRouteImport } from './routes/_app/assistant'
 import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppSetupRouteImport } from './routes/_app/setup'
@@ -77,6 +78,11 @@ const AppActivityRoute = AppActivityRouteImport.update({
 const AppApprovalsRoute = AppApprovalsRouteImport.update({
   id: '/approvals',
   path: '/approvals',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssistantRoute = AppAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
   getParentRoute: () => AppRoute,
 } as any)
 const AppImportRoute = AppImportRouteImport.update({
@@ -293,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
+  '/assistant': typeof AppAssistantRoute
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
   '/setup': typeof AppSetupRoute
@@ -338,6 +345,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
+  '/assistant': typeof AppAssistantRoute
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
   '/setup': typeof AppSetupRoute
@@ -386,6 +394,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/_app/activity': typeof AppActivityRoute
   '/_app/approvals': typeof AppApprovalsRoute
+  '/_app/assistant': typeof AppAssistantRoute
   '/_app/import': typeof AppImportRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/setup': typeof AppSetupRoute
@@ -435,6 +444,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/activity'
     | '/approvals'
+    | '/assistant'
     | '/import'
     | '/notifications'
     | '/setup'
@@ -480,6 +490,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/activity'
     | '/approvals'
+    | '/assistant'
     | '/import'
     | '/notifications'
     | '/setup'
@@ -527,6 +538,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/_app/activity'
     | '/_app/approvals'
+    | '/_app/assistant'
     | '/_app/import'
     | '/_app/notifications'
     | '/_app/setup'
@@ -616,6 +628,13 @@ declare module '@tanstack/react-router' {
       path: '/approvals'
       fullPath: '/approvals'
       preLoaderRoute: typeof AppApprovalsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/assistant': {
+      id: '/_app/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AppAssistantRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/import': {
@@ -904,6 +923,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppApprovalsRoute: typeof AppApprovalsRoute
+  AppAssistantRoute: typeof AppAssistantRoute
   AppImportRoute: typeof AppImportRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppSetupRoute: typeof AppSetupRoute
@@ -942,6 +962,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppApprovalsRoute: AppApprovalsRoute,
+  AppAssistantRoute: AppAssistantRoute,
   AppImportRoute: AppImportRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppSetupRoute: AppSetupRoute,

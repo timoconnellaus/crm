@@ -7,11 +7,11 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { SimilarRecordsCard } from "#/components/ai/similar-records";
 import { RecordSummaryCard } from "#/components/ai/summary";
+import { AskAiButton } from "#/components/assistant/ask-buttons";
 import {
   ManualAutomationButtons,
   RecordAutomationsCard,
 } from "#/components/automations/record-automations";
-import { AskAiButton } from "#/components/assistant/ask-buttons";
 import { EmptyState } from "#/components/empty-state";
 import { FieldsCard } from "#/components/fields/fields-card";
 import { useRecordHistory, useTimeline } from "#/components/record/adapters";

@@ -128,8 +128,8 @@ function AssistantPage() {
           <div className="mx-auto max-w-3xl">
             {conversation.items.length === 0 && !conversation.running ? (
               <p className="text-sm text-muted-foreground">
-                Ask {name} anything about your CRM, or to change it. Changes that need approval
-                show here with Approve and Reject.
+                Ask {name} anything about your CRM, or to change it. Changes that need approval show
+                here with Approve and Reject.
               </p>
             ) : (
               <Transcript

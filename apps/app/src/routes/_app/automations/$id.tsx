@@ -8,9 +8,9 @@ import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { PauseIcon, PlayIcon, PlugIcon, WorkflowIcon } from "lucide-react";
-import { AskAssistantButton } from "#/components/assistant/ask-buttons";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AskAssistantButton } from "#/components/assistant/ask-buttons";
 import { connectionSlots, connectionsBanner } from "#/components/automations/connections-model";
 import {
   type AutomationDetailData,
@@ -262,4 +262,3 @@ function ConnectionsBanner({
     </div>
   );
 }
-

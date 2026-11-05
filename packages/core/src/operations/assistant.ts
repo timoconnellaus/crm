@@ -12,28 +12,9 @@ export const conversationId = z
   .regex(/^asc_[0-9A-Za-z]{10,40}$/)
   .describe("An assistant conversation id (asc_…)");
 
-/** What the assistant was looking at: the page, a record and a list selection (ADR 0200). */
-export const assistantContextSchema = z.object({
-  path: z.string().max(500).describe("The app path the person is on, e.g. /people/per_…"),
-  title: z.string().max(200).optional().describe("The page's title"),
-  record: z
-    .object({
-      object: z.string().max(100),
-      id: z.string().max(100),
-      label: z.string().max(200).optional(),
-    })
-    .optional()
-    .describe("The record the page shows"),
-  selection: z
-    .object({
-      object: z.string().max(100),
-      ids: z.array(z.string().max(100)).min(1).max(200),
-      labels: z.array(z.string().max(200)).max(200).optional(),
-    })
-    .optional()
-    .describe("Records selected in a list"),
-});
-export type AssistantContext = z.infer<typeof assistantContextSchema>;
+import { type AssistantContext, assistantContextSchema } from "../assistant/context.ts";
+
+export { type AssistantContext, assistantContextSchema };
 
 const conversationSchema = z.object({
   id: z.string(),

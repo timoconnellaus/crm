@@ -4,8 +4,10 @@
 
 import handler from "@tanstack/react-start/server-entry";
 import { runEmbeddingCron } from "./server/ai.ts";
+
 // The in-app assistant's conversation object (ADR 0200), bound as ASSISTANT in wrangler.jsonc.
 export { AssistantConversation } from "./server/assistant/conversation.ts";
+
 import { createAppHandler } from "./server/mcp/handler.ts";
 import { runScheduledMaintenance } from "./server/purge.ts";
 

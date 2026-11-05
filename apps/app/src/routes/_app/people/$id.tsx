@@ -20,13 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@relationship-os/ui/components/dropdown-menu";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-  EllipsisIcon,
-  PlusIcon,
-  RotateCcwIcon,
-  Trash2Icon,
-  UserXIcon,
-} from "lucide-react";
+import { EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UserXIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SimilarRecordsCard } from "#/components/ai/similar-records";

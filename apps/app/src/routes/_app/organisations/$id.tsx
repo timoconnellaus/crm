@@ -36,11 +36,11 @@ import { SimilarRecordsCard } from "#/components/ai/similar-records";
 import { RecordSummaryCard } from "#/components/ai/summary";
 import { useAppCommands } from "#/components/app-commands";
 import { PendingChangesBadge } from "#/components/approvals/pending-badge";
+import { AskAiButton } from "#/components/assistant/ask-buttons";
 import {
   ManualAutomationButtons,
   RecordAutomationsCard,
 } from "#/components/automations/record-automations";
-import { AskAiButton } from "#/components/assistant/ask-buttons";
 import { EmptyState } from "#/components/empty-state";
 import { ExtensionFieldsCards } from "#/components/fields/fields-card";
 import { useEnrichAction } from "#/components/integrations/enrich-action";

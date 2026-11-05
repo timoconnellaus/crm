@@ -7,6 +7,7 @@ import type { ModelMessage } from "ai";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   AI_SETTINGS,
+  type AssistantConversationSummary,
   type AssistantEventInput,
   type AssistantTool,
   assistantInstructions,
@@ -338,26 +339,32 @@ describe("assistant.* conversation operations", () => {
   it("lists only your own conversations and refuses others'", async () => {
     const ada = await createUser("member");
     const bob = await createUser("member");
-    const started = await invokeByName(
+    const started = (await invokeByName(
       "assistant.startConversation",
       { text: "Which deals close this month?\nAnd who owns them?" },
       context(ada),
-    );
+    )) as AssistantConversationSummary;
     expect(started).toMatchObject({ title: "Which deals close this month?", turns: 0 });
     await invokeByName(
       "assistant.finishTurn",
       { id: started.id, preview: "Three deals close this month." },
       context(ada),
     );
-    const mine = await invokeByName("assistant.conversations", {}, context(ada));
+    const mine = (await invokeByName("assistant.conversations", {}, context(ada))) as {
+      conversations: AssistantConversationSummary[];
+    };
     expect(mine.conversations[0]).toMatchObject({
       id: started.id,
       turns: 1,
       preview: "Three deals close this month.",
     });
-    expect((await invokeByName("assistant.conversations", {}, context(bob))).conversations).toEqual(
-      [],
-    );
+    expect(
+      (
+        (await invokeByName("assistant.conversations", {}, context(bob))) as {
+          conversations: unknown[];
+        }
+      ).conversations,
+    ).toEqual([]);
     await expect(
       invokeByName("assistant.conversation", { id: started.id }, context(bob)),
     ).rejects.toThrow(/someone else/);
@@ -365,9 +372,13 @@ describe("assistant.* conversation operations", () => {
       invokeByName("assistant.conversations", {}, context(ada, { actor: "mcp" })),
     ).rejects.toThrow(/cannot be called by mcp/);
     await invokeByName("assistant.deleteConversation", { id: started.id }, context(ada));
-    expect((await invokeByName("assistant.conversations", {}, context(ada))).conversations).toEqual(
-      [],
-    );
+    expect(
+      (
+        (await invokeByName("assistant.conversations", {}, context(ada))) as {
+          conversations: unknown[];
+        }
+      ).conversations,
+    ).toEqual([]);
   });
 
   it("titles a conversation from its first line", () => {
@@ -379,11 +390,15 @@ describe("assistant.* conversation operations", () => {
 describe("settings: the assistant's name", () => {
   it("defaults to Assistant, can be renamed, and is never Claude", async () => {
     const admin = await createUser("admin");
-    expect((await invokeByName("settings.get", {}, context(admin))).assistantName).toBe(
-      "Assistant",
-    );
+    expect(
+      ((await invokeByName("settings.get", {}, context(admin))) as { assistantName: string })
+        .assistantName,
+    ).toBe("Assistant");
     await invokeByName("settings.update", { assistantName: "Robin" }, context(admin));
-    expect((await invokeByName("settings.get", {}, context(admin))).assistantName).toBe("Robin");
+    expect(
+      ((await invokeByName("settings.get", {}, context(admin))) as { assistantName: string })
+        .assistantName,
+    ).toBe("Robin");
     await expect(
       invokeByName("settings.update", { assistantName: "Claude" }, context(admin)),
     ).rejects.toThrow();

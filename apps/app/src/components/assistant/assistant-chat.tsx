@@ -88,12 +88,7 @@ function PendingCard({ pending, canApprove }: { pending: AssistantPending; canAp
                 <CheckIcon />
                 Approve
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => decide("reject")}
-                disabled={busy}
-              >
+              <Button size="sm" variant="outline" onClick={() => decide("reject")} disabled={busy}>
                 <XIcon />
                 Reject
               </Button>
