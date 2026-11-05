@@ -5,11 +5,18 @@ import { env } from "cloudflare:workers";
 import type { AutomationManifest } from "@relationship-os/sdk";
 import { describe, expect, it } from "vitest";
 import {
+  type ActingUser,
   type AutomationDefinition,
+  type AutomationHost,
+  type AutomationTestInput,
+  type AutomationTestReport,
   approvalTriggerSource,
   coreRegistry,
   cronMatches,
+  type InvocationContext,
+  invoke,
   memoryEventSink,
+  PendingApprovalError,
   parseCron,
   purgeAutomationRuns,
   queueEventSink,
@@ -19,7 +26,7 @@ import {
   valueMatches,
   zonedTime,
 } from "../src/index.ts";
-import { db } from "./helpers.ts";
+import { context, createUser, db, setPreset, unique } from "./helpers.ts";
 
 describe("cron", () => {
   const at = (iso: string, tz = "UTC") => zonedTime(new Date(iso), tz);
@@ -281,5 +288,164 @@ describe("retention", () => {
       "SELECT hour FROM core_automation_counters WHERE automation_id = 'r.x'",
     ).all<{ hour: string }>();
     expect(counters.results.map((r) => r.hour)).toEqual(["2026-11-04T23"]);
+  });
+});
+
+// Stage 7b: automation.test on a proposed (not yet installed) automation (ADR 0133 amendment).
+describe("automation.test on a proposal", () => {
+  const calls: AutomationTestInput[] = [];
+  let reply: Partial<AutomationTestReport> = {};
+  const fakeHost: AutomationHost = {
+    async testAutomation(input) {
+      calls.push(input);
+      return {
+        automationId: input.draft
+          ? `${input.draft.extensionId}.${input.draft.key}`
+          : (input.automationId ?? ""),
+        record: null,
+        matched: true,
+        matchReason: "This trigger has no record",
+        steps: [],
+        writes: [],
+        notifications: [],
+        approvals: [],
+        policyPreset: "balanced",
+        ok: true,
+        stored: !input.draft,
+        ...(input.draft ? { draft: input.draft } : {}),
+        ...reply,
+      };
+    },
+    startManualRun: async () => ({ runIds: [], skipped: 0 }),
+    retryRun: async (runId) => ({ runId }),
+    replayRun: async (runId) => ({ runId }),
+    cancelRun: async (runId) => ({ runId }),
+  };
+  const ctx = (user: ActingUser, overrides: Partial<InvocationContext> = {}) =>
+    context(user, { automationHost: fakeHost, ...overrides });
+  const mcp = (user: ActingUser) =>
+    ctx(user, {
+      actor: "mcp",
+      origin: { surface: "mcp", clientId: "c", clientName: "Test", sessionId: `cap_${unique()}` },
+      reason: "Draft test",
+    });
+
+  /** A pending extension.apply action with its proposal row, queued by `user` over MCP. */
+  async function proposal(user: ActingUser, commit = "c0ffee"): Promise<string> {
+    await setPreset("cautious");
+    let actionId = "";
+    try {
+      await invoke("person.create", { displayName: unique("Draft") }, mcp(user));
+    } catch (error) {
+      if (!(error instanceof PendingApprovalError)) throw error;
+      actionId = error.pending.actionId;
+    } finally {
+      await setPreset("balanced");
+    }
+    expect(actionId).toMatch(/^pac_/);
+    await env.DB.prepare(
+      "UPDATE core_pending_action SET operation = 'extension.apply', risk = 'extension' WHERE id = ?",
+    )
+      .bind(actionId)
+      .run();
+    await env.DB.prepare(
+      `INSERT INTO core_extension_proposals (action_id, extension_id, commit_oid, source, version,
+         message, diff, impact, check_result, created_by, created_at)
+       VALUES (?, 'draftx', ?, 'runtime', '1.0.0', 'm', '[]', '{}', '{"ok":true,"issues":[]}', ?, ?)`,
+    )
+      .bind(actionId, commit, user.id, new Date().toISOString())
+      .run();
+    return actionId;
+  }
+
+  it("takes exactly one of id or proposal", async () => {
+    const admin = await createUser("admin");
+    await expect(invoke("automation.test", {}, ctx(admin))).rejects.toMatchObject({
+      code: "invalid_input",
+    });
+    await expect(
+      invoke(
+        "automation.test",
+        { id: "deals.wonOnboarding", proposal: { actionId: "pac_x", key: "a" } },
+        ctx(admin),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_input" });
+  });
+
+  it("tests the proposed commit's automation while the proposal is pending", async () => {
+    const member = await createUser("member");
+    const actionId = await proposal(member, "feed01");
+    calls.length = 0;
+    const out = (await invoke(
+      "automation.test",
+      { proposal: { actionId, key: "onCreate" }, record: { object: "person", id: "per_1" } },
+      mcp(member),
+    )) as { report: AutomationTestReport };
+    expect(calls).toEqual([
+      {
+        draft: { extensionId: "draftx", commit: "feed01", key: "onCreate" },
+        record: { object: "person", id: "per_1" },
+        userId: member.id,
+      },
+    ]);
+    expect(out.report).toMatchObject({ stored: false, draft: { key: "onCreate" } });
+    // A person (who can approve) sees it too.
+    const admin = await createUser("admin");
+    await invoke("automation.test", { proposal: { actionId, key: "onCreate" } }, ctx(admin));
+  });
+
+  it("is visible like the proposal: another user's agent cannot test it", async () => {
+    const owner = await createUser("member");
+    const other = await createUser("admin");
+    const actionId = await proposal(owner);
+    await expect(
+      invoke("automation.test", { proposal: { actionId, key: "a" } }, mcp(other)),
+    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(
+      invoke("automation.test", { proposal: { actionId: "pac_missing", key: "a" } }, ctx(other)),
+    ).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  it("refuses a decided or expired proposal", async () => {
+    const admin = await createUser("admin");
+    const rejected = await proposal(admin);
+    await env.DB.prepare("UPDATE core_pending_action SET status = 'rejected' WHERE id = ?")
+      .bind(rejected)
+      .run();
+    await expect(
+      invoke("automation.test", { proposal: { actionId: rejected, key: "a" } }, ctx(admin)),
+    ).rejects.toMatchObject({ code: "invalid_input", details: { status: "rejected" } });
+    const expired = await proposal(admin);
+    await env.DB.prepare(
+      "UPDATE core_pending_action SET expires_at = '2000-01-01T00:00:00.000Z' WHERE id = ?",
+    )
+      .bind(expired)
+      .run();
+    await expect(
+      invoke("automation.test", { proposal: { actionId: expired, key: "a" } }, ctx(admin)),
+    ).rejects.toMatchObject({ code: "invalid_input", details: { status: "expired" } });
+  });
+
+  it("turns an unknown key or a failed evaluation into a typed error", async () => {
+    const admin = await createUser("admin");
+    const actionId = await proposal(admin);
+    reply = {
+      ok: false,
+      error: {
+        code: "unknown_automation",
+        message: 'The proposed draftx declares no automation "nope"',
+      },
+    };
+    try {
+      await expect(
+        invoke("automation.test", { proposal: { actionId, key: "nope" } }, ctx(admin)),
+      ).rejects.toMatchObject({
+        code: "invalid_input",
+        message: expect.stringMatching(/no automation "nope"/),
+        details: { code: "unknown_automation", key: "nope" },
+      });
+    } finally {
+      reply = {};
+    }
   });
 });

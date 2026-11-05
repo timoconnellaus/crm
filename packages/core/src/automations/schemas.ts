@@ -144,10 +144,32 @@ export const AUTOMATION_OPERATION_SCHEMAS = {
     output: automationDetailSchema,
   },
   "automation.test": {
-    input: z.object({
-      id: automationIdSchema,
-      record: z.object({ object: z.string(), id: z.string() }).optional(),
-    }),
+    input: z
+      .object({
+        /** An installed automation. */
+        id: automationIdSchema.optional(),
+        /**
+         * A proposed (not yet installed) automation: the extension.apply pending action that
+         * extension.propose queued, and the automation's key in that extension (ADR 0133).
+         */
+        proposal: z
+          .object({
+            actionId: z
+              .string()
+              .startsWith("pac_")
+              .max(64)
+              .describe("The extension.apply pending action id (pac_…) from extension.propose"),
+            key: z
+              .string()
+              .regex(/^[a-z][a-zA-Z0-9]{0,39}$/)
+              .describe("The automation's key in the proposed extension's automations"),
+          })
+          .optional(),
+        record: z.object({ object: z.string(), id: z.string() }).optional(),
+      })
+      .refine((v) => Boolean(v.id) !== Boolean(v.proposal), {
+        message: "Pass exactly one of id (an installed automation) or proposal (a proposed one)",
+      }),
     /** AutomationTestReport (types.ts). */
     output: z.object({ report: z.unknown() }),
   },

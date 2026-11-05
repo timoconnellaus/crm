@@ -13,6 +13,7 @@ import {
   type CodeCaller,
   type CodeResult,
   type EvaluateResult,
+  extensionPrincipalId,
   newId,
   type RunToolInput,
   type RunToolResult,
@@ -89,6 +90,12 @@ export interface RunAutomationInput {
   commit: string;
   request: AutomationRunRequest;
   automation: AutomationRunContext;
+  /**
+   * Test mode for a proposed (not yet installed) automation (ADR 0133, stage 7b): run `commit`
+   * with this evaluated manifest's permissions under the extension's principal, instead of the
+   * installed row's. Only with `automation.simulate` (nothing is written).
+   */
+  draft?: { manifest: ExtensionManifest };
 }
 
 /** Automation step failures that retrying cannot fix: the Workflow stops at once. */
@@ -380,12 +387,30 @@ export class Executor {
    */
   async runAutomation(input: RunAutomationInput): Promise<AutomationExecution> {
     const db = createCrmDb(this.#env.DB).query;
-    const row = await db
-      .selectFrom("core_extensions as e")
-      .innerJoin("core_user as u", "u.id", "e.user_id")
-      .select(["e.status", "e.manifest", "e.failure_count", "u.id as user_id", "u.email", "u.name"])
-      .where("e.id", "=", input.extensionId)
-      .executeTakeFirst();
+    const draft = input.draft && input.automation.simulate ? input.draft : null;
+    const row = draft
+      ? {
+          // The principal installExtension creates (it may not exist yet; nothing is written).
+          status: "active" as const,
+          manifest: JSON.stringify(draft.manifest),
+          failure_count: 0,
+          user_id: extensionPrincipalId(input.extensionId),
+          email: `${input.extensionId}@extensions.crm.invalid`,
+          name: draft.manifest.label ?? input.extensionId,
+        }
+      : await db
+          .selectFrom("core_extensions as e")
+          .innerJoin("core_user as u", "u.id", "e.user_id")
+          .select([
+            "e.status",
+            "e.manifest",
+            "e.failure_count",
+            "u.id as user_id",
+            "u.email",
+            "u.name",
+          ])
+          .where("e.id", "=", input.extensionId)
+          .executeTakeFirst();
     if (row?.status !== "active") {
       return {
         response: {

@@ -248,7 +248,8 @@ How stage 5 runs automations ([ADR 0130](adr/0130-automation-runtime.md), test m
   Workflow waits for the decision (approval resumes, rejection follows `onRejected`, expiry ends
   the run `expired`).
 - **Test mode.** One executor call with `InvocationContext.simulate`: gates recorded, writes
-  dry-run into an in-memory overlay, nothing written, no events.
+  dry-run into an in-memory overlay, nothing written, no events. A proposed automation is tested
+  at its proposed commit with `proposal { actionId, key }` (stage 7b; report not stored).
 - **Operations.** `automation.list/get/test/enable/disable/runs/run/retry/replay/cancel/explain/
   killSwitch/settings/updateSettings` (`packages/core/src/operations/automation.ts`); ros-app
   reaches the runner's `AutomationHost` RPC for test, run, retry, replay and cancel.

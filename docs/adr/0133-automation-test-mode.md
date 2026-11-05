@@ -45,3 +45,23 @@ match what the real run then does.
   appear with their ids and titles but without every computed field.
 - The same dry-run path backs the approval queue, so a change to how a handler previews applies to
   both.
+
+> Amended 2026-11-05 (stage 7b): **draft tests.** `automation.test` also takes a proposed, not yet
+> installed automation: `{ proposal: { actionId, key }, record? }` instead of `{ id, record? }`
+> (exactly one). `actionId` is the `extension.apply` pending action `extension.propose` queued;
+> the core handler reads `core_extension_proposals` for its extension and commit, only while the
+> action is `pending` (not expired), and visible as `approval.get` is (people see every proposal,
+> other actors only their own). ros-runner's `testAutomation({ draft: { extensionId, commit, key
+> } })` evaluates the manifest at that commit (the evaluation check and install use, cached by
+> source hash), takes `automations[key]` and runs the same test-mode path at that commit
+> (`LOADER.get` with the stable tool worker id, ADR 0043), with the draft manifest's permissions
+> under the extension's principal. The report says `draft` and `stored: false`: a draft's test run
+> is **not stored**, since there is no automation page for it (and an installed older version's
+> page must not show it). An unknown key (`unknown_automation`) or a commit that does not evaluate
+> (`evaluate_failed`) is an `invalid_input` error naming the cause; a decided or expired proposal
+> is `invalid_input` with its status. One extra write: the extension's principal user row
+> (`extension:<id>`, kind `extension`), created if missing exactly as install would, because
+> operations check their caller and default assignee exist. The assistant shows the report next to
+> the proposal before an approver approves it. Objects a draft adds are not reconciled until
+> install, so a draft automation that reads or writes its own new objects or fields can fail at that
+step in the test.
