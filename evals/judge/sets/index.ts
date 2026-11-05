@@ -2,6 +2,14 @@
 // in a file of their own beside this one, before the placement ships.
 import type { PlacementSet } from "../lib/calibrate.ts";
 import { authoringIntentSet } from "./authoring-intent.ts";
+import { outboundMessageSet } from "./outbound-message.ts";
+import { summaryStatementsSet } from "./summary-statements.ts";
+import { widgetShapeSet } from "./widget-shape.ts";
 
 // biome-ignore lint/suspicious/noExplicitAny: each set has its own state and answer types; the runner only passes them through.
-export const SETS: PlacementSet<any, any>[] = [authoringIntentSet];
+export const SETS: PlacementSet<any, any>[] = [
+  authoringIntentSet,
+  summaryStatementsSet,
+  outboundMessageSet,
+  widgetShapeSet,
+];
