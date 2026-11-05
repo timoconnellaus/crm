@@ -378,7 +378,7 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
 - **Providers**: Workers AI (the binding) and, optionally, OpenAI, Google AI Studio, OpenRouter,
   DeepSeek, Anthropic, Jev and any OpenAI-compatible endpoint, each through the gateway's
   provider path (`…/{gateway}/deepseek/…`). A deployment can pick a **model role preset**
-  (`create-crm --model-roles deepseek-flash`), stored as its `AI_MODEL_ROLES` in the deployment
+  (`create-relationship-os --model-roles deepseek-flash`), stored as its `AI_MODEL_ROLES` in the deployment
   state, and `AI_GATEWAY_BYOK` says which providers' keys the gateway holds
   ([ADR 0192](adr/0192-deepseek-provider-and-model-role-presets.md)). The shipped defaults stay
   on Workers AI.
