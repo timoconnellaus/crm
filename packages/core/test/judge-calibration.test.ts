@@ -11,12 +11,15 @@ import {
   INTENT_THRESHOLDS,
   type IntentQuestionId,
   JEV_MODEL,
+  OUTBOUND_CALIBRATED,
   questionHash,
+  SHAPE_CALIBRATED,
+  STATEMENTS_CALIBRATED,
 } from "../src/index.ts";
 
 /** Every calibrated question of every built placement, by calibration key. */
-const ALL: Record<string, { question: Parameters<typeof questionHash>[0]; threshold: number }> =
-  Object.fromEntries(
+const ALL: Record<string, { question: Parameters<typeof questionHash>[0]; threshold: number }> = {
+  ...Object.fromEntries(
     Object.entries(CALIBRATED_QUESTIONS).map(([key, question]) => [
       key,
       {
@@ -24,7 +27,19 @@ const ALL: Record<string, { question: Parameters<typeof questionHash>[0]; thresh
         threshold: INTENT_THRESHOLDS[key.split("/")[1] as IntentQuestionId],
       },
     ]),
-  );
+  ),
+  ...STATEMENTS_CALIBRATED,
+  ...OUTBOUND_CALIBRATED,
+  ...SHAPE_CALIBRATED,
+};
+
+/** Fewest cases a question's labelled set may have (docs/jev.md, "Thresholds and calibration"). */
+const MIN_CASES: Record<string, number> = {
+  "summary.statements/statement": 40,
+  "outbound.message/part": 30,
+  "outbound.message/recipients": 10,
+};
+const minCases = (key: string) => MIN_CASES[key] ?? (key.startsWith("widget.shape/") ? 24 : 25);
 
 describe("calibration records", () => {
   it.each(Object.keys(ALL))(
@@ -40,7 +55,7 @@ describe("calibration records", () => {
       expect(record?.threshold).toBe(entry.threshold);
       expect(record?.wrong).toBe(0);
       expect(record?.unanswered).toBe(0);
-      expect(record?.cases).toBeGreaterThanOrEqual(25);
+      expect(record?.cases).toBeGreaterThanOrEqual(minCases(key));
     },
   );
 

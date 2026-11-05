@@ -33,6 +33,11 @@ export interface SummaryInput {
   facts: string[];
   /** Record ids the facts came from (erase deletes summaries that used them). */
   sources: string[];
+  /**
+   * The facts the judge checks the summary against (`summary.statements`), when they differ from
+   * `facts`: a change set's without the agent's reasons, which are never the judge's evidence.
+   */
+  judgeFacts?: string[];
 }
 
 export interface CachedSummary {
@@ -40,6 +45,8 @@ export interface CachedSummary {
   model: string;
   createdAt: string;
   fresh: boolean;
+  /** The judge's check, stored when it was generated (`summary.statements`), or null. */
+  checks: string | null;
 }
 
 const MAX_FACT_CHARS = 600;
@@ -375,6 +382,7 @@ export async function changeSetSummaryInput(
     .execute();
   if (!actions.length) throw new NotFoundError("change set", changeSetId);
   const facts: string[] = [];
+  const judgeFacts: string[] = [];
   const sources: string[] = [];
   for (const a of actions) {
     let preview: {
@@ -407,8 +415,16 @@ export async function changeSetSummaryInput(
         `${a.operation} [${a.status}]${a.reason ? ` because "${a.reason}"` : ""}: ${changes || "no record changes"}`,
       ),
     );
+    judgeFacts.push(fact(`${a.operation} [${a.status}]: ${changes || "no record changes"}`));
   }
-  return { kind: "changeset", subjectType: "change_set", subjectId: changeSetId, facts, sources };
+  return {
+    kind: "changeset",
+    subjectType: "change_set",
+    subjectId: changeSetId,
+    facts,
+    sources,
+    judgeFacts,
+  };
 }
 
 const INSTRUCTIONS: Record<SummaryKind, string> = {
@@ -449,7 +465,7 @@ export async function readCachedSummary(
 ): Promise<CachedSummary | null> {
   const row = await db
     .selectFrom("core_ai_summary")
-    .select(["text", "model", "created_at", "input_hash"])
+    .select(["text", "model", "created_at", "input_hash", "checks"])
     .where("kind", "=", input.kind)
     .where("subject_type", "=", input.subjectType)
     .where("subject_id", "=", input.subjectId)
@@ -461,6 +477,7 @@ export async function readCachedSummary(
     model: row.model,
     createdAt: row.created_at,
     fresh: row.input_hash === hash,
+    checks: row.checks ?? null,
   };
 }
 
@@ -472,6 +489,8 @@ export async function storeSummaryStatement(
   answer: { text: string; model: string },
   now: string,
   userId: string,
+  /** The judge's check (`summary.statements`), JSON, or null when the judge did not run. */
+  checks: string | null = null,
 ) {
   const hash = await summaryHash(input, hashModel);
   const values = {
@@ -484,6 +503,7 @@ export async function storeSummaryStatement(
     sources: JSON.stringify([...new Set(input.sources)].slice(0, 500)),
     created_at: now,
     created_by: userId,
+    checks,
   };
   return db
     .insertInto("core_ai_summary")
@@ -496,6 +516,7 @@ export async function storeSummaryStatement(
         sources: values.sources,
         created_at: values.created_at,
         created_by: values.created_by,
+        checks: values.checks,
       }),
     );
 }

@@ -11,6 +11,9 @@
     "./adjudicator-review": "./src/adjudicator/review.ts",
     "./judge": "./src/judge/index.ts",
     "./judge-authoring-intent": "./src/judge/questions/authoring-intent.ts",
+    "./judge-summary-statements": "./src/judge/questions/summary-statements.ts",
+    "./judge-outbound-message": "./src/judge/questions/outbound-message.ts",
+    "./judge-widget-shape": "./src/judge/questions/widget-shape.ts",
     "./adjudicator-agreement": "./src/adjudicator/agreement.ts",
     "./cron": "./src/automations/cron.ts"
   },

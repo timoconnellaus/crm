@@ -18,6 +18,7 @@
       "!**/*.md",
       "!docs/stages/assets",
       "!scripts/release/test/testdata",
+      "!evals/judge/recordings",
       "!packages/gatekeeper-interface/src",
       "!packages/gatekeeper-interface/testing",
       "!packages/gatekeeper-observability/src",

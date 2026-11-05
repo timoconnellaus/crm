@@ -83,3 +83,13 @@ fresh install" could only be done by an admin clicking after every install.
 - The user's deployment must set `JUDGE_PLACEMENTS` once (`docs/deploying.md`).
 - Turning a fail-closed placement off loosens approval, so `judge.update` is human-admin-only,
   not on MCP, and audited.
+
+> Amended 2026-11-05 (stage 11 steps 6, 7 and 9): the first record-content placements
+> (`summary.statements`, ADR 0237; `outbound.message`, ADR 0238) are built, so the hosted rule is
+> now code: `resolvePlacements(…, { hosted })` keeps every switchable placement that sends record
+> content off (source `fixed`) where `AI_PLATFORM_GATEWAY_ID` is set, whatever the deploy and admin
+> layers say, until `HOSTED_RECORD_CONTENT_ALLOWED` in `judge/settings.ts` is flipped with the zero
+> retention record in `docs/saas-go-live.md`. The user's deployment value is unchanged:
+> `JUDGE_PLACEMENTS='{"summary.statements":true,"outbound.message":true,"sync.jobChange":true}'`
+> on both ros-app (summaries) and ros-runner (outbound messages); `sync.jobChange` is inert until
+> step 8 is built.

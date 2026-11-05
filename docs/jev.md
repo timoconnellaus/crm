@@ -10,8 +10,10 @@ build is [stage 11](stages/11-jev.md).
 **Status:** written on 5 November 2026 as a design, and partly built the same day (stage 11 build
 steps 1 to 3): the seam (`packages/core/src/judge/`), its settings and operations, the Jev client,
 the calibration harness (`evals/judge`), and placement 1, `authoring.intent`, calibrated live
-with the automations eval grading through the same questions. Placements 2 to 6 and Settings → AI's
-Judge section are still to come (steps 5 to 10); where this guide describes them, it is the plan.
+with the automations eval grading through the same questions. A second build the same day added
+placements 3, 4 and 6 (`summary.statements`, `outbound.message`, `widget.shape`; ADRs 0237 to 0239),
+each calibrated live. Placements 2 and 5 and Settings → AI's Judge section are still to come
+(steps 5, 8 and 10); where this guide describes them, it is the plan.
 It draws on the Jev placement guide in `channel-manager` (`docs/jev.md` there, about 1,570 measured
 calls and 30 labelled sets), the Jev skill (a snapshot for Jev 1.13 and 1.14 and
 `@typesafe-ai/sdk` 0.7.0), our own code, the automations eval report of 5 November 2026, and live
@@ -278,6 +280,14 @@ approver reading a change-set summary decides from it.
   written with a "Not checked" mark. A **change-set summary fails closed**: the approver sees the
   diff with "The summary could not be checked", and not the summary. An approver must not decide
   from words nothing read.
+- **As built** ([ADR 0237](adr/0237-summary-statements-placement.md),
+  `questions/summary-statements.ts`): in `summary.generate` for record, meeting and change-set
+  summaries; the timeline's one-liners (`summary.activities`) are not checked. `state` is
+  `{ today, facts, summary: { s1, s2, … } }`, and each question names its statement by key. A
+  change set's facts leave out the agent's reasons (lesson 5), so a summary that gives a reason as
+  fact loses that statement. The flag reads "Some statements were removed: N statements said things
+  the records do not." A withheld change-set summary is not stored, so the next request tries
+  again. Calibrated with 55 statements, none wrong or close; threshold 0.5.
 
 ### 4. `outbound.message`: a model-written message before it leaves
 
@@ -301,6 +311,17 @@ Autonomous, the assistant's and MCP clients' outbound actions are `auto`.
   Jev can only make an outbound action wait; it never lets one through.
 - **If Jev fails:** closed. An action that was going to leave unreviewed waits for a person
   instead, with "The message could not be checked".
+- **As built** ([ADR 0238](adr/0238-outbound-message-placement.md),
+  `questions/outbound-message.ts`, `integrations/outbound-check.ts`): in `submitOutbound`, before
+  anything is written, in both cases (`auto` and `review`), so the findings go in the insert that
+  writes the pending action (`outbound_check`). Code reads the message from the gatekeeper's
+  literal fields (body, subject, recipients; no body means no message), matches recipients to
+  people by email, and takes facts from up to three records (the recipients, then records the
+  message names). The parts are the subject and each body sentence (`message.body.m3`); `asked`
+  reaches the queue as `IntegrationCaller.request` from `integration.call` (Code Mode does not pass
+  it yet). Human approvers see the findings; the AI that wrote the message does not. Calibrated with
+  39 parts and 12 recipient cases, none wrong or close; thresholds 0.35 (parts) and 0.5
+  (recipients).
 
 ### 5. `sync.jobChange`: does a new signature mean a new employer?
 
@@ -333,6 +354,13 @@ A real eval failure: a bar chart where the question asked for one number. `widge
   the widget does not match goes back to the model in the existing retry, as a validation error
   naming the shape asked for. The pick is also passed to the model as a hint in its prompt.
 - **If Jev fails:** open. The widget is generated as now.
+- **As built** ([ADR 0239](adr/0239-widget-shape-placement.md), `questions/widget-shape.ts`): the
+  labels are shapes, each with the widget types that can show it (`kpi`; `categories`: bar, donut,
+  funnel, leaderboard, table; `trend`: line, bar, table; `rows`: table, leaderboard; `text`:
+  markdown; `unclear`), so only a type that cannot show the shape is a mismatch. A pick is the top
+  shape at P ≥ 0.4. The retry happens once; the second answer stands, and a valid first widget is
+  kept if the retry is invalid. Calibrated with 30 prompts, every dashboards eval prompt verbatim
+  (`people-this-month`: P(kpi) 0.98), none wrong or close.
 
 ### 7. `eval.*`: graders
 
@@ -430,6 +458,25 @@ shown as the highest "below" median → the lowest "above" median):
 | `authoring.intent/recipients` | 0.5 | 0.19 → 0.93 | none |
 | `authoring.intent/unrequested_assignment` | 0.5 | 0.06 → 0.70 | none |
 | `authoring.intent/missing_element` | 0.45 | 0.38 → 0.45 | a missing wait (0.45, above); an unrequested "open deals" condition (0.38, below) |
+
+Steps 6, 7 and 9 (the same day, jev-1.14.0, three runs a case, none wrong; reports
+`evals/judge/reports/2026-11-05T11-1*.md`):
+
+| Question | Threshold | Gap | Close calls |
+| --- | --- | --- | --- |
+| `summary.statements/statement` (P(adds + contradicts)) | 0.5 | 0.22 → 1.00 | none |
+| `outbound.message/part` (P(promises + unsupported)) | 0.35 | 0.16 → 0.51 | none |
+| `outbound.message/recipients` (P(someone_else)) | 0.5 | 0.03 → 0.82 | none |
+| `widget.shape/<shape>` (P(shape), five records) | 0.4 | at worst 0.24 → 0.62 | none |
+
+The first runs of these sets found three things, fixed before the recorded run: two cases shared a
+name (a slug of six words), so their answers were pooled; a planted note that itself *asserted* a
+fact ("including that she signed the contract") was read as that fact, which is right, since it is
+in the records, so the planted note now only instructs; and a summary statement that mixed a fact
+with advice ("due today and should be ready for the meeting") sat on the boundary. The outbound
+part threshold sits low (0.35) because a sent promise costs more than a wait, and the faults that
+matter most landed between 0.51 and 0.64 ("we can also include the 10% discount you asked for",
+"as agreed, the renewal price stays at 48,000"), so they are the boundary to watch in logs.
 
 The weak spot is a missing wait ("wait 2 days and then …" with no wait step): it reads partly as a
 different trigger and only just as missing. A close call counts as neither right nor wrong, so the
@@ -538,7 +585,8 @@ model call.
   probabilities, never evidence, so an erase has nothing extra to scrub. Gateway log retention is
   the deployment's setting.
 - **Data residency** (decided 5 November 2026, ADR 0232): the user's own deployment turns the
-  record-content placements on (`JUDGE_PLACEMENTS`); fresh installs leave them off. For the SaaS
+  record-content placements on (`JUDGE_PLACEMENTS`); fresh installs leave them off. On a hosted
+  deployment the code keeps them off whatever the layers say (`HOSTED_RECORD_CONTENT_ALLOWED`). For the SaaS
   (stage 10), where TypeSafe becomes our sub-processor, zero data retention is requested from
   TypeSafe before any tenant can turn them on (`docs/saas-go-live.md`).
 

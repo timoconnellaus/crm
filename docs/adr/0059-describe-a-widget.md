@@ -31,3 +31,9 @@ Status: accepted, 2026-11-05 (stage 4a build). Applies ADR 0009.
 `modelRunnerFromEnv` now builds the registry-backed runner: the `build` role resolves through
 shipped defaults, deploy config and Settings → AI overrides, with a fallback, through AI Gateway.
 `AI_FAKE_MODEL=true` answers every role locally, not just `build` (ADR 0156).
+
+## Amendment, 2026-11-05 (stage 11 step 9, [ADR 0239](0239-widget-shape-placement.md))
+When the judge has a key, `widget.describe` first asks it which shape the prompt wants (placement
+`widget.shape`). A confident pick is a hint in the prompt, and a valid widget whose type cannot
+show it goes back once through the same retry, naming the shape; the second answer stands, and a
+first valid widget is kept if the retry is invalid. Without a pick nothing changes.

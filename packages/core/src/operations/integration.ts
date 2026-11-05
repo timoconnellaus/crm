@@ -963,6 +963,7 @@ export const integrationCall = defineOperation({
         origin: ctx.origin,
         grantedPermissions: ctx.grantedPermissions,
         reason: ctx.reason,
+        ...(ctx.personsWords ? { request: ctx.personsWords } : {}),
       },
     });
     return JSON.parse(JSON.stringify(result)) as {

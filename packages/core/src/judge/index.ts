@@ -16,6 +16,10 @@ export * from "./questions.ts";
 export * from "./settings.ts";
 export * from "./types.ts";
 
+/** A hosted (SaaS) deployment: record-content placements stay off there (ADR 0232). */
+export const isHostedJudge = (env: JudgeEnv): boolean =>
+  Boolean(env.AI_PLATFORM_GATEWAY_ID?.trim());
+
 export interface JudgeForOptions {
   /**
    * Loads the admin layer (one primary-key D1 read), at most once per judge, and only when a
@@ -52,7 +56,9 @@ export function judgeFor(env: JudgeEnv, options: JudgeForOptions = {}): Judge {
     settings ??= (options.loadSettings?.() ?? Promise.resolve(EMPTY_JUDGE_SETTINGS)).catch(
       () => EMPTY_JUDGE_SETTINGS,
     );
-    return resolvePlacements(env.JUDGE_PLACEMENTS, await settings)[placement].on;
+    return resolvePlacements(env.JUDGE_PLACEMENTS, await settings, { hosted: isHostedJudge(env) })[
+      placement
+    ].on;
   };
   return {
     provider: "jev",

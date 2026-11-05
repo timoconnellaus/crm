@@ -823,6 +823,8 @@ export interface CorePendingActionTable {
   action_kind: Defaulted<string | null>;
   /** Migration 0205 (ADR 0204): why the gate routed it to review; null: never auto-approved. */
   review_source: Defaulted<ReviewSource | null>;
+  /** Migration 0256 (ADR 0238): the judge's check of an outbound message (outbound.message). */
+  outbound_check: Defaulted<string | null>;
 }
 
 export interface CorePendingActionRecordsTable {
@@ -1117,6 +1119,8 @@ export interface CoreAiSummaryTable {
   sources: string;
   created_at: string;
   created_by: string | null;
+  /** Migration 0255 (ADR 0237): the judge's check of the summary (summary.statements), JSON. */
+  checks: Defaulted<string | null>;
 }
 
 /** One embedded record: the hash of the embedded text (migration 0150, ADR 0154). */

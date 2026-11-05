@@ -39,6 +39,25 @@ export function AiGeneratedBadge({ className }: { className?: string }) {
 }
 
 /**
+ * The judge's mark under a summary (`summary.statements`, ADR 0237): how many statements were
+ * removed because the records do not say them, "Not checked" when the judge could not answer, or
+ * a withheld change-set summary. Nothing when the judge is off.
+ */
+export function SummaryCheckNote({ summary }: { summary: Summary | undefined }) {
+  const check = summary?.check;
+  if (!check) return null;
+  const tone =
+    check.status === "checked" && check.removed === 0
+      ? "text-muted-foreground"
+      : "text-amber-700 dark:text-amber-400";
+  return (
+    <p className={cn("text-xs", tone)} data-testid="summary-check" data-check={check.status}>
+      {check.message}
+    </p>
+  );
+}
+
+/**
  * The cached summary of `subject` (summary.get, no model call) and `generate` (summary.generate),
  * which writes its result straight into the cached query rather than refetching everything a
  * write would.
@@ -98,6 +117,7 @@ export function SummaryBody({
           <p className="text-sm whitespace-pre-line" data-testid="summary-text">
             {text}
           </p>
+          <SummaryCheckNote summary={summary} />
           {summary?.generatedAt && (
             <p className="text-xs text-muted-foreground">
               {formatDateTime(summary.generatedAt)}
@@ -154,6 +174,7 @@ export function ChangeSetExplanation({ changeSetId }: { changeSetId: string }) {
           <p className="text-sm whitespace-pre-line" data-testid="summary-text">
             {text}
           </p>
+          <SummaryCheckNote summary={summary} />
           {summary?.status === "stale" && (
             <p className="text-xs text-amber-700 dark:text-amber-400">
               Stale — the changes moved on since this was written.
@@ -161,6 +182,7 @@ export function ChangeSetExplanation({ changeSetId }: { changeSetId: string }) {
           )}
         </div>
       )}
+      {!text && summary?.check?.status === "withheld" && <SummaryCheckNote summary={summary} />}
       {(!text || summary?.status === "stale") && summary?.status !== "unavailable" && (
         <div>
           <Button

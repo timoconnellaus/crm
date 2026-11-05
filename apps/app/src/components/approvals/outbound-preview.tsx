@@ -6,7 +6,7 @@
 import type { CoreOutput } from "@relationship-os/core";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { cn } from "@relationship-os/ui/lib/utils";
-import { SendIcon } from "lucide-react";
+import { SendIcon, ShieldAlertIcon } from "lucide-react";
 import { Markdown } from "../markdown.tsx";
 
 export type Outbound = NonNullable<CoreOutput<"approval.get">["actions"][number]["outbound"]>;
@@ -49,9 +49,40 @@ export function OutboundPreview({ outbound }: { outbound: Outbound }) {
           ))}
         </dl>
       )}
+      {outbound.check && <OutboundCheckNote check={outbound.check} />}
       {!outbound.implementsRevert && (
         <p className="text-xs text-muted-foreground">Once applied, this cannot be undone.</p>
       )}
+    </div>
+  );
+}
+
+/**
+ * The judge's check of a model-written message (`outbound.message`, ADR 0238), for the approver:
+ * lines written by code, and whether the check is why it waits.
+ */
+function OutboundCheckNote({ check }: { check: NonNullable<Outbound["check"]> }) {
+  const flagged = check.status === "unchecked" || check.findings > 0;
+  return (
+    <div
+      className={cn(
+        "grid gap-1 rounded-sm border px-2 py-1.5 text-xs",
+        flagged
+          ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+          : "text-muted-foreground",
+      )}
+      data-testid="outbound-check"
+      data-check={check.status}
+    >
+      {check.held && (
+        <p className="flex items-center gap-1 font-medium">
+          <ShieldAlertIcon className="size-3.5" aria-hidden />
+          Held for review: it would have been sent automatically.
+        </p>
+      )}
+      {check.lines.map((line) => (
+        <p key={line}>{line}</p>
+      ))}
     </div>
   );
 }

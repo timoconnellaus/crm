@@ -18,6 +18,12 @@ import {
   summaryMessages,
 } from "../ai/summaries.ts";
 import { ConfigError, OperationError } from "../errors.ts";
+import {
+  checkSummary,
+  parseSummaryCheck,
+  type SummaryCheck,
+  summaryCheckMessage,
+} from "../judge/questions/summary-statements.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import { searchHitSchema } from "./search.ts";
 
@@ -38,6 +44,21 @@ const subjectSchema = z.discriminatedUnion("kind", [
 ]);
 type Subject = z.infer<typeof subjectSchema>;
 
+/**
+ * The judge's check of the summary (`summary.statements`, ADR 0237), or null when it did not run
+ * (no key, switched off, or written before it existed). `withheld`: a change-set summary that
+ * could not be checked, so the approver reads the diff instead of words nothing read.
+ */
+const summaryCheckOutput = z
+  .object({
+    status: z.enum(["checked", "unchecked", "withheld"]),
+    /** Statements removed because the records do not say them. */
+    removed: z.number().int(),
+    /** What to show beside the summary, written by code. */
+    message: z.string(),
+  })
+  .nullable();
+
 const summaryOutput = z.object({
   status: z.enum(["fresh", "stale", "missing", "unavailable"]),
   text: z.string().nullable(),
@@ -46,7 +67,16 @@ const summaryOutput = z.object({
   /** Always true: the UI labels the text "AI-generated". */
   aiGenerated: z.literal(true),
   message: z.string().nullable(),
+  check: summaryCheckOutput.default(null),
 });
+
+function checkView(check: SummaryCheck | null): z.infer<typeof summaryCheckOutput> {
+  const message = summaryCheckMessage(check);
+  return check && message ? { status: check.status, removed: check.removed.length, message } : null;
+}
+
+const WITHHELD =
+  "The summary could not be checked against the records, so it is not shown: review the changes below.";
 
 const NOT_CONFIGURED = "AI is not configured for this deployment (docs/deploying.md)";
 
@@ -90,6 +120,7 @@ export const summaryGet = defineOperation({
       generatedAt: cached?.createdAt ?? null,
       aiGenerated: true as const,
       message: status === "unavailable" ? NOT_CONFIGURED : null,
+      check: checkView(parseSummaryCheck(cached?.checks)),
     };
   },
 });
@@ -99,7 +130,9 @@ export const summaryGenerate = defineOperation({
   description:
     "Generate (or regenerate) the AI summary of a person, organisation or deal, a meeting's " +
     "prep brief, or a change set's description with the summarise model role, and cache it. " +
-    "Returns the cached one without a model call when it is still fresh.",
+    "Returns the cached one without a model call when it is still fresh. When the judge is on " +
+    "(summary.statements), each statement is checked against the facts and any the records do " +
+    "not support is removed before it is stored.",
   input: z.object({ subject: subjectSchema }),
   output: summaryOutput,
   permission: "records:read",
@@ -121,6 +154,7 @@ export const summaryGenerate = defineOperation({
         generatedAt: cached.createdAt,
         aiGenerated: true as const,
         message: null,
+        check: checkView(parseSummaryCheck(cached.checks)),
       };
     }
     let answer: { text: string; model: string };
@@ -133,16 +167,48 @@ export const summaryGenerate = defineOperation({
       );
     }
     if (!answer.text) throw new OperationError("config", "The summarise model returned nothing");
+    // summary.statements (ADR 0237): each statement against the facts it was written from, once,
+    // before storing. Off changes nothing.
+    const checked = await checkSummary({
+      judge: ctx.judge,
+      text: answer.text,
+      facts: summary.judgeFacts ?? summary.facts,
+      now: ctx.now,
+    });
+    if (checked.status === "unchecked" && summary.kind === "changeset") {
+      // Fails closed: an approver must not decide from words nothing read. Nothing is stored, so
+      // the next request writes and checks it again.
+      return {
+        status: "missing" as const,
+        text: null,
+        model: answer.model,
+        generatedAt: null,
+        aiGenerated: true as const,
+        message: WITHHELD,
+        check: { status: "withheld" as const, removed: 0, message: WITHHELD },
+      };
+    }
+    const text = checked.status === "off" ? answer.text : checked.text;
+    const check = checked.status === "off" ? null : checked.check;
     ctx.write(
-      await storeSummaryStatement(ctx.db, summary, hashModel, answer, ctx.now, ctx.user.id),
+      await storeSummaryStatement(
+        ctx.db,
+        summary,
+        hashModel,
+        { text, model: answer.model },
+        ctx.now,
+        ctx.user.id,
+        check ? JSON.stringify(check) : null,
+      ),
     );
     return {
       status: "fresh" as const,
-      text: answer.text,
+      text,
       model: answer.model,
       generatedAt: ctx.now,
       aiGenerated: true as const,
       message: null,
+      check: checkView(check),
     };
   },
 });

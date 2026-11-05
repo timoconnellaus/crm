@@ -374,6 +374,34 @@ describe("the off path", () => {
     expect(resolvePlacements("not json", { placements: {} })["authoring.intent"].on).toBe(true);
   });
 
+  it("hosted tenants cannot turn record-content placements on until zero retention is agreed", async () => {
+    const deploy = '{"summary.statements":true,"outbound.message":true,"sync.jobChange":true}';
+    const admin = { placements: { "summary.statements": true } } as const;
+    const hosted = resolvePlacements(deploy, admin, { hosted: true });
+    expect(hosted["summary.statements"]).toEqual({ on: false, source: "fixed" });
+    expect(hosted["outbound.message"]).toEqual({ on: false, source: "fixed" });
+    expect(hosted["widget.shape"].on).toBe(true);
+    // The user's own deployment (not hosted) turns them on with the deploy var.
+    expect(resolvePlacements(deploy, { placements: {} })["outbound.message"]).toEqual({
+      on: true,
+      source: "deploy",
+    });
+    // And the judge for a hosted deployment answers `off` for them without a network call.
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    const judge = judgeFor(
+      { TYPESAFE_API_KEY: KEY, AI_PLATFORM_GATEWAY_ID: "platform", JUDGE_PLACEMENTS: deploy },
+      { fetch, loadSettings: async () => admin, log: () => {} },
+    );
+    expect(
+      await judge.ask({
+        placement: "summary.statements",
+        state: {},
+        questions: { q: noul("Is this a test?") },
+      }),
+    ).toEqual({ status: "unavailable", reason: "off" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("the adjudicator's reviewer is Jev by default only when the judge has a key", () => {
     expect(adjudicatorReviewer({}, false)).toBe("llm");
     expect(adjudicatorReviewer({}, true)).toBe("jev");

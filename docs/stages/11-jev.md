@@ -167,6 +167,14 @@ CI never calls Jev.
 
 ## Suggested build order
 
+**Also built (5 November 2026, second build):** steps 6, 7 and 9, `summary.statements`
+([ADR 0237](../adr/0237-summary-statements-placement.md)), `outbound.message`
+([ADR 0238](../adr/0238-outbound-message-placement.md)) and `widget.shape`
+([ADR 0239](../adr/0239-widget-shape-placement.md)), each calibrated live with none wrong, using
+migrations 0255 and 0256. Not built in them: checking the timeline's one-line activity summaries,
+and passing the person's words through Code Mode's gatekeeper calls (their recipients are not
+checked).
+
 **Built so far (5 November 2026):** steps 1 to 3, and step 4's `authoring.intent` with the
 automations eval's intent grader (ADR 0230 and 0231 amendments, ADR 0232). Not yet: step 4's
 extension field questions (`unrequested_field`, `missing_field`); the gateway checks of AC 2

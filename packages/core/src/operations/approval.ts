@@ -20,6 +20,7 @@ import {
 import { isProvisionalId, newId, replaceIds } from "../ids.ts";
 import { type OutboundInput, outboundAppliedAudit } from "../integrations/outbound.ts";
 import type { IntegrationRuntime } from "../integrations/runtime.ts";
+import { outboundCheckLines, parseOutboundCheck } from "../judge/questions/outbound-message.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import {
   type ActingUser,
@@ -118,6 +119,20 @@ export const pendingActionSchema = z.object({
       actionKind: z.object({ tag: z.string(), label: z.string() }).nullable(),
       autoApprovable: z.boolean(),
       implementsRevert: z.boolean(),
+      /**
+       * The judge's check of a model-written message (`outbound.message`, ADR 0238), for human
+       * approvers only (null for everyone else, as the adjudicator's verdicts are). `lines` are
+       * written by code; `held`: the gate would have sent it, and the check made it wait.
+       */
+      check: z
+        .object({
+          status: z.enum(["checked", "unchecked"]),
+          held: z.boolean(),
+          findings: z.number().int(),
+          lines: z.array(z.string()),
+        })
+        .nullable()
+        .default(null),
     })
     .nullable(),
   /**
@@ -244,9 +259,12 @@ async function withVerdicts(
   actions: PendingActionView[],
 ): Promise<PendingActionView[]> {
   if (!seesVerdicts(ctx)) {
-    return actions.map((a) =>
-      a.decidedBy === ADJUDICATOR_PRINCIPAL ? { ...a, decidedBy: null } : a,
-    );
+    return actions.map((a) => ({
+      ...a,
+      ...(a.decidedBy === ADJUDICATOR_PRINCIPAL ? { decidedBy: null } : {}),
+      // The judge's findings on a message are for its approver, not for the actor that wrote it.
+      outbound: a.outbound ? { ...a.outbound, check: null } : null,
+    }));
   }
   const verdicts = await loadVerdicts(
     ctx.db,
@@ -257,6 +275,7 @@ async function withVerdicts(
 
 function outboundView(row: PendingRow): PendingActionView["outbound"] {
   const input = parse<Partial<OutboundInput>>(row.input, {});
+  const check = parseOutboundCheck(row.outbound_check);
   return {
     vendor: input.vendor ?? "",
     connectionId: row.connection_id ?? "",
@@ -270,6 +289,14 @@ function outboundView(row: PendingRow): PendingActionView["outbound"] {
     actionKind: input.actionKind ?? null,
     autoApprovable: input.autoApprovable === true,
     implementsRevert: input.implementsRevert === true,
+    check: check
+      ? {
+          status: check.status,
+          held: check.turnedToReview,
+          findings: check.findings.length,
+          lines: outboundCheckLines(check),
+        }
+      : null,
   };
 }
 

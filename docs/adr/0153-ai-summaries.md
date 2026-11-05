@@ -65,3 +65,10 @@ labelled AI-generated, and must not cost a model call per page view or keystroke
 > and it is flagged. The verdicts are stored with the cached row, so reading a summary still makes
 > no model or judge call. A change-set summary that could not be checked is withheld from the
 > approver.
+
+> Amended 2026-11-05 (stage 11 step 6, [ADR 0237](0237-summary-statements-placement.md)): built
+> as described above, in `summary.generate` only (record, meeting and change-set summaries; the
+> timeline's one-liners are not checked). The check is stored in `core_ai_summary.checks`
+> (migration 0255) and returned as `check` by `summary.get` and `summary.generate`. A change-set
+> summary's judge facts leave out the agent's reasons, and a withheld change-set summary is not
+> stored.
