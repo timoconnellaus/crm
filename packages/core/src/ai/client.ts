@@ -56,6 +56,24 @@ export interface ModelRunner {
   roles?(): Promise<Record<ModelRole, ResolvedRole>>;
   /** Runs one role against an explicit model (Settings → AI "Test"), without fallback. */
   test?(role: ModelRole, ref?: ModelRef): Promise<ModelRunResult>;
+  /**
+   * AI SDK language models for a role, primary first then its fallback, for callers that drive
+   * the model themselves (the assistant's tool loop, stage 7b). Each carries the provider options
+   * and gateway headers the runner would send.
+   */
+  chatModels?(role: ModelRole): Promise<ChatModel[]>;
+}
+
+/** One model for a role, ready for the AI SDK's generateText / streamText. */
+export interface ChatModel {
+  model: LanguageModel;
+  provider: ProviderId | "fake";
+  modelId: string;
+  params: { maxTokens: number; temperature: number; thinking?: boolean | undefined };
+  /** Provider options to pass to the AI SDK call (DeepSeek's thinking switch, …). */
+  providerOptions?: Record<string, JSONObject>;
+  /** Extra request headers (AI Gateway metadata and authorization). */
+  headers?: Record<string, string>;
 }
 
 export class AiNotConfiguredError extends Error {
@@ -122,6 +140,8 @@ export interface ModelRunnerOptions {
 export interface FakeModels {
   run(role: ModelRole, messages: readonly ModelMessage[]): Promise<string> | string;
   embed(texts: readonly string[]): number[][];
+  /** A scripted language model for tool-using roles (the assistant), when there is one. */
+  chat?(role: ModelRole): LanguageModel | undefined;
 }
 
 /** A provider key from the environment (a Workers secret), by secret name. */
@@ -353,8 +373,45 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     return { vectors: embeddings, model: ref.model, dimensions: embeddings[0]?.length ?? 0 };
   };
 
+  const chatModelFor = async (
+    role: ModelRole,
+    ref: ModelRef,
+    params: { maxTokens: number; temperature: number; thinking?: boolean | undefined },
+  ): Promise<ChatModel | null> => {
+    if (useFakes(options) && ref.provider === "workers-ai") {
+      const fake = options.fakes?.chat?.(role);
+      return fake ? { model: fake, provider: "fake", modelId: "fake", params } : null;
+    }
+    const s = await settings();
+    const providerOptions = providerBody(ref.provider, params);
+    return {
+      model: languageModel(options, s, role, ref),
+      provider: ref.provider,
+      modelId: ref.model,
+      params,
+      ...(providerOptions ? { providerOptions } : {}),
+      ...(ref.provider !== "workers-ai" ? { headers: gatewayHeaders(options.env, role) } : {}),
+    };
+  };
+
   return {
     roles: resolved,
+    async chatModels(role) {
+      const config = (await resolved())[role];
+      const out: ChatModel[] = [];
+      const primary = await chatModelFor(role, config, config.params);
+      if (primary) out.push(primary);
+      if (config.fallback) {
+        try {
+          const fallback = await chatModelFor(role, config.fallback, config.params);
+          if (fallback) out.push(fallback);
+        } catch (error) {
+          if (!out.length) throw error;
+        }
+      }
+      if (!out.length) throw new AiNotConfiguredError(`No model is available for ${role}`);
+      return out;
+    },
     async run(role, messages, runOptions = {}) {
       const config = (await resolved())[role];
       const params = {
