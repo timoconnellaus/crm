@@ -33,7 +33,7 @@ a hand-kept list.
 - **Also in the manifest:** core migrations with sha256, `CORE_SCHEMA_VERSION`, the extension
   contract (`CONTRACT_VERSION` and supported versions from `packages/sdk`), the repository, commit
   and pinned wrangler version. No build time, so it is reproducible.
-- **Bundle:** one deterministic `crm-<version>.tar.gz`: `manifest.json`, `modules/<sha256>`,
+- **Bundle:** one deterministic `relationship-os-<version>.tar.gz` (`crm-<version>.tar.gz` before ADR 0190): `manifest.json`, `modules/<sha256>`,
   `assets/<asset hash>`, `migrations/<name>`. Entries are sorted, headers have mode 0644, uid/gid 0
   and mtime 0, and the gzip header's time and OS bytes are pinned. Modules are wrangler's own
   `deploy --dry-run --outdir` output (source maps dropped); ros-app's assets are `dist/client`

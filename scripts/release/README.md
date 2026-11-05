@@ -5,8 +5,8 @@ How releases are built (ADR 0053, ADR 0160, ADR 0161). Deploying them is `packag
 
 - `build-release.ts --version X.Y.Z [--out release-out]` runs `pnpm build`, bundles every Worker
   exactly as `wrangler deploy` would (`--dry-run --outdir`, the pinned wrangler), collects ros-app's
-  assets and the core migrations, generates the manifest and writes `crm-<v>.tar.gz`,
-  `crm-<v>.manifest.json` and `SHA256SUMS`. Two builds of one commit are byte-identical; the release
+  assets and the core migrations, generates the manifest and writes `relationship-os-<v>.tar.gz`,
+  `relationship-os-<v>.manifest.json` and `SHA256SUMS`. Two builds of one commit are byte-identical; the release
   workflow builds twice and compares.
 - `manifest-lib.ts` turns each `wrangler.jsonc` into the manifest (bindings, resources, secrets,
   crons, Durable Object migrations, queue consumers), with placeholders for account values. An

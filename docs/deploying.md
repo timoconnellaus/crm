@@ -6,14 +6,14 @@ One deployment = one Cloudflare account (ADR 0001). It has two Workers and one D
 | --- | --- | --- |
 | Worker | `ros-app` | UI, server functions, `/api/*`. Public. |
 | Worker | `ros-runner` | Workflows, Worker Loader, extension runtime. No public URL (`workers_dev: false`); reached only through `ros-app`'s `RUNNER` service binding. |
-| D1 database | `crm` | Bound as `DB` to both Workers. Created by name on the first deploy. |
+| D1 database | `ros` | Bound as `DB` to both Workers. Created by name on the first deploy. |
 | R2 bucket | `ros-blobs` | Bound as `BLOBS` to both Workers: full bodies of synced email (stage 6a, ADR 0112). Created by name on the first deploy. |
 | Gatekeeper Workers | `ros-gatekeeper-<name>` | Optional, one per integration you use; bound to `ros-runner` as `GATEKEEPER_<NAME>`. See [integrations.md](integrations.md). |
 
 Workers Paid is required (Durable Objects with SQLite, Workflows, Worker Loader).
 
 No account IDs or resource IDs are committed. Both `wrangler.jsonc` files name the database
-(`database_name: "crm"`) without an ID; wrangler finds it by name, or creates it on the first
+(`database_name: "ros"`) without an ID; wrangler finds it by name, or creates it on the first
 deploy.
 
 ## Configuration
@@ -136,7 +136,7 @@ It asks for, in order:
    | Permission | Why |
    | --- | --- |
    | Workers Scripts: Edit | upload Workers, versions, deployments, secrets, crons, workers.dev |
-   | D1: Edit | create the `crm` database, run migrations, Time Travel bookmarks and restore |
+   | D1: Edit | create the `ros` database, run migrations, Time Travel bookmarks and restore |
    | Workers R2 Storage: Edit | create the `ros-blobs` bucket |
    | Workers KV Storage: Edit | create the `ros-app-oauth-kv` namespace |
    | Queues: Edit | queues and consumers, once a release declares them |
@@ -217,6 +217,29 @@ npx create-relationship-os upgrade --version 1.4.0
 npx create-relationship-os status                   # installed version, channel, available releases, history
 ```
 
+### Installs from before the rename to Relationship OS
+
+Releases before the rename (ADR 0190) were the product `crm`: Workers `crm-app`, `crm-runner` and
+`crm-gatekeeper-*`, the D1 database `crm`, the resources `crm-blobs`, `crm-app-oauth-kv`,
+`crm-automation-events(-dlq)`, `crm-records`, the Workflows `crm-automation` and `crm-hello`, and an AI
+Gateway named `crm`. Such an install **keeps those names for good**: renaming a Worker would orphan
+its Durable Objects, and renaming a resource would orphan its data.
+
+- **The first update across the rename runs from the CLI:** `npx create-relationship-os upgrade` (or
+  `ros upgrade`). A pre-rename self-updater, and the old `create-crm` CLI, refuse a renamed release
+  ("not a CRM release manifest") and change nothing, so they can never create a second set of
+  Workers next to the old ones. The new CLI finds the `crm` database, maps every new name onto the
+  deployed one (`workerNames` and `resourceNames` in the stored state), keeps the `crm` gateway and
+  updates the Workers in place. After that, Settings → Updates works as before.
+- An update token stored as `CRM_UPDATE_TOKEN` still works; `ROS_UPDATE_TOKEN` wins when both are set.
+  The CLI and `pnpm run deploy` still read the old `CRM_*` variables when the `ROS_*` ones are unset.
+- Rollback across the rename redeploys the pre-rename release (its `crm-<version>.tar.gz` asset, attested
+  in `timoconnellaus/crm`, which GitHub now redirects) onto the same Workers.
+- **Source deploys** (`pnpm run deploy`, Option 3) of a pre-rename deployment: set
+  `ROS_LEGACY_NAMES=on`, and the generated wrangler configs use the `crm` names. Without it the script
+  stops when it finds `crm-app` and no `ros-app` in the account.
+- Runtime extensions written against `@crm/sdk` keep working; new ones import `@relationship-os/sdk`.
+
 ## Rollback
 
 Settings → Updates → History → **Roll back** on the latest successful update, or:
@@ -227,7 +250,7 @@ npx create-relationship-os rollback
 
 It redeploys the release the update replaced and restores the database to the bookmark taken just
 before it (D1 Time Travel keeps 30 days on Workers Paid). **Changes made since the update are lost.**
-To undo a restore, use `wrangler d1 time-travel restore crm --bookmark <previous_bookmark>`.
+To undo a restore, use `wrangler d1 time-travel restore ros --bookmark <previous_bookmark>`.
 
 ## Privacy
 
@@ -295,7 +318,7 @@ All AI calls go through AI Gateway by default (ADR 0180), and provider keys are 
 BYOK. With AI on, `create-relationship-os` (install and re-run), `ros upgrade` and Settings → Updates each
 check the following and create whatever is missing:
 
-- **A gateway per deployment**, named after the install (`crm` for `ros-app`; `--ai-gateway <id>`
+- **A gateway per deployment**, named after the install (`ros` for `ros-app`, `crm` for a pre-rename `crm-app`; `--ai-gateway <id>`
   to choose). It has logging on and **authentication on**. An existing gateway with that id is
   reused, and its logging and authentication are turned on if they were off.
 - **Custom providers** listed in `apps/app/deploy-inputs.json` under `aiGateway.customProviders`.
@@ -428,7 +451,7 @@ registry's `assistant` role.
 
 ## Option 2: Deploy to Cloudflare button
 
-The button in the README forks the repository into your GitHub account, creates the `crm` D1
+The button in the README forks the repository into your GitHub account, creates the `ros` D1
 database, asks for the secrets in `apps/app/.dev.vars.example`, and connects Workers Builds.
 Workers Builds then runs `apps/app`'s `deploy` script, which is the same deploy script as below:
 it deploys `ros-runner`, applies migrations and deploys `ros-app`.
@@ -456,7 +479,7 @@ never reaches our script.
    --dimensions=384 --metric=cosine` and its `object` metadata index, if the index does not exist
    yet, and a generated `wrangler.deploy.jsonc` for each Worker that adds the `ai` binding (both)
    and the `vectorize` binding (both) (see [In-app AI](#in-app-ai));
-2. `wrangler deploy` for `ros-runner` (creates the `crm` D1 database on a fresh account);
+2. `wrangler deploy` for `ros-runner` (creates the `ros` D1 database on a fresh account);
 3. `wrangler d1 migrations apply DB --remote` (core migrations, tracked in `core_migrations`);
 4. `vite build` and `wrangler deploy` for `ros-app`, passing any of the secrets above that are set
    in the environment with `--secrets-file`. A first deploy needs at least `BETTER_AUTH_SECRET`;
@@ -494,7 +517,7 @@ says the deployment is from source and does not offer in-app updates.
 
 ```sh
 node scripts/release/build-release.ts --version 1.2.3 --out release-out
-node scripts/release/inspect-bundle.ts release-out/crm-1.2.3.tar.gz
+node scripts/release/inspect-bundle.ts release-out/relationship-os-1.2.3.tar.gz
 ```
 
 Releases are built by `.github/workflows/release.yml` on a `vX.Y.Z` / `vX.Y.Z-beta.N` tag; see

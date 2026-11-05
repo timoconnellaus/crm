@@ -1,9 +1,10 @@
 # Architecture
 
-An AI-native CRM that each organisation deploys to its own Cloudflare account. Claude (via MCP or the
-in-app assistant) can do anything a user can, including reshaping the CRM itself: new objects and
-fields, dashboards, automations and custom tools are **code**, written by AI, approved, versioned and
-run safely.
+**Relationship OS** is an AI-native CRM that each organisation deploys to its own Cloudflare account.
+An AI client over MCP (such as Claude) or the in-app assistant can do anything a user can, including
+reshaping Relationship OS itself: new objects and fields, dashboards, automations and custom tools
+are **code**, written by AI, approved, versioned and run safely. The code is FSL-1.1-ALv2 (ADR 0190;
+`LICENSE`, `NOTICE`), and the landing page is `apps/marketing`.
 
 Terms are defined in [`CONTEXT.md`](../CONTEXT.md). Decisions and their reasons are in
 [`docs/adr/`](adr/). Build order is in [`docs/roadmap.md`](roadmap.md).
@@ -52,7 +53,7 @@ gatekeepers.
  tag vX.Y.Z ─► release.yml: build-release (twice, hashes compared) ─► attest ─► draft ─► smoke ─► publish
                     │ manifest generated from every wrangler.jsonc (placeholders, golden-tested)
                     ▼
- GitHub Release: crm-X.Y.Z.tar.gz · crm-X.Y.Z.manifest.json · SHA256SUMS · build attestation
+ GitHub Release: relationship-os-X.Y.Z.tar.gz · relationship-os-X.Y.Z.manifest.json · SHA256SUMS · build attestation
                     │ downloaded + verified (sha256, attestation, every file vs manifest)
         ┌───────────┴─────────────┐
  npx create-relationship-os / ros upgrade    Settings → Updates (self-updater, optional ROS_UPDATE_TOKEN)

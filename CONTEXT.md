@@ -2,6 +2,18 @@
 
 Use these words exactly, in code, docs and UI copy. Add to this file when a new term earns its place.
 
+**Relationship OS**
+The product: an AI-native CRM that runs in your own Cloudflare account (ADR 0190). Short name
+`ros` in Worker and resource names (`ros-app`, `ros-runner`, `ros-records`), `relationship-os` in
+package names (`@relationship-os/*`, `create-relationship-os`). "CRM" stays the category word, and
+the name of the operations API inside extension code (`codemode:crm`, `ctx.crm`, the `crm_*` views).
+_Avoid_: "the CRM" as the product name in UI copy
+
+**Pre-rename install**
+A deployment made by a release from before the rename: Workers `crm-app`, `crm-runner`,
+`crm-gatekeeper-*`, the D1 database `crm` and `crm-*` resources. It keeps those names for good; the
+deploy engine maps the new names onto them (`workerNames`, `resourceNames`).
+
 **Deployment**
 One installed copy of the CRM in one organisation's Cloudflare account. It holds one org's data and is
 the isolation boundary. There is no tenant id in the data model.
@@ -416,7 +428,8 @@ The JSON a view is made of, rendered by our components: a discriminated union of
 and a chart mapping). See ADR 0056 and ADR 0057.
 
 **Release bundle**
-One versioned, reproducible `crm-<version>.tar.gz` holding every Worker's modules, ros-app's static
+One versioned, reproducible `relationship-os-<version>.tar.gz` (`crm-<version>.tar.gz` before the
+rename, ADR 0190) holding every Worker's modules, ros-app's static
 assets, the core migrations and the **release manifest** (generated from the `wrangler.jsonc` files,
 with placeholders such as `$ACCOUNT_ID` and `$D1_ID(ros)` for account-specific values). Published as
 a GitHub Release asset with SHA256SUMS and a build attestation; `create-relationship-os` installs it and the
