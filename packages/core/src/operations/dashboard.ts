@@ -20,6 +20,13 @@ import {
 } from "../dashboards/spec.ts";
 import { ForbiddenError, NotFoundError, OperationError, ValidationError } from "../errors.ts";
 import { newId } from "../ids.ts";
+import {
+  askShape,
+  type Shape,
+  shapeHint,
+  shapeMismatch,
+  typeFits,
+} from "../judge/questions/widget-shape.ts";
 import type { ModelRunner } from "../models.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 
@@ -624,10 +631,20 @@ export const widgetDescribe = defineOperation({
           "(docs/deploying.md). You can still build the widget by hand.",
       };
     }
+    // widget.shape (docs/jev.md placement 6): the judge picks the shape from the prompt alone,
+    // before generation. Advice: no pick (off, unclear, failed) changes nothing.
+    const shape = ctx.judge ? await askShape(ctx.judge, input.prompt) : null;
+    const pick: Exclude<Shape, "unclear"> | null = shape?.status === "answered" ? shape.pick : null;
     const messages = describePrompt(input.prompt, input.dashboardFilters);
+    if (pick) {
+      const last = messages.at(-1);
+      if (last) last.content = `${last.content}\n\n(${shapeHint(pick)})`;
+    }
     let lastError = "";
     let lastWidget: WidgetSpec | null = null;
     let model = "";
+    // A valid widget whose type does not fit the pick, kept in case the retry does worse.
+    let unfitting: { widget: WidgetSpec; preview: WidgetRunResult; model: string } | null = null;
     for (let attempt = 1; attempt <= 2; attempt++) {
       let text: string;
       try {
@@ -653,13 +670,19 @@ export const widgetDescribe = defineOperation({
             filters: input.dashboardFilters,
             values: input.filters,
           });
-          return {
-            status: "ok" as const,
-            widget: parsed.widget,
-            preview,
-            model,
-            attempts: attempt,
-          };
+          // The shape check: one retry at most, and the second answer stands whatever its type.
+          if (attempt === 1 && !typeFits(pick, parsed.widget.type)) {
+            unfitting = { widget: parsed.widget, preview, model };
+            lastError = shapeMismatch(pick as Exclude<Shape, "unclear">, parsed.widget.type);
+          } else {
+            return {
+              status: "ok" as const,
+              widget: parsed.widget,
+              preview,
+              model,
+              attempts: attempt,
+            };
+          }
         } catch (error) {
           if (!(error instanceof OperationError)) throw error;
           lastError = error.message;
@@ -675,6 +698,8 @@ export const widgetDescribe = defineOperation({
         },
       );
     }
+    // The retry did not give a valid widget: the first one was valid, only not the shape asked for.
+    if (unfitting) return { status: "ok" as const, ...unfitting, attempts: 2 };
     return {
       status: "invalid" as const,
       message: lastError,
