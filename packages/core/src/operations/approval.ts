@@ -1,11 +1,12 @@
 // approval.* and changeset.* operations (ADR 0022): reading the approval queue, approving and
 // rejecting pending actions (people only), and grouping an MCP session's work into titled change
 // sets. Applying re-runs each action through the pipeline as its original actor.
-import type { CoreDatabase, PendingActionStatus } from "@relationship-os/db";
+import type { CoreDatabase, CrmDb, PendingActionStatus } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ApprovalStateError, objectOfId } from "../approvals/queue.ts";
 import { approvalDecidedMessages, emitEvents, eventOriginOf } from "../automations/events.ts";
+import { deliverOutbox, emitDurably, outboxEntries, outboxInserts } from "../automations/outbox.ts";
 import type { ApprovalDecidedMessage, EventSink } from "../automations/types.ts";
 import {
   ForbiddenError,
@@ -671,7 +672,8 @@ async function emitDecisions(
   bindings?: ReadonlyMap<string, Record<string, string>>,
 ): Promise<void> {
   if (!ctx.events) return;
-  await emitEvents(
+  await emitDurably(
+    ctx.pipeline.crm,
     ctx.events,
     decisionMessages(
       rows,
@@ -1059,10 +1061,23 @@ export const approvalReject = defineOperation({
     const outbound = [...targets, ...cascaded].filter((r) => r.connection_id !== null);
     const output = { results, counts: counts(results) };
     if (!outbound.length && !ctx.events) return output;
+    // The decisions are known now: their events go in this batch's outbox (ADR 0171).
+    const events = ctx.events;
+    const outbox = events
+      ? outboxEntries(
+          decisionMessages(
+            [...targets, ...cascaded],
+            () => "rejected",
+            { actor: "human", userId: ctx.user.id, origin: ctx.origin, operation: ctx.operation },
+            ctx.now,
+          ),
+        )
+      : [];
+    if (outbox.length) ctx.write(...outboxInserts(ctx.pipeline.crm, outbox, ctx.now));
     const integrations = ctx.integrations;
     return ctx.afterCommit(async () => {
       await rejectOnFacets(integrations, outbound);
-      await emitDecisions(ctx, [...targets, ...cascaded], () => "rejected");
+      if (events && outbox.length) await deliverOutbox(ctx.pipeline.crm, events, outbox);
       return output;
     });
   },
@@ -1192,11 +1207,14 @@ export const changesetCommit = defineOperation({
  * `events`, each expiry is sent as an `approval` message (decision `expired`, ADR 0130).
  */
 export async function expirePendingActions(
-  db: Kysely<CoreDatabase>,
+  database: Kysely<CoreDatabase> | CrmDb,
   now: string = new Date().toISOString(),
   integrations?: IntegrationRuntime,
   events?: EventSink,
 ): Promise<number> {
+  // With a CrmDb the expiry events go through the outbox (ADR 0171); a bare Kysely sends directly.
+  const crm = isCrmDb(database) ? database : null;
+  const db: Kysely<CoreDatabase> = crm ? crm.query : (database as Kysely<CoreDatabase>);
   // Expired outbound items are dropped on their facets too (see rejectOnFacets).
   const outbound = integrations
     ? await db
@@ -1216,23 +1234,26 @@ export async function expirePendingActions(
     .execute();
   await rejectOnFacets(integrations, outbound);
   if (events && rows.length) {
-    await emitEvents(
-      events,
-      decisionMessages(
-        rows,
-        () => "expired",
-        // The expiry sweep is a system job (an automation in actor terms).
-        {
-          actor: "automation",
-          userId: null,
-          origin: { surface: "system", automationId: "approval.expire" },
-          operation: "approval.expire",
-        },
-        now,
-      ),
+    const messages = decisionMessages(
+      rows,
+      () => "expired",
+      // The expiry sweep is a system job (an automation in actor terms).
+      {
+        actor: "automation",
+        userId: null,
+        origin: { surface: "system", automationId: "approval.expire" },
+        operation: "approval.expire",
+      },
+      now,
     );
+    if (crm) await emitDurably(crm, events, messages, now);
+    else await emitEvents(events, messages);
   }
   return rows.length;
+}
+
+function isCrmDb(db: Kysely<CoreDatabase> | CrmDb): db is CrmDb {
+  return typeof (db as Partial<CrmDb>).batch === "function" && "query" in db;
 }
 
 export { objectOfId };

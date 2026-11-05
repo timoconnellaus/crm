@@ -422,6 +422,9 @@ function PolicyStep({
   const [selected, setSelected] = useState<PolicyPreset | null>(null);
   const value = selected ?? policy.data?.preset ?? "cautious";
   async function save() {
+    // Until the current preset has loaded, `value` is only the fallback: saving it then would
+    // silently change the policy (Next is disabled meanwhile; this guards a fast click).
+    if (!policy.data) return;
     try {
       if (value !== policy.data?.preset) await update.mutateAsync({ preset: value });
       onNext({ policy: value });
@@ -435,7 +438,7 @@ function PolicyStep({
       description="Changes above this line wait in the Approvals inbox for a person. You can change it in Settings → Approval policy."
       onBack={onBack}
       onNext={save}
-      busy={update.isPending}
+      busy={update.isPending || policy.isPending}
     >
       <RadioGroup
         value={value}

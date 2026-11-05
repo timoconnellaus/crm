@@ -34,6 +34,7 @@ import {
 } from "@relationship-os/gatekeeper-kit/action-description";
 import {
   ActionApplyError,
+  type ActionDefinition,
   ActionJournal,
   ActionOutcomeUnknownError,
   defineActions,
@@ -529,7 +530,7 @@ type DmPayload = {
   relatedRecords?: string[];
 };
 
-type Actions = { post: PostPayload; dm: DmPayload };
+type Actions = { post: PostPayload; dm: DmPayload; dmMember: DmPayload };
 
 /** A settled message, as `listRecentPosts()` reports it. */
 type HistoryEntry = {
@@ -550,6 +551,14 @@ type SlackHost = {
 
 const POST_KIND: ActionKind = { tag: "slack.post", label: "Post to Slack" };
 const DM_KIND: ActionKind = { tag: "slack.dm", label: "Send a Slack DM" };
+/**
+ * A DM to a full member of the workspace (not a guest, bot, deactivated or external Slack Connect
+ * user): the one kind a workspace may auto-approve, for the CRM's own notices to colleagues.
+ */
+const DM_MEMBER_KIND: ActionKind = {
+  tag: "slack.dm.member",
+  label: "Send a Slack DM to a workspace member",
+};
 
 function channelLabel(payload: PostPayload): string {
   return payload.channelName ? `#${payload.channelName}` : payload.channelId;
@@ -557,6 +566,36 @@ function channelLabel(payload: PostPayload): string {
 
 function userLabel(payload: DmPayload): string {
   return payload.userName ?? payload.userEmail ?? payload.userId;
+}
+
+/** A DM action: to anyone (reviewed) or to a workspace member (auto-approvable). */
+function dmDefinition(
+  kind: ActionKind,
+  autoApprovable: boolean,
+): ActionDefinition<DmPayload, SlackHost> {
+  return {
+    kind,
+    autoApprovable,
+    delivery: "continue-with-simulation",
+    claimBeforeApply: true,
+    describe: (payload) => {
+      const builder = buildDescription("Sends a direct message as the CRM's Slack app.").inline(
+        "To",
+        payload.userName ? `${payload.userName} (${payload.userId})` : payload.userId,
+      );
+      if (payload.userEmail) builder.inline("Email", payload.userEmail);
+      builder.verbatim("Message", payload.text, "markdown");
+      if (payload.relatedRecords) builder.list("Related records", payload.relatedRecords);
+      return {
+        title: sanitizeTitle(`Send a Slack DM to ${userLabel(payload)}`),
+        ...builder.finish(),
+        implementsRevert: false,
+      };
+    },
+    apply: (payload, host, ctx) => host.dm(ctx.id, payload),
+    reject: async (payload, host, ctx) =>
+      host.recordRejected(ctx.id, "dm", userLabel(payload), payload.text),
+  };
 }
 
 const actions = defineActions<SlackHost, Actions>(
@@ -591,29 +630,8 @@ const actions = defineActions<SlackHost, Actions>(
       reject: async (payload, host, ctx) =>
         host.recordRejected(ctx.id, "post", channelLabel(payload), payload.text),
     },
-    dm: {
-      kind: DM_KIND,
-      autoApprovable: false,
-      delivery: "continue-with-simulation",
-      claimBeforeApply: true,
-      describe: (payload) => {
-        const builder = buildDescription("Sends a direct message as the CRM's Slack app.").inline(
-          "To",
-          payload.userName ? `${payload.userName} (${payload.userId})` : payload.userId,
-        );
-        if (payload.userEmail) builder.inline("Email", payload.userEmail);
-        builder.verbatim("Message", payload.text, "markdown");
-        if (payload.relatedRecords) builder.list("Related records", payload.relatedRecords);
-        return {
-          title: sanitizeTitle(`Send a Slack DM to ${userLabel(payload)}`),
-          ...builder.finish(),
-          implementsRevert: false,
-        };
-      },
-      apply: (payload, host, ctx) => host.dm(ctx.id, payload),
-      reject: async (payload, host, ctx) =>
-        host.recordRejected(ctx.id, "dm", userLabel(payload), payload.text),
-    },
+    dm: dmDefinition(DM_KIND, false),
+    dmMember: dmDefinition(DM_MEMBER_KIND, true),
   },
   // The payload names channel and user ids in one workspace. Apply checks the live connection is
   // still for that workspace instead of pinning the connection generation, so a reconnect of the
@@ -680,13 +698,32 @@ function toUser(raw: unknown): SlackUser | null {
   };
 }
 
+/**
+ * A full member of this workspace: not a guest (restricted), a bot, deactivated, or a Slack
+ * Connect user from another organisation (`is_stranger`).
+ */
+function isFullMember(raw: unknown): boolean {
+  const user = asRecord(raw);
+  return (
+    typeof user.id === "string" &&
+    user.is_restricted !== true &&
+    user.is_ultra_restricted !== true &&
+    user.is_bot !== true &&
+    user.is_app_user !== true &&
+    user.deleted !== true &&
+    user.is_stranger !== true
+  );
+}
+
 /** What a session may ask of its facet, as closures so the session holds no facet reference. */
 type SessionBackend = {
   submitPost(queue: RpcStub<ApprovalQueue>, payload: PostPayload): Promise<number>;
-  submitDm(queue: RpcStub<ApprovalQueue>, payload: DmPayload): Promise<number>;
+  submitDm(queue: RpcStub<ApprovalQueue>, payload: DmPayload, member: boolean): Promise<number>;
   wasPosted(id: number): boolean;
   resolveChannel(channel: string): Promise<{ id: string; name?: string }>;
-  resolveUser(user: string): Promise<{ id: string; name?: string; email?: string }>;
+  resolveUser(
+    user: string,
+  ): Promise<{ id: string; name?: string; email?: string; member: boolean }>;
   listChannels(): Promise<SlackChannel[]>;
   findUser(email: string): Promise<SlackUser | null>;
   listRecentPosts(): SlackPostRecord[];
@@ -719,13 +756,17 @@ class SlackPostSessionImpl extends RpcTarget implements SlackPostSession {
   async dm(message: SlackDirectMessage): Promise<SlackPostReceipt> {
     const input = parseDm(message);
     const user = await this.#backend.resolveUser(input.user);
-    const id = await this.#backend.submitDm(this.#queue, {
-      userId: user.id,
-      ...(user.name ? { userName: user.name } : {}),
-      ...(user.email ? { userEmail: user.email } : {}),
-      text: input.text,
-      ...(input.relatedRecords?.length ? { relatedRecords: [...input.relatedRecords] } : {}),
-    });
+    const id = await this.#backend.submitDm(
+      this.#queue,
+      {
+        userId: user.id,
+        ...(user.name ? { userName: user.name } : {}),
+        ...(user.email ? { userEmail: user.email } : {}),
+        text: input.text,
+        ...(input.relatedRecords?.length ? { relatedRecords: [...input.relatedRecords] } : {}),
+      },
+      user.member,
+    );
     return { status: this.#backend.wasPosted(id) ? "posted" : "pending", id };
   }
 
@@ -894,11 +935,16 @@ export class SlackPostGatekeeper
     }
   }
 
-  async #resolveUser(user: string): Promise<{ id: string; name?: string; email?: string }> {
+  async #resolveUser(
+    user: string,
+  ): Promise<{ id: string; name?: string; email?: string; member: boolean }> {
     if (isUserId(user)) {
       try {
-        const found = toUser((await this.#slack("users.info", { user })).user);
-        return found ? { id: found.id, name: found.name } : { id: user };
+        const raw = (await this.#slack("users.info", { user })).user;
+        const found = toUser(raw);
+        return found
+          ? { id: found.id, name: found.name, member: isFullMember(raw) }
+          : { id: user, member: false };
       } catch (error) {
         if (error instanceof SlackApiError && error.code === "user_not_found") {
           throw new Error("No Slack user has that id.");
@@ -906,9 +952,15 @@ export class SlackPostGatekeeper
         throw error;
       }
     }
-    const found = await this.#findUser(user);
+    let raw: unknown;
+    try {
+      raw = (await this.#slack("users.lookupByEmail", { email: user })).user;
+    } catch (error) {
+      if (!(error instanceof SlackApiError && error.code === "users_not_found")) throw error;
+    }
+    const found = toUser(raw);
     if (!found) throw new Error("No Slack user in this workspace has that email address.");
-    return { id: found.id, name: found.name, email: user };
+    return { id: found.id, name: found.name, email: user, member: isFullMember(raw) };
   }
 
   /** Posts, classifying a failure by what Slack can have done. */
@@ -1019,7 +1071,7 @@ export class SlackPostGatekeeper
     return TYPES_CODE;
   }
 
-  /** None: every Slack message is reviewed. */
+  /** `slack.dm.member` only: a DM to a full member of the workspace. */
   async getAutoApprovableActions(): Promise<ActionKind[]> {
     return this.#actions().autoApprovableKinds();
   }
@@ -1027,7 +1079,8 @@ export class SlackPostGatekeeper
   async startSession(approvalQueue: RpcStub<ApprovalQueue>): Promise<SlackPostSession> {
     const backend: SessionBackend = {
       submitPost: (queue, payload) => this.#actions().submit(queue, "post", payload),
-      submitDm: (queue, payload) => this.#actions().submit(queue, "dm", payload),
+      submitDm: (queue, payload, member) =>
+        this.#actions().submit(queue, member ? "dmMember" : "dm", payload),
       wasPosted: (id) => this.#journal.wasApplied(id),
       resolveChannel: (channel) => this.#resolveChannel(channel),
       resolveUser: (user) => this.#resolveUser(user),

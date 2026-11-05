@@ -102,6 +102,19 @@ export function createBetterAuth(options: BetterAuthOptions) {
           },
         },
       },
+      session: {
+        create: {
+          // A deactivated person (user.deactivate) cannot sign in again.
+          before: async (session) => {
+            const row = await db
+              .prepare("SELECT deactivated_at FROM core_user WHERE id = ?")
+              .bind(session.userId)
+              .first<{ deactivated_at: string | null }>();
+            if (row?.deactivated_at) return false;
+            return { data: session };
+          },
+        },
+      },
     },
   });
 }

@@ -24,7 +24,7 @@ describe("runner CLI", () => {
     } = process.env;
     // Plain node (no transform flag): the credentials check comes before @relationship-os/core loads.
     const result = spawnSync(process.execPath, [runner, "--base-url", "http://127.0.0.1:9"], {
-      env,
+      env: { ...env, EVAL_ENV_FILE: "/nonexistent/.env.evals" },
       encoding: "utf8",
     });
     expect(result.status).toBe(2);

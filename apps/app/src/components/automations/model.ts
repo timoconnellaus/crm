@@ -445,3 +445,28 @@ export function notificationHref(item: Pick<NotificationItem, "href" | "link">):
   }
   return item.link ? linkHref(item.link) : null;
 }
+
+/**
+ * What a run is about, for run lists: its record's title, else what fired it ("Webhook ·
+ * invoice.paid", "Email received", "Scheduled run", "Approval decided").
+ */
+export function runLabel(run: Pick<RunItem, "record" | "trigger">): string {
+  if (run.record) return run.record.title ?? run.record.id;
+  const trigger = (run.trigger && typeof run.trigger === "object" ? run.trigger : {}) as {
+    type?: unknown;
+    integration?: { type?: unknown } | null;
+  };
+  const eventType = typeof trigger.integration?.type === "string" ? trigger.integration.type : null;
+  switch (trigger.type) {
+    case "webhook":
+      return eventType ? `Webhook · ${eventType}` : "Webhook event";
+    case "syncEvent":
+      return eventType ? `Sync · ${eventType}` : "Sync event";
+    case "approvalDecided":
+      return "Approval decided";
+    case "manual":
+      return "Manual run";
+    default:
+      return "Scheduled run";
+  }
+}

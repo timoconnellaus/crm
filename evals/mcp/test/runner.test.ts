@@ -28,7 +28,7 @@ function withoutCredentials(env: NodeJS.ProcessEnv = process.env): NodeJS.Proces
     EVAL_API_KEY: _k,
     ...rest
   } = env;
-  return rest;
+  return { ...rest, EVAL_ENV_FILE: "/nonexistent/.env.evals" };
 }
 
 describe("runner CLI", () => {

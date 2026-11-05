@@ -12,8 +12,10 @@ import { fileURLToPath } from "node:url";
 
 // 4,096 KiB at ADR 0043. Raised to 5,120 KiB (2026-11-05): stage 5's automation engine (Workflows,
 // queue consumer, rails) took it to 4,221 KiB, and stage 7a's AI SDK adds ~1.1 MB. The compiler
-// check below is what the budget is really for, and it is unchanged.
-const MAIN_BUDGET_KIB = 5_120;
+// check below is what the budget is really for, and it is unchanged. Raised to 5,632 KiB
+// (2026-11-05): stage 6b (run-as, integration-event triggers, the outbox retry and notification
+// delivery) on top of 7a and 8 took it to 5,124 KiB.
+const MAIN_BUDGET_KIB = 5_632;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");

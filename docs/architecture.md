@@ -225,12 +225,15 @@ How stage 5 runs automations ([ADR 0130](adr/0130-automation-runtime.md), test m
 [ADR 0133](adr/0133-automation-test-mode.md)):
 
 ```
- operation commits ─► EventSink (≤100 changes/message, one sendBatch per operation, origin-tagged)
+ operation batch (change + outbox row, ADR 0171) ─► after commit: EventSink (≤100 changes/message,
+   one sendBatch per operation, origin-tagged), outbox row deleted on success
    ─► Queue ros-automation-events ─► ros-runner queue() ─► dispatchAutomationMessages
-        TriggerSource per message kind (record, approval; 6b: integration)
+        TriggerSource per message kind (record, approval, integration)
         ─► rails: kill switch, depth ≤ 3, cycle, bulk, debounce, conditions, fan-out, rate limits
         ─► run row (INSERT … ON CONFLICT DO NOTHING on the Workflow id) ─► createBatch
- ros-runner cron (* * * * *) ─► schedules in the automation timezone, daily date-relative scan
+ ros-runner cron (* * * * *) ─► schedules in the automation timezone, daily date-relative scan,
+        outbox retry (rows left by failed sends, dispatched directly), integration events
+        (unconsumed core_integration_event rows → webhook / syncEvent triggers, ADR 0173)
  AutomationWorkflow: start ─► advance:<n> (executor.runAutomation via LOADER.get) ─► sleep / wait
         ─► review pause (waitForEvent approval-<actionId>) ─► finish (counters, history)
 ```
@@ -251,6 +254,12 @@ How stage 5 runs automations ([ADR 0130](adr/0130-automation-runtime.md), test m
   reaches the runner's `AutomationHost` RPC for test, run, retry, replay and cancel.
 - **History.** `core_automation_runs` and `core_automation_run_records`, purged by the daily cron
   (30 days, failed 90).
+- **Run-as** ([ADR 0170](adr/0170-automation-run-as-bindings.md)). Automations that declare
+  `connections` wait until a person binds each to a connection (`automation.bindConnection`,
+  `core_automation_binding`, the consent). In a run, `codemode:<gatekeeper>` resolves the slot to the
+  bound connection and calls it as the connection's owner; a pending outbound action pauses the run
+  like a gated write. Disconnecting, expired credentials or `user.deactivate` revoke the bindings,
+  pause the automations and notify the admins.
 
 ### 5. Integrations
 
@@ -279,7 +288,15 @@ Stage 6a ([ADR 0110](adr/0110-integration-host-per-connection.md) to
 - **Code**: `integration.call` (MCP), and `codemode:<gatekeeper>` host modules for extension tools and
   Code Mode.
 - **Gatekeepers we wrote**: `gatekeeper-email-send`, `gatekeeper-slack-post`, `gatekeeper-webhook`.
-  Inbound webhooks and sync events land in `core_integration_event` for stage 5.
+  Inbound webhooks and sync events land in `core_integration_event`; ros-runner's cron turns them
+  into `webhook` and `syncEvent` automation triggers (ADR 0173), dropping private activities.
+- **Notification delivery** ([ADR 0172](adr/0172-notification-delivery.md)): ros-runner's minute
+  cron reads new `core_notifications` rows behind a 30 s lag through a keyset cursor and sends each
+  to the email/Slack channels its recipient chose, escalates unread approval notices and sends the
+  daily digest. Every send is claimed in `core_notification_delivery` first and goes through the
+  integration host as a system outbound action on the admin-chosen org email-send / Slack
+  connection, gated like any outbound action. The automation consumer also posts admin channel
+  routes for record events, once per event, route and record.
 
 ### 6. Approval pipeline
 
@@ -358,13 +375,6 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   summaries. Every call goes through AI Gateway when `AI_GATEWAY_ID` is set, tagged with its role;
   the installer and the updater create a gateway per deployment and set it
   ([ADR 0180](adr/0180-ai-gateway-provisioned-per-deployment.md)).
-- **Providers**: Workers AI (the binding) and, optionally, OpenAI, Google AI Studio, OpenRouter,
-  DeepSeek, Anthropic, Jev and any OpenAI-compatible endpoint, each through the gateway's
-  provider path (`…/{gateway}/deepseek/…`). A deployment can pick a **model role preset**
-  (`create-relationship-os --model-roles deepseek-flash`), stored as its `AI_MODEL_ROLES` in the deployment
-  state, and `AI_GATEWAY_BYOK` says which providers' keys the gateway holds
-  ([ADR 0192](adr/0192-deepseek-provider-and-model-role-presets.md)). The shipped defaults stay
-  on Workers AI.
 - **Settings → AI** (`ai.*` operations, admins): per role provider, model, fallback, capability
   badges and a Test button; provider keys stored as Workers secrets through the Cloudflare API or
   as AI Gateway BYOK, **never in D1** ([ADR 0151](adr/0151-provider-keys-as-workers-secrets-or-byok.md));

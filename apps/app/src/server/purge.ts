@@ -8,6 +8,7 @@ import {
   measureStorage,
   parseFloor,
   purgeIntegrationEvents,
+  purgeNotificationDeliveries,
   purgeNotifications,
   purgeRunHistory,
   queueEventSink,
@@ -48,7 +49,7 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   const db = createCrmDb(env.DB);
   const now = (clock?.() ?? new Date()).toISOString();
   const expired = await expirePendingActions(
-    db.query,
+    db,
     now,
     integrationRuntimeFor(env),
     env.AUTOMATION_EVENTS ? queueEventSink(env.AUTOMATION_EVENTS) : undefined,
@@ -86,5 +87,7 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   // Notifications are kept 90 days (ADR 0132).
   const notifications = await step("notifications", () => purgeNotifications(db.query, now));
   if (notifications?.deleted) console.log(`notifications: ${notifications.deleted} purged`);
+  // Their delivery ledger goes with them (ADR 0172).
+  await step("notification deliveries", () => purgeNotificationDeliveries(db.query, now));
   return { purge, expired, audit, runs, compacted, storage, events, notifications };
 }

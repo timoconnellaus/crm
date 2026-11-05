@@ -40,3 +40,9 @@ connection, so extension code reaches org connections only.
 - Gmail's push watch has no label filter and its hook drivers fetch tokens without
   `AccessTokenCache` (cost audit V1, V2). Both are inside vendored code, so they are recorded in
   `UPSTREAMS.md` as proposed upstream changes rather than patched.
+
+## Amendment, 2026-11-05 (stage 6b, [ADR 0172](0172-notification-delivery.md))
+`gatekeeper-slack-post` gained the kind `slack.dm.member`: a DM to a full member of the workspace
+(not a guest, bot, app user, deactivated account or Slack Connect stranger) is auto-approvable, so
+an admin can let the CRM's fixed-template notices to colleagues through (cost audit U8). Other DMs
+remain `slack.dm` and channel posts `slack.post`, never auto-approvable.

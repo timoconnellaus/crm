@@ -21,10 +21,12 @@ function gitCommit(): string {
   }
 }
 
-export default defineConfig({
+const PORT = Number(process.env.PORT ?? 5173);
+
+export default defineConfig(({ command }) => ({
   // `#/…` is src/ (tsconfig paths), as in `import { callOp } from "#/lib/operations"`.
   resolve: { alias: { "#": fileURLToPath(new URL("./src", import.meta.url)) } },
-  server: { port: Number(process.env.PORT ?? 5173), strictPort: true },
+  server: { port: PORT, strictPort: true },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __APP_COMMIT__: JSON.stringify(gitCommit()),
@@ -36,7 +38,47 @@ export default defineConfig({
       // scripts/deploy.mjs builds with a generated config that adds the AI bindings (ADR 0150).
       ...(process.env.ROS_WRANGLER_CONFIG ? { configPath: process.env.ROS_WRANGLER_CONFIG } : {}),
       viteEnvironment: { name: "ssr" },
-      auxiliaryWorkers: [{ configPath: "../runner/wrangler.jsonc" }],
+      auxiliaryWorkers:
+        command === "serve"
+          ? [
+              {
+                configPath: "../runner/wrangler.jsonc",
+                // Local dev and e2e also run our inbound webhook gatekeeper (ADR 0113), bound
+                // as a deployment would bind it, so webhook-triggered automations run locally.
+                config: (runner) => ({
+                  services: [
+                    ...(runner.services ?? []),
+                    {
+                      binding: "GATEKEEPER_WEBHOOK",
+                      service: "ros-gatekeeper-webhook",
+                      entrypoint: "GatekeeperVendor",
+                    },
+                  ],
+                }),
+              },
+              {
+                configPath: "../../packages/gatekeeper-webhook/wrangler.jsonc",
+                devOnly: true,
+                config: (webhook) => ({
+                  vars: {
+                    ...webhook.vars,
+                    BASE_URL: `http://localhost:${PORT}/gatekeeper/webhook`,
+                  },
+                  durable_objects: {
+                    bindings: [
+                      ...(webhook.durable_objects?.bindings ?? []),
+                      // Reached only as a facet in production; declared so the local runtime
+                      // registers the class (as the package's own tests do).
+                      {
+                        name: "WEBHOOK_ENDPOINT_GATEKEEPER",
+                        class_name: "WebhookEndpointGatekeeper",
+                      },
+                    ],
+                  },
+                }),
+              },
+            ]
+          : [{ configPath: "../runner/wrangler.jsonc" }],
     }),
     tailwindcss(),
     // Gatekeeper resource pickers: the vendored configurator specs, rendered with our runtime.
@@ -44,4 +86,4 @@ export default defineConfig({
     tanstackStart(),
     viteReact(),
   ],
-});
+}));

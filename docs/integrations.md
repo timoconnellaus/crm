@@ -44,6 +44,21 @@ Email sending: verify the sending domain in Cloudflare Email Service, set
 Sync needs no extra setup: choose a mailbox and calendar on the connection. Email bodies go to the
 R2 bucket `ros-blobs`, which `wrangler deploy` creates by name.
 
+## Automations and connections
+
+- **Webhook and sync triggers.** An automation with `trigger: { type: "webhook", endpoint }` runs
+  for each verified delivery to that endpoint (create an org `webhook` connection, bind the
+  endpoint, give the sender its secret). `trigger: { type: "syncEvent", event: "email.received" }`
+  runs when sync writes an email linked to a known person or organisation. ros-runner's minute cron
+  picks them up, so a run starts within about a minute (ADR 0173). Private activities never
+  trigger anything.
+- **Run-as.** An automation can declare `connections: [{ id: "mailbox", gatekeeper: "email-send",
+  purpose: "…" }]` and call `ctx.gatekeeper("email-send").call("mailbox", …)`. It waits until a
+  person binds `mailbox` to a connection they own (or an admin to an org connection) on the
+  approval screen or the automation page; it then acts as that connection's owner, and its
+  outbound actions are reviewed like any other. Disconnecting the connection, expired credentials
+  or deactivating its owner pauses the automation and tells the admins (ADR 0170).
+
 ## Local development
 
 `pnpm dev` (and the e2e suite) sets `INTEGRATIONS_FAKE_PROVIDER=true` in `apps/runner/.dev.vars`,

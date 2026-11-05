@@ -257,9 +257,16 @@ export interface ExtensionImpact {
   modules: string[];
   /**
    * Automations: the trigger in one line and the host-generated plain-English summary (ADR 0131),
-   * rendered from the declarations, never from AI.
+   * rendered from the declarations, never from AI. `connections` are the connections it declares
+   * (ADR 0170), which the approver binds after approving (absent on older stored proposals).
    */
-  triggers: { name: string; label: string; trigger: string; summary: string }[];
+  triggers: {
+    name: string;
+    label: string;
+    trigger: string;
+    summary: string;
+    connections?: { id: string; gatekeeper: string; purpose: string }[];
+  }[];
   tools: { name: string; risk: string; change: "added" | "changed" | "removed" | "unchanged" }[];
   views: string[];
   files: { changed: number; additions: number; deletions: number };
@@ -369,6 +376,11 @@ export function computeImpact(input: {
         label: a.label,
         trigger: triggerText(a, labels),
         summary: automationSummary(a, labels).text,
+        connections: (a.connections ?? []).map(({ id, gatekeeper, purpose }) => ({
+          id,
+          gatekeeper,
+          purpose,
+        })),
       };
     }),
     tools,

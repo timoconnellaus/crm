@@ -12,9 +12,11 @@ import {
   type AutomationDefinition,
   type AutomationQueueMessage,
   type AutomationSettings,
+  automationsFullyBound,
   effectiveRails,
   FAN_OUT_BUDGET,
   idsMatchingConditions,
+  integrationTriggerSource,
   jsonList,
   loadAutomationSettings,
   loadEnabledAutomations,
@@ -25,6 +27,7 @@ import {
   type RateLimitBinding,
   type RunCandidate,
   refreshSchemaRegistry,
+  registerTriggerSource,
   triggerSourceFor,
   WORKFLOW_BATCH_MAX,
   workflowInstanceId,
@@ -32,6 +35,10 @@ import {
 import { type CrmDb, createCrmDb } from "@relationship-os/db";
 import type { AutomationJournalEntry, AutomationTriggerType } from "@relationship-os/sdk";
 import { sql } from "kysely";
+import { deliverNotificationRoutes } from "../notifications/deliver.ts";
+
+// Stage 6b: webhooks and sync events (polled from core_integration_event by the cron).
+registerTriggerSource(integrationTriggerSource);
 
 /** What a run's Workflow instance is created with (and what a retry or replay reuses). */
 export interface AutomationRunParams {
@@ -47,6 +54,7 @@ export interface AutomationRunParams {
   approval?: RunCandidate["approval"];
   period?: string;
   manual?: { userId: string; recordIds: string[] };
+  integration?: RunCandidate["integration"];
   /** Cascade tags: the run's own depth and chain (its writes carry them). */
   depth: number;
   chain: string[];
@@ -145,6 +153,21 @@ export async function startRuns(
       continue;
     }
     kept.push(debounced(c, origin, settings));
+  }
+
+  // Run-as (ADR 0170): an automation whose declared connections are not all bound waits.
+  const needing = new Map(
+    kept
+      .filter((c) => c.automation.spec.connections?.length)
+      .map((c) => [c.automation.id, c.automation.spec]),
+  );
+  if (needing.size) {
+    const bound = await automationsFullyBound(db, needing);
+    kept = kept.filter((c) => {
+      if (!needing.has(c.automation.id) || bound.has(c.automation.id)) return true;
+      drop(c, "waiting for connections");
+      return false;
+    });
   }
 
   // Conditions on the current record, one query per automation and object.
@@ -309,6 +332,7 @@ function triggerJson(c: RunCandidate, origin: CandidateOrigin, options: StartOpt
     ...(c.change ? { change: c.change } : {}),
     ...(c.approval ? { approval: c.approval } : {}),
     ...(c.period ? { period: c.period } : {}),
+    ...(c.integration ? { integration: c.integration } : {}),
     ...(options.manual ? { manual: options.manual } : {}),
     chain: origin.chain,
   };
@@ -332,6 +356,7 @@ function runParams(
     ...(c.change ? { change: c.change } : {}),
     ...(c.approval ? { approval: c.approval } : {}),
     ...(c.period ? { period: c.period } : {}),
+    ...(c.integration ? { integration: c.integration } : {}),
     ...(options.manual ? { manual: options.manual } : {}),
     depth: origin.depth + 1,
     chain: c.record ? [...origin.chain, chainKey(c.automation.id, c.record)] : [...origin.chain],
@@ -497,6 +522,8 @@ export async function dispatchAutomationMessages(
     total.dropped.push(...started.dropped);
     total.paused.push(...started.paused);
   }
+  // Admin Slack channel routes (ADR 0172); never throws.
+  await deliverNotificationRoutes(env, messages, options);
   return total;
 }
 

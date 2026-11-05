@@ -21,12 +21,13 @@ import {
   overlayRead,
   simulatedTitle,
 } from "./approvals/simulation.ts";
+import { eventOriginOf, isBulkOperation, recordEventMessages } from "./automations/events.ts";
 import {
-  emitEvents,
-  eventOriginOf,
-  isBulkOperation,
-  recordEventMessages,
-} from "./automations/events.ts";
+  deliverOutbox,
+  type OutboxEntry,
+  outboxEntries,
+  outboxInserts,
+} from "./automations/outbox.ts";
 import type { TestSimulation } from "./automations/simulate.ts";
 import type { AutomationHost, EventSink } from "./automations/types.ts";
 import type { WidgetCache } from "./dashboards/cache.ts";
@@ -825,6 +826,22 @@ export async function invokeOperation<O extends AnyOperation>(
     );
   }
 
+  // The record changes become automation events (ADR 0130), written to the outbox in this same
+  // batch (ADR 0171) and sent after commit: a failed send is retried by ros-runner's cron.
+  let outbox: OutboxEntry[] = [];
+  if (ctx.events && changes.length) {
+    const origin = eventOriginOf({
+      actor: ctx.actor,
+      userId: ctx.user.id,
+      origin: ctx.origin,
+      operation: op.name,
+      auditId,
+      bulk: isBulkOperation(op.name, bulkSize),
+    });
+    outbox = outboxEntries(recordEventMessages(auditId, now, origin, changes));
+    statements.push(...outboxInserts(ctx.db, outbox, now));
+  }
+
   if (statements.length) {
     try {
       await ctx.db.batch(statements);
@@ -845,18 +862,8 @@ export async function invokeOperation<O extends AnyOperation>(
     }
   }
 
-  // Committed: the record changes become automation events (ADR 0130). One send per operation.
-  if (ctx.events && changes.length) {
-    const origin = eventOriginOf({
-      actor: ctx.actor,
-      userId: ctx.user.id,
-      origin: ctx.origin,
-      operation: op.name,
-      auditId,
-      bulk: isBulkOperation(op.name, bulkSize),
-    });
-    await emitEvents(ctx.events, recordEventMessages(auditId, now, origin, changes));
-  }
+  // Committed: send the events (one send per outbox row, usually one per operation).
+  if (ctx.events && outbox.length) await deliverOutbox(ctx.db, ctx.events, outbox);
 
   if (deferred) {
     const checked = op.output.safeParse(await runAfterCommit(deferred));

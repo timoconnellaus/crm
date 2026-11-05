@@ -98,6 +98,7 @@ export async function startRun(env: RunEnv, params: AutomationRunParams): Promis
     ...(params.period ? { period: params.period } : {}),
     ...(params.manual ? { manual: params.manual } : {}),
     ...(params.approval ? { approval: params.approval } : {}),
+    ...(params.integration ? { integration: params.integration } : {}),
     test: false,
   };
   await crm.batch([

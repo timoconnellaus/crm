@@ -181,3 +181,11 @@ the instance and marks the run `cancelled`.
 - A lost queue send (the producer failing after commit) loses that event; it is logged. The
   Workflow side is exactly-once per idempotency key.
 - The debounce delays `updated` record runs by up to the window.
+
+## Amendments
+
+- 2026-11-05 (stage 6b): events are no longer lost when the post-commit send fails: they are
+  written to an outbox in the operation's batch and retried by ros-runner's cron
+  ([ADR 0171](0171-automation-events-outbox.md)). The `integration` source is registered and its
+  events polled from `core_integration_event` ([ADR 0173](0173-integration-trigger-source.md)).
+  Automations that declare connections wait for them to be bound ([ADR 0170](0170-automation-run-as-bindings.md)).

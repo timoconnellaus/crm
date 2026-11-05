@@ -81,6 +81,12 @@ still awaiting approval as `pending` (simulation from the action journal).
 | --- | --- | --- |
 | `slack.post` | Post to Slack | `false` |
 | `slack.dm` | Send a Slack DM | `false` |
+| `slack.dm.member` | Send a Slack DM to a workspace member | `true` |
+
+A DM to a full member of the workspace (not a guest, bot, app user, deactivated account or Slack
+Connect stranger, from `users.lookupByEmail` / `users.info`) is `slack.dm.member`; any other DM is
+`slack.dm`. An admin may auto-approve `slack.dm.member` for the CRM's fixed-template notices to
+colleagues (ADR 0172, cost audit U8); it is never auto-approved unless enabled.
 
 The description is a rendered preview:
 

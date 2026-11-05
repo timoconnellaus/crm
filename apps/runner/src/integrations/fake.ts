@@ -86,6 +86,9 @@ interface HookInitiatorStub {
   startHook(): Promise<{ callback: { changed(): Promise<void> }; approvalQueue: QueueStub }>;
 }
 
+/** Resource kinds: a mailbox, a calendar, an outbox and a Slack-like workspace (posts and DMs). */
+type FakeKind = "mailbox" | "calendar" | "outbox" | "slack";
+
 const RESOURCES = [
   {
     urlPattern: "fake://mailbox/:address",
@@ -105,6 +108,12 @@ const RESOURCES = [
     description: "Send mail from the fake mailbox (outbound actions)",
     grantable: true,
   },
+  {
+    urlPattern: "fake://slack/:address",
+    title: "Slack",
+    description: "Post to channels and DM people in a fake Slack workspace (outbound actions)",
+    grantable: true,
+  },
 ];
 
 const TYPES = `/** A fake mailbox (development and tests). */
@@ -122,16 +131,21 @@ export interface FakeOutboxSession {
   send(message: { to: string[]; subject: string; text: string; internal?: boolean; relatedRecords?: string[] }): Promise<{ id: number; status: "pending" | "sent" }>;
   listSent(): Promise<{ id: number; to: string[]; subject: string; status: "pending" | "sent" | "rejected" }[]>;
 }
+/** Posting is an outbound action: it waits for approval (a DM to a member is auto-approvable). */
+export interface FakeSlackSession {
+  post(message: { channel: string; text: string }): Promise<{ id: number; status: "pending" | "posted" }>;
+  dm(message: { user: string; text: string }): Promise<{ id: number; status: "pending" | "posted" }>;
+}
 export type FakeMessage = { id: string; messageId: string; from: { email: string; name?: string }; to: { email: string; name?: string }[]; subject: string; text: string; sentAt: string };
 export type FakeEvent = { id: string; uid: string; title: string; startsAt: string; endsAt?: string; attendees: { email: string; name?: string }[] };
 `;
 
-function parseResource(url: string): { kind: "mailbox" | "calendar" | "outbox"; address: string } {
-  const match = /^fake:\/\/(mailbox|calendar|outbox)\/([^/?#]+)$/.exec(url);
+function parseResource(url: string): { kind: FakeKind; address: string } {
+  const match = /^fake:\/\/(mailbox|calendar|outbox|slack)\/([^/?#]+)$/.exec(url);
   if (!match?.[1] || !match[2]) throw new Error(`Not a fake resource URL: ${url}`);
   const address = decodeURIComponent(match[2]).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+$/.test(address)) throw new Error("Not an address");
-  return { kind: match[1] as "mailbox" | "calendar" | "outbox", address };
+  return { kind: match[1] as FakeKind, address };
 }
 
 function randomToken(): string {
@@ -575,6 +589,12 @@ class FakeSession extends RpcTarget {
   listSent() {
     return this.#gk.listSent(this.#queue);
   }
+  post(message: { channel: string; text: string }) {
+    return this.#gk.slack(this.#queue, "post", String(message?.channel ?? ""), message?.text);
+  }
+  dm(message: { user: string; text: string }) {
+    return this.#gk.slack(this.#queue, "dm", String(message?.user ?? ""), message?.text);
+  }
   [Symbol.dispose]() {
     this.#queue[Symbol.dispose]();
   }
@@ -583,7 +603,7 @@ class FakeSession extends RpcTarget {
 /** The facet: one per (connection, resource), owned by the integration host. */
 export class FakeGatekeeper extends DurableObject<
   Env,
-  { accountId: string; kind: "mailbox" | "calendar" | "outbox"; address: string }
+  { accountId: string; kind: FakeKind; address: string }
 > {
   get #props() {
     return this.ctx.props;
@@ -591,11 +611,17 @@ export class FakeGatekeeper extends DurableObject<
 
   async describe() {
     const { kind, address } = this.#props;
-    const names = { mailbox: "MAILBOX", calendar: "CALENDAR", outbox: "OUTBOX" } as const;
+    const names = {
+      mailbox: "MAILBOX",
+      calendar: "CALENDAR",
+      outbox: "OUTBOX",
+      slack: "SLACK",
+    } as const;
     const types = {
       mailbox: "FakeMailSession",
       calendar: "FakeCalendarSession",
       outbox: "FakeOutboxSession",
+      slack: "FakeSlackSession",
     } as const;
     return {
       url: `fake://${kind}/${address}`,
@@ -611,6 +637,7 @@ export class FakeGatekeeper extends DurableObject<
   }
 
   async getAutoApprovableActions() {
+    if (this.#props.kind === "slack") return [{ tag: "fake.slack.dm", label: "DM a member" }];
     return this.#props.kind === "outbox"
       ? [{ tag: "fake.internal", label: "Send internal mail" }]
       : [];
@@ -624,12 +651,14 @@ export class FakeGatekeeper extends DurableObject<
     return provider(this.env, this.#props.address);
   }
 
-  #require(kind: "mailbox" | "calendar" | "outbox") {
+  #require(kind: FakeKind) {
     if (this.#props.kind !== kind) throw new Error(`This session is a ${this.#props.kind}`);
   }
 
   async listChanges(queue: QueueStub, cursor: string | null, limit: number) {
-    if (this.#props.kind === "outbox") throw new Error("An outbox has no changes");
+    if (this.#props.kind === "outbox" || this.#props.kind === "slack") {
+      throw new Error(`A ${this.#props.kind} has no changes`);
+    }
     await queue.authorizeObservation({
       title: "List changes",
       description: `Changes in ${this.#props.address}`,
@@ -698,7 +727,9 @@ export class FakeGatekeeper extends DurableObject<
   }
 
   async subscribe(queue: QueueStub, hook: unknown): Promise<void> {
-    if (this.#props.kind === "outbox") throw new Error("An outbox has no hooks");
+    if (this.#props.kind === "outbox" || this.#props.kind === "slack") {
+      throw new Error(`A ${this.#props.kind} has no hooks`);
+    }
     const hookId = randomToken();
     const controller = this.ctx.exports.FakeHookController({
       props: { address: this.#props.address, hookId },
@@ -752,6 +783,39 @@ export class FakeGatekeeper extends DurableObject<
         : { tag: "fake.send", label: "Send mail" },
     });
     return { id, status: this.#journal().actions[id]?.status === "sent" ? "sent" : "pending" };
+  }
+
+  /** A Slack post (`to` is the channel) or DM (`to` is the user); journalled like a send. */
+  async slack(
+    queue: QueueStub,
+    kind: "post" | "dm",
+    target: string,
+    text: unknown,
+  ): Promise<{ id: number; status: "pending" | "posted" }> {
+    this.#require("slack");
+    const body = String(text ?? "").slice(0, 4000);
+    if (!target || !body) throw new Error(`${kind} needs a target and text`);
+    const journal = this.#journal();
+    const id = journal.next;
+    journal.next += 1;
+    journal.actions[id] = { status: "pending", to: [target], subject: `slack.${kind}`, text: body };
+    this.ctx.storage.kv.put("journal", journal);
+    await queue.submitAction(id, {
+      title: kind === "post" ? `Post to Slack: ${target}` : `Send a Slack DM to ${target}`,
+      description: body,
+      fields: [
+        { label: kind === "post" ? "Channel" : "To", value: target },
+        { label: "Message", value: body, syntax: "markdown" },
+      ],
+      descriptionIsComplete: true,
+      implementsRevert: false,
+      autoApprovable: kind === "dm",
+      actionKind:
+        kind === "dm"
+          ? { tag: "fake.slack.dm", label: "DM a member" }
+          : { tag: "fake.slack.post", label: "Post to a channel" },
+    });
+    return { id, status: this.#journal().actions[id]?.status === "sent" ? "posted" : "pending" };
   }
 
   async listSent(queue: QueueStub) {

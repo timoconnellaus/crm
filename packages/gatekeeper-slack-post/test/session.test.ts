@@ -46,7 +46,7 @@ function field(fields: ActionField[] | undefined, label: string): ActionField | 
 }
 
 describe("facet", () => {
-  it("describes the workspace binding and auto-approves nothing", async () => {
+  it("describes the workspace binding and auto-approves only DMs to members", async () => {
     const host = newHost();
     const { accountId } = await connect(host);
     expect(await host.open(accountId, WORKSPACE_URL)).toMatchObject({
@@ -54,7 +54,9 @@ describe("facet", () => {
       suggestedBindingName: "SLACK_POST",
       tsType: "SlackPostSession",
     });
-    expect(await host.autoApprovable()).toEqual([]);
+    expect(await host.autoApprovable()).toEqual([
+      { tag: "slack.dm.member", label: "Send a Slack DM to a workspace member" },
+    ]);
   });
 });
 
@@ -160,10 +162,11 @@ describe("dm", () => {
     ]);
     expect(receipt).toEqual({ status: "pending", id: 1 });
     const [, description] = submissions[0] ?? [];
+    // Ana is a full member of the workspace: the auto-approvable member kind.
     expect(description).toMatchObject({
       title: "Send a Slack DM to ana",
-      actionKind: { tag: "slack.dm", label: "Send a Slack DM" },
-      autoApprovable: false,
+      actionKind: { tag: "slack.dm.member", label: "Send a Slack DM to a workspace member" },
+      autoApprovable: true,
     });
     expect(field(description?.fields, "To")).toEqual({
       label: "To",
@@ -180,6 +183,17 @@ describe("dm", () => {
     expect(slack.posts).toEqual([
       { token: "xoxb-code-1", channel: "D0U0ANA", text: "Your renewal is due" },
     ]);
+  });
+
+  it("a DM to a guest is the reviewed kind", async () => {
+    const host = await session();
+    await host.call("dm", [{ user: "gus@partner.example", text: "hi" }]);
+    expect(submissions[0]?.[1]).toMatchObject({
+      actionKind: { tag: "slack.dm", label: "Send a Slack DM" },
+      autoApprovable: false,
+    });
+    await host.call("dm", [{ user: "U0GUEST", text: "hi again" }]);
+    expect(submissions[1]?.[1].actionKind?.tag).toBe("slack.dm");
   });
 
   it("accepts a user id", async () => {

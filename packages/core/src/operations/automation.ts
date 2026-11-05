@@ -41,6 +41,7 @@ import { getObject } from "../fields/index.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import { jsonList } from "../records/common.ts";
 import { loadRecordTitles } from "../records/links.ts";
+import { assertConnectionsBound, connectionViews } from "./automation-binding.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -325,6 +326,7 @@ export const automationGet = defineOperation({
       runCount: Number(count?.n ?? 0),
       lastTest: parse<unknown>(lastTest?.report ?? null, null),
       killSwitch: settings.killSwitch,
+      connections: await connectionViews(ctx, row.id, spec.connections ?? []),
     };
   },
 });
@@ -366,10 +368,12 @@ function statusOperation(name: "automation.enable" | "automation.disable") {
     permission: "settings:manage",
     risk: "write",
     async handler(input, ctx) {
-      const { row } = await loadAutomation(ctx.db, input.id);
+      const { row, spec } = await loadAutomation(ctx.db, input.id);
       if (row.removed_at) {
         throw new ValidationError(`${input.id} was removed from its extension`, { id: input.id });
       }
+      // Run-as (ADR 0170): it cannot run until every declared connection is bound.
+      if (enable) await assertConnectionsBound(ctx, row.id, spec);
       ctx.write(
         ctx.db
           .updateTable("core_automations")

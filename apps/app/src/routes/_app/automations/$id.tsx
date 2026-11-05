@@ -8,9 +8,10 @@ import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@relationship-os/ui/components/tooltip";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { MessageSquareIcon, PauseIcon, PlayIcon, WorkflowIcon } from "lucide-react";
+import { MessageSquareIcon, PauseIcon, PlayIcon, PlugIcon, WorkflowIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { connectionSlots, connectionsBanner } from "#/components/automations/connections-model";
 import {
   type AutomationDetailData,
   useAutomation,
@@ -84,6 +85,7 @@ function AutomationView({ detail }: { detail: AutomationDetailData }) {
   const navigate = useNavigate({ from: "/automations/$id" });
   const [tested, setTested] = useState<AutomationTestReport | null>(null);
   const report = tested ?? asTestReport(detail.lastTest);
+  const banner = connectionsBanner(detail.pausedReason, connectionSlots(detail.connections));
 
   const go = (next: Tab, runId?: string) =>
     navigate({
@@ -136,13 +138,30 @@ function AutomationView({ detail }: { detail: AutomationDetailData }) {
       scrollId={`automation-${tab}`}
     >
       {detail.killSwitch && <KillSwitchBanner isAdmin={isAdmin} />}
-      {detail.pausedReason && detail.status === "paused" && (
-        <p
-          className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-400/40 dark:bg-amber-500/10"
-          role="status"
-        >
-          Paused: {detail.pausedReason}
-        </p>
+      {banner && detail.status === "paused" ? (
+        <ConnectionsBanner
+          banner={banner}
+          detail={detail}
+          onBind={() => {
+            if (tab !== "overview") go("overview");
+            // After the tab renders: the Permissions card holds the pickers.
+            requestAnimationFrame(() =>
+              document
+                .getElementById("card-permissions-title")
+                ?.scrollIntoView({ block: "start", behavior: "smooth" }),
+            );
+          }}
+        />
+      ) : (
+        detail.pausedReason &&
+        detail.status === "paused" && (
+          <p
+            className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-400/40 dark:bg-amber-500/10"
+            role="status"
+          >
+            Paused: {detail.pausedReason}
+          </p>
+        )
       )}
       {tab === "overview" && (
         <OverviewTab detail={detail} report={report} onOpenRuns={(runId) => go("runs", runId)} />
@@ -188,6 +207,55 @@ function PauseButton({ detail }: { detail: AutomationDetailData }) {
       {active ? <PauseIcon /> : <PlayIcon />}
       {active ? "Pause" : "Resume"}
     </Button>
+  );
+}
+
+/**
+ * Why it waits on connections ("Waiting for connections", "Connection revoked …"), with the way
+ * out: bind them in the Permissions card, or resume once every connection is bound again.
+ */
+function ConnectionsBanner({
+  banner,
+  detail,
+  onBind,
+}: {
+  banner: NonNullable<ReturnType<typeof connectionsBanner>>;
+  detail: AutomationDetailData;
+  onBind: () => void;
+}) {
+  const { enable } = useSetEnabled();
+  return (
+    <div
+      className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-400/40 dark:bg-amber-500/10"
+      role="status"
+      data-testid="connections-banner"
+    >
+      <PlugIcon className="size-4 shrink-0 text-amber-800 dark:text-amber-300" aria-hidden />
+      <div className="grid min-w-0 flex-1 gap-0.5">
+        <span className="font-medium">{banner.title}</span>
+        <span className="text-muted-foreground">{banner.body}</span>
+      </div>
+      {banner.canResume ? (
+        <Button
+          size="sm"
+          disabled={enable.isPending}
+          onClick={() =>
+            enable.mutateAsync({ id: detail.id }).then(
+              () => toast.success(`Resumed ${detail.label}`),
+              (error) => toast.error(errorMessage(error)),
+            )
+          }
+        >
+          <PlayIcon />
+          Resume
+        </Button>
+      ) : (
+        <Button size="sm" variant="outline" onClick={onBind}>
+          <PlugIcon />
+          Bind connections
+        </Button>
+      )}
+    </div>
   );
 }
 

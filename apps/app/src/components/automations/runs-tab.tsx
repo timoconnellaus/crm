@@ -25,7 +25,7 @@ import { formatDateTime } from "#/lib/format";
 import { errorMessage } from "#/lib/query";
 import { recordHref } from "#/lib/schema";
 import { type RunData, useRun, useRuns } from "./hooks.ts";
-import { compactRelative, formatMs, RUN_STATUS_LABELS } from "./model.ts";
+import { compactRelative, formatMs, RUN_STATUS_LABELS, runLabel } from "./model.ts";
 import { RunOutcome } from "./parts.tsx";
 
 const ALL = "all";
@@ -127,9 +127,7 @@ function RunRow({ run, onOpen }: { run: RunData; onOpen: () => void }) {
       onClick={onOpen}
       className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-left text-sm hover:bg-muted/50"
     >
-      <span className="min-w-0 flex-1 truncate font-medium">
-        {run.record?.title ?? run.record?.id ?? "Scheduled run"}
-      </span>
+      <span className="min-w-0 flex-1 truncate font-medium">{runLabel(run)}</span>
       {run.test && <Badge variant="outline">Test</Badge>}
       {run.depth > 0 && <Badge variant="secondary">Cascade {run.depth}</Badge>}
       <RunOutcome run={run} />
@@ -159,7 +157,9 @@ function triggerText(trigger: unknown): string | null {
   const t = trigger as Record<string, unknown>;
   const type = typeof t.type === "string" ? t.type : null;
   const action = typeof t.action === "string" ? t.action : null;
-  return [type, action].filter(Boolean).join(" · ") || null;
+  const integration = t.integration as { type?: unknown; eventId?: unknown } | undefined;
+  const event = typeof integration?.type === "string" ? integration.type : null;
+  return [type, action, event].filter(Boolean).join(" · ") || null;
 }
 
 export function RunDetail({
@@ -239,7 +239,7 @@ export function RunDetail({
                 {run.record.title ?? run.record.id}
               </HrefLink>
             ) : (
-              "Scheduled run"
+              runLabel(run)
             )}
           </h2>
           {run.test && <Badge variant="outline">Test</Badge>}

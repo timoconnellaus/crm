@@ -18,6 +18,7 @@ import {
   parseOnly,
   parsePositiveInt,
 } from "@relationship-os/evals-mcp/lib/cli.ts";
+import { loadEvalEnvFile } from "@relationship-os/evals-mcp/lib/env-file.ts";
 import { openMcpSession } from "@relationship-os/evals-mcp/lib/mcp.ts";
 import {
   chatCompletionsModel,
@@ -88,6 +89,7 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliOptions {
 }
 
 async function main(): Promise<number> {
+  loadEvalEnvFile(process.env);
   const credentials = checkCredentials(process.env);
   if ("code" in credentials) {
     console.error(credentials.message);

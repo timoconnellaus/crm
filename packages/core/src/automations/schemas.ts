@@ -98,6 +98,11 @@ export const automationDetailSchema = automationListItemSchema.extend({
   /** The latest test-mode report, if any. */
   lastTest: z.unknown().nullable(),
   killSwitch: z.boolean(),
+  /**
+   * Connections it declares and what each is bound to (ADR 0170). AutomationConnectionView
+   * (operations/automation-binding.ts); empty for automations that need none.
+   */
+  connections: z.array(z.unknown()).default([]),
 });
 export type AutomationDetail = z.infer<typeof automationDetailSchema>;
 

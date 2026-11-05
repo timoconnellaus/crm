@@ -41,6 +41,9 @@ import { Route as AppSettingsConnectedAppsRouteImport } from './routes/_app/sett
 import { Route as AppSettingsExtensionsRouteImport } from './routes/_app/settings/extensions'
 import { Route as AppSettingsGeneralRouteImport } from './routes/_app/settings/general'
 import { Route as AppSettingsIntegrationsRouteImport } from './routes/_app/settings/integrations'
+import { Route as AppSettingsNotificationDeliveryRouteImport } from './routes/_app/settings/notification-delivery'
+import { Route as AppSettingsNotificationRoutesRouteImport } from './routes/_app/settings/notification-routes'
+import { Route as AppSettingsNotificationsRouteImport } from './routes/_app/settings/notifications'
 import { Route as AppSettingsStorageRouteImport } from './routes/_app/settings/storage'
 import { Route as AppSettingsUpdatesRouteImport } from './routes/_app/settings/updates'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
@@ -209,6 +212,24 @@ const AppSettingsIntegrationsRoute = AppSettingsIntegrationsRouteImport.update({
   path: '/settings/integrations',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsNotificationDeliveryRoute =
+  AppSettingsNotificationDeliveryRouteImport.update({
+    id: '/settings/notification-delivery',
+    path: '/settings/notification-delivery',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppSettingsNotificationRoutesRoute =
+  AppSettingsNotificationRoutesRouteImport.update({
+    id: '/settings/notification-routes',
+    path: '/settings/notification-routes',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppSettingsNotificationsRoute =
+  AppSettingsNotificationsRouteImport.update({
+    id: '/settings/notifications',
+    path: '/settings/notifications',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSettingsStorageRoute = AppSettingsStorageRouteImport.update({
   id: '/settings/storage',
   path: '/settings/storage',
@@ -267,6 +288,9 @@ export interface FileRoutesByFullPath {
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/settings/notification-delivery': typeof AppSettingsNotificationDeliveryRoute
+  '/settings/notification-routes': typeof AppSettingsNotificationRoutesRoute
+  '/settings/notifications': typeof AppSettingsNotificationsRoute
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
@@ -306,6 +330,9 @@ export interface FileRoutesByTo {
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/settings/notification-delivery': typeof AppSettingsNotificationDeliveryRoute
+  '/settings/notification-routes': typeof AppSettingsNotificationRoutesRoute
+  '/settings/notifications': typeof AppSettingsNotificationsRoute
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
@@ -347,6 +374,9 @@ export interface FileRoutesById {
   '/_app/settings/extensions': typeof AppSettingsExtensionsRoute
   '/_app/settings/general': typeof AppSettingsGeneralRoute
   '/_app/settings/integrations': typeof AppSettingsIntegrationsRoute
+  '/_app/settings/notification-delivery': typeof AppSettingsNotificationDeliveryRoute
+  '/_app/settings/notification-routes': typeof AppSettingsNotificationRoutesRoute
+  '/_app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/_app/settings/storage': typeof AppSettingsStorageRoute
   '/_app/settings/updates': typeof AppSettingsUpdatesRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
@@ -388,6 +418,9 @@ export interface FileRouteTypes {
     | '/settings/extensions'
     | '/settings/general'
     | '/settings/integrations'
+    | '/settings/notification-delivery'
+    | '/settings/notification-routes'
+    | '/settings/notifications'
     | '/settings/storage'
     | '/settings/updates'
     | '/settings/users'
@@ -427,6 +460,9 @@ export interface FileRouteTypes {
     | '/settings/extensions'
     | '/settings/general'
     | '/settings/integrations'
+    | '/settings/notification-delivery'
+    | '/settings/notification-routes'
+    | '/settings/notifications'
     | '/settings/storage'
     | '/settings/updates'
     | '/settings/users'
@@ -467,6 +503,9 @@ export interface FileRouteTypes {
     | '/_app/settings/extensions'
     | '/_app/settings/general'
     | '/_app/settings/integrations'
+    | '/_app/settings/notification-delivery'
+    | '/_app/settings/notification-routes'
+    | '/_app/settings/notifications'
     | '/_app/settings/storage'
     | '/_app/settings/updates'
     | '/_app/settings/users'
@@ -715,6 +754,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsIntegrationsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/notification-delivery': {
+      id: '/_app/settings/notification-delivery'
+      path: '/settings/notification-delivery'
+      fullPath: '/settings/notification-delivery'
+      preLoaderRoute: typeof AppSettingsNotificationDeliveryRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/notification-routes': {
+      id: '/_app/settings/notification-routes'
+      path: '/settings/notification-routes'
+      fullPath: '/settings/notification-routes'
+      preLoaderRoute: typeof AppSettingsNotificationRoutesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/notifications': {
+      id: '/_app/settings/notifications'
+      path: '/settings/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof AppSettingsNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/storage': {
       id: '/_app/settings/storage'
       path: '/settings/storage'
@@ -783,6 +843,9 @@ interface AppRouteChildren {
   AppSettingsExtensionsRoute: typeof AppSettingsExtensionsRoute
   AppSettingsGeneralRoute: typeof AppSettingsGeneralRoute
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
+  AppSettingsNotificationDeliveryRoute: typeof AppSettingsNotificationDeliveryRoute
+  AppSettingsNotificationRoutesRoute: typeof AppSettingsNotificationRoutesRoute
+  AppSettingsNotificationsRoute: typeof AppSettingsNotificationsRoute
   AppSettingsStorageRoute: typeof AppSettingsStorageRoute
   AppSettingsUpdatesRoute: typeof AppSettingsUpdatesRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
@@ -818,6 +881,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsExtensionsRoute: AppSettingsExtensionsRoute,
   AppSettingsGeneralRoute: AppSettingsGeneralRoute,
   AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
+  AppSettingsNotificationDeliveryRoute: AppSettingsNotificationDeliveryRoute,
+  AppSettingsNotificationRoutesRoute: AppSettingsNotificationRoutesRoute,
+  AppSettingsNotificationsRoute: AppSettingsNotificationsRoute,
   AppSettingsStorageRoute: AppSettingsStorageRoute,
   AppSettingsUpdatesRoute: AppSettingsUpdatesRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,

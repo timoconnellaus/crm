@@ -1,5 +1,6 @@
 // Resolving the authenticated Principal to the CRM user an operation acts for.
 import type { CrmDb } from "@relationship-os/db";
+import { ForbiddenError } from "./errors.ts";
 import { newId } from "./ids.ts";
 import type { ActingUser, Role } from "./principals.ts";
 
@@ -20,7 +21,7 @@ export async function resolveActingUser(db: CrmDb, principal: PrincipalLike): Pr
   const find = () =>
     db.query
       .selectFrom("core_user")
-      .select(["id", "email", "name", "role"])
+      .select(["id", "email", "name", "role", "deactivated_at"])
       // Extension principals (migration 0020) are never a signed-in user.
       .where("kind", "=", "human")
       .where((eb) =>
@@ -49,6 +50,9 @@ export async function resolveActingUser(db: CrmDb, principal: PrincipalLike): Pr
     row = await find();
   }
   if (!row) throw new Error(`Could not resolve a CRM user for ${email}`);
+  // A deactivated person cannot act (user.deactivate, ADR 0170), whichever identity provider let
+  // the request in.
+  if (row.deactivated_at) throw new ForbiddenError("This account has been deactivated");
   return { id: row.id, email: row.email, name: row.name, role: row.role as Role };
 }
 

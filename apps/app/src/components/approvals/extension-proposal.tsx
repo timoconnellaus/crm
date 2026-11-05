@@ -6,6 +6,7 @@ import type { ExtensionImpact, FileDiff } from "@relationship-os/core";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { cn } from "@relationship-os/ui/lib/utils";
+import { Link } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
   CheckCircle2Icon,
@@ -14,6 +15,9 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { ConnectionSlots } from "#/components/automations/connections";
+import { connectionSlots, gatekeeperTitle } from "#/components/automations/connections-model";
+import { useAutomation } from "#/components/automations/hooks";
 import { errorMessage, useOp } from "#/lib/query";
 import { highlightLine, type TokenKind } from "./highlight.ts";
 
@@ -31,7 +35,14 @@ interface CheckView {
   issues: { stage: string; code: string; path: string; message: string; suggestion?: string }[];
 }
 
-export function ExtensionProposal({ actionId }: { actionId: string }) {
+export function ExtensionProposal({
+  actionId,
+  status = "pending",
+}: {
+  actionId: string;
+  /** The pending action's status: once applied, the approver binds declared connections here. */
+  status?: string;
+}) {
   const proposal = useOp("extension.proposal", { actionId }, { staleTime: 60_000 });
   if (proposal.isPending) return <Skeleton className="h-40" />;
   if (proposal.isError) {
@@ -48,9 +59,73 @@ export function ExtensionProposal({ actionId }: { actionId: string }) {
   return (
     <div className="grid min-w-0 gap-3" data-testid="extension-proposal">
       <AiSummary summary={p.aiSummary} />
+      {status === "applied" && <BindAfterApproval impact={impact} />}
       <Impact impact={impact} />
       <CheckResult check={check} />
       <Diff diff={diff} />
+    </div>
+  );
+}
+
+/**
+ * After approval: each installed automation that declares connections, with a picker per
+ * connection still unbound (the same binder as the automation page's Permissions card).
+ */
+function BindAfterApproval({ impact }: { impact: ExtensionImpact }) {
+  const needing = impact.triggers.filter((t) => t.connections?.length);
+  if (!needing.length) return null;
+  return (
+    <Section title="Allow connections" testId="bind-connections">
+      <p className="text-sm text-muted-foreground">
+        Installed. These automations stay paused until you allow each one to use a connection.
+      </p>
+      {needing.map((t) => (
+        <AutomationBinding
+          key={t.name}
+          automationId={`${impact.extension}.${t.name}`}
+          label={t.label ?? t.name}
+        />
+      ))}
+    </Section>
+  );
+}
+
+function AutomationBinding({ automationId, label }: { automationId: string; label: string }) {
+  const automation = useAutomation(automationId);
+  if (automation.isPending) return <Skeleton className="h-20" />;
+  if (automation.error || !automation.data) {
+    return (
+      <p className="text-sm text-destructive">
+        Could not load {label}: {errorMessage(automation.error)}
+      </p>
+    );
+  }
+  const detail = automation.data;
+  const slots = connectionSlots(detail.connections);
+  const unbound = slots.filter((s) => !s.binding).length;
+  return (
+    <div
+      className="grid min-w-0 gap-2 rounded-md border p-2.5"
+      data-testid="automation-binding"
+      data-automation={automationId}
+    >
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Link
+          to="/automations/$id"
+          params={{ id: automationId }}
+          className="font-medium underline-offset-2 hover:underline"
+        >
+          {detail.label}
+        </Link>
+        <span className="text-xs text-muted-foreground" data-testid="binding-state">
+          {unbound
+            ? `${unbound} connection${unbound === 1 ? "" : "s"} to allow`
+            : detail.status === "active"
+              ? "All connections allowed · active"
+              : "All connections allowed"}
+        </span>
+      </div>
+      <ConnectionSlots automation={{ id: detail.id, label: detail.label }} slots={slots} />
     </div>
   );
 }
@@ -182,6 +257,12 @@ function Impact({ impact }: { impact: ExtensionImpact }) {
           <div key={t.name} className="text-sm">
             <div className="font-medium">{t.label ?? t.name}</div>
             <div className="text-muted-foreground">{t.summary || t.trigger}</div>
+            {(t.connections ?? []).map((c) => (
+              <div key={c.id} className="text-xs" data-testid="declared-connection">
+                Needs a {gatekeeperTitle(c.gatekeeper)} connection (
+                <code className="font-mono">{c.id}</code>): {c.purpose}
+              </div>
+            ))}
           </div>
         ))
       ) : (
@@ -190,6 +271,12 @@ function Impact({ impact }: { impact: ExtensionImpact }) {
       {impact.triggers.some((t) => t.summary) && (
         <span className="text-muted-foreground text-xs">
           Summaries are generated by the CRM from the declared trigger, conditions and steps.
+        </span>
+      )}
+      {impact.triggers.some((t) => t.connections?.length) && (
+        <span className="text-muted-foreground text-xs">
+          Automations that need connections install paused. After approving, you choose which
+          connection each one may use.
         </span>
       )}
     </div>,
