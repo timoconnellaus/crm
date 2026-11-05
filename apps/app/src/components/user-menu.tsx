@@ -53,7 +53,7 @@ export function UserMenu({
           <Avatar className="size-7">
             <AvatarFallback>{initials(principal.name) || "?"}</AvatarFallback>
           </Avatar>
-          <span className="hidden text-sm sm:inline">{principal.name}</span>
+          <span className="hidden text-sm @lg:inline">{principal.name}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

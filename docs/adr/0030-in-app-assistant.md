@@ -15,3 +15,11 @@ One tool surface to design, test and evaluate. Anything the assistant can do, an
 > in process rather than over HTTP; the conversation id is its MCP session; under Balanced it keeps
 > its own policy column (bulk writes up to 25 apply). Its history keeps reasoning content and
 > replays it, so DeepSeek's thinking mode works.
+
+> Amended 2026-11-06: the Cmd-J panel is no longer a sheet. On tablets and desktops (≥ 768 px) it
+> is a **persistent sidebar docked on the right of the app shell**: the page reflows narrower
+> beside it (nothing is overlaid), it stays mounted across page changes with the same
+> conversation, scroll position, streaming reply and draft, and it updates its page context as
+> the person moves, shown as an "On: …" chip. It is resizable from its left edge (drag or arrow
+> keys, 288–720 px, giving way so the page keeps 320 px), and its width and open state are
+> remembered per browser. On phones it stays a full-screen sheet. `/assistant` is unchanged.

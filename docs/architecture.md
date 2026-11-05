@@ -505,6 +505,11 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   each turn referenced (`core_assistant_conversation_refs`), so an erase finds the conversations
   to redact and asks their objects to scrub them before it commits (ADR 0019 amendment).
   `EVAL_VIA=assistant` runs the stage 2–5 eval sets through it.
+  In the app (ADR 0030 amendment) the Cmd-J panel is docked on the right of the shell on tablets
+  and desktops, beside the page rather than over it, and stays mounted across page changes; on
+  phones it is a sheet. `AssistantProvider` holds the open state and page context (stable actions
+  in one context, state in another); the conversation and its streaming live in `AssistantPanel`,
+  so a streamed token re-renders only the panel.
 
 - **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
   [ADR 0232](adr/0232-judge-defaults-and-user-decisions.md), [`docs/jev.md`](jev.md); stage 11,
