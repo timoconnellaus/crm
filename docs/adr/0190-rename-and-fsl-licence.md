@@ -18,3 +18,12 @@ The aim is to let anyone use Relationship OS for free while keeping the right to
 
 ## Notes
 This is not legal advice. Have the licence text, the CLA and the commercial terms reviewed by a lawyer before selling.
+
+## Amendments
+- **2026-11-05 (Stage 9).** "No installs exist yet, so nothing needs migrating" no longer holds as a
+  safe assumption: ADR 0193 keeps any pre-rename install on its deployed `crm-*` names. The licensor
+  in `LICENSE` and `NOTICE` is Tim O'Connell. `NOTICE` names the relicensing commit as the merge of
+  the Stage 9 pull request. Our own gatekeepers (`gatekeeper-email-send`, `-slack-post`, `-webhook`)
+  are our code and move to FSL-1.1-ALv2; only the packages listed in `UPSTREAMS.md` stay Apache-2.0.
+  "CRM" remains the category word and the name of the operations API in extension code
+  (`codemode:crm`, `ctx.crm`, `crm_*` views).
