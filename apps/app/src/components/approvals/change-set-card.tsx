@@ -358,9 +358,7 @@ function ActionItem({
           <RiskBadge risk={action.risk} />
           {!pending && <StatusBadge status={action.status} />}
         </div>
-        <p className="text-sm text-muted-foreground">
-          <span className="sr-only">The agent's </span>Reason: {action.reason}
-        </p>
+        <p className="text-sm text-muted-foreground">Agent's reason: {action.reason}</p>
         {action.adjudication && <VerdictNote verdict={action.adjudication} />}
         {action.outbound ? (
           <OutboundPreview outbound={action.outbound} />

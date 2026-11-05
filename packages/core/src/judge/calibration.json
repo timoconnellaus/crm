@@ -55,7 +55,10 @@
       "wrong": 0,
       "close": 2,
       "unanswered": 0,
-      "closeCalls": ["big-deal-alert, only open deals too", "org-check-in without the wait"],
+      "closeCalls": [
+        "big-deal-alert, only open deals too",
+        "org-check-in without the wait"
+      ],
       "highestBelow": 0.38,
       "belowGap": 0.07,
       "lowestAbove": 0.45,
@@ -93,7 +96,9 @@
       "wrong": 0,
       "close": 1,
       "unanswered": 0,
-      "closeCalls": ["org-check-in without the wait"],
+      "closeCalls": [
+        "org-check-in without the wait"
+      ],
       "highestBelow": 0.38,
       "belowGap": 0.12,
       "lowestAbove": 0.81,
@@ -183,8 +188,8 @@
       "model": "jev-1.14.0",
       "threshold": 0.5,
       "label": "adds + contradicts",
-      "cases": 55,
-      "right": 55,
+      "cases": 59,
+      "right": 59,
       "wrong": 0,
       "close": 0,
       "unanswered": 0,
@@ -194,7 +199,7 @@
       "lowestAbove": 1,
       "aboveGap": 0.5,
       "runs": 3,
-      "mode": "replay",
+      "mode": "auto",
       "date": "2026-11-05"
     },
     "widget.shape/categories": {

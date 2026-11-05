@@ -31,7 +31,7 @@ test("an extension proposal shows its diff, impact, check and AI summary, and in
   const item = set.locator(`[data-action="${proposal.actionId}"]`);
   await expect(item).toContainText(`Install extension ${id} 1.0.0`);
   await expect(item.getByTestId("risk-badge")).toHaveText("extension");
-  await expect(item).toContainText("Reason: Add projects for organisations");
+  await expect(item).toContainText("Agent's reason: Add projects for organisations");
 
   // The AI summary is labelled; without AI configured it says so.
   const ai = item.getByTestId("ai-summary");

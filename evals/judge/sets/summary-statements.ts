@@ -178,6 +178,22 @@ const SUMMARIES: Summary[] = [
     ],
   },
   {
+    // Written as the change-set prompt asks since 6 November 2026 (ADR 0236): the changes, their
+    // fields and values, destructive first, and no reasons.
+    name: "change-set, the change only",
+    facts: CHANGE_SET,
+    lines: [
+      ["It deletes one person.", KEEP],
+      ["It changes a person's job title from Engineer to Engineering Manager.", KEEP],
+      ["It creates the task Call Dana about the renewal, due on 20 November 2026.", KEEP],
+      [
+        "The job title changes because the person was promoted last week.",
+        REMOVE,
+        "a reason and an event the facts do not hold",
+      ],
+    ],
+  },
+  {
     name: "initech",
     facts: INITECH,
     lines: [

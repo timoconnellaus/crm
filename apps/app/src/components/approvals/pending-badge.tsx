@@ -91,7 +91,7 @@ export function PendingPopover({
                 Would {ACTION_TEXT[item.action] ?? item.action} this record ·{" "}
                 {item.clientName ?? "an agent"} · {formatRelative(item.createdAt)}
               </span>
-              <span className="line-clamp-2 text-xs">Reason: {item.reason}</span>
+              <span className="line-clamp-2 text-xs">Agent's reason: {item.reason}</span>
             </li>
           ))}
         </ul>

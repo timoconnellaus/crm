@@ -161,7 +161,7 @@ export function SummaryBody({
   );
 }
 
-/** "Explain these changes" on a change set in the Approvals inbox: a plain-English description. */
+/** "Describe these changes" on a change set in Approvals: what it does, never why (ADR 0236). */
 export function ChangeSetExplanation({ changeSetId }: { changeSetId: string }) {
   const { generate, summary } = useSummary({ kind: "changeset", id: changeSetId });
   if (summary?.status === "unavailable" && !summary.text) return null;
@@ -192,7 +192,11 @@ export function ChangeSetExplanation({ changeSetId }: { changeSetId: string }) {
             onClick={() => generate.mutate()}
           >
             <SparklesIcon />
-            {generate.isPending ? "Explaining…" : text ? "Explain again" : "Explain these changes"}
+            {generate.isPending
+              ? "Describing…"
+              : text
+                ? "Describe again"
+                : "Describe these changes"}
           </Button>
         </div>
       )}

@@ -33,11 +33,6 @@ export interface SummaryInput {
   facts: string[];
   /** Record ids the facts came from (erase deletes summaries that used them). */
   sources: string[];
-  /**
-   * The facts the judge checks the summary against (`summary.statements`), when they differ from
-   * `facts`: a change set's without the agent's reasons, which are never the judge's evidence.
-   */
-  judgeFacts?: string[];
 }
 
 export interface CachedSummary {
@@ -367,14 +362,18 @@ export async function activitySummaryInput(
   };
 }
 
-/** Facts for a change set: what each pending action would do, and the agent's reasons. */
+/**
+ * Facts for a change set: what each pending action would do, never why. The agent's reasons are
+ * its own account (shown on the approval screen as "Agent's reason"), so the summary describes
+ * only the change and the judge checks it against the same facts (ADR 0236).
+ */
 export async function changeSetSummaryInput(
   db: Kysely<CoreDatabase>,
   changeSetId: string,
 ): Promise<SummaryInput> {
   const actions = await db
     .selectFrom("core_pending_action")
-    .select(["id", "operation", "reason", "preview", "status", "actor", "summary"])
+    .select(["id", "operation", "preview", "status", "actor", "summary"])
     .where("change_set_id", "=", changeSetId)
     .orderBy("created_at")
     .orderBy("id")
@@ -382,7 +381,6 @@ export async function changeSetSummaryInput(
     .execute();
   if (!actions.length) throw new NotFoundError("change set", changeSetId);
   const facts: string[] = [];
-  const judgeFacts: string[] = [];
   const sources: string[] = [];
   for (const a of actions) {
     let preview: {
@@ -410,12 +408,7 @@ export async function changeSetSummaryInput(
         return `${p.action} ${p.object}${fields ? ` (${fields})` : ""}`;
       })
       .join("; ");
-    facts.push(
-      fact(
-        `${a.operation} [${a.status}]${a.reason ? ` because "${a.reason}"` : ""}: ${changes || "no record changes"}`,
-      ),
-    );
-    judgeFacts.push(fact(`${a.operation} [${a.status}]: ${changes || "no record changes"}`));
+    facts.push(fact(`${a.operation} [${a.status}]: ${changes || "no record changes"}`));
   }
   return {
     kind: "changeset",
@@ -423,7 +416,6 @@ export async function changeSetSummaryInput(
     subjectId: changeSetId,
     facts,
     sources,
-    judgeFacts,
   };
 }
 
@@ -441,8 +433,9 @@ const INSTRUCTIONS: Record<SummaryKind, string> = {
     "no preamble.",
   changeset:
     "Describe in plain English, for the person approving it, what this AI agent's change set " +
-    "would do: which records it creates, changes or deletes and why. 2 to 4 sentences. Use only " +
-    "the facts given; mention anything destructive first.",
+    "would do: which records it creates, changes or deletes, and which fields and values. 2 to 4 " +
+    "sentences. Describe only the changes: do not explain, guess or justify why they are made. " +
+    "Use only the facts given; mention anything destructive first.",
 };
 
 export function summaryMessages(input: SummaryInput): ModelMessage[] {

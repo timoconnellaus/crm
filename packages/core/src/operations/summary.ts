@@ -172,7 +172,7 @@ export const summaryGenerate = defineOperation({
     const checked = await checkSummary({
       judge: ctx.judge,
       text: answer.text,
-      facts: summary.judgeFacts ?? summary.facts,
+      facts: summary.facts,
       now: ctx.now,
     });
     if (checked.status === "unchecked" && summary.kind === "changeset") {
