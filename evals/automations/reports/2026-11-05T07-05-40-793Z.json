@@ -50,12 +50,7 @@
       },
       "id": "won-thank-you",
       "title": "Won deal: a thank-you task and a notification for the owner",
-      "covers": [
-        "fieldChanged",
-        "stageType won",
-        "write task",
-        "notify field"
-      ],
+      "covers": ["fieldChanged", "stageType won", "write task", "notify field"],
       "extensionId": "wonthankszonezon",
       "automationId": "wonthankszonezon.wonThanksNote",
       "passed": true,
@@ -121,11 +116,7 @@
       },
       "id": "lost-deal-admins",
       "title": "Lost deal: tell the admins",
-      "covers": [
-        "fieldChanged",
-        "stageType lost",
-        "notify admins"
-      ],
+      "covers": ["fieldChanged", "stageType lost", "notify admins"],
       "extensionId": "lostalertzonezon",
       "automationId": "lostalertzonezon.lostDealAlert",
       "passed": true,
@@ -214,11 +205,7 @@
       },
       "id": "new-person-welcome",
       "title": "New person: a welcome-email task",
-      "covers": [
-        "record created",
-        "core object",
-        "write task"
-      ],
+      "covers": ["record created", "core object", "write task"],
       "extensionId": "welcomezonezon",
       "automationId": "welcomezonezon.welcomeEmailTask",
       "passed": false,
@@ -288,11 +275,7 @@
       },
       "id": "org-check-in",
       "title": "New organisation: check in after two days",
-      "covers": [
-        "record created",
-        "sleep",
-        "write task"
-      ],
+      "covers": ["record created", "sleep", "write task"],
       "extensionId": "checkinzonezon",
       "automationId": "checkinzonezon.checkInTask",
       "passed": false,
@@ -363,11 +346,7 @@
       },
       "id": "close-date-reminder",
       "title": "A week before the expected close date: remind the owner",
-      "covers": [
-        "dateRelative",
-        "negative offset",
-        "notify field"
-      ],
+      "covers": ["dateRelative", "negative offset", "notify field"],
       "extensionId": "closesoonzonezon",
       "automationId": "closesoonzonezon.closingSoonReminder",
       "passed": true,
@@ -432,11 +411,7 @@
       },
       "id": "big-deal-alert",
       "title": "A deal over 50,000 is created: tell the admins",
-      "covers": [
-        "record created",
-        "conditions",
-        "notify admins"
-      ],
+      "covers": ["record created", "conditions", "notify admins"],
       "extensionId": "bigdealzonezon",
       "automationId": "bigdealzonezon.bigDealAlert",
       "passed": true,
@@ -501,11 +476,7 @@
       },
       "id": "weekly-digest",
       "title": "Every Monday at 9: a pipeline review reminder",
-      "covers": [
-        "schedule",
-        "cron",
-        "notify admins"
-      ],
+      "covers": ["schedule", "cron", "notify admins"],
       "extensionId": "weeklyzonezon",
       "automationId": "weeklyzonezon.weeklyPipelineReview",
       "passed": false,
@@ -578,10 +549,7 @@
       },
       "id": "manual-renewal-task",
       "title": "A button on organisations: create a renewal task",
-      "covers": [
-        "manual",
-        "write task"
-      ],
+      "covers": ["manual", "write task"],
       "extensionId": "renewbtnzonezon",
       "automationId": "renewbtnzonezon.renewalTask",
       "passed": false,
@@ -845,10 +813,7 @@
       },
       "id": "rejected-change",
       "title": "A change is rejected: tell the admins",
-      "covers": [
-        "approvalDecided",
-        "notify admins"
-      ],
+      "covers": ["approvalDecided", "notify admins"],
       "extensionId": "rejectedzonezon",
       "automationId": "rejectedzonezon.rejectedChangeAlert",
       "passed": false,
@@ -916,12 +881,7 @@
       },
       "id": "new-deal-kickoff",
       "title": "New deal: two tasks, then a reminder a day later",
-      "covers": [
-        "record created",
-        "write ×2",
-        "sleep",
-        "notify field"
-      ],
+      "covers": ["record created", "write ×2", "sleep", "notify field"],
       "extensionId": "kickoffzonezon",
       "automationId": "kickoffzonezon.kickoffTasks",
       "passed": false,

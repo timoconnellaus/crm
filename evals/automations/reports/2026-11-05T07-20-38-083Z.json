@@ -52,12 +52,7 @@
       },
       "id": "won-thank-you",
       "title": "Won deal: a thank-you task and a notification for the owner",
-      "covers": [
-        "fieldChanged",
-        "stageType won",
-        "write task",
-        "notify field"
-      ],
+      "covers": ["fieldChanged", "stageType won", "write task", "notify field"],
       "extensionId": "wonthanksgibopen",
       "automationId": "wonthanksgibopen.wonThankYou",
       "passed": true,
@@ -127,11 +122,7 @@
       },
       "id": "lost-deal-admins",
       "title": "Lost deal: tell the admins",
-      "covers": [
-        "fieldChanged",
-        "stageType lost",
-        "notify admins"
-      ],
+      "covers": ["fieldChanged", "stageType lost", "notify admins"],
       "extensionId": "lostalertgibopen",
       "automationId": "lostalertgibopen.lostDealAlert",
       "passed": false,
@@ -194,11 +185,7 @@
       },
       "id": "new-person-welcome",
       "title": "New person: a welcome-email task",
-      "covers": [
-        "record created",
-        "core object",
-        "write task"
-      ],
+      "covers": ["record created", "core object", "write task"],
       "extensionId": "welcomegibopen",
       "automationId": "welcomegibopen.welcomeEmailTask",
       "passed": true,
@@ -263,11 +250,7 @@
       },
       "id": "org-check-in",
       "title": "New organisation: check in after two days",
-      "covers": [
-        "record created",
-        "sleep",
-        "write task"
-      ],
+      "covers": ["record created", "sleep", "write task"],
       "extensionId": "checkingibopen",
       "automationId": "checkingibopen.checkInTask",
       "passed": true,
@@ -331,11 +314,7 @@
       },
       "id": "close-date-reminder",
       "title": "A week before the expected close date: remind the owner",
-      "covers": [
-        "dateRelative",
-        "negative offset",
-        "notify field"
-      ],
+      "covers": ["dateRelative", "negative offset", "notify field"],
       "extensionId": "closesoongibopen",
       "automationId": "closesoongibopen.closingSoonReminder",
       "passed": true,
@@ -400,11 +379,7 @@
       },
       "id": "big-deal-alert",
       "title": "A deal over 50,000 is created: tell the admins",
-      "covers": [
-        "record created",
-        "conditions",
-        "notify admins"
-      ],
+      "covers": ["record created", "conditions", "notify admins"],
       "extensionId": "bigdealgibopen",
       "automationId": "bigdealgibopen.bigDealAdminAlert",
       "passed": true,
@@ -469,11 +444,7 @@
       },
       "id": "weekly-digest",
       "title": "Every Monday at 9: a pipeline review reminder",
-      "covers": [
-        "schedule",
-        "cron",
-        "notify admins"
-      ],
+      "covers": ["schedule", "cron", "notify admins"],
       "extensionId": "weeklygibopen",
       "automationId": "weeklygibopen.weeklyPipelineReview",
       "passed": false,
@@ -538,10 +509,7 @@
       },
       "id": "manual-renewal-task",
       "title": "A button on organisations: create a renewal task",
-      "covers": [
-        "manual",
-        "write task"
-      ],
+      "covers": ["manual", "write task"],
       "extensionId": "renewbtngibopen",
       "automationId": "renewbtngibopen.renewalTask",
       "passed": true,
@@ -612,10 +580,7 @@
       },
       "id": "rejected-change",
       "title": "A change is rejected: tell the admins",
-      "covers": [
-        "approvalDecided",
-        "notify admins"
-      ],
+      "covers": ["approvalDecided", "notify admins"],
       "extensionId": "rejectedgibopen",
       "automationId": "rejectedgibopen.rejectedChangeAlert",
       "passed": false,
@@ -680,12 +645,7 @@
       },
       "id": "new-deal-kickoff",
       "title": "New deal: two tasks, then a reminder a day later",
-      "covers": [
-        "record created",
-        "write ×2",
-        "sleep",
-        "notify field"
-      ],
+      "covers": ["record created", "write ×2", "sleep", "notify field"],
       "extensionId": "kickoffgibopen",
       "automationId": "kickoffgibopen.kickoffTasks",
       "passed": true,
