@@ -11,7 +11,7 @@ commit**, by editing this table. Use the next free block. Unused numbers in a bl
 | --- | --- | --- | --- | --- |
 | A | 0200–0219 | 0200–0209 | Stage 7b | merged |
 | B | 0220–0239 | 0210–0219 | Stage 10 | merged |
-| C | 0250–0259 | 0230–0239 | Stage 11 (Jev), steps 1–3 + `authoring.intent` (#52); later steps reuse it | merged |
+| C | 0250–0259 | 0230–0239 | Stage 11 (Jev), steps 1–3 + `authoring.intent` (#52, merged); placements: adjudicator + Judge settings (0251–0254 / 0233–0236), summaries, outbound, widget (0255–0259 / 0237–0239) | in flight (Stage 11 placements) |
 | D | — | 0240–0249 | Specs, stages 12–16 (ADRs 0240–0247 used; the stages' ADRs) | in flight |
 | E | 0260–0269 | 0250–0254 | Hosted platform AI | in flight |
 | F | 0270–0279 | 0255–0259 | Core fixes (erase, automations) | in flight |
@@ -35,6 +35,7 @@ Avoid these unless your build is the one named, because another build is changin
 | `packages/core/src/ai/roles.ts`, `ai/client.ts`, hosted provisioning in `packages/release`, `apps/control` AI metering | Hosted platform AI |
 | `person.erase`, assistant conversation storage, `automations/summary.ts`, automation test mode | Core fixes |
 | Visibility and permissions anywhere | Stage 14, once it starts |
+| `packages/core/src/judge/`, `packages/core/src/adjudicator/` | Stage 11 placements |
 
 Remove a row when its build merges.
 
