@@ -34,7 +34,7 @@ Each branch has a `WIP.md` at the repo root describing its state:
 
 ## Next, in order
 1. Finish and merge #32, then #31, then 6b.
-2. **Stage 7b**: the in-app assistant (an MCP client of our `/mcp`, actor `assistant`, a DO per conversation, a Cmd-J panel) and the policy adjudicator with shadow mode. Spec: `docs/stages/07-in-app-ai.md`. It builds on 7a's registry, retrieval and summaries, and on 5 and 6b.
+2. **Stage 7b** (branch `stage-7b-assistant`, PR "Stage 7b: in-app assistant, policy adjudicator, daily digest"): built. Needs real-model runs: the assistant evals (`EVAL_VIA=assistant`), the adjudicator eval (`evals/adjudicator`) and a check of AI Gateway compat with DeepSeek (ADR 0203).
 3. A whole-app review pass: consistency, security, flaky tests.
 
 ## Needs the human

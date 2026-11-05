@@ -446,8 +446,29 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   `pnpm run deploy` adds `ai` (both Workers) and `vectorize` (ros-app). Without them AI features
   say AI is not configured and search is full-text only. Locally `AI_FAKE_MODEL=true` answers
   every role with deterministic stand-ins and keeps vectors in memory.
-- **Stage 7b** adds the in-app assistant (`assistant` role, retrieval through `search.hybrid` /
-  `retrieve`), the policy adjudicator (`review` role) and the daily digest.
+- **The in-app assistant** ([ADR 0030](adr/0030-in-app-assistant.md),
+  [ADR 0200](adr/0200-in-app-assistant-build.md), [ADR 0201](adr/0201-assistant-reasoning-content.md)):
+
+```
+ Cmd-J panel · /assistant · Ask AI · Ask about N selected ─ POST /api/assistant/turn (SSE) ─┐
+   (page, record, selection)                     GET …/conversations/:id[/stream?after=N] │
+                                                                                          ▼
+ ros-app: AssistantConversation DO (one per conversation, SQLite: messages, turns; no alarms)
+   └─ turn: chatModels("assistant") ─► AI SDK streamText loop ─► tools = MCP client ──► createCrmMcpServer
+        (primary, then fallback)        (≤16 steps)              (in-process transport)  (actor assistant,
+                                                                                          session = asc_…)
+                                                     ─► pipeline: gate · change set · simulation · audit
+```
+
+  The assistant is an MCP client of the same server `/mcp` builds per request, connected in
+  process, so its tools, descriptions and results are an external client's. It acts as actor
+  `assistant` for the signed-in person (role, no scopes) with origin `{ surface: "assistant",
+  sessionId: <conversation> }`; its pending actions group in that session's change set and are
+  shown inline with Approve / Reject. The conversation object stores the AI SDK's model messages
+  with their reasoning (DeepSeek's thinking mode needs `reasoning_content` replayed) and streams
+  each turn's events to any number of readers, who resume with `?after=<seq>`. D1 holds only the
+  conversation list (`core_assistant_conversation`, one write per turn through
+  `assistant.finishTurn`). `EVAL_VIA=assistant` runs the stage 2–5 eval sets through it.
 
 ### 9. Dashboards and views
 

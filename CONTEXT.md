@@ -448,6 +448,21 @@ _Avoid_: user (when you mean the caller of a request), session
 The deploy-time choice of how a Principal is resolved: `better-auth` (default) or
 `cloudflare-access`, selected by `IDENTITY_PROVIDER`. Implements `IdentityProvider`.
 
+**Assistant**
+The in-app AI, named "Assistant" by default and renamed in Settings → General (`assistantName`;
+never "Claude"). It answers with the `assistant` model role and acts as actor `assistant` for the
+signed-in person, as an MCP client of our own MCP server (the same tools, gate, change sets and
+simulation as an external client). Each conversation is a Durable Object
+(`AssistantConversation`, `asc_…`) holding its history (reasoning included, ADR 0201) and its
+running turn, which readers can resume; its id is the assistant's MCP session. It opens with
+Cmd-J on any page, at `/assistant`, from "Ask AI" on records and "Ask about N selected" on lists,
+and knows the page, record and selection (ADR 0030, ADR 0200).
+_Avoid_: Claude, chatbot, copilot
+
+**Conversation**
+One thread with the Assistant: a Durable Object plus one `core_assistant_conversation` row for the
+person's list. A **turn** is one message and everything the Assistant did to answer it.
+
 **Model role**
 A named AI job (`build`, `assistant`, `summarise`, `extract`, `classify`, `embed`, `vision`, `review`)
 mapped to a provider + model in the model registry. Code asks for a role, never a model.
