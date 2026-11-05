@@ -255,10 +255,14 @@ export async function testAutomation(
   if (trigger.type === "approvalDecided") {
     sample = await sampleApproval(db, trigger, record);
     if (!record) {
-      const first = trigger.object
-        ? sample.approval.records.find((r) => r.object === trigger.object)
-        : sample.approval.records[0];
-      if (first) record = await loadTriggerRecord(db, first.object, first.id);
+      // The first of its records that exists (a pending create's record has a provisional id).
+      const candidates = sample.approval.records
+        .filter((r) => !trigger.object || r.object === trigger.object)
+        .slice(0, 5);
+      for (const candidate of candidates) {
+        record = await loadTriggerRecord(db, candidate.object, candidate.id);
+        if (record) break;
+      }
     }
     matchReason = record
       ? `${sample.label} It is about ${record.object} ${record.id}.`

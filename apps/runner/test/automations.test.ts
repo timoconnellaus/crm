@@ -535,13 +535,17 @@ describe("AC6: test mode", () => {
   });
 
   it("approvalDecided: tests with a sample decision from a recent pending action, labelled", async () => {
+    const person = await call<{ id: string }>(admin, "person.create", {
+      givenName: "Sampled",
+      familyName: "Person",
+    });
     await setPreset("cautious");
     let pendingAction = "";
     try {
       await withEvents(
         admin,
-        "person.create",
-        { givenName: "Sampled", familyName: "Person" },
+        "person.update",
+        { id: person.id, location: "Sampled" },
         { actor: "mcp", origin: { surface: "mcp", sessionId: "cap_sample_session" } },
       ).catch((error: { pending?: { actionId: string } }) => {
         pendingAction = error.pending?.actionId ?? "";
@@ -551,11 +555,6 @@ describe("AC6: test mode", () => {
     } finally {
       await setPreset("balanced");
     }
-    const person = await db.query
-      .selectFrom("core_pending_action_records")
-      .select("record_id")
-      .where("action_id", "=", pendingAction)
-      .executeTakeFirstOrThrow();
     const { report } = await call<{ report: AutomationTestReport }>(admin, "automation.test", {
       id: `${FIXTURE_ID}.onDecision`,
     });
@@ -563,14 +562,14 @@ describe("AC6: test mode", () => {
     expect(report.sample).toEqual({
       kind: "approval",
       source: "recent",
-      label: expect.stringMatching(/^Sample decision: person\.create approved, from the recent/),
-      approval: { actionId: pendingAction, operation: "person.create", decision: "approved" },
+      label: expect.stringMatching(/^Sample decision: person\.update approved, from the recent/),
+      approval: { actionId: pendingAction, operation: "person.update", decision: "approved" },
     });
     expect(report.matchReason).toContain("Sample decision");
-    expect(report.record).toMatchObject({ object: "person", id: person.record_id });
+    expect(report.record).toMatchObject({ object: "person", id: person.id });
     // The code no longer returns early: it sees the decision and writes its task.
     expect(report.writes).toEqual([
-      expect.objectContaining({ object: "task", title: "Approved person.create" }),
+      expect.objectContaining({ object: "task", title: "Approved person.update" }),
     ]);
   });
 
