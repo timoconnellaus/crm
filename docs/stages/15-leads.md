@@ -170,7 +170,7 @@ a parallel session with no core migration. Assignment rules are core (migrations
 paths, so they are a separate PR.
 
 ## Migrations and numbers
-Migrations 0270–0279 (assignment rules only). ADR 0246.
+Migrations 0310–0319 (assignment rules only; block J in `docs/parallel-work.md`). ADR 0246.
 
 ## Suggested build order
 1. The Leads extension: object, views, tabs, `deals.deal.lead`, tools, settings, dashboard,

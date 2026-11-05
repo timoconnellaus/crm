@@ -242,7 +242,7 @@ The seams are built in 14a; the behaviour in 14b.
 - Stage 10's per-seat plans count invited users.
 
 ## Migrations and numbers
-Migrations 0260–0269. ADRs 0244 and 0245.
+Migrations 0300–0309 (block I in `docs/parallel-work.md`). ADRs 0244 and 0245.
 
 ## Suggested build order
 1. Roles (Manager, Read-only label, permissions) and the `core_user` rebuild.

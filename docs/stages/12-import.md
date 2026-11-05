@@ -294,7 +294,7 @@ sample values resolve?), and file roles are covered by the eval.
   object, with no importer change.
 
 ## Migrations and numbers
-Migrations 0240–0249. ADRs 0240 and 0241.
+Migrations 0280–0289 (block G in `docs/parallel-work.md`). ADRs 0240 and 0241.
 
 ## Suggested build order
 1. Upload route, R2 storage, `core_import*` tables, CSV and ZIP reading, the profile step.

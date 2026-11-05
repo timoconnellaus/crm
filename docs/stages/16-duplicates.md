@@ -162,7 +162,7 @@ under where Jev does not go, and rule 1 applies).
 - **Stages 13 and 15:** merge moves enrolments and leads.
 
 ## Migrations and numbers
-Migrations 0280–0289. ADR 0247.
+Migrations 0320–0329 (block K in `docs/parallel-work.md`). ADR 0247.
 
 ## Suggested build order
 1. Normalisation and name keys, with the backfill job.

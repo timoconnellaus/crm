@@ -262,7 +262,7 @@ No new placement. Placement 4 already covers "a model-written message before it 
 - **Stage 16:** merges move enrolments to the survivor.
 
 ## Migrations and numbers
-Migrations 0250–0259. ADRs 0242 and 0243.
+Migrations 0290–0299 (block H in `docs/parallel-work.md`). ADRs 0242 and 0243.
 
 ## Suggested build order
 1. `email.send` for compose and reply with logging and sync dedupe, against fake Gmail and Outlook.

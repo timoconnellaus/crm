@@ -53,9 +53,9 @@ an email); there are no invented metrics or scores, and matching and assignment 
 4. **13** after 6b is merged, and after 14a.
 5. **14b** (SSO and SCIM) whenever an enterprise customer needs it.
 
-Migration ranges are disjoint so parallel sessions do not collide: 12 uses 0240–0249, 13
-0250–0259, 14 0260–0269, 15 0270–0279, 16 0280–0289. ADRs 0240–0247 are taken by these specs;
-0248–0249 are free.
+Migration ranges are claimed in [`parallel-work.md`](parallel-work.md) so parallel sessions do not
+collide: 12 uses 0280–0289 (block G), 13 0290–0299 (H), 14 0300–0309 (I), 15 0310–0319 (J), 16
+0320–0329 (K). ADRs 0240–0247 are taken by these specs (block D); 0248–0249 are free.
 
 ### Which suit an extension and parallel sessions
 
