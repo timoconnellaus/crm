@@ -94,9 +94,23 @@ export const erasureReapply = defineOperation({
     if (!ctx.simulation) {
       // Each erase commits on its own (and is audited); a failure stops here and the call can be
       // repeated: what was erased is no longer found.
-      for (const id of plan.people) await ctx.pipeline.invoke("person.erase", { id }, nested);
+      // A record merged into another one in the plan goes with it, so each is looked up again
+      // just before its erase.
+      for (const id of plan.people) {
+        const live = await ctx.db
+          .selectFrom("core_person")
+          .select("id")
+          .where("id", "=", id)
+          .executeTakeFirst();
+        if (live) await ctx.pipeline.invoke("person.erase", { id }, nested);
+      }
       for (const id of plan.organisations) {
-        await ctx.pipeline.invoke("organisation.erase", { id }, nested);
+        const live = await ctx.db
+          .selectFrom("core_organisation")
+          .select("id")
+          .where("id", "=", id)
+          .executeTakeFirst();
+        if (live) await ctx.pipeline.invoke("organisation.erase", { id }, nested);
       }
     }
     for (const part of chunk(plan.addresses)) {
