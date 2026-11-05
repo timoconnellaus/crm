@@ -124,8 +124,8 @@ node packages/create-relationship-os/dist/cli.js            # install; add upgra
 ```
 
 Everywhere this guide says `npx create-relationship-os`, use `node packages/create-relationship-os/dist/cli.js` for now.
-The release workflow publishes it only when an `NPM_TOKEN` secret is set (and the npm name
-`create-relationship-os` is taken by an unrelated package, so publishing will need a scoped name).
+The release workflow publishes it only when an `NPM_TOKEN` secret is set (the old name `create-crm` was taken on npm;
+`create-relationship-os` was free on 2026-11-05).
 
 It asks for, in order:
 
