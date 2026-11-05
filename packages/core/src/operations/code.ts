@@ -105,6 +105,8 @@ export const codeRun = defineOperation({
         },
         ...(ctx.grantedPermissions ? { grantedPermissions: [...ctx.grantedPermissions] } : {}),
         ...(reason ? { reason } : {}),
+        // outbound.message (ADR 0238): the person's words reach the script's gatekeeper calls.
+        ...(ctx.personsWords ? { request: ctx.personsWords } : {}),
       },
     });
     if (!result.ok && result.error?.code === "concurrency_limit") {

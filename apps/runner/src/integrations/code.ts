@@ -22,6 +22,8 @@ export interface GatekeeperCall {
   actor: Actor;
   origin: Origin;
   reason?: string | undefined;
+  /** The person's own words (Code Mode in the assistant), for `outbound.message` (ADR 0238). */
+  request?: string | undefined;
 }
 
 type Envelope =
@@ -89,6 +91,7 @@ export async function gatekeeperCall(env: Env, call: GatekeeperCall): Promise<un
         role: call.user.role,
         origin: call.origin,
         reason: call.reason,
+        ...(call.request ? { request: call.request } : {}),
       },
     });
     return { ok: true, value } satisfies Envelope;

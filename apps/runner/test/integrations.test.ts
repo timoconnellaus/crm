@@ -622,4 +622,92 @@ export default async function () {
     expect(JSON.stringify(other)).toMatch(/No usable google connection/);
     expect(PendingApprovalError).toBeDefined();
   });
+
+  it("carries the person's own words to outbound.message, so a script's recipients are checked", async () => {
+    // The judge on for this test only: a key, the placement switched on, and TypeSafe stubbed. It
+    // answers every part "fine" and the recipients "someone else", so the stored check shows
+    // whether the recipients were checked at all.
+    const settings = env as unknown as Record<string, string | undefined>;
+    const saved = { key: settings.TYPESAFE_API_KEY, placements: settings.JUDGE_PLACEMENTS };
+    settings.TYPESAFE_API_KEY = "test-typesafe-key";
+    settings.JUDGE_PLACEMENTS = JSON.stringify({ "outbound.message": true });
+    const asked: unknown[] = [];
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (!url.startsWith("https://api.typesafe.ai/")) return realFetch(input, init);
+      const body = JSON.parse(String(init?.body)) as {
+        state: { asked?: unknown };
+        questions: Record<string, { criteria: Record<string, string> }>;
+      };
+      asked.push(body.state.asked);
+      const answers = Object.fromEntries(
+        Object.entries(body.questions).map(([id, q]) => {
+          const labels = Object.keys(q.criteria);
+          const pick = id === "recipients" ? "someone_else" : (labels[0] as string);
+          return [
+            id,
+            {
+              type: "choice",
+              choice: pick,
+              confidence: 1,
+              probabilities: Object.fromEntries(labels.map((l) => [l, l === pick ? 1 : 0])),
+            },
+          ];
+        }),
+      );
+      return Response.json({ model: "jev-1.14.0", answers, usage: { input_tokens: 900 } });
+    });
+    try {
+      const connection = await connect(admin, address);
+      await bind(admin, connection.id, `fake://outbox/${address}`);
+      const send = (actor: "assistant" | "mcp", personsWords?: string) =>
+        invokeByName(
+          "code.run",
+          {
+            code: `import { call } from "codemode:fake";
+export default () => call(${JSON.stringify(connection.id)}, "OUTBOX", "send", { to: ["ada@ext.test"], subject: "Hello", text: "Hi Ada, see you on Tuesday." });`,
+          },
+          as(admin, {
+            actor,
+            origin: { surface: actor === "mcp" ? "mcp" : "ui", sessionId: `cap_${unique("s")}` },
+            extensionHost: extensionHost(env),
+            ...(personsWords ? { personsWords } : {}),
+          }),
+        ) as Promise<{ ok: boolean; value: { value: { status: string } }; error?: unknown }>;
+      const checkOf = async () => {
+        const row = await env.DB.prepare(
+          "SELECT outbound_check FROM core_pending_action WHERE connection_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+        )
+          .bind(connection.id)
+          .first<{ outbound_check: string | null }>();
+        return JSON.parse(row?.outbound_check ?? "null") as {
+          recipientsChecked: boolean;
+          findings: { kind: string }[];
+        } | null;
+      };
+
+      // The assistant's script: the person's words reach the check, and its recipients are read.
+      const words = "Email Sam at sam@ext.test to say hello";
+      const fromAssistant = await send("assistant", words);
+      expect(fromAssistant.error).toBeUndefined();
+      expect(fromAssistant.value.value.status).toBe("pending");
+      expect(asked.at(-1)).toBe(words);
+      expect(await checkOf()).toMatchObject({
+        recipientsChecked: true,
+        findings: [expect.objectContaining({ kind: "recipients" })],
+      });
+
+      // An MCP client's script carries no words of the person: only its parts are checked.
+      const fromMcp = await send("mcp");
+      expect(fromMcp.error).toBeUndefined();
+      expect(await checkOf()).toMatchObject({ recipientsChecked: false, findings: [] });
+    } finally {
+      vi.unstubAllGlobals();
+      settings.TYPESAFE_API_KEY = saved.key;
+      settings.JUDGE_PLACEMENTS = saved.placements;
+      if (saved.key === undefined) delete settings.TYPESAFE_API_KEY;
+      if (saved.placements === undefined) delete settings.JUDGE_PLACEMENTS;
+    }
+  });
 });
