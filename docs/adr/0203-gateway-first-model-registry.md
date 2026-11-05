@@ -145,3 +145,13 @@ review model, and warning about that would be noise.
 > on a hosted deployment, where every `workers-ai` role resolves to it. `providerRoute` is unchanged
 > for self-hosted installs; on a hosted one the "gateway" for the customer's own keys is their own
 > connected gateway, if any, else none (direct calls).
+
+> **Amended 2026-11-06 ([ADR 0330](0330-self-hosted-workers-ai-over-rest.md)):** Workers AI on a
+> self-hosted deployment no longer keeps "the binding with the gateway option" whenever a gateway
+> is configured. With `AI_GATEWAY_REST=true` (set by the installer once `AI_GATEWAY_TOKEN` also
+> holds Workers AI Read) it goes to Workers AI's REST endpoint
+> (`api.cloudflare.com/client/v4/accounts/{id}/ai/v1/chat/completions` and `…/embeddings`) with
+> `cf-aig-gateway-id`, `cf-aig-metadata: {"role"}` and `cf-aig-collect-log-payload: false`, forced
+> at the fetch, the same call shape as Platform AI. The reason the binding was kept (no token
+> needed) gave way to the binding's inability to turn off payload logging alone. Without the var,
+> without a token, or with `--ai-gateway off`, the routing table above is unchanged.

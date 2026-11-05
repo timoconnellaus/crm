@@ -1,7 +1,8 @@
 // Erase reaches every store (ADR 0320, amending ADR 0019): a person seeded across sync, R2 bodies,
 // extension data, automation runs, notifications, integration events and the outbox is erased,
 // and then nothing identifying them is left anywhere in D1 or blob storage (outside the audit
-// columns ADR 0019 keeps on purpose). Also: the organisation equivalent, sync dropping an erased
+// columns ADR 0019 keeps on purpose). Also: the organisation equivalent (which keeps a body a person
+// is still on, rewritten without its terms; ADR 0320 amendment), sync dropping an erased
 // address on re-ingest, the erase log and its re-apply, and the per-store helpers.
 import { env } from "cloudflare:workers";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -585,6 +586,145 @@ describe("organisation.erase reaches every store", () => {
     expect(ticket).toMatchObject({ company: null, summary: "Outage at [erased]" });
     expect(ticket?.notes).not.toContain(oldDomain);
     expect(await findAnywhere([org.id, domain, oldDomain, street], auditKept)).toEqual([]);
+  });
+
+  /**
+   * An organisation with a domain, a former domain and a street; a person who is not at its
+   * domain; another organisation; and three synced emails with bodies in R2 (ADR 0320 amendment,
+   * 2026-11-06): one with the person on it (shared with a person), one with only the two
+   * organisations on it (shared, no person), one with only the organisation (owned).
+   */
+  async function orgWithMail(blobs: ReturnType<typeof memoryBlobs>) {
+    const name = unique("Quuxco");
+    const domain = `${unique("quux")}.example`;
+    const oldDomain = `${unique("qold")}.example`;
+    const street = `${unique("9 Quux")} Lane`;
+    const org = await invoke(
+      "organisation.create",
+      { name, domains: [{ domain: oldDomain }], addresses: [{ line1: street }] },
+      context(member),
+    );
+    await invoke("organisation.update", { id: org.id, domains: [{ domain }] }, context(member));
+    const otherDomain = `${unique("other")}.example`;
+    await invoke(
+      "organisation.create",
+      { name: unique("Otherco"), domains: [{ domain: otherDomain }] },
+      context(member),
+    );
+    const patEmail = `${unique("pat")}@personal-${unique("p")}.example`;
+    const pat = await invoke(
+      "person.create",
+      { displayName: unique("Pat"), emails: [{ email: patEmail }] },
+      context(member),
+    );
+    const conn = await connection(member);
+    const withPerson = mail({ email: `sales@${domain}`, name: "Sales" }, [
+      { email: patEmail },
+      { email: `me@${internal}` },
+    ]);
+    const orgsOnly = mail({ email: `ops@${domain}` }, [
+      { email: `ops@${otherDomain}` },
+      { email: `me@${internal}` },
+    ]);
+    const owned = mail({ email: `ceo@${domain}` }, [{ email: `me@${internal}` }]);
+    const out = await ingest(member, conn, [withPerson, orgsOnly, owned]);
+    expect(out.created).toBe(3);
+    const text = `Hello Pat. Quuxco is at ${street}, see ${oldDomain} or sales@${domain}. Thanks`;
+    for (const b of out.bodies) blobs.map.set(b.key, text);
+    expect(blobs.map.size).toBe(3);
+    const row = async (item: { messageId: string }) =>
+      env.DB.prepare("SELECT id, body, body_ref, payload FROM core_activity WHERE external_key = ?")
+        .bind(`email:${item.messageId}`)
+        .first<{ id: string; body: string | null; body_ref: string | null; payload: string }>();
+    const before = { withPerson: await row(withPerson), orgsOnly: await row(orgsOnly) };
+    return { org, domain, oldDomain, street, pat, withPerson, orgsOnly, owned, row, before };
+  }
+
+  it("keeps a body a person is still on, rewritten without the organisation's terms", async () => {
+    const blobs = memoryBlobs();
+    const s = await orgWithMail(blobs);
+    const bodyKey = s.before.withPerson?.body_ref as string;
+    expect(bodyKey).toBeTruthy();
+
+    const result = await invoke("organisation.erase", { id: s.org.id }, context(admin, { blobs }));
+    // The orgs-only and owned emails' bodies go; the one the person is on stays.
+    expect(result.bodiesDeleted).toBe(2);
+    // Its suggested contacts (addresses at its domains) go with it.
+    expect(result.suggestionsRemoved).toBe(3);
+
+    const kept = await s.row(s.withPerson);
+    expect(kept?.body_ref).toBe(bodyKey);
+    const body = blobs.map.get(bodyKey) ?? "";
+    expect(body).toContain("Hello Pat.");
+    expect(body).toContain("[erased]");
+    for (const term of [s.domain, s.oldDomain, s.street]) {
+      expect(body.toLowerCase()).not.toContain(term.toLowerCase());
+    }
+    // The person stays linked; the payload and snippet lose the organisation's terms too.
+    expect(
+      await env.DB.prepare(
+        "SELECT 1 FROM core_activity_links WHERE activity_id = ? AND object_type = 'person' AND record_id = ?",
+      )
+        .bind(kept?.id, s.pat.id)
+        .first(),
+    ).not.toBeNull();
+    expect(kept?.payload).not.toContain(s.domain);
+
+    // No person on it: the body is dropped and the snippet kept, as before.
+    const dropped = await s.row(s.orgsOnly);
+    expect(dropped).not.toBeNull();
+    expect(dropped?.body_ref).toBeNull();
+    expect(dropped?.body).toBe(s.before.orgsOnly?.body);
+    expect(blobs.map.has(s.before.orgsOnly?.body_ref as string)).toBe(false);
+    // Only the organisation on it: the email is deleted.
+    expect(await s.row(s.owned)).toBeNull();
+
+    // R2 holds the kept body and the erase log only; D1 holds none of the terms.
+    expect([...blobs.map.keys()].filter((k) => k.startsWith("email-bodies/"))).toEqual([bodyKey]);
+    for (const value of blobs.map.values()) {
+      for (const term of [s.org.id, s.domain, s.oldDomain, s.street]) {
+        expect(value.toLowerCase()).not.toContain(term.toLowerCase());
+      }
+    }
+    expect(await findAnywhere([s.org.id, s.domain, s.oldDomain, s.street], auditKept)).toEqual([]);
+
+    // Erasing the person afterwards is as broad as ever: the email, now only theirs, goes, and
+    // its body with it.
+    const personResult = await invoke("person.erase", { id: s.pat.id }, context(admin, { blobs }));
+    expect(personResult.bodiesDeleted).toBe(1);
+    expect(await s.row(s.withPerson)).toBeNull();
+    expect([...blobs.map.keys()].filter((k) => k.startsWith("email-bodies/"))).toEqual([]);
+  });
+
+  it("a person erase still drops the body of an email the organisation is still on", async () => {
+    const blobs = memoryBlobs();
+    const s = await orgWithMail(blobs);
+    const bodyKey = s.before.withPerson?.body_ref as string;
+    await invoke("person.erase", { id: s.pat.id }, context(admin, { blobs }));
+    const row = await s.row(s.withPerson);
+    expect(row).not.toBeNull();
+    expect(row?.body_ref).toBeNull();
+    expect(blobs.map.has(bodyKey)).toBe(false);
+  });
+
+  it("keeps the snippet only when the body cannot be rewritten", async () => {
+    const blobs = memoryBlobs();
+    const s = await orgWithMail(blobs);
+    const bodyKey = s.before.withPerson?.body_ref as string;
+    // The object is gone from R2 (or unreadable): nothing to rewrite, so the reference is dropped.
+    blobs.map.delete(bodyKey);
+    await invoke("organisation.erase", { id: s.org.id }, context(admin, { blobs }));
+    const kept = await s.row(s.withPerson);
+    expect(kept?.body_ref).toBeNull();
+    expect(kept?.body).toBe(s.before.withPerson?.body);
+    expect(await findAnywhere([s.org.id, s.domain, s.oldDomain, s.street], auditKept)).toEqual([]);
+  });
+
+  it("without blob storage, drops the reference (it cannot rewrite) and keeps the snippet", async () => {
+    const blobs = memoryBlobs();
+    const s = await orgWithMail(blobs);
+    await invoke("organisation.erase", { id: s.org.id }, context(admin));
+    expect((await s.row(s.withPerson))?.body_ref).toBeNull();
   });
 });
 

@@ -225,5 +225,65 @@ describe("self-updater runtime", () => {
     const token = [...cf.tokens.values()][0]?.value;
     expect(token).toBeTruthy();
     expect(cf.scripts.get("ros-runner")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token);
+    // ADR 0330: the token can call Workers AI, so Workers AI goes over REST, payload logging off.
+    expect([...cf.tokens.values()][0]?.permissionGroups).toEqual(["pg-aig-run", "pg-wai-read"]);
+    expect(cf.liveBinding("ros-runner", "AI_GATEWAY_REST")?.text).toBe("true");
+  });
+
+  it("replaces a gateway token generated before ADR 0330 and turns on Workers AI over REST", async () => {
+    const { cf, github, api, runtime } = await world();
+    const v1 = await buildFixtureRelease({ version: "1.0.0" });
+    const v2 = await buildFixtureRelease({ version: "1.1.0" });
+    await github.publish(v1);
+    await github.publish(v2);
+    const bundle = await openBundle(v1.bundle);
+    const resources = await provisionResources(api, ACCOUNT, neededResources(bundle.manifest, []));
+    const databaseId = resources["D1_ID(ros)"] as string;
+    await applyBundleMigrations(bundle, d1ApiMigrations(api, ACCOUNT, databaseId));
+    // An install from before: a generated token with AI Gateway Run only, on both Workers.
+    const old = await api.createAccountToken(ACCOUNT, "ros AI Gateway (Relationship OS)", [
+      "pg-aig-run",
+    ]);
+    const state: DeploymentState = {
+      version: "1.0.0",
+      accountId: ACCOUNT,
+      hostname: "ros-app.example.workers.dev",
+      hostnameMode: "workers.dev",
+      identityProvider: "better-auth",
+      channel: "stable",
+      gatekeepers: [],
+      workerNames: {},
+      aiGateway: "ros",
+      aiGatewayTokenId: old.id,
+      vars: { "ros-app": { AI_GATEWAY_ID: "ros" }, "ros-runner": { AI_GATEWAY_ID: "ros" } },
+      resources,
+    };
+    await writeDeploymentState(api, databaseId, state);
+    await deployWorkers({
+      api,
+      bundle,
+      state,
+      secrets: {
+        "ros-app": { BETTER_AUTH_SECRET: "s".repeat(64), AI_GATEWAY_TOKEN: old.value },
+        "ros-runner": { AI_GATEWAY_TOKEN: old.value },
+      },
+    });
+    expect(cf.liveBinding("ros-app", "AI_GATEWAY_REST")?.text).toBe("");
+
+    const outcome = await runtime().apply({
+      version: "1.1.0",
+      state,
+      run: runRecord("1.0.0", "1.1.0"),
+      record: async () => {},
+      automations: noAutomations,
+    });
+    expect(outcome).toMatchObject({ status: "succeeded" });
+    expect(cf.tokens.has(old.id)).toBe(false);
+    const [token] = [...cf.tokens.values()];
+    expect(token?.permissionGroups).toEqual(["pg-aig-run", "pg-wai-read"]);
+    for (const worker of ["ros-app", "ros-runner"]) {
+      expect(cf.scripts.get(worker)?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token?.value);
+      expect(cf.liveBinding(worker, "AI_GATEWAY_REST")?.text).toBe("true");
+    }
   });
 });

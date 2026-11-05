@@ -119,8 +119,10 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
   addresses go on the **erased-address list** (`core_erased_address`, SHA-256 hashes only), which
   `sync.ingest` checks so they are not collected again. Each erase writes an **erase log** entry
   (hashes) to R2, outside D1, and `erasure.reapply` re-applies erasures after a restore. AI
-  Gateway calls with headers turn payload logging off, and errors reach Workers Logs masked
-  (`errorForLog`).
+  Gateway calls turn payload logging off (self-hosted Workers AI too, over REST, ADR 0330), and
+  errors reach Workers Logs masked (`errorForLog`). An organisation erase drops a shared email's
+  body only when no person is left linked to it; otherwise it scrubs the organisation's terms
+  from it (ADR 0320 amendment).
 - **Storage retention** ([ADR 0090](adr/0090-storage-retention.md)): D1 stops at 10 GB, so the same
   cron keeps growth bounded. Successful reads by AI, extensions and automations are counted per
   hour (`core_audit_read_counts`) rather than audited row by row. Write audits are kept forever by
@@ -402,7 +404,9 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
  operation ── ctx.models.run("summarise", …) ──► registry: shipped (Workers AI) → AI_MODEL_ROLES → Settings → AI
                                                     │ capability check (tools, JSON, context, vision, embeddings)
                                                     ▼
-                                AI SDK ── workers-ai-provider ── AI binding, gateway: { id, metadata: { role } } ──► AI Gateway ─► Workers AI
+                                AI SDK ── @ai-sdk/openai-compatible ── api.cloudflare.com/…/ai/v1 + cf-aig-gateway-id ──► AI Gateway ─► Workers AI
+                                            (AI_GATEWAY_REST: cf-aig-metadata: role; cf-aig-collect-log-payload: false; token: AI Gateway Run + Workers AI Read)
+                                       └─ without AI_GATEWAY_REST: workers-ai-provider ── AI binding, gateway: { id, metadata: { role } } ──► AI Gateway ─► Workers AI
                                        └─ @ai-sdk/openai-compatible ── …/{gateway}/compat, model "provider/model" ─► AI Gateway ─► provider
                                             (cf-aig-metadata: role, cf-aig-authorization; BYOK: no Authorization)
                                           no gateway (--ai-gateway off): binding without the option; provider's own URL
@@ -420,7 +424,9 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   the installer and the updater create a gateway per deployment and set it
   ([ADR 0180](adr/0180-ai-gateway-provisioned-per-deployment.md)).
 - **Providers** (gateway-first, [ADR 0203](adr/0203-gateway-first-model-registry.md)):
-  Workers AI (the binding, with its `gateway` option) and, optionally, OpenAI, Google AI Studio,
+  Workers AI (over REST through the gateway with payload logging off when the installer set
+  `AI_GATEWAY_REST`, [ADR 0330](adr/0330-self-hosted-workers-ai-over-rest.md); otherwise the
+  binding, with its `gateway` option) and, optionally, OpenAI, Google AI Studio,
   OpenRouter, DeepSeek, Anthropic and AI Gateway **custom providers**, called through the
   gateway's unified endpoint (`…/{gateway}/compat`) with `provider/model` ids
   (`deepseek/deepseek-flash`, `custom-<slug>/<model>`). Embeddings use the provider-native path.

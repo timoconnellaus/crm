@@ -1,6 +1,6 @@
 // AI Gateway provisioning (ADR 0180): with the `ai` feature on, every self-hosted deployment gets
-// its own AI Gateway, and every model call goes through it (Workers AI through the binding's
-// gateway option, other providers through the gateway's provider and unified endpoints). Hosted
+// its own AI Gateway, and every model call goes through it (Workers AI over REST with payload
+// logging off, ADR 0330, else the binding; other providers through its unified endpoint). Hosted
 // deployments have `aiGateway: false` and use the control plane's shared Platform AI gateway
 // instead (ADR 0213 amendment). Used by
 // `create-relationship-os` (install and repair) and by runUpdate (`ros upgrade` and the self-updater), so an
@@ -9,8 +9,11 @@
 //   gateway          find by id, else create (logging on, authentication on)
 //   custom providers find by slug, else create; fix a changed base URL      (account-wide)
 //   AI_GATEWAY_ID    var on every Worker that declares it
-//   AI_GATEWAY_TOKEN an account token with AI Gateway Run, generated once and stored as a secret
-//                    on the same Workers; kept while those Workers have it
+//   AI_GATEWAY_TOKEN an account token with AI Gateway Run and Workers AI Read (ADR 0330),
+//                    generated once and stored as a secret on the same Workers; kept while those
+//                    Workers have it, and replaced once if it was generated with AI Gateway Run only
+//   AI_GATEWAY_REST  "true" on the same Workers when the token can call Workers AI: Workers AI then
+//                    goes over REST through the gateway with payload logging off (ADR 0330)
 //
 // Every step looks before it changes anything, so a re-run converges. A step the API token is
 // not allowed to do is reported as a warning and skipped (an older update token may lack the
@@ -24,6 +27,15 @@ export const GATEWAY_ID_VAR = "AI_GATEWAY_ID";
 export const GATEWAY_TOKEN_SECRET = "AI_GATEWAY_TOKEN";
 /** The permission group the gateway token gets: it can call gateways, not change them. */
 export const GATEWAY_RUN_PERMISSION = "AI Gateway Run";
+/**
+ * The second permission group of the gateway token (ADR 0330): it can run Workers AI models (and
+ * read the catalogue), so Workers AI can be called over REST through the gateway with payload
+ * logging off. One token holds both: the REST endpoint authenticates the call and the gateway
+ * with the same `Authorization` token, so a Workers AI token needs AI Gateway Run anyway.
+ */
+export const WORKERS_AI_READ_PERMISSION = "Workers AI Read";
+/** "true" when AI_GATEWAY_TOKEN can call Workers AI (ADR 0330): the model client then uses REST. */
+export const GATEWAY_REST_VAR = "AI_GATEWAY_REST";
 
 /** What a gateway is created with when the release says nothing else. */
 export const DEFAULT_GATEWAY_SETTINGS: Record<string, unknown> = {
@@ -131,8 +143,16 @@ export interface GatewayProvisioning {
   vars: DeploymentState["vars"];
   /** AI_GATEWAY_TOKEN values to set in this deploy, per manifest Worker name. */
   secrets: Record<string, Record<string, string>>;
-  /** State fields to keep (aiGateway, aiGatewayCreated, aiGatewayTokenId). */
-  state: Pick<DeploymentState, "aiGateway" | "aiGatewayCreated" | "aiGatewayTokenId">;
+  /** State fields to keep (aiGateway, aiGatewayCreated, aiGatewayTokenId, …WorkersAi). */
+  state: Pick<
+    DeploymentState,
+    "aiGateway" | "aiGatewayCreated" | "aiGatewayTokenId" | "aiGatewayTokenWorkersAi"
+  >;
+  /**
+   * A generated token this run replaced. The caller deletes it (retireGatewayToken) only after
+   * the new one is deployed, so a failed deploy never leaves Workers holding a deleted token.
+   */
+  retiredTokenId?: string;
   warnings: string[];
 }
 
@@ -159,6 +179,7 @@ export async function provisionAiGateway(
     ...(state.aiGateway !== undefined ? { aiGateway: state.aiGateway } : {}),
     ...(state.aiGatewayCreated ? { aiGatewayCreated: true } : {}),
     ...(state.aiGatewayTokenId ? { aiGatewayTokenId: state.aiGatewayTokenId } : {}),
+    ...(state.aiGatewayTokenWorkersAi ? { aiGatewayTokenWorkersAi: true } : {}),
   };
   const none: GatewayProvisioning = {
     gatewayId: null,
@@ -167,12 +188,22 @@ export async function provisionAiGateway(
     state: kept,
     warnings: [],
   };
-  if (!featureOn(state, "ai") || state.aiGateway === false) return none;
+  if (!featureOn(state, "ai") || state.aiGateway === false) {
+    // No gateway: Workers AI stays on the binding, so AI_GATEWAY_REST goes (ADR 0330).
+    return { ...none, vars: withoutVar(state.vars, GATEWAY_REST_VAR) };
+  }
   const id = gatewayIdFor(state, manifest);
   const workers = gatewayWorkers(manifest);
-  const withVar = (): DeploymentState["vars"] => {
+  const withVar = (rest = false): DeploymentState["vars"] => {
     const vars = { ...state.vars };
-    for (const worker of workers) vars[worker] = { ...vars[worker], [GATEWAY_ID_VAR]: id };
+    for (const worker of workers) {
+      const { [GATEWAY_REST_VAR]: _old, ...others } = vars[worker] ?? {};
+      vars[worker] = {
+        ...others,
+        [GATEWAY_ID_VAR]: id,
+        ...(rest ? { [GATEWAY_REST_VAR]: "true" } : {}),
+      };
+    }
     return vars;
   };
   const config = manifest.aiGateway;
@@ -253,15 +284,33 @@ export async function provisionAiGateway(
     warn(`could not create custom providers (needs AI Gateway Edit): ${(error as Error).message}`);
   }
 
-  // 3. The gateway token, stored as AI_GATEWAY_TOKEN on the gateway's Workers.
+  // 3. The gateway token, stored as AI_GATEWAY_TOKEN on the gateway's Workers. It holds AI Gateway
+  // Run and Workers AI Read (ADR 0330); `workersAi` says whether the token the Workers will hold
+  // can call Workers AI, which turns on AI_GATEWAY_REST.
   const secrets: GatewayProvisioning["secrets"] = {};
   let tokenId = state.aiGatewayTokenId;
+  let workersAi = state.aiGatewayTokenWorkersAi === true;
+  let retiredTokenId: string | undefined;
   const setAll = (value: string) => {
     for (const worker of workers) secrets[worker] = { [GATEWAY_TOKEN_SECRET]: value };
   };
   if (input.token) {
     setAll(input.token);
-    log(`  ${GATEWAY_TOKEN_SECRET}: supplied`);
+    // It replaces a token we generated, which is deleted once this one is deployed (and is not
+    // regenerated over the supplied one later).
+    if (tokenId) retiredTokenId = tokenId;
+    tokenId = undefined;
+    // A supplied token is checked, not assumed: with only AI Gateway Run, Workers AI over REST
+    // would be refused, so it stays on the binding.
+    workersAi = await canCallWorkersAi(api, accountId, input.token);
+    log(
+      `  ${GATEWAY_TOKEN_SECRET}: supplied${workersAi ? ` (with ${WORKERS_AI_READ_PERMISSION})` : ""}`,
+    );
+    if (!workersAi) {
+      warn(
+        `the supplied ${GATEWAY_TOKEN_SECRET} cannot call Workers AI (it needs ${WORKERS_AI_READ_PERMISSION} as well as ${GATEWAY_RUN_PERMISSION}), so Workers AI stays on the binding and AI Gateway logs its prompts and responses`,
+      );
+    }
   } else {
     const scriptApi = scriptsApi(api, state);
     const scripts = new Set((await scriptApi.listScripts(accountId)).map((s) => s.id));
@@ -277,46 +326,111 @@ export async function provisionAiGateway(
         break;
       }
     }
-    if (!missing) {
+    // A token we generated before ADR 0330 has AI Gateway Run only: replace it once.
+    const upgrade = !missing && Boolean(tokenId) && !workersAi;
+    if (!missing && !upgrade) {
       log(`  ${GATEWAY_TOKEN_SECRET}: set`);
+      if (!workersAi) {
+        warn(
+          `${GATEWAY_TOKEN_SECRET} was set by hand and is not known to call Workers AI, so Workers AI stays on the binding and AI Gateway logs its prompts and responses. To turn that off, supply a token with ${GATEWAY_RUN_PERMISSION} and ${WORKERS_AI_READ_PERMISSION} with --secret ${GATEWAY_TOKEN_SECRET}=… (ADR 0330)`,
+        );
+      }
     } else {
       try {
-        const [group] = await api.permissionGroups(accountId, GATEWAY_RUN_PERMISSION);
-        if (!group) throw new Error(`no "${GATEWAY_RUN_PERMISSION}" permission group`);
+        const [run] = await api.permissionGroups(accountId, GATEWAY_RUN_PERMISSION);
+        if (!run) throw new Error(`no "${GATEWAY_RUN_PERMISSION}" permission group`);
+        const [read] = await api.permissionGroups(accountId, WORKERS_AI_READ_PERMISSION);
         const token = await api.createAccountToken(
           accountId,
           `${id} AI Gateway (Relationship OS)`,
-          [group.id],
+          read ? [run.id, read.id] : [run.id],
         );
         setAll(token.value);
+        workersAi = Boolean(read);
         log(
-          `  ${GATEWAY_TOKEN_SECRET}: generated (an account token with ${GATEWAY_RUN_PERMISSION})`,
+          `  ${GATEWAY_TOKEN_SECRET}: ${upgrade ? "replaced" : "generated"} (an account token with ${GATEWAY_RUN_PERMISSION}${read ? ` and ${WORKERS_AI_READ_PERMISSION}` : ""})`,
         );
-        // The token it replaces (a Worker lost the secret) is no longer used anywhere.
-        if (tokenId && tokenId !== token.id) {
-          await api.deleteAccountToken(accountId, tokenId).catch(() => {});
+        if (!read) {
+          warn(
+            `no "${WORKERS_AI_READ_PERMISSION}" permission group, so Workers AI stays on the binding and AI Gateway logs its prompts and responses`,
+          );
         }
+        // The token it replaces is no longer used once the new one is deployed.
+        if (tokenId && tokenId !== token.id) retiredTokenId = tokenId;
         tokenId = token.id;
       } catch (error) {
         if (!isPermissionError(error)) throw error;
-        warn(
-          `could not generate the gateway token (needs Account API Tokens Edit). Workers AI still works through the gateway; for other providers create a token with ${GATEWAY_RUN_PERMISSION} and set it with --secret ${GATEWAY_TOKEN_SECRET}=… for ${workers.join(" and ")}`,
-        );
+        if (upgrade) {
+          warn(
+            `could not replace ${GATEWAY_TOKEN_SECRET} with one that can call Workers AI (needs Account API Tokens Edit), so Workers AI stays on the binding and AI Gateway logs its prompts and responses until an install or upgrade with that permission`,
+          );
+        } else {
+          warn(
+            `could not generate the gateway token (needs Account API Tokens Edit). Workers AI still works through the gateway, on the binding; for other providers, and for Workers AI without prompt logging, create a token with ${GATEWAY_RUN_PERMISSION} and ${WORKERS_AI_READ_PERMISSION} and set it with --secret ${GATEWAY_TOKEN_SECRET}=… for ${workers.join(" and ")}`,
+          );
+          workersAi = false;
+        }
       }
     }
   }
 
   return {
     gatewayId: id,
-    vars: withVar(),
+    vars: withVar(workersAi),
     secrets,
     state: {
       aiGateway: id,
       ...(created ? { aiGatewayCreated: true } : {}),
       ...(tokenId ? { aiGatewayTokenId: tokenId } : {}),
+      ...(workersAi ? { aiGatewayTokenWorkersAi: true } : {}),
     },
+    ...(retiredTokenId ? { retiredTokenId } : {}),
     warnings,
   };
+}
+
+/**
+ * Can this token call Workers AI? Lists one model of the catalogue with it, which needs Workers AI
+ * Read (ADR 0330). Any failure → false, and the deploy goes on: Workers AI then stays on the
+ * binding.
+ */
+async function canCallWorkersAi(
+  api: CloudflareClient,
+  accountId: string,
+  token: string,
+): Promise<boolean> {
+  try {
+    await api.probeWorkersAi(accountId, token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Deletes a gateway token a deploy replaced, after the new one is in use. Never fails. */
+export async function retireGatewayToken(
+  api: CloudflareClient,
+  accountId: string,
+  tokenId: string | undefined,
+  log: Log = () => {},
+): Promise<void> {
+  if (!tokenId) return;
+  try {
+    await api.deleteAccountToken(accountId, tokenId);
+    log("  the replaced AI Gateway token: deleted");
+  } catch (error) {
+    log(`  warning: could not delete the replaced AI Gateway token: ${(error as Error).message}`);
+  }
+}
+
+/** The vars with `name` removed from every Worker. */
+function withoutVar(vars: DeploymentState["vars"], name: string): DeploymentState["vars"] {
+  const out: DeploymentState["vars"] = {};
+  for (const [worker, values] of Object.entries(vars)) {
+    const { [name]: _gone, ...rest } = values;
+    out[worker] = rest;
+  }
+  return out;
 }
 
 /** Merges per-Worker secret maps; later ones win. */

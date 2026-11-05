@@ -123,6 +123,8 @@ export class FakeCloudflare {
       expiresOn?: string;
     }
   >();
+  /** Tokens not created through the API that can call Workers AI (a supplied gateway token). */
+  readonly workersAiTokens = new Set<string>();
   /** Return a Response to fail a call (failure injection), or undefined to let it through. */
   failOn: ((method: string, path: string, body: unknown) => Response | undefined) | null = null;
   subdomain: string | null;
@@ -173,6 +175,18 @@ export class FakeCloudflare {
     this.calls.push({ method, path });
     const auth = request.headers.get("authorization") ?? "";
     const isAssetUpload = path.endsWith("/workers/assets/upload");
+    // Workers AI's catalogue (the installer's probe of a supplied gateway token, ADR 0330): any
+    // token with Workers AI Read, a generated one or one a test registered in workersAiTokens.
+    if (path === `/accounts/${this.accountId}/ai/models/search` && method === "GET") {
+      const value = auth.replace(/^Bearer /, "");
+      const generated = [...this.tokens.values()].find((t) => t.value === value);
+      const allowed =
+        value === this.options.token ||
+        this.workersAiTokens.has(value) ||
+        Boolean(generated?.permissionGroups.includes("pg-wai-read"));
+      if (!allowed) return fail(403, 10000, "Authentication error");
+      return ok([{ id: "m1", name: "@cf/meta/llama-3.1-8b-instruct" }]);
+    }
     if (!isAssetUpload && auth !== `Bearer ${this.options.token}`) {
       return fail(403, 10000, "Authentication error");
     }
@@ -514,6 +528,7 @@ export class FakeCloudflare {
     if (path === `${a}/tokens/permission_groups`) {
       const groups = [
         { id: "pg-aig-run", name: "AI Gateway Run" },
+        { id: "pg-wai-read", name: "Workers AI Read" },
         { id: "pg-aig-edit", name: "AI Gateway Write" },
         { id: "pg-r2-read", name: "Workers R2 Storage Bucket Item Read" },
       ];

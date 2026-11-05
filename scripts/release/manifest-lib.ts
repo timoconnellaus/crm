@@ -258,6 +258,10 @@ const INPUT_VARS: Record<string, { description: string; options?: string[] }> = 
     description:
       "Deploy-config layer of the model registry: a preset (create-relationship-os --model-roles) or JSON (ADR 0150, ADR 0192)",
   },
+  AI_GATEWAY_REST: {
+    description:
+      "true when AI_GATEWAY_TOKEN can call Workers AI: Workers AI then goes over REST through the gateway with payload logging off (set by the installer, ADR 0330)",
+  },
   AI_GATEWAY_BYOK: {
     description: "Providers whose key AI Gateway holds as BYOK, comma-separated (ADR 0192)",
   },

@@ -11,6 +11,7 @@ export * from "./ai/hybrid.ts";
 export * from "./ai/summaries.ts";
 export * from "./ai/usage.ts";
 export * from "./ai/vectors.ts";
+export * from "./ai/workers-ai-rest.ts";
 export { DEFAULT_APPROVAL_EXPIRY_DAYS, runSessionKey } from "./approvals/queue.ts";
 export { isSimulatedRead } from "./approvals/simulation.ts";
 export * from "./assistant/events.ts";
