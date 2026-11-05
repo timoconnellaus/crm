@@ -12,7 +12,8 @@ commit**, by editing this table. Use the next free block. Unused numbers in a bl
 | A | 0200–0219 | 0200–0209 | Stage 7b | merged |
 | B | 0220–0239 | 0210–0219 | Stage 10 | merged |
 | C | 0250–0259 | 0230–0239 | Stage 11 (Jev), steps 1–3 + `authoring.intent` (#52); later steps reuse it | merged |
-| C (part) | 0251–0252 | 0233–0234 | Stage 11 steps 5, 10 (`adjudicator.policy`, Settings → AI's Judge section) | in flight |
+| C (part) | 0251–0252 | 0233–0234 | Stage 11 steps 5, 10 (`adjudicator.policy`, Settings → AI's Judge section) | merged (#56) |
+| C (rest) | 0253–0254, 0257–0259 | 0235–0236 | Stage 11 finish: the user's decisions, Code Mode recipients, spend, `sync.jobChange` (`stage-11-finish`) | in flight |
 | C (part) | 0255–0256 | 0237–0239 | Stage 11 steps 6, 7, 9 (`summary.statements`, `outbound.message`, `widget.shape`) | merged (#55) |
 | D | — | 0240–0249 | Specs, stages 12–16 (ADRs 0240–0247 used; the stages' ADRs) | in flight |
 | E | 0260–0269 | 0250–0254 | Hosted platform AI | in flight |
