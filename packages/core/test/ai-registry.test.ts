@@ -296,7 +296,8 @@ describe("model-role swap (stage 7 AC 1)", () => {
     });
     await models.run("summarise", [{ role: "user", content: "x" }]);
     const call = server.calls[0];
-    expect(call?.url).toBe("https://gateway.ai.cloudflare.com/v1/acct/gw/openai/chat/completions");
+    expect(call?.url).toBe("https://gateway.ai.cloudflare.com/v1/acct/gw/compat/chat/completions");
+    expect(call?.body.model).toBe("openai/gpt-4.1-mini");
     expect(call?.headers["cf-aig-authorization"]).toBe("Bearer aig-token");
     expect(JSON.parse(call?.headers["cf-aig-metadata"] ?? "{}")).toEqual({ role: "summarise" });
     expect(call?.headers.authorization).toBe("Bearer sk-openai");

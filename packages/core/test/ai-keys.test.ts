@@ -20,23 +20,64 @@ interface ApiCall {
   body: unknown;
 }
 
-function fakeCloudflareApi(logs: unknown[] = []) {
+/**
+ * The Cloudflare API, as far as Settings → AI calls it: Workers secrets, AI Gateway logs, and
+ * the gateway, Secrets Store and provider configs that setGatewayProviderKey reads and writes.
+ */
+function fakeCloudflareApi(
+  logs: unknown[] = [],
+  state: {
+    storeId?: string | null;
+    stores?: { id: string; name: string }[];
+    configs?: { id: string; provider_slug: string; alias: string }[];
+  } = {},
+) {
   const calls: ApiCall[] = [];
+  const configs = [...(state.configs ?? [])];
   const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    calls.push({
-      method: init?.method ?? "GET",
-      url,
-      body: init?.body ? JSON.parse(String(init.body)) : null,
-    });
+    const method = init?.method ?? "GET";
+    const body = init?.body ? JSON.parse(String(init.body)) : null;
+    calls.push({ method, url, body });
+    const path = new URL(url).pathname.replace("/client/v4/accounts/acct", "");
     if (url.includes("/logs")) {
       const page = Number(new URL(url).searchParams.get("page"));
       return Response.json({ success: true, result: page === 1 ? logs : [] });
     }
+    if (path === "/ai-gateway/gateways/gw" && method === "GET") {
+      return Response.json({
+        success: true,
+        result: { id: "gw", authentication: true, collect_logs: true, store_id: state.storeId },
+      });
+    }
+    if (path === "/secrets_store/stores" && method === "GET") {
+      return Response.json({
+        success: true,
+        result: state.stores ?? [],
+        result_info: { page: 1, total_pages: 1 },
+      });
+    }
+    if (path === "/secrets_store/stores" && method === "POST") {
+      return Response.json({ success: true, result: { id: "store-new", name: body.name } });
+    }
+    if (path === "/ai-gateway/gateways/gw/provider_configs" && method === "GET") {
+      return Response.json({ success: true, result: configs });
+    }
+    if (path === "/ai-gateway/gateways/gw/provider_configs" && method === "POST") {
+      configs.push({
+        id: `cfg-${configs.length + 1}`,
+        provider_slug: body.provider_slug,
+        alias: body.alias,
+      });
+      return Response.json({ success: true, result: { id: "cfg" } });
+    }
     return Response.json({ success: true, result: {} });
   }) as typeof fetch;
-  return { calls, fetch: fetchFn };
+  return { calls, fetch: fetchFn, configs };
 }
+
+const route = (c: ApiCall) =>
+  `${c.method} ${new URL(c.url).pathname.replace("/client/v4/accounts/acct", "")}`;
 
 /** Every text value in every table of the database. */
 async function everyStoredValue(): Promise<string> {
@@ -93,25 +134,34 @@ describe("provider keys", () => {
     });
   });
 
-  it("go to AI Gateway BYOK when asked; D1 holds only the flag", async () => {
+  it("go to AI Gateway BYOK by default when there is a gateway; D1 holds only the flag", async () => {
     const admin = await createUser("admin");
-    const api = fakeCloudflareApi();
+    const api = fakeCloudflareApi([], {
+      storeId: "store-1",
+      configs: [{ id: "old", provider_slug: "google-ai-studio", alias: "default" }],
+    });
     const aiAdmin = cloudflareAiAdmin(adminEnv, { fetch: api.fetch, cache: null });
-    await invoke(
+    const out = await invoke(
       "ai.setProviderKey",
-      { provider: "google", apiKey: KEY, mode: "byok" },
+      { provider: "google", apiKey: KEY },
       context(admin, { aiAdmin }),
     );
-    expect(api.calls[0]).toMatchObject({
-      method: "POST",
-      url: "https://api.cloudflare.com/client/v4/accounts/acct/ai-gateway/gateways/gw/provider_configs",
-      body: {
-        alias: "default",
-        default_config: true,
-        provider_slug: "google-ai-studio",
-        secret: KEY,
-      },
+    expect(out.stored).toBe("byok");
+    // CloudflareClient.setGatewayProviderKey: the gateway already has a store; the old key is
+    // replaced (provider configs cannot be updated), and the new one goes under `default`.
+    expect(api.calls.map(route)).toEqual([
+      "GET /ai-gateway/gateways/gw",
+      "GET /ai-gateway/gateways/gw/provider_configs",
+      "DELETE /ai-gateway/gateways/gw/provider_configs/old",
+      "POST /ai-gateway/gateways/gw/provider_configs",
+    ]);
+    expect(api.calls.at(-1)?.body).toEqual({
+      alias: "default",
+      default_config: true,
+      provider_slug: "google-ai-studio",
+      secret: KEY,
     });
+    expect(JSON.stringify(out)).not.toContain(KEY);
     expect((await loadAiSettings((await import("./helpers.ts")).db.query)).byok).toContain(
       "google",
     );
@@ -119,6 +169,90 @@ describe("provider keys", () => {
       .bind(AI_SETTINGS)
       .first<{ value: string }>();
     expect(row?.value).not.toContain(KEY);
+    expect(await everyStoredValue()).not.toContain(KEY);
+  });
+
+  it("attach a Secrets Store to a gateway that has none, creating one if the account has none", async () => {
+    const admin = await createUser("admin");
+    const api = fakeCloudflareApi([], { storeId: null, stores: [] });
+    const aiAdmin = cloudflareAiAdmin(adminEnv, { fetch: api.fetch, cache: null });
+    await invoke(
+      "ai.setProviderKey",
+      { provider: "deepseek", apiKey: KEY, mode: "byok" },
+      context(admin, { aiAdmin }),
+    );
+    expect(api.calls.map(route)).toEqual([
+      "GET /ai-gateway/gateways/gw",
+      "GET /secrets_store/stores",
+      "POST /secrets_store/stores",
+      "PUT /ai-gateway/gateways/gw",
+      "GET /ai-gateway/gateways/gw/provider_configs",
+      "POST /ai-gateway/gateways/gw/provider_configs",
+    ]);
+    expect(api.calls[3]?.body).toMatchObject({ store_id: "store-new", authentication: true });
+    expect(api.calls.at(-1)?.body).toMatchObject({ provider_slug: "deepseek", alias: "default" });
+    // The key is only ever in the provider config's body.
+    for (const call of api.calls.slice(0, -1)) expect(JSON.stringify(call)).not.toContain(KEY);
+    expect(await everyStoredValue()).not.toContain(KEY);
+  });
+
+  it("store a custom provider's key under custom-<slug>, BYOK only", async () => {
+    const admin = await createUser("admin");
+    const api = fakeCloudflareApi([], { storeId: "store-1" });
+    const aiAdmin = cloudflareAiAdmin(adminEnv, { fetch: api.fetch, cache: null });
+    const out = await invoke(
+      "ai.setProviderKey",
+      { provider: "custom", customProvider: "together", apiKey: KEY },
+      context(admin, { aiAdmin }),
+    );
+    expect(out).toEqual({
+      provider: "custom",
+      stored: "byok",
+      targets: ["AI Gateway gw (custom-together)"],
+    });
+    expect(api.calls.at(-1)?.body).toMatchObject({
+      provider_slug: "custom-together",
+      alias: "default",
+      secret: KEY,
+    });
+    await expect(
+      invoke(
+        "ai.setProviderKey",
+        { provider: "custom", apiKey: KEY, mode: "byok" },
+        context(admin, { aiAdmin }),
+      ),
+    ).rejects.toThrow(/slug/);
+    await expect(
+      invoke(
+        "ai.setProviderKey",
+        { provider: "custom", customProvider: "together", apiKey: KEY, mode: "secret" },
+        context(admin, { aiAdmin }),
+      ),
+    ).rejects.toThrow(/BYOK/);
+    // Custom providers are always BYOK: nothing about them is recorded in the settings row.
+    expect((await loadAiSettings((await import("./helpers.ts")).db.query)).byok).not.toContain(
+      "custom",
+    );
+    expect(await everyStoredValue()).not.toContain(KEY);
+  });
+
+  it("default to a Workers secret when the deployment has no gateway", async () => {
+    const admin = await createUser("admin");
+    const api = fakeCloudflareApi();
+    const aiAdmin = cloudflareAiAdmin(
+      { CLOUDFLARE_ACCOUNT_ID: "acct", CLOUDFLARE_API_TOKEN: "cf-token" },
+      { fetch: api.fetch, cache: null },
+    );
+    const out = await invoke(
+      "ai.setProviderKey",
+      { provider: "openai", apiKey: KEY },
+      context(admin, { aiAdmin }),
+    );
+    expect(out.stored).toBe("secret");
+    expect(api.calls.map(route)).toEqual([
+      "PUT /workers/scripts/ros-app/secrets",
+      "PUT /workers/scripts/ros-runner/secrets",
+    ]);
     expect(await everyStoredValue()).not.toContain(KEY);
   });
 
