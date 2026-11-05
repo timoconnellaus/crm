@@ -86,11 +86,19 @@
     // Empty means the shipped defaults (all Workers AI). A deployment sets it, e.g. with
     // `create-relationship-os --model-roles deepseek-flash` (ADR 0192); never commit a choice here.
     "AI_MODEL_ROLES": "",
-    // Base URLs for the `jev` and `openai-compatible` providers: JSON { "<provider>": { "baseURL" } }.
+    // Base URLs for the `openai-compatible` provider: JSON { "<provider>": { "baseURL" } }.
     "AI_PROVIDERS": "",
     // Providers whose key is stored in AI Gateway as BYOK, comma-separated (e.g. "deepseek").
     // Set by `create-relationship-os --provider-key` (ADR 0192).
     "AI_GATEWAY_BYOK": "",
+    // The judge (Jev, ADR 0230): "true" when AI Gateway holds TypeSafe's key as BYOK under
+    // `custom-typesafe` (set by `create-relationship-os --provider-key typesafe=…`). Otherwise the
+    // key is the TYPESAFE_API_KEY secret; with neither, the judge is off.
+    "JUDGE_BYOK": "",
+    // Deploy layer of the judge's placement switches: JSON { "<placement>": true | false }, e.g.
+    // '{"summary.statements":true}' to turn on a placement that sends record content. Empty: the
+    // shipped defaults. Admins override it in Settings → AI.
+    "JUDGE_PLACEMENTS": "",
     // Size of the Vectorize index (`ros-records`); the embed role must produce this many dims.
     "VECTORIZE_DIMENSIONS": "384",
     // Worker scripts Settings → AI stores provider keys on (as Workers secrets).

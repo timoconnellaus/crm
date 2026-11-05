@@ -1,6 +1,14 @@
 {
   "aiGateway": {
-    "customProviders": [],
+    "customProviders": [
+      {
+        "baseUrl": "https://api.typesafe.ai",
+        "description": "The judge (ADR 0230): Jev's typed decisions at /v1/systemone. Inert without a key: BYOK with --provider-key typesafe=…, or the TYPESAFE_API_KEY secret.",
+        "link": "https://docs.typesafe.ai",
+        "name": "TypeSafe AI (Jev)",
+        "slug": "typesafe"
+      }
+    ],
     "settings": {
       "cache_invalidate_on_update": true,
       "cache_ttl": 0,
@@ -94,6 +102,26 @@
       "description": "Providers whose key AI Gateway holds as BYOK, comma-separated (ADR 0192)",
       "kind": "var",
       "name": "AI_GATEWAY_BYOK",
+      "workers": [
+        "ros-app",
+        "ros-runner"
+      ]
+    },
+    {
+      "default": "",
+      "description": "true when AI Gateway holds the judge's TypeSafe key as BYOK under custom-typesafe (create-relationship-os --provider-key typesafe=…, ADR 0230)",
+      "kind": "var",
+      "name": "JUDGE_BYOK",
+      "workers": [
+        "ros-app",
+        "ros-runner"
+      ]
+    },
+    {
+      "default": "",
+      "description": "Deploy layer of the judge's placement switches, JSON { \"<placement>\": true | false } (ADR 0230, ADR 0232)",
+      "kind": "var",
+      "name": "JUDGE_PLACEMENTS",
       "workers": [
         "ros-app",
         "ros-runner"
@@ -266,6 +294,10 @@
     {
       "name": "0221_support_grants.sql",
       "sha256": "8e1824e45475d2e1831cdaff758c04a90557fa4ba23afdbe15906910885c8fbc"
+    },
+    {
+      "name": "0250_judge.sql",
+      "sha256": "48f0ef7a9433a63d5f98bae38854fe415860ff8683c709ac95bdc9716c605dec"
     },
     {
       "name": "0260_ai_usage.sql",
@@ -587,6 +619,16 @@
           "type": "plain_text"
         },
         {
+          "name": "JUDGE_BYOK",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "JUDGE_PLACEMENTS",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "MCP_ACCESS_TOKEN_TTL",
           "text": "3600",
           "type": "plain_text"
@@ -765,7 +807,7 @@
           "source": "installer"
         }
       ],
-      "sha256": "54a1d7adb29b3dfbb7c79059d50d3d29dc63b12a843293bfde0abe003bc1cb59"
+      "sha256": "c93ec060223f69f54769ea839ceda2e158803a6ad1fc12bd11d69eba30af383f"
     },
     {
       "bindings": [
@@ -902,6 +944,16 @@
           "type": "plain_text"
         },
         {
+          "name": "JUDGE_BYOK",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "JUDGE_PLACEMENTS",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "ROS_TENANT_ID",
           "text": "",
           "type": "plain_text"
@@ -981,7 +1033,7 @@
       ],
       "role": "runner",
       "secrets": [],
-      "sha256": "d9f0be8b6bc30fe9228c2c45fe5aeae9d71ba9c726c9387f9338c89f44a574e7"
+      "sha256": "2595e2244120412754d0d7e6648216057f01be76017d8d5314f0d8bf7d5eadd3"
     },
     {
       "bindings": [],

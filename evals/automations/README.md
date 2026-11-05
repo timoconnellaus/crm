@@ -3,14 +3,24 @@
 Stage 5 acceptance criterion 9 ([docs/stages/05-automations.md](../../docs/stages/05-automations.md)):
 an MCP client model, connected to a running deployment over MCP, turns 10 "automate this…"
 prompts into extensions with an automation. Each must pass `check`, its test-mode output must be
-correct, and its host summary must state the intent, judged by a rubric. The target is at least
-8 of 10.
+correct, its host summary must state the intent, and the automation must do exactly what was
+asked, graded by Jev (stage 11). The target is at least 8 of 10.
 
 The eval reuses `evals/mcp`'s client: sign-in, the OAuth flow, the MCP session, the
 OpenAI-compatible model client, tool conversion and the tool-use loop. It uses Workers AI by
-default, or any OpenAI-compatible endpoint. Per ADR 0009 it never uses Claude or Anthropic. The
-summary judge is the model under test unless `--judge-model` (or `EVAL_JUDGE_MODEL`) names
-another; the report says which, since a model judging its own work is not independent.
+default, or any OpenAI-compatible endpoint. Per ADR 0009 it never uses Claude or Anthropic.
+
+**The intent grader is Jev** (stage 11, `lib/intent.ts`): it asks the product's own
+`authoring.intent` questions (an unrequested condition, the wrong recipients, an unrequested
+assignment, something missing, the wrong trigger) about the installed automation's declarations
+against the case's request, with the thresholds calibrated in `evals/judge`. It needs
+`TYPESAFE_API_KEY` (from `.env.evals`); its calls go through the judge's recorder
+(`JUDGE_RECORDING`, default `auto`) into `evals/judge/recordings/eval.automations.json`. A case
+Jev cannot answer is "could not be checked" and fails; it is never a pass. The report shows the
+product's own check of the proposal (`extension.proposal` → `intentCheck`) beside the grader's,
+since one question can miss the same fault twice. `--grader llm` keeps the earlier LLM summary
+judge, which is the model under test unless `--judge-model` (or `EVAL_JUDGE_MODEL`) names
+another.
 
 See [REPORT.md](REPORT.md) for the latest real runs. The harness and graders are unit-tested with
 a stand-in model and an in-memory deployment (`test/`).
@@ -46,9 +56,9 @@ sitting:
       notifications reaching the eval user (as the deal's owner, or as an admin), and the expected
       number of waits (sleep or waitForEvent steps, skipped in test mode);
    4. reads the host summary (`automation.get` → `summary.text`, generated from the declarations
-      without AI). Every keyword group of the case must match it, and the judge must pass it by
-      the rubric in `lib/grading.ts`: right trigger, right actions and recipients, timing stated,
-      nothing important added;
+      without AI). Every keyword group of the case must match it; and the intent grader (Jev) must
+      find no fault in the declarations against the request (with `--grader llm`, the LLM judge
+      must pass the summary by the rubric in `lib/grading.ts`);
    5. disables the automation, so nothing keeps running.
 
 The grader calls operations as their curated MCP tool when the server lists one (e.g.
@@ -87,13 +97,14 @@ The grader calls operations as their curated MCP tool when the server lists one 
    ```sh
    export CLOUDFLARE_ACCOUNT_ID=…  CLOUDFLARE_API_TOKEN=…
    pnpm --filter @relationship-os/evals-automations eval -- --base-url http://localhost:5173
-   # or: node evals/automations/runner.ts --base-url …
+   # or: node --experimental-transform-types evals/automations/runner.ts --base-url …
    ```
 
    Options: `--only id,id` (all of them must pass), `--approval-minutes`, `--model` (default
    `@cf/moonshotai/kimi-k2.6`, or `EVAL_MODEL`), `--temperature`, `--max-tokens`,
    `--reasoning-effort`, `--thinking on|off` (or `EVAL_THINKING`: DeepSeek's thinking switch,
-   sent only when set), `--judge-model` (or `EVAL_JUDGE_MODEL`), `--max-turns` (model requests
+   sent only when set), `--grader jev|llm` (default jev), `--judge-model` (or `EVAL_JUDGE_MODEL`,
+   for `--grader llm`), `--max-turns` (model requests
    per case, default 30), `--email` /
    `--password` (or `EVAL_ADMIN_EMAIL` / `EVAL_ADMIN_PASSWORD`). Without credentials it exits 2
    and writes nothing. It exits 0 when the target is met, 1 otherwise. Reports go to
@@ -118,6 +129,7 @@ timeout) and say when the machine slept during the failed work.
 - `lib/harness.ts`: the three phases (seed, author, grade) and waiting for approvals.
 - `lib/crm.ts`: the grader's operation calls and seeding.
 - `lib/grading.ts`: the test-report grader, the keyword check and the LLM judge.
+- `lib/intent.ts`: the Jev intent grader, and the product check's verdicts for the report.
 - `lib/reference.ts`: a known-good extension per case, and a stand-in model that writes them.
 - `lib/report.ts`: the Markdown and JSON report with a failure analysis by gate.
 - `test/`: unit tests in plain Node, with no network. `test/fake-crm.ts` is an in-memory

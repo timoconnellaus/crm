@@ -40,6 +40,33 @@ export function withReasoningPolicy(message: ModelMessage): ModelMessage {
   return { ...message, content };
 }
 
+/**
+ * The person's own words in a conversation (ADR 0230, `authoring.intent`): the text of every user
+ * message, oldest first, with this turn's last, kept to the newest `max` characters. Built by code
+ * from what the person typed; nothing a model wrote is in it.
+ */
+export function personsWords(
+  stored: readonly StoredMessage[],
+  current: string,
+  max = 4_000,
+): string {
+  const said: string[] = [];
+  for (const { message } of stored) {
+    if (message.role !== "user") continue;
+    const text =
+      typeof message.content === "string"
+        ? message.content
+        : message.content
+            .map((p) => (p.type === "text" ? p.text : ""))
+            .filter(Boolean)
+            .join("\n");
+    if (text.trim()) said.push(text.trim());
+  }
+  if (current.trim()) said.push(current.trim());
+  const all = said.join("\n\n");
+  return all.length <= max ? all : all.slice(all.length - max);
+}
+
 function size(message: ModelMessage): number {
   return JSON.stringify(message.content).length;
 }

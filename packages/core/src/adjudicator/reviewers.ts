@@ -1,15 +1,17 @@
-// The Judge seam (ADR 0204 amendment, 2026-11-05): a typed-decision interface the policy
-// adjudicator asks its questions through. A judge only judges: it answers a question with
-// probabilities over the allowed answers, or says it is unavailable. Code decides what follows
-// (thresholds, approve or escalate), never the judge.
+// The adjudicator's reviewer seam (ADR 0204 amendment, 2026-11-05; renamed in stage 11 so that
+// "judge" names one thing, ADR 0230): the interface the policy adjudicator's LLM reviewer answers
+// through. A reviewer only reviews: it answers a question with probabilities over the allowed
+// answers, or says it is unavailable. Code decides what follows (thresholds, approve or
+// escalate), never the reviewer.
 //
-// Two question kinds, modelled on typed-judgment models such as TypeSafe AI's Jev:
+// Two question kinds:
 // - `choice`: pick one of a fixed set of labels → a probability per label;
 // - `noul`: a yes / no question that may also be unknowable → probabilities for yes, no, unknown.
 //
-// Implementations: `llmJudge` (here), any chat model through the registry's `review` role, in
-// JSON mode with zod validation. A Jev implementation is planned for "Stage 11: Jev"; this module
-// adds no Jev SDK or provider.
+// Implementation: `llmReviewer`, any chat model through the registry's `review` role, in JSON mode
+// with zod validation. Jev is not behind this interface: it is the judge
+// (`packages/core/src/judge/`, ADR 0230), and the adjudicator's Jev reviewer (stage 11, build
+// step 5) asks it its own questions over the policy's rules.
 //
 // Failing closed: an implementation that cannot answer (model error, no valid reply, not
 // configured) returns `{ status: "unavailable" }`. Callers treat that as "ask a person", never as
@@ -19,7 +21,7 @@
 import { z } from "zod";
 
 /** Text the judge reads. `instructions` and `context` are trusted; `subject` is untrusted data. */
-interface QuestionBase {
+interface ReviewQuestionBase {
   /** What to decide and how (trusted: written by us). */
   instructions: string;
   /** Background the decision rests on, e.g. the org's written policy (trusted: written by admins). */
@@ -30,47 +32,47 @@ interface QuestionBase {
   maxTokens?: number | undefined;
 }
 
-export interface ChoiceQuestion<L extends string> extends QuestionBase {
+export interface ReviewChoice<L extends string> extends ReviewQuestionBase {
   kind: "choice";
   labels: readonly L[];
 }
 
-export interface NoulQuestion extends QuestionBase {
+export interface ReviewNoul extends ReviewQuestionBase {
   kind: "noul";
 }
 
 export const NOUL_LABELS = ["yes", "no", "unknown"] as const;
 export type NoulLabel = (typeof NOUL_LABELS)[number];
 
-export interface JudgeIdentity {
+export interface ReviewerIdentity {
   /** `llm` today; `jev` from Stage 11. */
   kind: string;
   provider?: string | undefined;
   model?: string | undefined;
 }
 
-export type JudgeAnswer<L extends string> =
+export type ReviewerAnswer<L extends string> =
   | {
       status: "answered";
       /** A probability per label, summing to 1. */
       probabilities: Record<L, number>;
       /** Why, for the human reviewer (when the judge gives one). */
       rationale?: string | undefined;
-      judge: JudgeIdentity;
+      judge: ReviewerIdentity;
       attempts: number;
     }
   | {
       status: "unavailable";
       code: "model_error" | "invalid_reply" | "not_configured";
       reason: string;
-      judge?: JudgeIdentity | undefined;
+      judge?: ReviewerIdentity | undefined;
       attempts: number;
     };
 
-export interface Judge {
+export interface Reviewer {
   readonly kind: string;
-  choice<L extends string>(question: ChoiceQuestion<L>): Promise<JudgeAnswer<L>>;
-  noul(question: NoulQuestion): Promise<JudgeAnswer<NoulLabel>>;
+  choice<L extends string>(question: ReviewChoice<L>): Promise<ReviewerAnswer<L>>;
+  noul(question: ReviewNoul): Promise<ReviewerAnswer<NoulLabel>>;
 }
 
 /** The most likely label and its probability (ties go to the label listed first). */
@@ -98,12 +100,12 @@ interface ChatResult {
   finishReason?: string | undefined;
 }
 /** A chat model in JSON mode: `models.run("review", messages, { json: true })` or an eval client. */
-export type JudgeModel = (
+export type ReviewerModel = (
   messages: ChatMessage[],
   options: { maxTokens?: number; json?: boolean },
 ) => Promise<ChatResult>;
 
-export interface LlmJudgeOptions {
+export interface LlmReviewerOptions {
   /** The reply's field naming the chosen label (default `choice`). */
   answerKey?: string;
   /** Wraps the untrusted subject in these tags (default `subject`). */
@@ -118,9 +120,9 @@ const probability = z.preprocess(
 );
 
 /** Builds the messages for a question: trusted text in the system message, the subject fenced. */
-export function judgeMessages(
-  question: QuestionBase & { labels: readonly string[] },
-  options: LlmJudgeOptions = {},
+export function reviewerMessages(
+  question: ReviewQuestionBase & { labels: readonly string[] },
+  options: LlmReviewerOptions = {},
 ): ChatMessage[] {
   const tag = options.subjectTag ?? "subject";
   const key = options.answerKey ?? "choice";
@@ -214,12 +216,12 @@ export function choiceProbabilities<L extends string>(
 }
 
 /** Any chat model as a Judge: JSON mode, zod validation, one repair round, fail closed. */
-export function llmJudge(model: JudgeModel, options: LlmJudgeOptions = {}): Judge {
+export function llmReviewer(model: ReviewerModel, options: LlmReviewerOptions = {}): Reviewer {
   const key = options.answerKey ?? "choice";
   const ask = async <L extends string>(
-    question: QuestionBase & { labels: readonly L[] },
-  ): Promise<JudgeAnswer<L>> => {
-    const messages = judgeMessages(question, options);
+    question: ReviewQuestionBase & { labels: readonly L[] },
+  ): Promise<ReviewerAnswer<L>> => {
+    const messages = reviewerMessages(question, options);
     const runOptions = {
       json: true,
       ...(question.maxTokens ? { maxTokens: question.maxTokens } : {}),
@@ -240,7 +242,7 @@ export function llmJudge(model: JudgeModel, options: LlmJudgeOptions = {}): Judg
           ...(last ? { judge: { kind: "llm", provider: last.provider, model: last.model } } : {}),
         };
       }
-      const judge: JudgeIdentity = { kind: "llm", provider: last.provider, model: last.model };
+      const judge: ReviewerIdentity = { kind: "llm", provider: last.provider, model: last.model };
       const parsed = parseChoiceReply(last.text, question.labels, last.finishReason, key);
       if (parsed.ok) {
         return {
@@ -278,7 +280,7 @@ export function llmJudge(model: JudgeModel, options: LlmJudgeOptions = {}): Judg
 }
 
 /** A judge that is not configured: every question is unavailable (fails closed). */
-export function unavailableJudge(reason: string): Judge {
+export function unavailableReviewer(reason: string): Reviewer {
   const answer = async () => ({
     status: "unavailable" as const,
     code: "not_configured" as const,

@@ -340,7 +340,7 @@ the background (`waitUntil`), so the caller gets `pending_approval` exactly as b
 10-minute cron sweeps up anything missed (ros-runner's queued actions included). With the mode off
 that is one settings read and no writes. The adjudicator asks the `review` role in JSON mode, with
 the policy and instructions as the system message and the change as fenced, escaped data
-(`judgePendingItem`), validates the reply with zod (one repair round; invalid, empty or cut off →
+(`reviewPendingItem`, through the `Reviewer` interface), validates the reply with zod (one repair round; invalid, empty or cut off →
 `escalate`, confidence 0), and stores one verdict per action in `core_adjudication` with an
 `adjudicator.verdict` audit row. In shadow mode that is all. In active mode a valid `approve` at or
 above the threshold, for an action the preset (or a dependency) routed to review, whose risk is not
@@ -412,7 +412,7 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   OpenRouter, DeepSeek, Anthropic and AI Gateway **custom providers**, called through the
   gateway's unified endpoint (`…/{gateway}/compat`) with `provider/model` ids
   (`deepseek/deepseek-flash`, `custom-<slug>/<model>`). Embeddings use the provider-native path.
-  Jev and other OpenAI-compatible endpoints are called directly. With no gateway every provider
+  Other OpenAI-compatible endpoints are called directly. With no gateway every provider
   is called at its own URL. A deployment can pick a **model role preset**
   (`create-relationship-os --model-roles deepseek-flash`), stored as its `AI_MODEL_ROLES` in the deployment
   state, and `AI_GATEWAY_BYOK` says which providers' keys the gateway holds
@@ -489,7 +489,9 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   `EVAL_VIA=assistant` runs the stage 2–5 eval sets through it.
 
 - **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
-  [`docs/jev.md`](jev.md); stage 11, proposed): a seam beside the registry, not a model role.
+  [ADR 0232](adr/0232-judge-defaults-and-user-decisions.md), [`docs/jev.md`](jev.md); stage 11,
+  the seam and `authoring.intent` built, the other placements to come): a seam beside the
+  registry, not a model role (`packages/core/src/judge/`, `ctx.judge` built by `judgeFor`).
   Code asks it typed questions (Choice, Noul, Score) at a named **placement** and gets
   probabilities; code holds the thresholds and decides. Its provider is **Jev**, pinned in code,
   reached through AI Gateway's custom provider `custom-typesafe`, with its key as BYOK or the
@@ -497,8 +499,15 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   person asked (advice), the adjudicator's Jev reviewer (fails closed), each summary statement
   against its facts, model-written outbound messages (fails closed), job changes from signatures
   and the shape of a described widget. Without a key the judge is off and nothing changes.
-  Thresholds come from labelled sets (`pnpm eval:calibrate`), and tests and CI only replay
-  ([ADR 0231](adr/0231-judge-calibration-and-replay.md)).
+  Each placement is on or off by layers: shipped default (on unless it sends record content),
+  the `JUDGE_PLACEMENTS` deploy var, then human admins (`judge.update`). Built so far:
+  `authoring.intent` asks five Choices per added or changed automation in `extension.check`
+  (given a request) and `extension.propose`, adds `intent/*` warnings, stores the verdicts on
+  the proposal row (`intent_check`) and shows them on the approval screen; the assistant passes
+  the person's own words (`personsWords`, set by its Durable Object). Thresholds come from
+  labelled sets (`pnpm eval:calibrate`, `evals/judge`), and tests and CI only replay committed
+  recordings ([ADR 0231](adr/0231-judge-calibration-and-replay.md)). The automations eval grades
+  intent with the same questions.
 
 ```
  placement ── ctx.judge.ask({ placement, state, questions }) ──► off? JudgeUnavailable("off")

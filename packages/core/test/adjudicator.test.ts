@@ -15,7 +15,6 @@ import {
   ForbiddenError,
   type InvocationContext,
   invoke,
-  judgePendingItem,
   type ModelMessage,
   type ModelRunner,
   type ModelRunOptions,
@@ -23,6 +22,7 @@ import {
   PendingApprovalError,
   parseVerdictReply,
   type QueuedEvent,
+  reviewPendingItem,
   runAdjudicatorSweep,
   ValidationError,
 } from "../src/index.ts";
@@ -179,7 +179,7 @@ describe("judgement", () => {
 
   it("asks for JSON mode and accepts a first valid reply", async () => {
     const { models, calls } = reviewer(verdict("approve", 0.92));
-    const result = await judgePendingItem((m, o) => models.run("review", m, o), POLICY, ITEM);
+    const result = await reviewPendingItem((m, o) => models.run("review", m, o), POLICY, ITEM);
     expect(result).toMatchObject({
       verdict: "approve",
       confidence: 0.92,
@@ -191,7 +191,7 @@ describe("judgement", () => {
 
   it("repairs once, showing the model its reply and the problem", async () => {
     const { models, calls } = reviewer("not json", verdict("deny", 0.8));
-    const result = await judgePendingItem((m, o) => models.run("review", m, o), POLICY, ITEM);
+    const result = await reviewPendingItem((m, o) => models.run("review", m, o), POLICY, ITEM);
     expect(result).toMatchObject({ verdict: "deny", valid: true, attempts: 2 });
     const repair = calls[1]?.messages ?? [];
     expect(repair.at(-2)).toEqual({ role: "assistant", content: "not json" });
@@ -201,19 +201,19 @@ describe("judgement", () => {
   it("escalates with confidence 0 when the repair fails too, or the reply is cut off", async () => {
     const twice = reviewer("nope");
     expect(
-      await judgePendingItem((m, o) => twice.models.run("review", m, o), POLICY, ITEM),
+      await reviewPendingItem((m, o) => twice.models.run("review", m, o), POLICY, ITEM),
     ).toMatchObject({ verdict: "escalate", confidence: 0, valid: false, attempts: 2 });
     // A thinking model that spent its tokens: empty text, finish reason length.
     const cut = reviewer({ text: "", finishReason: "length" });
     expect(
-      await judgePendingItem((m, o) => cut.models.run("review", m, o), POLICY, ITEM),
+      await reviewPendingItem((m, o) => cut.models.run("review", m, o), POLICY, ITEM),
     ).toMatchObject({ verdict: "escalate", valid: false, error: { code: "invalid_reply" } });
   });
 
   it("escalates when the model fails", async () => {
     const { models } = reviewer(new Error("gateway 502"));
     expect(
-      await judgePendingItem((m, o) => models.run("review", m, o), POLICY, ITEM),
+      await reviewPendingItem((m, o) => models.run("review", m, o), POLICY, ITEM),
     ).toMatchObject({ verdict: "escalate", valid: false, error: { code: "model_error" } });
   });
 });

@@ -1,5 +1,5 @@
 {
-  "$comment": "Deploy inputs wrangler.jsonc cannot hold, read by scripts/release/manifest-lib.ts (the release manifest, ADR 0160) and scripts/deploy.mjs. `features.ai`: Workers AI and Vectorize, remote-only so left out of wrangler.jsonc (ADR 0156); turned off with ROS_AI=off or `create-relationship-os --ai off`. `vectorize`: how each index is created. `aiGateway`: the AI Gateway installs create with AI on (ADR 0180): its settings (authentication is always on) and the custom providers to create, called as custom-<slug> (none ship: built-in gateway providers such as deepseek need none, ADR 0192). `secrets`: optional secrets beyond package.json's. Values are never committed.",
+  "$comment": "Deploy inputs wrangler.jsonc cannot hold, read by scripts/release/manifest-lib.ts (the release manifest, ADR 0160) and scripts/deploy.mjs. `features.ai`: Workers AI and Vectorize, remote-only so left out of wrangler.jsonc (ADR 0156); turned off with ROS_AI=off or `create-relationship-os --ai off`. `vectorize`: how each index is created. `aiGateway`: the AI Gateway installs create with AI on (ADR 0180): its settings (authentication is always on) and the custom providers to create, called as custom-<slug> (`typesafe` ships for the judge, ADR 0230; built-in gateway providers such as deepseek need none, ADR 0192). `secrets`: optional secrets beyond package.json's. Values are never committed.",
   "features": {
     "ai": {
       "ai": {
@@ -34,7 +34,15 @@
       "rate_limiting_limit": 0,
       "rate_limiting_technique": "fixed"
     },
-    "customProviders": []
+    "customProviders": [
+      {
+        "slug": "typesafe",
+        "name": "TypeSafe AI (Jev)",
+        "baseUrl": "https://api.typesafe.ai",
+        "description": "The judge (ADR 0230): Jev's typed decisions at /v1/systemone. Inert without a key: BYOK with --provider-key typesafe=…, or the TYPESAFE_API_KEY secret.",
+        "link": "https://docs.typesafe.ai"
+      }
+    ]
   },
   "secrets": [
     {

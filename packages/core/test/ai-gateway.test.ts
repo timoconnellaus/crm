@@ -67,7 +67,6 @@ describe("model ids on the unified endpoint", () => {
     expect(gatewayModelId("openrouter", "x/y")).toBe("openrouter/x/y");
     expect(gatewayModelId("custom", TOGETHER)).toBe(TOGETHER);
     expect(gatewayModelId("custom", "deepseek-ai/x")).toBeNull();
-    expect(gatewayModelId("jev", "j1")).toBeNull();
     expect(gatewayModelId("openai-compatible", "m")).toBeNull();
     expect(customProviderSlug(TOGETHER)).toBe("custom-together");
   });
@@ -112,10 +111,12 @@ describe("model ids on the unified endpoint", () => {
     expect(providerRoute({}, "custom", TOGETHER)).toBeNull();
     // The gateway id alone is not enough: the compat URL needs the account id.
     expect(providerRoute({ AI_GATEWAY_ID: "gw" }, "openai", "m")?.viaGateway).toBe(false);
-    const custom = { AI_PROVIDERS: roles({ jev: { baseURL: "https://jev.example/v1" } }) };
-    expect(providerRoute({ ...GATEWAY, ...custom }, "jev", "j1")).toEqual({
-      baseURL: "https://jev.example/v1",
-      modelId: "j1",
+    const custom = {
+      AI_PROVIDERS: roles({ "openai-compatible": { baseURL: "https://llm.example/v1" } }),
+    };
+    expect(providerRoute({ ...GATEWAY, ...custom }, "openai-compatible", "m1")).toEqual({
+      baseURL: "https://llm.example/v1",
+      modelId: "m1",
       viaGateway: false,
     });
   });

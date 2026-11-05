@@ -261,6 +261,14 @@ const INPUT_VARS: Record<string, { description: string; options?: string[] }> = 
   AI_GATEWAY_BYOK: {
     description: "Providers whose key AI Gateway holds as BYOK, comma-separated (ADR 0192)",
   },
+  JUDGE_BYOK: {
+    description:
+      "true when AI Gateway holds the judge's TypeSafe key as BYOK under custom-typesafe (create-relationship-os --provider-key typesafe=…, ADR 0230)",
+  },
+  JUDGE_PLACEMENTS: {
+    description:
+      'Deploy layer of the judge\'s placement switches, JSON { "<placement>": true | false } (ADR 0230, ADR 0232)',
+  },
   ROS_SUPPORT_PUBLIC_KEY: {
     description:
       "Hosted SaaS only: the control plane's Ed25519 public key (raw, base64url) for support-access tokens; empty means no support access (ADR 0212)",

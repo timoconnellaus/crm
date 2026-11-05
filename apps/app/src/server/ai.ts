@@ -16,6 +16,7 @@ import {
   type CommitEvent,
   cloudflareAiAdmin,
   customerGateway,
+  devJudge,
   drainAllEmbeddings,
   fakeModels,
   type HostedAiAdminEnv,
@@ -23,7 +24,11 @@ import {
   hostedModelOptions,
   type InvocationContext,
   isHosted,
+  type Judge,
+  judgeFor,
+  judgeRoute,
   loadAiSettings,
+  loadJudgeSettings,
   type ModelRunner,
   memoryVectorStore,
   modelRunnerFromEnv,
@@ -69,6 +74,18 @@ export function modelsFor(env: AiAppEnv, db: CrmDb): ModelRunner | undefined {
   });
 }
 
+/**
+ * The judge (ADR 0230): Jev when a key is reachable (BYOK in AI Gateway, or TYPESAFE_API_KEY),
+ * otherwise off with no network call. The placement switches are read from D1 at most once, and
+ * only when a placement first asks: building it costs nothing.
+ */
+export function judgeOf(env: AiAppEnv, db: CrmDb): Judge {
+  // Local dev and e2e only, as fakeModels: a keyword stand-in for authoring.intent, so the
+  // approval screen's intent check works without TypeSafe. Never with a real key or AI binding.
+  if (env.AI_FAKE_MODEL === "true" && !env.AI && !judgeRoute(env).ready) return devJudge;
+  return judgeFor(env, { loadSettings: () => loadJudgeSettings(db.query) });
+}
+
 /** waitUntil when inside a request; outside one (tests, crons) the promise just runs. */
 function schedule(work: Promise<unknown>) {
   try {
@@ -98,6 +115,10 @@ export function aiEnvView(env: AiAppEnv): AiEnv {
     ...(env.AI_GATEWAY_BYOK ? { AI_GATEWAY_BYOK: env.AI_GATEWAY_BYOK } : {}),
     ...(env.VECTORIZE_DIMENSIONS ? { VECTORIZE_DIMENSIONS: env.VECTORIZE_DIMENSIONS } : {}),
     ...(env.AI_FAKE_MODEL ? { AI_FAKE_MODEL: env.AI_FAKE_MODEL } : {}),
+    // The judge's key, as "set" only (ADR 0230, ADR 0151).
+    ...(env.TYPESAFE_API_KEY ? { TYPESAFE_API_KEY: "set" } : {}),
+    ...(env.JUDGE_BYOK ? { JUDGE_BYOK: env.JUDGE_BYOK } : {}),
+    ...(env.JUDGE_PLACEMENTS ? { JUDGE_PLACEMENTS: env.JUDGE_PLACEMENTS } : {}),
     // Hosted placement (ADR 0213 amendment): ids only; the platform token and the customer's
     // gateway token are shown as "set" (their values never reach an operation).
     ...(env.AI_PLATFORM_GATEWAY_ID ? { AI_PLATFORM_GATEWAY_ID: env.AI_PLATFORM_GATEWAY_ID } : {}),
@@ -221,6 +242,7 @@ export function aiContextFor(env: AiAppEnv, db: CrmDb) {
   const viaEvents = Boolean(index && typeof index.query === "function" && models?.embed);
   return {
     ...(models ? { models } : {}),
+    judge: judgeOf(env, db),
     ...(vectors ? { vectors } : {}),
     ...(viaEvents ? { embedViaEvents: true } : {}),
     ...(onCommitted ? { onCommitted } : {}),

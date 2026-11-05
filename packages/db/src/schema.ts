@@ -700,6 +700,8 @@ export interface CoreExtensionProposalsTable {
   check_result: string;
   ai_summary: string | null;
   ai_model: string | null;
+  /** Migration 0250 (ADR 0230): the authoring.intent check, JSON, or null when none ran. */
+  intent_check: string | null;
   created_by: string;
   created_at: string;
 }

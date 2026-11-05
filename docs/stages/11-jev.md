@@ -167,6 +167,12 @@ CI never calls Jev.
 
 ## Suggested build order
 
+**Built so far (5 November 2026):** steps 1 to 3, and step 4's `authoring.intent` with the
+automations eval's intent grader (ADR 0230 and 0231 amendments, ADR 0232). Not yet: step 4's
+extension field questions (`unrequested_field`, `missing_field`); the gateway checks of AC 2
+(no gateway was reachable: direct probe only); and steps 5 to 10. Migrations of this stage use
+0250 to 0259 (0250: `intent_check`), the range assigned to this build so parallel builds do not collide.
+
 Steps 1 to 3 come first and in order. After them, the placements are independent and can be built
 in parallel worktrees, each with its labelled sets, its live calibration and its recordings in the
 same PR.

@@ -19,7 +19,8 @@
     "deploy": "node scripts/deploy.mjs",
     "types": "turbo run types",
     "db:seed": "pnpm --filter @relationship-os/db seed",
-    "upstream:check": "node scripts/upstream-sync-check.mjs"
+    "upstream:check": "node scripts/upstream-sync-check.mjs",
+    "eval:calibrate": "pnpm --filter @relationship-os/evals-judge calibrate"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.4",

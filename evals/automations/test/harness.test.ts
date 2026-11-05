@@ -1,6 +1,8 @@
 // The whole eval flow against the in-memory deployment: seed before authoring, author with the
 // reference model (or a scripted one), approve, then grade check, install, trigger, test mode and
 // summary; and each way a case can fail.
+import { choiceAnswer, fakeJudge, unavailableJudge } from "@relationship-os/core/judge";
+import { INTENT_QUESTIONS } from "@relationship-os/core/judge-authoring-intent";
 import { reply, scriptedModel, toolCall } from "@relationship-os/evals-mcp/test/fakes.ts";
 import { describe, expect, it } from "vitest";
 import { type AutomationsHarnessDeps, runEval } from "../lib/harness.ts";
@@ -248,6 +250,64 @@ describe("runEval", () => {
         turn: 2,
         tool: "extension_propose",
       },
+    ]);
+  });
+});
+
+describe("the intent grader (Jev, stage 11)", () => {
+  const c = byId("big-deal-alert");
+  // The real 5 November failure: the owner's manager notified instead of the admins.
+  const spec = {
+    label: "Big deal alert",
+    description: "x",
+    trigger: { type: "record", object: "deals.deal", on: ["created"] },
+    conditions: { field: "value", op: "gt", value: 50000 },
+    steps: [{ name: "notify", notifies: [{ to: { managerOf: "owner" }, message: "Big deal" }] }],
+  };
+  const answers = (recipients: string) =>
+    Object.fromEntries(
+      Object.entries(INTENT_QUESTIONS).map(([id, q]) => {
+        const labels = Object.keys(q.criteria);
+        const ok = labels[0] as string;
+        return [id, choiceAnswer(labels, id === "recipients" ? recipients : ok)];
+      }),
+    );
+
+  it("replaces the LLM judge: a finding fails the case, naming the recipient", async () => {
+    const judge = fakeJudge(answers("other_people"));
+    const { crm, deps } = setup({ spec: () => spec, summary: () => c.intent });
+    const [result] = await runEval([c], { ...deps, intentJudge: judge }, async () =>
+      crm.approveAll(),
+    );
+    expect(judge.calls).toHaveLength(1);
+    expect(judge.calls[0]?.placement).toBe("eval.automations");
+    expect(result?.failures).toEqual([
+      {
+        kind: "summary",
+        message: expect.stringContaining("the intent grader: It notifies the owner's manager"),
+      },
+    ]);
+    expect(result?.intent).toMatchObject({ status: "answered", pass: false });
+    expect(result?.productIntent).toMatch(/not run/);
+  });
+
+  it("passes what was asked, and a grader with no answer is could-not-be-checked, never a pass", async () => {
+    const { crm, deps } = setup({ spec: () => spec, summary: () => c.intent });
+    const [passed] = await runEval(
+      [c],
+      { ...deps, intentJudge: fakeJudge(answers("as_asked")) },
+      async () => crm.approveAll(),
+    );
+    expect(passed?.failures).toEqual([]);
+    const again = setup({ spec: () => spec, summary: () => c.intent });
+    const [unchecked] = await runEval(
+      [c],
+      { ...again.deps, intentJudge: unavailableJudge("unreachable") },
+      async () => again.crm.approveAll(),
+    );
+    expect(unchecked?.passed).toBe(false);
+    expect(unchecked?.failures).toEqual([
+      { kind: "error", message: expect.stringContaining("could not be checked") },
     ]);
   });
 });

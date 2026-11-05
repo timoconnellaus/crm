@@ -4,7 +4,7 @@
 import type { CoreDatabase, CrmDb, PendingActionStatus } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
-import { ADJUDICATOR_PRINCIPAL } from "../adjudicator/judge.ts";
+import { ADJUDICATOR_PRINCIPAL } from "../adjudicator/review.ts";
 import { loadVerdicts, verdictViewSchema } from "../adjudicator/run.ts";
 import { ApprovalStateError, objectOfId } from "../approvals/queue.ts";
 import { approvalDecidedMessages, emitEvents, eventOriginOf } from "../automations/events.ts";
