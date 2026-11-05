@@ -1,8 +1,8 @@
 // Server functions anonymous callers may use (see PUBLIC_SERVER_FN_FILE in identity.ts).
 import { env } from "cloudflare:workers";
 import { createIdentityProvider, signInMethods } from "@relationship-os/auth";
-import { resolveActingUser } from "@relationship-os/core";
-import { createCrmDb } from "@relationship-os/db";
+import { loadSupportGrant, resolveActingUser, SUPPORT_EMAIL_DOMAIN } from "@relationship-os/core";
+import { type CrmDb, createCrmDb } from "@relationship-os/db";
 import { createServerFn } from "@tanstack/react-start";
 
 /**
@@ -14,16 +14,37 @@ import { createServerFn } from "@tanstack/react-start";
 export const getSession = createServerFn({ method: "GET" }).handler(async ({ context }) => {
   const provider = createIdentityProvider(env);
   const principal = context.principal ?? null;
-  const user = principal ? await resolveActingUser(createCrmDb(env.DB), principal) : null;
+  const db = createCrmDb(env.DB);
+  const user = principal ? await resolveActingUser(db, principal) : null;
   return {
     principal,
     user: user ? { id: user.id, role: user.role } : null,
+    // A support session (ADR 0212): the app shows a banner with when access ends.
+    support: user ? await supportSession(db, user) : null,
     signOutUrl: provider.signOutUrl,
     identityProvider: provider.kind,
     // The first-run setup wizard (ADR 0167) opens for admins until it is completed or skipped.
     setupOpen: user?.role === "admin" ? await setupOpen() : false,
   };
 });
+
+/** When the user is a support user: its grant's staff email and expiry. No read for anyone else. */
+async function supportSession(
+  db: CrmDb,
+  user: { id: string; email: string },
+): Promise<{ staffEmail: string; expiresAt: string } | null> {
+  if (!user.email.endsWith(`@${SUPPORT_EMAIL_DOMAIN}`)) return null;
+  const userId = user.id;
+  const row = await db.query
+    .selectFrom("core_user")
+    .select("support_grant_id")
+    .where("id", "=", userId)
+    .executeTakeFirst();
+  if (!row?.support_grant_id) return null;
+  const grant = await loadSupportGrant(db.query, row.support_grant_id);
+  if (!grant?.expires_at) return null;
+  return { staffEmail: grant.staff_email, expiresAt: grant.expires_at };
+}
 
 async function setupOpen(): Promise<boolean> {
   try {

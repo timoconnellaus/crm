@@ -16,7 +16,9 @@ import type { IdentityEnv } from "@relationship-os/auth";
 import {
   type ActingUser,
   bindConnectionGrant,
+  isGrantActive,
   loadConnection,
+  loadSupportGrant,
   parseFloor,
   type RateLimitBinding,
   RateLimitedError,
@@ -92,11 +94,16 @@ export async function serveMcp(
   }
   const row = await db.query
     .selectFrom("core_user")
-    .select(["id", "email", "name", "role", "deactivated_at"])
+    .select(["id", "email", "name", "role", "deactivated_at", "support_grant_id"])
     .where("id", "=", connection.userId)
     .executeTakeFirst();
   if (!row) return bearerError(401, "invalid_token", "The user no longer exists");
   if (row.deactivated_at) return bearerError(401, "invalid_token", "This account was deactivated");
+  // A support user's connection lives no longer than its grant (ADR 0212).
+  if (row.support_grant_id) {
+    const grant = await loadSupportGrant(db.query, row.support_grant_id);
+    if (!isGrantActive(grant)) return bearerError(401, "invalid_token", "Support access ended");
+  }
   const user: ActingUser = {
     id: row.id,
     email: row.email,
