@@ -27,7 +27,12 @@ import {
   provisionResources,
   writeDeploymentState,
 } from "./deploy.ts";
-import { GATEWAY_TOKEN_SECRET, mergeSecrets, provisionAiGateway } from "./gateway.ts";
+import {
+  GATEWAY_TOKEN_SECRET,
+  mergeSecrets,
+  provisionAiGateway,
+  retireGatewayToken,
+} from "./gateway.ts";
 import { adoptLegacyNames } from "./legacy.ts";
 
 /** Pauses and resumes automations around an update. */
@@ -236,6 +241,8 @@ export async function runUpdate(input: UpdateInput): Promise<UpdateOutcome> {
     };
     await writeDeploymentState(api, databaseId, next);
     outcome.status = "succeeded";
+    // A gateway token this update replaced (ADR 0330) is deleted only now that the new one is live.
+    await retireGatewayToken(api, state.accountId, gateway.retiredTokenId, log);
   } catch (error) {
     outcome.error = (error as Error).message;
     log(`update failed: ${outcome.error}`);

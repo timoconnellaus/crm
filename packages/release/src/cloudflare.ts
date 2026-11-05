@@ -812,6 +812,17 @@ export class CloudflareClient {
     ).result.filter((g) => g.name === name);
   }
 
+  /**
+   * Checks that `token` can call Workers AI in the account (ADR 0330): lists one model of the
+   * catalogue, which needs Workers AI Read. Throws (CloudflareApiError 401/403) when it cannot.
+   * The token is sent only to the Cloudflare API, and never logged.
+   */
+  async probeWorkersAi(accountId: string, token: string): Promise<void> {
+    await this.request("GET", `/accounts/${accountId}/ai/models/search?per_page=1`, undefined, {
+      auth: token,
+    });
+  }
+
   /** Creates an account-owned API token. Returns its id and value (shown once). */
   async createAccountToken(
     accountId: string,

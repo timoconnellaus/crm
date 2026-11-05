@@ -115,6 +115,8 @@
     "AI_MODEL_ROLES": "",
     "AI_PROVIDERS": "",
     "AI_GATEWAY_BYOK": "",
+    // Workers AI over REST through the gateway, payload logging off (ADR 0330); set by the installer.
+    "AI_GATEWAY_REST": "",
     // The judge (Jev, ADR 0230), as on ros-app: keep these in step with apps/app/wrangler.jsonc.
     "JUDGE_BYOK": "",
     "JUDGE_PLACEMENTS": "",

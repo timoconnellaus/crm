@@ -62,8 +62,13 @@ export interface DeploymentState {
   aiGateway?: string | false;
   /** The gateway was created by this deployment (so `ros uninstall` deletes it). */
   aiGatewayCreated?: boolean;
-  /** The id of the generated AI Gateway Run token stored as AI_GATEWAY_TOKEN. */
+  /** The id of the generated gateway token stored as AI_GATEWAY_TOKEN. */
   aiGatewayTokenId?: string;
+  /**
+   * The AI_GATEWAY_TOKEN on the Workers can call Workers AI (Workers AI Read, ADR 0330), so
+   * AI_GATEWAY_REST is on. Absent for a token generated before ADR 0330 or set by hand unchecked.
+   */
+  aiGatewayTokenWorkersAi?: boolean;
   /** Deployed names, when they differ from the manifest's. */
   workerNames: Record<string, string>;
   /**
