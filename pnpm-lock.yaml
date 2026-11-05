@@ -249,6 +249,9 @@ importers:
       '@relationship-os/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@relationship-os/evals-judge':
+        specifier: workspace:*
+        version: link:../judge
       '@relationship-os/evals-mcp':
         specifier: workspace:*
         version: link:../mcp

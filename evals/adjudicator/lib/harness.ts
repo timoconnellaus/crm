@@ -1,8 +1,11 @@
 // The adjudicator eval harness: runs core's own judgement (reviewPendingItem, the code the
-// deployment runs) over the labelled cases, then scores it. The model is a seam: the real
-// `review` model through an OpenAI-compatible endpoint (runner.ts), or a deterministic fake (tests).
+// deployment runs) over the labelled cases, then scores it. The reviewer is a seam: the LLM (the
+// real `review` model through an OpenAI-compatible endpoint, runner.ts), Jev (core's
+// jevPolicyReviewer over the judge, recorded and replayed, ADR 0233), or a deterministic fake
+// (tests). Both reviewers are scored the same way.
 import { computeAgreement } from "@relationship-os/core/adjudicator-agreement";
 import {
+  type PolicyReviewer,
   type ReviewModel,
   type ReviewResult,
   reviewPendingItem,
@@ -27,6 +30,8 @@ export interface CaseResult {
   attempts: number;
   error: string | null;
   ms: number;
+  /** The Jev reviewer's raw answer (labels and numbers), when Jev reviewed. */
+  judgement?: ReviewResult["judgement"];
 }
 
 export interface Score {
@@ -52,10 +57,16 @@ export interface Score {
 }
 
 export async function runCases(
-  model: ReviewModel,
+  reviewer: ReviewModel | PolicyReviewer,
   policy: string,
   cases: readonly EvalCase[],
-  options: { threshold?: number; maxTokens?: number; concurrency?: number } = {},
+  options: {
+    threshold?: number;
+    maxTokens?: number;
+    concurrency?: number;
+    /** Runs each case inside this (the Jev recorder scopes each call by case). */
+    around?: <T>(id: string, work: () => Promise<T>) => Promise<T>;
+  } = {},
 ): Promise<CaseResult[]> {
   const threshold = options.threshold ?? DEFAULT_THRESHOLD;
   const results: CaseResult[] = new Array(cases.length);
@@ -65,9 +76,11 @@ export async function runCases(
       const index = next++;
       const c = cases[index] as EvalCase;
       const started = Date.now();
-      const judged = await reviewPendingItem(model, policy, c.item, {
-        ...(options.maxTokens ? { maxTokens: options.maxTokens } : {}),
-      });
+      const review = () =>
+        reviewPendingItem(reviewer, policy, c.item, {
+          ...(options.maxTokens ? { maxTokens: options.maxTokens } : {}),
+        });
+      const judged = await (options.around ? options.around(c.id, review) : review());
       results[index] = {
         id: c.id,
         label: c.label,
@@ -81,6 +94,7 @@ export async function runCases(
         attempts: judged.attempts,
         error: judged.error?.message ?? null,
         ms: Date.now() - started,
+        ...(judged.judgement ? { judgement: judged.judgement } : {}),
       };
     }
   };

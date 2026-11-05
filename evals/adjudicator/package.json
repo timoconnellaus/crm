@@ -5,12 +5,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "eval": "node runner.ts",
+    "eval": "node --experimental-transform-types --no-warnings runner.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@relationship-os/core": "workspace:*",
+    "@relationship-os/evals-judge": "workspace:*",
     "@relationship-os/evals-mcp": "workspace:*"
   },
   "devDependencies": {

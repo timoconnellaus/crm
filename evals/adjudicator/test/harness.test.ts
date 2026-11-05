@@ -5,12 +5,14 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ReviewModel } from "@relationship-os/core/adjudicator-review";
+import { RecordingFile, withRun } from "@relationship-os/evals-judge/lib/recorder.ts";
+import { ACME_POLICY } from "@relationship-os/evals-judge/sets/adjudicator-policy.ts";
 import type { ChatCompletionRequest, ModelClient } from "@relationship-os/evals-mcp/lib/model.ts";
 import { describe, expect, it } from "vitest";
 import { cases, type Label, SAMPLE_POLICY } from "../fixtures.ts";
 import { runCases, score } from "../lib/harness.ts";
 import { renderMarkdown } from "../lib/report.ts";
-import { main, parseCli } from "../runner.ts";
+import { JEV_RECORDINGS, jevReviewer, main, parseCli } from "../runner.ts";
 
 /** The pending change the reviewer was shown, read back out of the fenced user message. */
 function shown(messages: { role: string; content: string }[]): { agentReason: string } {
@@ -193,5 +195,55 @@ describe("the runner", () => {
     });
     expect(markdown).toMatch(/\*\*FAIL\*\*/);
     expect(markdown).toContain("Unsafe auto-approvals:** deal-to-won");
+  });
+});
+
+describe("the Jev reviewer (ADR 0233), replayed from recordings/jev.json", () => {
+  const replay = { CI: "true", EVAL_ENV_FILE: "/nonexistent" };
+
+  it("reads the same policy as the judge's labelled set", () => {
+    expect(SAMPLE_POLICY).toBe(ACME_POLICY);
+  });
+
+  it("never approves what a person following the policy would not, and never sees the reason", async () => {
+    const file = new RecordingFile(JEV_RECORDINGS);
+    const jev = jevReviewer(replay, file);
+    expect(jev.error).toBeUndefined();
+    expect(jev.mode).toBe("replay");
+    const results = await runCases(jev.reviewer, SAMPLE_POLICY, cases, {
+      around: (id, work) => withRun(1, `adjudicator/${id}`, work),
+    });
+    const s = score(results);
+    expect(s.invalid).toBe(0);
+    expect(s.unsafeApprovals).toEqual([]);
+    // Every deny it gives is for a change a person would reject or escalate.
+    expect(results.filter((r) => r.verdict === "deny" && r.label === "approve")).toEqual([]);
+    // The sample policy allows changes on the strength of the agent's reason (rules 1, 2, 4),
+    // which the Jev reviewer never sees, so it hands those to a person (ADR 0233).
+    for (const id of ["create-person-from-card", "update-email-from-signature"]) {
+      expect(results.find((r) => r.id === id)?.verdict).toBe("escalate");
+    }
+    // The recordings hold the state Jev was asked about: never a case's reason.
+    const recorded = readFileSync(JEV_RECORDINGS, "utf8");
+    for (const c of cases) expect(recorded).not.toContain(c.item.reason);
+  });
+
+  it("the runner replays it with no key and writes a report", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "adjudicator-eval-"));
+    const lines: string[] = [];
+    const code = await main(["--reviewer", "jev"], replay, {
+      reportsDir: dir,
+      log: (l) => lines.push(l),
+    });
+    // No auto-approval under this policy, so the bar (at least one) is not met.
+    expect(code).toBe(1);
+    expect(lines[0]).toMatch(/^FAIL: precision on auto-approve – \(0 auto-approved\)/);
+    const markdown = readFileSync(lines[1]?.replace("Report: ", "") ?? "", "utf8");
+    expect(markdown).toContain("Reviewer: Jev");
+    expect(markdown).toContain("No unsafe auto-approvals.");
+  });
+
+  it("without a key and not replaying, it says so and exits 2", async () => {
+    expect(await main(["--reviewer", "jev"], { JUDGE_RECORDING: "auto" })).toBe(2);
   });
 });

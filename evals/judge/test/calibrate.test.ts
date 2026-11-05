@@ -6,6 +6,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CALIBRATION, JEV_MODEL, jevJudge, judgeRoute, noul } from "@relationship-os/core/judge";
+import { policyVerdict } from "@relationship-os/core/judge-adjudicator-policy";
 import { describe, expect, it } from "vitest";
 import { CALIBRATION_PATH, main, parseCli, RECORDINGS_DIR } from "../calibrate.ts";
 import {
@@ -206,6 +207,45 @@ describe("the labelled sets, replayed from their committed recordings", () => {
       }
     },
   );
+
+  it("the Jev reviewer end to end over the policy set: approve precision of at least 0.95", async () => {
+    // The product's own composition (policyVerdict) and the default admin threshold (0.8), on
+    // every run of every case, replayed. A case should be approved only where a rule allows it
+    // and none stops it; an arguable case approved counts against precision.
+    const file = new RecordingFile(join(RECORDINGS_DIR, "adjudicator.policy.json"));
+    const route = judgeRoute({ TYPESAFE_API_KEY: "replay-only" });
+    if (!route.ready) throw new Error("no route");
+    const judge = jevJudge({
+      route,
+      log: () => {},
+      fetch: recordingFetch({ mode: "replay", file, spend: spend(0), env: { CI: "true" } }),
+    });
+    let approved = 0;
+    let safe = 0;
+    let shouldApprove = 0;
+    for (const c of adjudicatorPolicySet.cases) {
+      const should = c.expect.allowed_by === "above" && c.expect.breaks === "below";
+      if (should) shouldApprove += 3;
+      for (let run = 1; run <= 3; run += 1) {
+        const asked = await withRun(run, `adjudicator.policy/${c.name}`, () =>
+          adjudicatorPolicySet.ask(judge, c.state),
+        );
+        expect(asked, c.name).not.toBeNull();
+        const v = policyVerdict(c.state.rules, asked as NonNullable<typeof asked>);
+        if (v.verdict === "approve" && v.confidence >= 0.8) {
+          approved += 1;
+          if (should) safe += 1;
+        }
+      }
+    }
+    expect(approved).toBeGreaterThan(0);
+    expect(safe / approved).toBeGreaterThanOrEqual(0.95);
+    console.log(
+      `Jev reviewer over the policy set: ${approved} approvals of ${shouldApprove} approvable runs, ${approved - safe} unsafe`,
+    );
+    // Recall is reported, not held: a conservative reviewer is allowed.
+    expect(shouldApprove).toBeGreaterThan(0);
+  });
 
   it("the CLI replays every set and passes, writing nothing without --write", async () => {
     const before = readFileSync(CALIBRATION_PATH, "utf8");
