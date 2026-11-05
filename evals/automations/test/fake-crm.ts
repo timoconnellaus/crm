@@ -18,6 +18,10 @@ export interface FakeBehaviour {
   triggerType?: (c: AutomationCase) => string;
   /** Overrides the pipelines and stages (default: the Deals extension's seeded ones). */
   pipelines?: FakePipeline[];
+  /** The installed automation's declarations (default: only its trigger type). */
+  spec?: (c: AutomationCase) => Record<string, unknown>;
+  /** What extension.proposal says the product's intent check found. */
+  intentCheck?: (c: AutomationCase) => Record<string, unknown> | null;
 }
 
 export interface FakeStage {
@@ -198,11 +202,14 @@ export function fakeCrm(behaviour: FakeBehaviour = {}) {
       if (!c || !installed.has(extensionId)) return { isError: true, error: { code: "not_found" } };
       return {
         id: input.id,
-        spec: { trigger: { type: behaviour.triggerType?.(c) ?? c.triggers[0] } },
+        spec: behaviour.spec?.(c) ?? {
+          trigger: { type: behaviour.triggerType?.(c) ?? c.triggers[0] },
+        },
         summary: { segments: [], text: behaviour.summary?.(c) ?? c.intent },
         diagram: [],
       };
     },
+    "extension.proposal": () => ({ intentCheck: null }),
     "automation.test": (input) => {
       tests.push(input);
       const c = caseOf(String(input.id).split(".")[0] ?? "");

@@ -3,14 +3,24 @@
 // connected to a running deployment as an admin, writes an extension with an automation for each
 // of the 10 cases in prompts.ts and proposes it. A person approves the proposals in the Approvals
 // inbox (installing is human-only); the grader then checks each one, runs test mode on a seeded
-// record and judges the host summary. Writes a report to reports/. Node >= 24:
+// record, checks the host summary's keywords, and grades the intent with Jev (the authoring.intent
+// questions, stage 11; --grader llm keeps the LLM summary judge). Writes a report to reports/.
+// Node >= 24:
 //
-//   CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… node evals/automations/runner.ts --base-url http://localhost:5173
+//   node --experimental-transform-types evals/automations/runner.ts --base-url http://localhost:5173
 //
 // See README.md.
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { type Judge, jevJudge, judgeRoute } from "@relationship-os/core/judge";
+import {
+  RecordingFile,
+  recordingFetch,
+  recordingMode,
+  spend,
+  withRun,
+} from "@relationship-os/evals-judge/lib/recorder.ts";
 import { configureVia } from "@relationship-os/evals-mcp/lib/assistant.ts";
 import {
   checkCredentials,
@@ -48,6 +58,11 @@ export interface CliOptions {
   model: string;
   /** The summary judge's model: --judge-model, else EVAL_JUDGE_MODEL, else the model under test. */
   judgeModel: string;
+  /**
+   * Who grades the intent (stage 11): `jev` (the default) asks the authoring.intent questions of
+   * Jev, recorded under evals/judge/recordings/; `llm` keeps the LLM summary judge.
+   */
+  grader: "jev" | "llm";
   params: ModelParams;
   maxTurns: number;
   /** Minutes to wait for the proposals to be approved. */
@@ -66,6 +81,7 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliOptions {
       email: { type: "string" },
       password: { type: "string" },
       "judge-model": { type: "string" },
+      grader: { type: "string", default: "jev" },
       ...modelCliOptions,
     },
   });
@@ -79,6 +95,7 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliOptions {
     model,
     judgeModel:
       (values["judge-model"] as string | undefined) || env.EVAL_JUDGE_MODEL?.trim() || model,
+    grader: parseGrader(values.grader as string),
     params,
     maxTurns: parsePositiveInt(values["max-turns"] as string, "--max-turns"),
     approvalMinutes: parsePositiveInt(values["approval-minutes"] as string, "--approval-minutes"),
@@ -92,6 +109,48 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliOptions {
       name: "MCP Eval",
     },
   };
+}
+
+function parseGrader(value: string): "jev" | "llm" {
+  if (value === "jev" || value === "llm") return value;
+  throw new Error("--grader is jev or llm");
+}
+
+/**
+ * The Jev intent grader, through the judge's recorder (mode JUDGE_RECORDING, default auto) into
+ * evals/judge/recordings/eval.automations.json. Null, with the reason, without a key in auto mode.
+ */
+function intentGrader(env: NodeJS.ProcessEnv): { judge: Judge; flush(): void } | { error: string } {
+  const mode = recordingMode(env.JUDGE_RECORDING);
+  const route = judgeRoute({
+    TYPESAFE_API_KEY: mode === "replay" ? "replay-only" : env.TYPESAFE_API_KEY,
+  });
+  if (!route.ready) {
+    return {
+      error:
+        "The intent grader is Jev and needs TYPESAFE_API_KEY (environment or .env.evals); pass " +
+        "--grader llm for the LLM summary judge instead.",
+    };
+  }
+  const here = dirname(fileURLToPath(import.meta.url));
+  const file = new RecordingFile(join(here, "../judge/recordings/eval.automations.json"));
+  let n = 0;
+  const judge = jevJudge({
+    route,
+    timeoutMs: 15_000,
+    retries: mode === "replay" ? 0 : 2,
+    log: () => {},
+    fetch: recordingFetch({ mode, file, spend: spend(1) }),
+  });
+  // Each grading call is its own recording, scoped by its order in the run.
+  const scoped: Judge = {
+    provider: judge.provider,
+    ask(request) {
+      n += 1;
+      return withRun(1, `grade-${n}`, () => judge.ask(request));
+    },
+  };
+  return { judge: scoped, flush: () => file.flush() };
 }
 
 async function main(): Promise<number> {
@@ -139,6 +198,12 @@ async function main(): Promise<number> {
     return 1;
   }
 
+  const grader = options.grader === "jev" ? intentGrader(process.env) : null;
+  if (grader && "error" in grader) {
+    console.error(grader.error);
+    return 1;
+  }
+
   const deps: AutomationsHarnessDeps = {
     openSession,
     model: chatCompletionsModel(provider, {
@@ -149,6 +214,7 @@ async function main(): Promise<number> {
     }),
     modelId: options.model,
     judgeModelId: options.judgeModel,
+    ...(grader ? { intentJudge: grader.judge } : {}),
     params: options.params,
     maxTurns: options.maxTurns,
     userEmail: options.user.email,
@@ -185,6 +251,7 @@ async function main(): Promise<number> {
     );
     console.error(pending.length ? `\nnot approved: ${pending.join(", ")}` : "\nall approved");
   });
+  grader?.flush();
   for (const r of results) {
     console.error(
       `${r.id}: ${r.passed ? "pass" : `FAIL: ${r.failures.map((f) => f.message).join("; ")}`}`,
@@ -194,7 +261,7 @@ async function main(): Promise<number> {
     startedAt,
     finishedAt: new Date().toISOString(),
     model: options.model,
-    judgeModel: options.judgeModel,
+    judgeModel: options.grader === "jev" ? "jev-1.14.0 (intent grader)" : options.judgeModel,
     provider: provider.label,
     params: options.params,
     baseUrl: options.baseUrl,

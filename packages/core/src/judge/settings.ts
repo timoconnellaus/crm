@@ -6,8 +6,6 @@
 // A deployment that wants the record-content placements on from the start (the user's own) sets
 // JUDGE_PLACEMENTS='{"summary.statements":true,"outbound.message":true,"sync.jobChange":true}';
 // a fresh install leaves them off until an admin turns them on.
-import type { CoreDatabase } from "@relationship-os/db";
-import type { Kysely } from "kysely";
 import {
   isJudgePlacement,
   JUDGE_PLACEMENTS,
@@ -44,22 +42,6 @@ export function parsePlacementLayer(value: unknown): Partial<Record<JudgePlaceme
     }
   }
   return out;
-}
-
-/** The admin layer. A missing or unreadable row means no overrides. One primary-key read. */
-export async function loadJudgeSettings(db: Kysely<CoreDatabase>): Promise<JudgeSettings> {
-  const row = await db
-    .selectFrom("core_settings")
-    .select("value")
-    .where("key", "=", JUDGE_SETTINGS)
-    .executeTakeFirst();
-  if (!row) return EMPTY_JUDGE_SETTINGS;
-  try {
-    const value = JSON.parse(row.value) as { placements?: unknown };
-    return { placements: parsePlacementLayer(value.placements ?? {}) };
-  } catch {
-    return EMPTY_JUDGE_SETTINGS;
-  }
 }
 
 export type PlacementSource = "shipped" | "deploy" | "admin" | "fixed";

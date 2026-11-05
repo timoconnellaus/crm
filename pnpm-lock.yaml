@@ -268,19 +268,25 @@ importers:
 
   evals/automations:
     dependencies:
+      '@relationship-os/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@relationship-os/evals-judge':
+        specifier: workspace:*
+        version: link:../judge
       '@relationship-os/evals-mcp':
         specifier: workspace:*
         version: link:../mcp
-    devDependencies:
-      '@relationship-os/config':
-        specifier: workspace:*
-        version: link:../../packages/config
       '@relationship-os/extension-deals':
         specifier: workspace:*
         version: link:../../extensions/deals
       '@relationship-os/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
+    devDependencies:
+      '@relationship-os/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
@@ -350,9 +356,6 @@ importers:
         specifier: workspace:*
         version: link:../../packages/sdk
     devDependencies:
-      '@cloudflare/workers-types':
-        specifier: 5.20261104.1
-        version: 5.20261104.1
       '@relationship-os/config':
         specifier: workspace:*
         version: link:../../packages/config

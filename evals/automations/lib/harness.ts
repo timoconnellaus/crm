@@ -8,6 +8,9 @@
 //              extension is human-only, ADR 0041), the grader checks the working copy, waits for
 //              the automation to be installed, runs automation.test on the seeded record, reads
 //              the host summary with automation.get, judges it, and disables the automation.
+
+import type { Judge } from "@relationship-os/core/judge";
+import type { IntentCheck } from "@relationship-os/core/judge-authoring-intent";
 import {
   emptyRun,
   type ModelClient,
@@ -24,6 +27,7 @@ import {
   type ModelParams,
   sleepNote,
 } from "@relationship-os/evals-mcp/lib/model.ts";
+import type { AutomationManifest } from "@relationship-os/sdk";
 import { type AutomationCase, extensionIdFor, promptText } from "../prompts.ts";
 import {
   type AutomationListing,
@@ -42,6 +46,7 @@ import {
   parseTestReport,
   type TestOutcome,
 } from "./grading.ts";
+import { gradeIntent, type IntentGrade, productLine } from "./intent.ts";
 
 /** The tools the model cannot author without. */
 export const AUTHORING_TOOLS = ["extension_write", "extension_check", "extension_propose"];
@@ -107,6 +112,10 @@ export interface CaseResult extends Omit<Authored, "case"> {
   test: TestOutcome | null;
   summary: string | null;
   judge: JudgeVerdict | null;
+  /** The intent grader's verdict (Jev, stage 11), when it graded this case. */
+  intent?: IntentGrade | null;
+  /** The product's own authoring.intent check, as stored on the proposal, for comparison. */
+  productIntent?: string | null;
 }
 
 export interface AutomationsHarnessDeps {
@@ -116,6 +125,11 @@ export interface AutomationsHarnessDeps {
   modelId: string;
   /** The summary judge's model; the model under test when unset (EVAL_JUDGE_MODEL). */
   judgeModelId?: string;
+  /**
+   * The intent grader (stage 11): when set, Jev asks the authoring.intent questions in place of
+   * the LLM summary judge. A case it cannot answer is "could not be checked" and fails.
+   */
+  intentJudge?: Judge;
   params?: ModelParams;
   maxTurns: number;
   /** The eval user's email: seeded deals are theirs, and they are an admin. */
@@ -360,6 +374,8 @@ export async function gradeCase(
   let test: TestOutcome | null = null;
   let summary: string | null = null;
   let judge: JudgeVerdict | null = null;
+  let intent: IntentGrade | null = null;
+  let productIntent: string | null = null;
   const fail = (kind: FailureKind, message: string) => failures.push({ kind, message });
 
   if (extensionId && !failures.some((f) => f.kind === "seed")) {
@@ -427,20 +443,36 @@ export async function gradeCase(
           fail("summary", "automation.get returned no summary text");
         } else {
           for (const message of keywordFailures(c, summary)) fail("summary", message);
-          // A judge that cannot be reached is a harness error, not a verdict; grading goes on.
-          const judgeClock = clockMark();
-          try {
-            judge = await judgeSummary(
-              deps.model,
-              deps.judgeModelId ?? deps.modelId,
-              c,
-              summary,
-              deps.params,
-            );
-            if (!judge.pass) fail("summary", `the judge: ${judge.reason}`);
-          } catch (error) {
-            if (deps.isFatal?.(error)) throw error;
-            fail("error", `the judge failed: ${describeError(error)}${sleepNote(judgeClock)}`);
+          // The intent grader (Jev) replaces the LLM judge when there is one (stage 11).
+          if (deps.intentJudge) {
+            intent = await gradeIntent(deps.intentJudge, c, spec as unknown as AutomationManifest);
+            judge = { pass: intent.pass, reason: intent.reason };
+            if (intent.status === "unchecked") fail("error", `the intent grader: ${intent.reason}`);
+            else if (!intent.pass) fail("summary", `the intent grader: ${intent.reason}`);
+            if (authored.proposal?.actionId) {
+              const stored = await run.grader
+                .call<{ intentCheck?: IntentCheck | null }>("extension.proposal", {
+                  actionId: authored.proposal.actionId,
+                })
+                .catch(() => null);
+              productIntent = productLine(stored?.intentCheck);
+            }
+          } else {
+            // A judge that cannot be reached is a harness error, not a verdict; grading goes on.
+            const judgeClock = clockMark();
+            try {
+              judge = await judgeSummary(
+                deps.model,
+                deps.judgeModelId ?? deps.modelId,
+                c,
+                summary,
+                deps.params,
+              );
+              if (!judge.pass) fail("summary", `the judge: ${judge.reason}`);
+            } catch (error) {
+              if (deps.isFatal?.(error)) throw error;
+              fail("error", `the judge failed: ${describeError(error)}${sleepNote(judgeClock)}`);
+            }
           }
         }
 
@@ -471,6 +503,7 @@ export async function gradeCase(
     test,
     summary,
     judge,
+    ...(deps.intentJudge ? { intent, productIntent } : {}),
   };
 }
 

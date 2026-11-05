@@ -7,17 +7,13 @@ import { z } from "zod";
 import { adjudicatorReviewer, loadAdjudicatorSettings } from "../adjudicator/run.ts";
 import { ValidationError } from "../errors.ts";
 import { JEV_MODEL, JEV_PRICE, judgeKeyStatus } from "../judge/jev.ts";
+import { loadJudgeSettings } from "../judge/load.ts";
 import {
   JUDGE_PLACEMENTS,
   type JudgePlacementId,
   SWITCHABLE_PLACEMENTS,
 } from "../judge/placements.ts";
-import {
-  JUDGE_SETTINGS,
-  type JudgeSettings,
-  loadJudgeSettings,
-  resolvePlacements,
-} from "../judge/settings.ts";
+import { JUDGE_SETTINGS, type JudgeSettings, resolvePlacements } from "../judge/settings.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 
 const placementView = z.object({

@@ -58,6 +58,7 @@ export * from "./integrations/outbound.ts";
 export * from "./integrations/runtime.ts";
 export * from "./invoke.ts";
 export * from "./judge/index.ts";
+export * from "./judge/load.ts";
 export * from "./judge/questions/authoring-intent.ts";
 export * from "./list.ts";
 export * from "./models.ts";

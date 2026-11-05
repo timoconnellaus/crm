@@ -53,6 +53,9 @@ export function describeExpected(c: Pick<AutomationCase, "expect">): string {
 /** Which model judged the summaries, and whether that is the model under test. */
 export function judgeLine(report: Pick<AutomationsReport, "model" | "judgeModel">): string {
   const judge = report.judgeModel ?? report.model;
+  if (judge.startsWith("jev-")) {
+    return `\`${judge}\`: Jev asks the product's authoring.intent questions (independent by construction)`;
+  }
   return judge === report.model
     ? `\`${judge}\`, the model under test: it judges its own work (EVAL_JUDGE_MODEL sets another)`
     : `\`${judge}\`, independent of the model under test`;
@@ -109,7 +112,21 @@ export function renderMarkdown(report: AutomationsReport): string {
     if (r.seeded) lines.push(`Tested on ${r.seeded.object} \`${r.seeded.id}\`.`, "");
     if (r.test) lines.push(`Test mode: ${describeOutcome(r.test)}.`, "");
     if (r.summary) lines.push(`Host summary: “${r.summary}”`, "");
-    if (r.judge) lines.push(`Judge: ${r.judge.pass ? "pass" : "fail"}: ${r.judge.reason}`, "");
+    if (r.intent) {
+      const faults = r.intent.faults
+        ? Object.entries(r.intent.faults)
+            .map(([q, p]) => `${q} ${p.toFixed(2)}`)
+            .join(", ")
+        : "no answer";
+      lines.push(
+        `Intent grader (Jev): ${r.intent.pass ? "pass" : "fail"}: ${r.intent.reason} (P(fault): ${faults})`,
+        "",
+        `Product check (authoring.intent on the proposal): ${r.productIntent ?? "not read"}`,
+        "",
+      );
+    } else if (r.judge) {
+      lines.push(`Judge: ${r.judge.pass ? "pass" : "fail"}: ${r.judge.reason}`, "");
+    }
     if (r.failures.length)
       lines.push(...r.failures.map((f) => `- **${f.kind}**: ${f.message}`), "");
     if (r.notes.length) lines.push(...r.notes.map((n) => `- note: ${n}`), "");

@@ -5,18 +5,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "eval": "node runner.ts",
+    "eval": "node --experimental-transform-types --no-warnings runner.ts",
     "smoke": "node smoke.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@relationship-os/evals-mcp": "workspace:*"
+    "@relationship-os/core": "workspace:*",
+    "@relationship-os/evals-judge": "workspace:*",
+    "@relationship-os/evals-mcp": "workspace:*",
+    "@relationship-os/extension-deals": "workspace:*",
+    "@relationship-os/sdk": "workspace:*"
   },
   "devDependencies": {
     "@relationship-os/config": "workspace:*",
-    "@relationship-os/extension-deals": "workspace:*",
-    "@relationship-os/sdk": "workspace:*",
     "@types/node": "24.19.2",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
