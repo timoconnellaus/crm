@@ -5,6 +5,7 @@
 // with a different actor and origin.
 import type { Principal } from "@relationship-os/auth";
 import {
+  type AssistantConversationStore,
   type AutomationHost,
   type EventSink,
   type ExtensionHost,
@@ -20,6 +21,7 @@ import {
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { type AiAppEnv, aiContextFor } from "./ai.ts";
+import type { AssistantConversation } from "./assistant/conversation.ts";
 import { blobStoreFor, integrationRuntimeFor } from "./integrations.ts";
 import { deleteGrantTokens } from "./mcp/handler.ts";
 import { runner } from "./runner.ts";
@@ -49,6 +51,24 @@ export interface OperationsEnv extends AiAppEnv {
   ROS_UPDATE_TOKEN?: string;
   /** The same token on an install from before the rename (ADR 0190); read when ROS_UPDATE_TOKEN is unset. */
   CRM_UPDATE_TOKEN?: string;
+  /** In-app assistant conversations (ADR 0200), which an erase scrubs. */
+  ASSISTANT?: DurableObjectNamespace<AssistantConversation>;
+}
+
+/**
+ * The assistant's conversation objects as an erase sees them (ADR 0019 amendment): each one
+ * redacts the erased subject from its own stored history.
+ */
+export function assistantConversationsFor(
+  env: OperationsEnv,
+): AssistantConversationStore | undefined {
+  const namespace = env.ASSISTANT;
+  if (!namespace) return undefined;
+  return {
+    async scrub(conversationId, scrub) {
+      await namespace.get(namespace.idFromName(conversationId)).scrub(scrub);
+    },
+  };
 }
 
 /**
@@ -175,6 +195,7 @@ export async function runOperation(
     const extensionHost = extensionHostFor(env);
     const integrations = integrationRuntimeFor(env, appOrigin);
     const blobs = blobStoreFor(env);
+    const assistantConversations = assistantConversationsFor(env);
     const ctx: InvocationContext = {
       ...(integrations ? { integrations } : {}),
       ...(blobs ? { blobs } : {}),
@@ -185,6 +206,7 @@ export async function runOperation(
       floor: parseFloor(env.APPROVAL_FLOOR),
       ...(extensionHost ? { extensionHost } : {}),
       ...automationWiring(env),
+      ...(assistantConversations ? { assistantConversations } : {}),
       updater: updaterRuntimeFor(env),
       ...aiContextFor(env, db),
       approvalExpiryDays: Number.parseInt(env.APPROVAL_EXPIRY_DAYS ?? "", 10) || undefined,

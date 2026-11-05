@@ -18,6 +18,8 @@ import {
   memoryRateLimit,
   queueEventSink,
   type RecordEventMessage,
+  SAMPLE_ACTION_ID,
+  sampleApproval,
 } from "@relationship-os/core";
 import { z } from "@relationship-os/sdk";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -530,6 +532,72 @@ describe("AC6: test mode", () => {
     } finally {
       await setPreset("balanced");
     }
+  });
+
+  it("approvalDecided: tests with a sample decision from a recent pending action, labelled", async () => {
+    const person = await call<{ id: string }>(admin, "person.create", {
+      givenName: "Sampled",
+      familyName: "Person",
+    });
+    await setPreset("cautious");
+    let pendingAction = "";
+    try {
+      await withEvents(
+        admin,
+        "person.update",
+        { id: person.id, location: "Sampled" },
+        { actor: "mcp", origin: { surface: "mcp", sessionId: "cap_sample_session" } },
+      ).catch((error: { pending?: { actionId: string } }) => {
+        pendingAction = error.pending?.actionId ?? "";
+      });
+      expect(pendingAction).toMatch(/^pac_/);
+      await call(admin, "approval.approve", { actionIds: [pendingAction] });
+    } finally {
+      await setPreset("balanced");
+    }
+    const { report } = await call<{ report: AutomationTestReport }>(admin, "automation.test", {
+      id: `${FIXTURE_ID}.onDecision`,
+    });
+    expect(report.ok).toBe(true);
+    expect(report.sample).toEqual({
+      kind: "approval",
+      source: "recent",
+      label: expect.stringMatching(/^Sample decision: person\.update approved, from the recent/),
+      approval: { actionId: pendingAction, operation: "person.update", decision: "approved" },
+    });
+    expect(report.matchReason).toContain("Sample decision");
+    expect(report.record).toMatchObject({ object: "person", id: person.id });
+    // The code no longer returns early: it sees the decision and writes its task.
+    expect(report.writes).toEqual([
+      expect.objectContaining({ object: "task", title: "Approved person.update" }),
+    ]);
+  });
+
+  it("approvalDecided: with no pending action to base it on, the sample is made up", async () => {
+    const sample = await sampleApproval(db.query, {
+      type: "approvalDecided",
+      decision: "rejected",
+      operation: "nothing.matches",
+    });
+    expect(sample).toEqual({
+      source: "synthetic",
+      label: expect.stringContaining("made up because no pending action matches"),
+      approval: {
+        actionId: SAMPLE_ACTION_ID,
+        operation: "nothing.matches",
+        decision: "rejected",
+        records: [],
+      },
+    });
+    const withRecord = await sampleApproval(
+      db.query,
+      { type: "approvalDecided", object: "person", operation: "nothing.matches" },
+      { object: "person", id: "per_x" },
+    );
+    expect(withRecord.approval).toMatchObject({
+      decision: "approved",
+      records: [{ object: "person", id: "per_x" }],
+    });
   });
 
   it("flags writes a step did not declare", async () => {

@@ -76,3 +76,11 @@ the engine.
 - The summary can only say what the declarations say; undeclared effects are still gated at run
   time and flagged in run history.
 - Adding a trigger type or step kind means adding its phrase, node and a snapshot case.
+
+## Amendment, 2026-11-05 (core fixes): what notifications say
+A reviewer could see who would be notified but not what they would be told. Each `notifies`
+clause in the summary now ends with the declared title in quotes, and the body in parentheses
+when one is declared (`NotifyIntent.body`, new and optional), each shortened at a word (80 and
+120 characters), with `{record}` shown as the trigger record's token (`{deal}`, as the diagram
+does): "…it notifies the admins with “Deal lost: {deal}” (“Ask the owner why…”)." Nothing else
+in the summary is phrased differently.

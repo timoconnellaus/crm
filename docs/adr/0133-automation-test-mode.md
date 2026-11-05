@@ -65,3 +65,16 @@ match what the real run then does.
 > the proposal before an approver approves it. Objects a draft adds are not reconciled until
 > install, so a draft automation that reads or writes its own new objects or fields can fail at that
 step in the test.
+
+> Amended 2026-11-05 (core fixes): **a sample decision for `approvalDecided`.** Test mode used to
+> run an `approvalDecided` automation with no `event.approval`, and code written for it usually
+> returns when that is missing, so the report showed nothing. ros-runner now passes a sample
+> decision (`sampleApproval`, `packages/core/src/automations/sample.ts`): the newest of the last
+> 50 pending actions that touch records and match the trigger's `operation`, `object` and the
+> chosen record, preferring one decided the way the trigger wants (`applied` counts as
+> approved); its records come from `core_pending_action_records`. With none, a made-up decision
+> (`actionId` `pac_sample`, the trigger's operation or `<object>.update`, the chosen record).
+> Without a chosen record the run gets the decision's first matching record, as a real run does.
+> The report labels it: `sample { kind: "approval", source: "recent" | "synthetic", label,
+> approval }`, and `matchReason` starts with the label ("Sample decision: …"), which the
+> automation page, the assistant's inline report and the evals already show.

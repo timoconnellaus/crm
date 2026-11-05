@@ -20,6 +20,7 @@ import {
   handleStream,
   handleTurn,
 } from "../src/server/assistant/http.ts";
+import { runOperation } from "../src/server/operations.ts";
 
 const ORIGIN = "https://crm.test";
 const appEnv = env as unknown as AssistantHttpEnv;
@@ -259,5 +260,71 @@ describe("the in-app assistant", () => {
       null,
     );
     expect(anonymous.status).toBe(401);
+  });
+
+  it("erasing a person scrubs them from the conversations that referenced them", async () => {
+    const { principal, user } = await member();
+    const admin = await member("admin");
+    const family = `Erasable${Date.now()}`;
+    const email = `zelda-${Date.now()}@example.com`;
+    const zelda = (await invokeByName(
+      "person.create",
+      { givenName: "Zelda", familyName: family, emails: [{ email }] },
+      human(user),
+    )) as { id: string };
+    const { id } = await turn(principal, {
+      text: "Summarise this person",
+      context: { path: `/people/${zelda.id}`, record: { object: "person", id: zelda.id } },
+    });
+    // Another conversation, about nobody: left alone.
+    const other = await turn(principal, { text: "Hello" });
+
+    // The once-per-turn list update indexed what the turn referenced.
+    const refs = async (conversationId: string) =>
+      (
+        await env.DB.prepare(
+          "SELECT ref FROM core_assistant_conversation_refs WHERE conversation_id = ?",
+        )
+          .bind(conversationId)
+          .all<{ ref: string }>()
+      ).results.map((r) => r.ref);
+    expect(await refs(id)).toContain(zelda.id);
+    expect((await refs(id)).some((r) => r.startsWith("email:"))).toBe(true);
+    const state = async (conversationId: string) =>
+      (await (
+        await handleState(appEnv, principal, conversationId)
+      ).json()) as AssistantConversationState;
+    const before = JSON.stringify(await state(id));
+    expect(before).toContain(zelda.id);
+    expect(before).toContain("Zelda");
+    const untouched = JSON.stringify(await state(other.id));
+
+    const erased = await runOperation(env as never, admin.principal, {
+      name: "person.erase",
+      input: { id: zelda.id },
+    });
+    expect(erased).toMatchObject({ ok: true, data: { conversationsScrubbed: 1 } });
+
+    const after = await state(id);
+    const text = JSON.stringify(after);
+    for (const gone of [zelda.id, email, "Zelda", family]) expect(text).not.toContain(gone);
+    expect(after.items.find((i) => i.kind === "user")).toMatchObject({
+      text: "Summarise this person",
+    });
+    expect(after.items.find((i) => i.kind === "tool")).toMatchObject({
+      tool: "person_get",
+      input: { erased: true },
+      output: "[erased]",
+    });
+    expect(after.items.find((i) => i.kind === "assistant")?.text).toContain("[erased]");
+    expect(await refs(id)).toEqual([]);
+    expect(JSON.stringify(await state(other.id))).toBe(untouched);
+    // The list row's context named the record: gone too.
+    const row = await env.DB.prepare(
+      "SELECT title, context FROM core_assistant_conversation WHERE id = ?",
+    )
+      .bind(id)
+      .first<{ title: string; context: string | null }>();
+    expect(row).toEqual({ title: "Summarise this person", context: null });
   });
 });

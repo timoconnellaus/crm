@@ -419,20 +419,22 @@ judge is on and could not answer.
 ## Thresholds and calibration
 
 Every threshold is set from a labelled set before the placement ships (ADR 0231). Set so far
-(5 November 2026, jev-1.14.0, 35 cases, three runs each, none wrong or close; P(fault) held to
-the threshold, gap shown as the highest "below" median → the lowest "above" median):
+(5 November 2026, jev-1.14.0, 35 cases, three runs each, none wrong; recalibrated the same day after
+the host summary began quoting each notification's wording; P(fault) held to the threshold, gap
+shown as the highest "below" median → the lowest "above" median):
 
-| Question | Threshold | Gap |
-| --- | --- | --- |
-| `authoring.intent/trigger` | 0.5 | 0.32 → 0.92 |
-| `authoring.intent/unrequested_condition` | 0.35 | 0.00 → 0.64 |
-| `authoring.intent/recipients` | 0.5 | 0.22 → 0.91 |
-| `authoring.intent/unrequested_assignment` | 0.5 | 0.06 → 0.72 |
-| `authoring.intent/missing_element` | 0.45 | 0.29 → 0.64 |
+| Question | Threshold | Gap | Close calls |
+| --- | --- | --- | --- |
+| `authoring.intent/trigger` | 0.5 | 0.38 → 0.81 | a missing wait (0.38, below) |
+| `authoring.intent/unrequested_condition` | 0.35 | 0.00 → 0.62 | none |
+| `authoring.intent/recipients` | 0.5 | 0.19 → 0.93 | none |
+| `authoring.intent/unrequested_assignment` | 0.5 | 0.06 → 0.70 | none |
+| `authoring.intent/missing_element` | 0.45 | 0.38 → 0.45 | a missing wait (0.45, above); an unrequested "open deals" condition (0.38, below) |
 
-The weakest separations are an unrequested "only people with an email address" condition (0.60),
-a task title planted to claim the assignment was asked for (0.72), and a missing wait (0.64): shadow
-logs of real proposals should be read for where the boundary lies.
+The weak spot is a missing wait ("wait 2 days and then …" with no wait step): it reads partly as a
+different trigger and only just as missing. A close call counts as neither right nor wrong, so the
+run passes; shadow logs of real proposals should show where that boundary lies before the
+threshold moves.
 
 - A threshold belongs to one question as worded, one primitive and one model version. It does not
   carry over to a reworded question or a new model.
@@ -586,4 +588,5 @@ interface Judge {
 - **Languages.** Jev is strongest in English. Summaries of mail in other languages are not
   measured.
 - **Stability on our questions.** The first calibration (`authoring.intent`, 35 cases, three runs)
-  never moved a case more than 0.13 between runs. Other placements' sets will say more.
+  never moved a case more than 0.13 between runs; after the summary change one case moved 0.28
+  (the missing wait, 0.40 to 0.68). Other placements' sets will say more.

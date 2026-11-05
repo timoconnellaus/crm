@@ -102,7 +102,8 @@ An admin-only hard delete for GDPR requests (`person.erase`, `organisation.erase
 it also **redacts** the audit log: content that mentions the record becomes `"[erased]"` (ADR 0019).
 Activities and tasks only about the record are deleted; shared ones are scrubbed of its emails,
 phone numbers and id, and the search index is purged of it. Pending actions that touch or mention
-it are redacted, and rejected if still waiting.
+it are redacted, and rejected if still waiting. In-app assistant conversations that referenced it
+are redacted too (ADR 0019 amendment).
 _Avoid_: purge (that is retention), delete (that is soft)
 
 **Activity**

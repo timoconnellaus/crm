@@ -86,7 +86,7 @@ describe("the state", () => {
         ],
       },
       hostSummary:
-        "When a Deal is created, if its value is more than 50000, it notifies the owner's manager.",
+        "When a Deal is created, if its value is more than 50000, it notifies the owner's manager with “Big deal: {deal}”.",
     });
     // The automation's label and description are the model's own account of it (lesson 1).
     expect(JSON.stringify(state)).not.toMatch(/leadership|sales director|Big deal alert/);

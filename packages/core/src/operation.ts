@@ -8,6 +8,7 @@ import type { z } from "zod";
 import type { AiAdmin } from "./ai/admin.ts";
 import type { AiEnv } from "./ai/client.ts";
 import type { VectorStore } from "./ai/vectors.ts";
+import type { AssistantConversationStore } from "./assistant/scrub.ts";
 import type { AutomationHost, EventSink } from "./automations/types.ts";
 import type { WidgetCache } from "./dashboards/cache.ts";
 import type { FieldDiff } from "./diff.ts";
@@ -166,6 +167,8 @@ export interface HandlerContext {
   readonly events?: EventSink;
   /** ros-runner's automation host, for automation.* operations. */
   readonly automationHost?: AutomationHost;
+  /** In-app assistant conversations (Durable Objects), for erase to scrub (ADR 0019 amendment). */
+  readonly assistantConversations?: AssistantConversationStore;
 }
 
 /** The extension an `extension`-actor call runs for, and its approved permissions. */

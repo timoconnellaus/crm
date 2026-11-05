@@ -21,7 +21,7 @@ export const MIGRATIONS_TABLE = "core_migrations";
  * applyMigrations writes that to core_meta after applying, and getMigrationLevel reads it the same
  * way, which also covers `wrangler d1 migrations apply` (it runs only the files).
  */
-export const CORE_SCHEMA_VERSION = 260;
+export const CORE_SCHEMA_VERSION = 270;
 
 const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

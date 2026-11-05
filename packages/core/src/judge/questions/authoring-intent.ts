@@ -264,6 +264,7 @@ export function intentState(input: {
             kind: "notifies",
             to: recipientWords(notify.to, trigger, ctx),
             message: withRecord(notify.message, trigger, ctx),
+            ...(notify.body ? { body: withRecord(notify.body, trigger, ctx) } : {}),
           });
         });
         if (steps.length === before) {

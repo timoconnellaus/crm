@@ -109,3 +109,16 @@ correct twin. Two live runs, 212 calls in all, $0.011:
   0.5 (0.06 → 0.72); missing_element 0.45 (0.29 → 0.64). Two trigger-fault cases leave
   `missing_element` out (a missing "lost" or "rejected" event reads as missing too). Most spread
   within one case: 0.13.
+
+> Amended 2026-11-05 (merging the core fixes, #50): the automation host summary now quotes each
+> notification's wording, and notify intents gained a `body`, so every `authoring.intent` state
+> changed and the committed recordings stopped matching, which the replay test caught as designed.
+> The state now carries the notification body too. Recalibrated live (106 calls, $0.006,
+> `reports/2026-11-05T10-35-04-019Z.md`), same questions and thresholds: none wrong or unanswered,
+> three close calls, all the same case family. Gaps: trigger 0.38 → 0.81 (close: the missing
+> wait at 0.38); unrequested_condition 0.00 → 0.62; recipients 0.19 → 0.93; unrequested_assignment
+> 0.06 → 0.70; missing_element 0.38 → 0.45 (close: the missing wait at 0.45 and an unrequested
+> "open deals" condition at 0.38). The missing wait now reads partly as a different trigger; a
+> rewording of `missing_element` to name a missing wait explicitly is the next thing to try, with
+> shadow data, rather than moving thresholds now. Any change to the summary or the state needs a
+> recalibration in the same PR.

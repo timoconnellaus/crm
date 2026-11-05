@@ -282,6 +282,16 @@ export interface AutomationTestReport {
   /** Did the trigger and conditions match this record? */
   matched: boolean;
   matchReason: string;
+  /**
+   * approvalDecided: the sample decision test mode passed as `event.approval` (there is no real
+   * one), from a recent pending action or made up. `label` says so in the report.
+   */
+  sample?: {
+    kind: "approval";
+    source: "recent" | "synthetic";
+    label: string;
+    approval: { actionId: string; operation: string; decision: "approved" | "rejected" };
+  };
   steps: (AutomationTestStep & { operations: RunOperationRecord[]; logs: string[] })[];
   /** Records it would create / change (simulated: provisional ids); `for`: a task's assignee. */
   writes: { object: string; id: string; action: string; title: string | null; for?: string }[];

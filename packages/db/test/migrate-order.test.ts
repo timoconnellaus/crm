@@ -12,11 +12,12 @@ import {
 
 describe("schema version with migrations applied out of numeric order", () => {
   it("ends at the highest migration when lower-numbered ones are applied later", async () => {
-    // A database that already has 0220/0221 (stage 10) then gets 0200/0205/0210 (stage 7b), each
-    // of which writes its own, lower number to core_meta.
+    // A database that already has 0220/0221 (stage 10) and 0270 then gets 0205/0210 (stage 7b),
+    // each of which writes its own, lower number to core_meta. (0200 stays early: 0270 builds on
+    // its table.)
     const late = (name: string) => {
       const n = Number.parseInt(name, 10);
-      return n >= 200 && n < 220;
+      return n >= 205 && n < 220;
     };
     const early = env.TEST_MIGRATIONS.filter((m) => !late(m.name));
     expect(early.length).toBeLessThan(env.TEST_MIGRATIONS.length);

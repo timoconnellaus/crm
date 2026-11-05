@@ -656,6 +656,16 @@ export interface CoreAssistantConversationTable {
 }
 
 /**
+ * Migration 0270 (ADR 0019 / ADR 0200 amendments): the people and organisations (`per_…`,
+ * `org_…`) and email addresses (`email:<sha256>`) an assistant conversation referenced, so an
+ * erase can find the conversations to scrub.
+ */
+export interface CoreAssistantConversationRefsTable {
+  conversation_id: string;
+  ref: string;
+}
+
+/**
  * Migration 0172: one external delivery (email / Slack), keyed for exactly-once sending. Migration
  * 0210 (ADR 0206) adds `inApp` for a daily digest that went to the app only.
  */
@@ -1222,6 +1232,7 @@ export interface CoreDatabase {
   core_notification_preference: CoreNotificationPreferenceTable;
   core_notification_delivery: CoreNotificationDeliveryTable;
   core_assistant_conversation: CoreAssistantConversationTable;
+  core_assistant_conversation_refs: CoreAssistantConversationRefsTable;
   crm_stage_history: CrmStageHistoryView;
   crm_users: CrmUsersView;
   crm_people: CrmPeopleView;

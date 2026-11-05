@@ -152,7 +152,7 @@ describe("the labelled sets, replayed from their committed recordings", () => {
   });
 
   it.each(SETS.map((s) => s.id))(
-    "%s replays with no key and no wrong, unanswered or close case",
+    "%s replays with no key and no wrong or unanswered case, as calibrated",
     async (id) => {
       const set = SETS.find((s) => s.id === id) as (typeof SETS)[number];
       const file = new RecordingFile(join(RECORDINGS_DIR, `${id}.json`));
