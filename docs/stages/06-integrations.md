@@ -129,6 +129,8 @@ Completes ADR 0029:
 - the release bundles and deploy service (stage 8)
 - multi-currency
 - custom gatekeepers, which follow the fork/developer path documented in `docs/integrations.md`
+- sending person-to-person email from the CRM (compose, templates, sequences, tracking): stage 13,
+  [`13-email.md`](13-email.md)
 
 ## Acceptance criteria
 1. **Integration host:** the host creates and owns facets, stubs survive DO restarts, and the connect
