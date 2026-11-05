@@ -17,12 +17,26 @@ export const NOTIFICATION_TYPES = {
   "approval.decided": { label: "Approval decisions", category: "approvals" },
   /** Sent by a person or the system with notification.send. */
   "system.message": { label: "Messages", category: "system" },
+  /**
+   * The daily digest in the app (stage 7b, ADR 0206): changes on your records, tasks due,
+   * approvals waiting. Written by the delivery cron, one per person per day; it has its own
+   * email preference (`digest`), so it is never routed to a channel per type.
+   */
+  digest: { label: "Daily digest", category: "digest" },
 } as const;
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;
 export const NOTIFICATION_TYPE_NAMES = Object.keys(NOTIFICATION_TYPES) as [
   NotificationType,
   ...NotificationType[],
 ];
+
+/**
+ * Types a person may route to email or Slack one by one. The digest is not one of them: its
+ * email copy is the `digest` preference, sent by the digest pass itself.
+ */
+export const ROUTABLE_NOTIFICATION_TYPES = NOTIFICATION_TYPE_NAMES.filter(
+  (t) => t !== "digest",
+) as [NotificationType, ...NotificationType[]];
 
 /** What a notification opens. */
 export const notificationLinkSchema = z.discriminatedUnion("kind", [
@@ -108,6 +122,6 @@ export function routeNotification(
   type: NotificationType,
   preferences: NotificationPreferences = {},
 ): NotificationChannelId[] {
-  const chosen = preferences[type];
+  const chosen = type === "digest" ? undefined : preferences[type];
   return chosen?.length ? [...new Set<NotificationChannelId>(["inApp", ...chosen])] : ["inApp"];
 }

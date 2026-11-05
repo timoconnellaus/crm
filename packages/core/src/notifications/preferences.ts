@@ -10,10 +10,10 @@ import { jsonList } from "../records/common.ts";
 import {
   EXTERNAL_CHANNELS,
   type ExternalChannelId,
-  NOTIFICATION_TYPE_NAMES,
   NOTIFICATION_TYPES,
   type NotificationPreferences,
   type NotificationType,
+  ROUTABLE_NOTIFICATION_TYPES,
 } from "./types.ts";
 
 export const NOTIFICATION_DELIVERY_SETTING = "notification_delivery";
@@ -27,7 +27,7 @@ export const externalChannelSchema = z.enum(EXTERNAL_CHANNELS);
 
 /** Stored `core_notification_preference.channels`: type → external channels. */
 export const preferenceChannelsSchema = z.partialRecord(
-  z.enum(NOTIFICATION_TYPE_NAMES),
+  z.enum(ROUTABLE_NOTIFICATION_TYPES),
   // Repeats are dropped when saved.
   z.array(externalChannelSchema).max(10),
 );
@@ -35,11 +35,17 @@ export const preferenceChannelsSchema = z.partialRecord(
 export interface UserNotificationPreferences {
   /** Per type, the external channels chosen (in-app is always on). */
   channels: NotificationPreferences;
-  /** A daily email digest of unread notifications and pending approvals. */
+  /** The daily digest by email (off unless the person turns it on). */
   digest: boolean;
+  /** The daily digest in the app (stage 7b, ADR 0206): on unless the person turns it off. */
+  digestInApp: boolean;
 }
 
-export const DEFAULT_PREFERENCES: UserNotificationPreferences = { channels: {}, digest: false };
+export const DEFAULT_PREFERENCES: UserNotificationPreferences = {
+  channels: {},
+  digest: false,
+  digestInApp: true,
+};
 
 function parseJson(text: string | null | undefined): unknown {
   if (text == null) return undefined;
@@ -56,7 +62,8 @@ export function parsePreferenceChannels(text: string | null | undefined): Notifi
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   const out: NotificationPreferences = {};
   for (const [type, channels] of Object.entries(raw as Record<string, unknown>)) {
-    if (!Object.hasOwn(NOTIFICATION_TYPES, type) || !Array.isArray(channels)) continue;
+    if (!Object.hasOwn(NOTIFICATION_TYPES, type) || type === "digest" || !Array.isArray(channels))
+      continue;
     const valid = [
       ...new Set(
         channels.filter((c): c is ExternalChannelId =>
@@ -79,13 +86,14 @@ export async function loadPreferences(
   for (let i = 0; i < unique.length; i += 100) {
     const rows = await db
       .selectFrom("core_notification_preference")
-      .select(["user_id", "channels", "digest"])
+      .select(["user_id", "channels", "digest", "digest_in_app"])
       .where("user_id", "in", jsonList(unique.slice(i, i + 100)))
       .execute();
     for (const row of rows) {
       out.set(row.user_id, {
         channels: parsePreferenceChannels(row.channels),
         digest: row.digest === 1,
+        digestInApp: row.digest_in_app !== 0,
       });
     }
   }
@@ -102,10 +110,13 @@ export function savePreferencesStatement(
 ) {
   const channels = JSON.stringify(preferences.channels);
   const digest = preferences.digest ? 1 : 0;
+  const digest_in_app = preferences.digestInApp ? 1 : 0;
   return db
     .insertInto("core_notification_preference")
-    .values({ user_id: userId, channels, digest, updated_at: now })
-    .onConflict((oc) => oc.column("user_id").doUpdateSet({ channels, digest, updated_at: now }));
+    .values({ user_id: userId, channels, digest, digest_in_app, updated_at: now })
+    .onConflict((oc) =>
+      oc.column("user_id").doUpdateSet({ channels, digest, digest_in_app, updated_at: now }),
+    );
 }
 
 // --- Admin delivery settings --------------------------------------------------------------------

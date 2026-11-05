@@ -635,14 +635,19 @@ export interface CoreNotificationPreferenceTable {
   user_id: string;
   channels: ColumnType<string, string | undefined, string>;
   digest: ColumnType<number, number | undefined, number>;
+  /** Migration 0210 (ADR 0206): the in-app daily digest, on by default. */
+  digest_in_app: ColumnType<number, number | undefined, number>;
   updated_at: string;
 }
 
-/** Migration 0172: one external delivery (email / Slack), keyed for exactly-once sending. */
+/**
+ * Migration 0172: one external delivery (email / Slack), keyed for exactly-once sending. Migration
+ * 0210 (ADR 0206) adds `inApp` for a daily digest that went to the app only.
+ */
 export interface CoreNotificationDeliveryTable {
   key: string;
   kind: "notification" | "escalation" | "digest" | "route";
-  channel: "email" | "slack";
+  channel: "email" | "slack" | "inApp";
   user_id: string | null;
   status: "sending" | "sent" | "pending" | "failed" | "skipped";
   detail: string | null;

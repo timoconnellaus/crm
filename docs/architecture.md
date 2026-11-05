@@ -293,7 +293,9 @@ Stage 6a ([ADR 0110](adr/0110-integration-host-per-connection.md) to
 - **Notification delivery** ([ADR 0172](adr/0172-notification-delivery.md)): ros-runner's minute
   cron reads new `core_notifications` rows behind a 30 s lag through a keyset cursor and sends each
   to the email/Slack channels its recipient chose, escalates unread approval notices and sends the
-  daily digest. Every send is claimed in `core_notification_delivery` first and goes through the
+  daily digest ([ADR 0206](adr/0206-daily-digest.md)): changes others made to my records (read once
+  a tick through `core_audit_at_idx`), tasks due, approvals waiting and unread notices, as an
+  in-app `digest` notification (on by default) and by email when asked for. Every send is claimed in `core_notification_delivery` first and goes through the
   integration host as a system outbound action on the admin-chosen org email-send / Slack
   connection, gated like any outbound action. The automation consumer also posts admin channel
   routes for record events, once per event, route and record.
@@ -390,7 +392,10 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
 - **Summaries** (`summary.*`, [ADR 0153](adr/0153-ai-summaries.md)): record summaries (people,
   organisations, deals), meeting prep, one-liners for long emails and notes, and change-set
   summaries for approvers. Cached in `core_ai_summary` by a SHA-256 of their facts and the model,
-  so any change makes them stale; generated only on request; labelled AI-generated.
+  so any change makes them stale; generated only on request; labelled AI-generated. The daily
+  digest ([ADR 0206](adr/0206-daily-digest.md)) opens with a one or two sentence AI overview (one
+  `summarise` call per digest, in ros-runner's cron, labelled AI-generated; the plain digest
+  without AI or on any error).
 - **Semantic search** ([ADR 0154](adr/0154-embeddings-queue-and-vectorize.md),
   [ADR 0155](adr/0155-hybrid-search-similar-records-and-retrieval.md)):
 

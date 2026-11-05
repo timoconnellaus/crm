@@ -21,7 +21,8 @@ export async function claimDelivery(
   entry: {
     key: string;
     kind: DeliveryKind;
-    channel: ExternalChannelId;
+    /** `inApp` only for a daily digest that went to the app alone (ADR 0206). */
+    channel: ExternalChannelId | "inApp";
     userId?: string | null;
     status?: "sending" | "skipped";
     detail?: string | null;
