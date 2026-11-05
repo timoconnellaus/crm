@@ -17,6 +17,7 @@ risk for the next.
 | 8 | Distribution | Release bundles, `create-relationship-os` CLI, self-updater, setup wizard, real-account install test | Built (needs a human: CI test account, manual run) |
 | 9 | Rename, licence, landing page | Relationship OS rename (packages, Workers, CLI, repo), FSL-1.1-ALv2 + NOTICE + CLA, `apps/marketing` on relationshiposcrm.com | spec agreed |
 | 10 | SaaS & enterprise | Control plane on Workers for Platforms: sign-up, Stripe + usage AI billing, staged rollouts, admin console, export/delete; built ready, deployed on first sign-up | spec agreed |
+| 11 | Jev as the typed judge | The judge seam beside the model registry, Jev through AI Gateway, labelled sets and `eval:calibrate` with replay; placements: authoring intent, the adjudicator's Jev reviewer, summary statements, outbound messages, job-change signatures, widget shape, eval graders (`docs/jev.md`) | spec proposed |
 
 The approval pipeline is built up over several stages: the gate in 1, the queue and simulation in 2,
 extension diffs in 3, the adjudicator in 7.

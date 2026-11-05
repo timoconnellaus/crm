@@ -30,3 +30,13 @@ Status: accepted, 2026-11-04 (stage 0 architecture interview).
 > is an optional provider, built in to AI Gateway, so no custom provider ships (`custom-together`
 > is gone). A deployment can choose a **model role preset**, such as `deepseek-flash` for every
 > role but `embed`. The shipped defaults are still Workers AI for every role.
+
+> Amended 2026-11-05 ([ADR 0230](0230-jev-as-the-typed-judge.md), proposed with stage 11): **Jev
+> is no longer a provider for a model role.** It answers typed questions with probabilities and
+> writes no text, so it is the **judge**, a seam beside the registry: code asks the judge for a
+> **placement** (such as `adjudicator.policy`), never a model, as it asks the registry for a role.
+> The `jev` provider and the `judgement` capability leave the registry. The `review` role stays,
+> for the adjudicator's LLM reviewer. Jev is reached through AI Gateway first (custom provider
+> `custom-typesafe`), its key is BYOK or the Worker secret `TYPESAFE_API_KEY`, never D1, and its
+> model is pinned in code because thresholds are calibrated per model version
+> ([ADR 0231](0231-judge-calibration-and-replay.md)).

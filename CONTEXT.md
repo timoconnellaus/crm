@@ -170,8 +170,8 @@ belong to. Users revoke their own in Settings → Connected apps; admins can rev
 _Avoid_: integration (that is a gatekeeper), token, client (when you mean the authorization)
 
 **Adjudicator**
-The optional AI reviewer (model role `review`) that judges pending changes against the org's
-**written policy**.
+The optional AI reviewer that judges pending changes against the org's **written policy**. Its
+reviewer is the LLM (model role `review`) or Jev (placement `adjudicator.policy`, ADR 0230).
 
 **Extension**
 A unit of customisation written as code against the SDK contract (`defineObject`, `defineDashboard`,
@@ -433,6 +433,33 @@ output" is met by JSON mode (`json_object`) or a JSON schema; no role sends a sc
 (ADR 0192). Calls run through the AI SDK and AI Gateway (ADR 0150). Provider keys are Workers
 secrets or AI Gateway BYOK, never D1 (ADR 0151).
 _Avoid_: model config, LLM settings
+
+**Judge**
+The seam (`packages/core/src/judge/`) that asks typed questions about one piece of evidence and gets
+answers with probabilities: Choice (one label from a closed set), Noul (yes/no) and Score (an
+ordered scale). Code holds every threshold and decides what follows; an answer is a judgement,
+never permission. It sits beside the model role registry and is not a model role. Its one provider
+is **Jev**. Off when the deployment has no Jev key, and then nothing changes (ADR 0230).
+_Avoid_: reviewer (that is the adjudicator's), classifier, the `review` role
+
+**Jev**
+TypeSafe AI's decision model, the judge's provider, pinned to one version in code
+(`JEV_MODEL`). It never writes text or acts. Reached through AI Gateway's custom provider
+`custom-typesafe`; its key is BYOK or the Worker secret `TYPESAFE_API_KEY`. See `docs/jev.md`.
+
+**Placement**
+A named place in the code that asks the judge (`authoring.intent`, `adjudicator.policy`,
+`summary.statements`, `outbound.message`, `sync.jobChange`, `widget.shape`, `eval.*`), with its own
+questions, thresholds, timeout and fail mode (open: carry on and say it was not checked; closed:
+the safe outcome, such as escalating). Code asks for a placement, never a model. Admins switch
+placements on and off in Settings → AI.
+_Avoid_: check (too general), hook
+
+**Labelled set**
+Hand-written cases for one judge question, each with the side of the threshold it should fall,
+from which the threshold is set by `pnpm eval:calibrate` (three live runs per case, judged by the
+median). A question cannot ship without a calibration record for its current wording (ADR 0231).
+_Avoid_: test set, golden set
 
 **Model role preset**
 A named, ready deploy-config layer (`ROLE_PRESETS` in `roles.ts`) that one deployment chooses
