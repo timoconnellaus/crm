@@ -1,8 +1,10 @@
 // Resolving the authenticated Principal to the CRM user an operation acts for.
 import type { CrmDb } from "@relationship-os/db";
+import { assertUserCapacity } from "./entitlements.ts";
 import { ForbiddenError } from "./errors.ts";
 import { newId } from "./ids.ts";
 import type { ActingUser, Role } from "./principals.ts";
+import { isGrantActive, loadSupportGrant } from "./support.ts";
 
 /** The parts of an identity-adapter Principal this needs (structurally `@relationship-os/auth`'s). */
 export interface PrincipalLike {
@@ -21,7 +23,7 @@ export async function resolveActingUser(db: CrmDb, principal: PrincipalLike): Pr
   const find = () =>
     db.query
       .selectFrom("core_user")
-      .select(["id", "email", "name", "role", "deactivated_at"])
+      .select(["id", "email", "name", "role", "deactivated_at", "support_grant_id"])
       // Extension principals (migration 0020) are never a signed-in user.
       .where("kind", "=", "human")
       .where((eb) =>
@@ -32,6 +34,8 @@ export async function resolveActingUser(db: CrmDb, principal: PrincipalLike): Pr
 
   let row = await find();
   if (!row) {
+    // A hosted plan's user limit (ADR 0211) applies to Access users' first request too.
+    await assertUserCapacity(db.query, 1);
     const now = new Date().toISOString();
     await db.batch([
       db.query
@@ -53,6 +57,12 @@ export async function resolveActingUser(db: CrmDb, principal: PrincipalLike): Pr
   // A deactivated person cannot act (user.deactivate, ADR 0170), whichever identity provider let
   // the request in.
   if (row.deactivated_at) throw new ForbiddenError("This account has been deactivated");
+  // A support user (ADR 0212) acts only while its grant is approved and unexpired: one PK read,
+  // for support users only, so a revoke or expiry bites on the very next request.
+  if (row.support_grant_id) {
+    const grant = await loadSupportGrant(db.query, row.support_grant_id);
+    if (!isGrantActive(grant)) throw new ForbiddenError("This support access has ended");
+  }
   return { id: row.id, email: row.email, name: row.name, role: row.role as Role };
 }
 

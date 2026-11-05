@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { clearEntitlementsCache } from "@relationship-os/core";
 import { describe, expect, it } from "vitest";
 import { createIdentityProvider, IdentityConfigError, type IdentityEnv } from "../src/index.ts";
 
@@ -73,6 +74,44 @@ describe("better-auth adapter", () => {
       .bind("third@example.com")
       .first<{ role: string }>();
     expect(third?.role).toBe("member");
+  });
+
+  it("enforces a hosted plan's user limit on open sign-up (ADR 0211)", async () => {
+    const open = createIdentityProvider(authEnv({ AUTH_ALLOW_SIGNUP: "true" }));
+    await signUp(open, "plan-first@example.com");
+    const active = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM core_user WHERE kind = 'human' AND deactivated_at IS NULL AND support_grant_id IS NULL",
+    ).first<{ n: number }>();
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO core_entitlements (key, value, updated_at) VALUES ('plan', ?, ?)",
+    )
+      .bind(
+        JSON.stringify({
+          plan: "free",
+          maxUsers: active?.n ?? 0,
+          maxRecords: null,
+          platformAi: true,
+          updatedAt: "2026-11-05T00:00:00.000Z",
+        }),
+        "2026-11-05T00:00:00.000Z",
+      )
+      .run();
+    clearEntitlementsCache();
+    try {
+      const refused = await signUp(open, "over-limit@example.com");
+      expect(refused?.status).toBe(403);
+      expect(JSON.stringify(await refused?.json())).toMatch(
+        /Your Free plan allows \d+ users?\. Upgrade at https:\/\/app\.relationshiposcrm\.com\/billing/,
+      );
+      const row = await env.DB.prepare("SELECT id FROM core_user WHERE email = ?")
+        .bind("over-limit@example.com")
+        .first();
+      expect(row).toBeNull();
+    } finally {
+      await env.DB.prepare("DELETE FROM core_entitlements").run();
+      clearEntitlementsCache();
+    }
+    expect((await signUp(open, "under-no-limit@example.com"))?.status).toBe(200);
   });
 
   it("ignores routes outside /api/auth", async () => {

@@ -331,6 +331,9 @@ importers:
       '@relationship-os/core':
         specifier: workspace:*
         version: link:../core
+      '@relationship-os/db':
+        specifier: workspace:*
+        version: link:../db
       better-auth:
         specifier: 1.7.16
         version: 1.7.16(@opentelemetry/api@1.10.0)(@tanstack/react-start@1.169.4(esbuild@0.28.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(rolldown@1.2.16)(rollup@4.67.4)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)))
@@ -347,9 +350,6 @@ importers:
       '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
-      '@relationship-os/db':
-        specifier: workspace:*
-        version: link:../db
       typescript:
         specifier: 6.0.3
         version: 6.0.3
