@@ -18,6 +18,7 @@ import {
   parseOnly,
   parsePositiveInt,
 } from "./lib/cli.ts";
+import { loadEvalEnvFile } from "./lib/env-file.ts";
 import { type HarnessDeps, runTask, todayUtc } from "./lib/harness.ts";
 import { openMcpSession } from "./lib/mcp.ts";
 import { chatCompletionsModel, isFatalModelError, type ModelParams } from "./lib/model.ts";
@@ -67,6 +68,7 @@ export function parseCli(argv: string[], env: NodeJS.ProcessEnv): CliOptions {
 }
 
 async function main(): Promise<number> {
+  loadEvalEnvFile(process.env);
   const credentials = checkCredentials(process.env);
   if ("code" in credentials) {
     console.error(credentials.message);
