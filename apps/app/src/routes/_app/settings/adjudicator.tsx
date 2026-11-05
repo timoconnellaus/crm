@@ -3,6 +3,7 @@
 // same model as the assistant, and how often its verdicts agree with people's decisions.
 // Admins only; every change is an audited, human-only operation.
 
+import type { CoreOutput } from "@relationship-os/core";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
 import {
@@ -226,10 +227,18 @@ function AdminView() {
               From 0.5 to 1. Verdicts less confident than this go to a person.
             </p>
           </div>
-          {data.models && (
-            <p className="text-xs text-muted-foreground">
-              Reviewer model: {data.models.review.provider} {data.models.review.model}
+          {data.reviewer === "jev" ? (
+            <p className="text-xs text-muted-foreground" data-testid="adjudicator-reviewer">
+              Reviewer: Jev, which reads the policy below as numbered rules and never the agent's
+              reason; if it cannot answer, the change waits for a person. Its own thresholds apply,
+              and this one can only raise them. Change the reviewer in Settings → AI.
             </p>
+          ) : (
+            data.models && (
+              <p className="text-xs text-muted-foreground" data-testid="adjudicator-reviewer">
+                Reviewer model: {data.models.review.provider} {data.models.review.model}
+              </p>
+            )
           )}
         </CardContent>
       </Card>
@@ -251,7 +260,7 @@ function AdminView() {
             rows={14}
             maxLength={20_000}
             placeholder={
-              "## Approve\n- Creating a person or organisation when the reason says where the details came from.\n\n## Deny\n- Deleting more than 5 records at once.\n\n## Ask a person\n- Anything else."
+              "## AI may do these without a person\n- Create people and organisations.\n- Create tasks for any user.\n\n## Never\n- Delete more than 5 records at once.\n\n## Ask a person\n- Anything else."
             }
             className="font-mono text-sm"
           />
@@ -268,11 +277,46 @@ function AdminView() {
               {setPolicy.isPending ? "Saving…" : "Save policy"}
             </Button>
           </div>
+          {data.rules.length > 0 && <PolicyRules data={data} />}
         </CardContent>
       </Card>
 
       <AgreementCard />
     </div>
+  );
+}
+
+/**
+ * The saved policy as the Jev reviewer reads it (ADR 0233): one rule per line, split by code, a
+ * section heading qualifying the rules beneath it. Shown so the admin sees what the reviewer sees.
+ */
+function PolicyRules({ data }: { data: CoreOutput<"adjudicator.get"> }) {
+  const tooMany = data.rules.length > data.maxRules;
+  return (
+    <details className="rounded-md border px-3 py-2 text-sm" data-testid="policy-rules">
+      <summary className="cursor-pointer text-muted-foreground">
+        As Jev reads it: {data.rules.length} rule{data.rules.length === 1 ? "" : "s"}
+        {data.reviewer === "jev" ? "" : " (if Jev reviews)"}
+      </summary>
+      {tooMany && (
+        <p className="mt-2 text-xs text-destructive" role="alert">
+          Jev reads at most {data.maxRules} rules: with Jev reviewing, every change would wait for a
+          person.
+        </p>
+      )}
+      <ol className="mt-2 grid gap-1">
+        {data.rules.map((rule) => (
+          <li key={rule.number} className="grid grid-cols-[2rem_1fr] gap-1">
+            <span className="tabular-nums text-muted-foreground">{rule.number}.</span>
+            <span>{rule.text}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Write each rule on its own line, about the change itself: Jev never sees the agent's reason,
+        so a rule that allows a change only when the reason says something is never met.
+      </p>
+    </details>
   );
 }
 

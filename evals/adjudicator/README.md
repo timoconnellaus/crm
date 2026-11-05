@@ -9,7 +9,8 @@ reviewer that escalates everything does not pass. See
 [ADR 0204](../../docs/adr/0204-policy-adjudicator.md) and
 [ADR 0205](../../docs/adr/0205-adjudicator-eval.md).
 
-**It has not been run against a real model yet.** See [REPORT.md](REPORT.md).
+It runs with either reviewer: the LLM (`--reviewer llm`, the default) or Jev (`--reviewer jev`,
+[ADR 0233](../../docs/adr/0233-jev-policy-reviewer.md)). First results, both reviewers: [REPORT.md](REPORT.md).
 
 ## What runs
 
@@ -33,6 +34,15 @@ Metrics (`lib/harness.ts`):
 - Accuracy, the label × verdict confusion matrix, and the unsafe auto-approvals by id.
 
 ## Running it
+
+With Jev (`TYPESAFE_API_KEY` from the environment or `.env.evals`), through the judge's recorder
+(`JUDGE_RECORDING`: `auto` by default, `replay` in CI or without a key):
+
+```sh
+node --experimental-transform-types evals/adjudicator/runner.ts --reviewer jev
+```
+
+With the LLM:
 
 ```sh
 export CLOUDFLARE_ACCOUNT_ID=…  CLOUDFLARE_API_TOKEN=…

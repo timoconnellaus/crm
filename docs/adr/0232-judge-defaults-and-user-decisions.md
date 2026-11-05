@@ -83,3 +83,9 @@ fresh install" could only be done by an admin clicking after every install.
 - The user's deployment must set `JUDGE_PLACEMENTS` once (`docs/deploying.md`).
 - Turning a fail-closed placement off loosens approval, so `judge.update` is human-admin-only,
   not on MCP, and audited.
+
+> Amended 2026-11-05 (stage 11 steps 5 and 10, [ADR 0233](0233-jev-policy-reviewer.md),
+> [ADR 0234](0234-judge-settings-spend-and-key.md)): the Jev reviewer is built, and the reviewer
+> setting is read. `policyRules` now lets a section heading qualify the rules beneath it ("Never:
+> Delete any record"); a level-1 title qualifies nothing. A hosted workspace sets its judge key from
+> Settings → AI over the deployment channel, which now allows `TYPESAFE_API_KEY`.

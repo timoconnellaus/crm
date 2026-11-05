@@ -5,7 +5,9 @@
 // per role from AI Gateway; and the semantic search index. On a hosted workspace (ADR 0213
 // amendment) the built-in models are Platform AI, the customer's own keys are workspace secrets
 // set through the control plane and called directly, an own AI Gateway can be connected, and
-// usage is the workspace's own count, split into billed (Platform AI) and own-key usage.
+// usage is the workspace's own count, split into billed (Platform AI) and own-key usage. The
+// Judge section (components/settings/judge-section.tsx, ADR 0234) holds Jev's key, Test, the
+// adjudicator's reviewer, each placement's switch and its spend.
 import type { CoreOutput } from "@relationship-os/core";
 import {
   AlertDialog,
@@ -68,6 +70,7 @@ import {
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { PageLayout } from "#/components/layout/page-layout";
+import { JudgeSection } from "#/components/settings/judge-section";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
 
 export const Route = createFileRoute("/_app/settings/ai")({ component: AiSettingsPage });
@@ -169,6 +172,7 @@ function AiSettings() {
       <RolesSection settings={data} />
       <ProvidersSection settings={data} />
       {data.admin.hosted && <OwnGatewayCard settings={data} />}
+      <JudgeSection />
       <UsageCard />
       <SemanticSearchCard search={data.semanticSearch} />
     </div>
