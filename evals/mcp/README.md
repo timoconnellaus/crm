@@ -36,6 +36,20 @@ The API token needs the Workers AI permission. The default model is
 Requests answered 429 or 5xx are retried with backoff. A 401, 403 or 404 (bad token, wrong
 account, unknown model) stops the run, since no task could pass.
 
+### Credentials file (shared by every worktree)
+
+Instead of exporting variables, put them in `.env.evals` at the root of the **main checkout**
+(gitignored by `.env*`). Every runner (`evals/{mcp,extensions,dashboards,automations}`) loads it
+from any worktree, because it finds the main checkout through git's common dir. Variables already
+set in the shell win; `EVAL_ENV_FILE=/path/to/file` points at a different file.
+
+```sh
+# <main checkout>/.env.evals   (chmod 600)
+EVAL_BASE_URL=https://api.deepseek.com/v1
+EVAL_API_KEY=sk-…
+EVAL_MODEL=deepseek-flash      # DeepSeek V4.1 Flash; deepseek-v4-pro also available
+```
+
 ## Running it
 
 1. Start the app. `pnpm dev` creates `apps/app/.dev.vars` (with `AUTH_ALLOW_SIGNUP=true`) and
