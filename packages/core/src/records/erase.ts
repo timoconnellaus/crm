@@ -4,6 +4,7 @@ import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, type SqlBool, sql } from "kysely";
 import { enqueueEmbeddings } from "../ai/embedding.ts";
 import { deleteSummariesStatement } from "../ai/summaries.ts";
+import { queueScrubConversations } from "../assistant/erase.ts";
 import type { HandlerContext } from "../operation.ts";
 import { chunk, jsonList } from "./common.ts";
 import { findOwnedActivitiesAndTasks } from "./links.ts";
@@ -19,11 +20,19 @@ export interface EraseRequest {
    * case-insensitively. Short strings are ignored so that redaction stays targeted.
    */
   terms: readonly string[];
+  /**
+   * The subject's names (a person's display, given and family names; an organisation's name).
+   * Used only in assistant conversations that referenced the subject, where a name in free text
+   * is about them (ADR 0019 amendment, 2026-11-05).
+   */
+  names?: readonly string[];
 }
 
 export interface EraseCounts {
   activities: number;
   tasks: number;
+  /** Assistant conversations that referenced the subject and were scrubbed. */
+  conversations: number;
 }
 
 const MIN_TERM_LENGTH = 6;
@@ -159,6 +168,15 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
   );
   if (enqueue) ctx.write(enqueue);
 
+  // 3d. Assistant conversations that referenced the records (ADR 0200): their objects redact
+  // their stored history now (before the commit, so an unreachable one fails the erase), and
+  // their list rows and the subject's refs follow in this batch.
+  const conversations = await queueScrubConversations(ctx, {
+    recordIds,
+    terms: request.terms,
+    names: request.names ?? [],
+  });
+
   // 4. The records. Merged-away records first: they point at the survivor.
   const ordered = [...recordIds.filter((id) => id !== recordId), recordId];
   for (const ids of chunk(ordered)) {
@@ -174,7 +192,7 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
   // results. (Linear in index size; erase is rare.)
   const optimize = sql`INSERT INTO core_search (core_search) VALUES ('optimize')`.compile(ctx.db);
   ctx.write({ compile: () => optimize });
-  return { activities: activityIds.length, tasks: taskIds.length };
+  return { activities: activityIds.length, tasks: taskIds.length, conversations };
 }
 
 const ERASED = "[erased]";

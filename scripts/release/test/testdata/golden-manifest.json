@@ -20,7 +20,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 260,
+  "coreSchemaVersion": 270,
   "extensionContract": {
     "supported": [
       1
@@ -270,6 +270,10 @@
     {
       "name": "0260_ai_usage.sql",
       "sha256": "6712bf72e8050cdfb8fe30cf46bee9796c23251fc04797589af1a79605ea5684"
+    },
+    {
+      "name": "0270_assistant_conversation_refs.sql",
+      "sha256": "121016373844f8cc2c4e816ec8ff9b573bd3d8ec74aaaac0419fa96a008710c3"
     }
   ],
   "product": "relationship-os",

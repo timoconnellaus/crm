@@ -85,9 +85,17 @@ provider, so the whole loop, the MCP client and the pipeline run without a model
 - ADR 0030's "one tool surface" holds by construction: a new curated tool is the assistant's too.
 - A conversation's history is not erased by a person erase (ADR 0019): it lives in the object, not
   D1. Deleting a conversation (`assistant.deleteConversation` and the object's `deleteAll`) is the
-  way to remove it. Recorded as a known limit.
+  way to remove it. Recorded as a known limit. _(Superseded 2026-11-05: see the amendment below.)_
 - An object evicted mid-turn (for example, every reader gone for minutes during a long tool loop)
   loses that turn's unsaved steps; the person sees "interrupted" and asks again. Tool calls already
   made stay made, and the next turn is told.
 - The stage 2–5 evals run through the assistant with `EVAL_VIA=assistant` (stage 7 AC 5); no
   report against a real model exists yet.
+
+## Amendment, 2026-11-05 (erase reaches conversations)
+The known limit above is lifted. `assistant.finishTurn` takes the turn's `refs` (person and
+organisation ids, hashed emails) and writes them to `core_assistant_conversation_refs` in its
+batch (migration 0270), and the object has a `scrub` RPC that redacts an erased subject from its
+stored messages, turn errors and a running turn. `person.erase` and `organisation.erase` use both
+before they commit. The design, what is redacted and the limits are in
+[ADR 0019](0019-audit-redaction-for-erasure.md)'s amendment of the same date.

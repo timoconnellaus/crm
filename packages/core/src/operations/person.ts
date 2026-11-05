@@ -1096,8 +1096,10 @@ export const personErase = defineOperation({
     "affiliations and tags go; activities and tasks linked only to them are deleted; system " +
     "activities about them (field changes, job changes, merges) are removed from every " +
     "timeline. Audit-log content that mentions them (their id, emails or phone numbers) is " +
-    'replaced with "[erased]"; who did what and when is kept. Cannot be undone; use ' +
-    "person.delete for a reversible delete.",
+    'replaced with "[erased]"; who did what and when is kept. In-app assistant conversations ' +
+    "that referenced them are redacted the same way (tool calls and results that mention them " +
+    "lose their content; their ids, emails, phone numbers and names in text become " +
+    '"[erased]"). Cannot be undone; use person.delete for a reversible delete.',
   input: z.object({ id: personId }),
   output: z.object({
     id: z.string(),
@@ -1105,6 +1107,7 @@ export const personErase = defineOperation({
     activitiesDeleted: z.number(),
     tasksDeleted: z.number(),
     auditRowsRedacted: z.number(),
+    conversationsScrubbed: z.number(),
   }),
   permission: "records:erase",
   risk: "destructive",
@@ -1112,7 +1115,12 @@ export const personErase = defineOperation({
   async handler(input, ctx) {
     await requirePerson(ctx.db, input.id, { includeDeleted: true });
     const ids = await withMergedRecords(ctx, "person", input.id);
-    const [emails, phones] = await Promise.all([
+    const [names, emails, phones] = await Promise.all([
+      ctx.db
+        .selectFrom("core_person")
+        .select(["display_name", "given_name", "family_name"])
+        .where("id", "in", ids)
+        .execute(),
       ctx.db
         .selectFrom("core_person_emails")
         .select("email")
@@ -1132,6 +1140,9 @@ export const personErase = defineOperation({
         ...emails.map((e) => e.email),
         ...phones.flatMap((p) => [p.number, p.number_normalised]),
       ],
+      names: names.flatMap((n) =>
+        [n.display_name, n.given_name, n.family_name].filter((v): v is string => Boolean(v)),
+      ),
     });
     for (const id of ids) ctx.recordChange({ object: "person", id, action: "erase", diff: {} });
     return ctx.afterCommit(async () => ({
@@ -1140,6 +1151,7 @@ export const personErase = defineOperation({
       activitiesDeleted: counts.activities,
       tasksDeleted: counts.tasks,
       auditRowsRedacted: await countRedactions(ctx.db, "person", input.id),
+      conversationsScrubbed: counts.conversations,
     }));
   },
 });

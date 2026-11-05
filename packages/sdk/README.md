@@ -347,7 +347,7 @@ trigger record, checked before a run starts and shown in the summary ("if its st
 
 **Steps and intents.** Each step has a camelCase `name` (unique) and an optional `label`:
 - `do` (default): `reads`, `writes` (`{ object, action?, count?, titles?, assignTo?,
-  linkedToTrigger? }`), `notifies` (`{ to, message }`, `{record}` = the trigger record's title),
+  linkedToTrigger? }`), `notifies` (`{ to, message, body? }`: the title and body as written, `{record}` = the trigger record's title; the host summary quotes them),
   `calls` (other operations);
 - `sleep`: `duration` (`"3 days"`, `"90 minutes"`, ms);
 - `waitForEvent`: `event` (letters, digits, `-`, `_`), `timeout?` (default 7 days);

@@ -1067,8 +1067,9 @@ export const organisationErase = defineOperation({
     "any organisations merged into it: domains, addresses, affiliations and tags go, " +
     "activities and tasks linked only to it are deleted, and its system activities are " +
     "removed from every timeline. Audit-log content that mentions it is replaced with " +
-    '"[erased]" (who did what and when is kept). Cannot be undone; use organisation.delete ' +
-    "for a reversible delete.",
+    '"[erased]" (who did what and when is kept), and so are in-app assistant conversations ' +
+    "that referenced it (its id and name). Cannot be undone; use organisation.delete for a " +
+    "reversible delete.",
   input: z.object({ id: organisationId }),
   output: z.object({
     id: z.string(),
@@ -1076,6 +1077,7 @@ export const organisationErase = defineOperation({
     activitiesDeleted: z.number(),
     tasksDeleted: z.number(),
     auditRowsRedacted: z.number(),
+    conversationsScrubbed: z.number(),
   }),
   permission: "records:erase",
   risk: "destructive",
@@ -1083,11 +1085,17 @@ export const organisationErase = defineOperation({
   async handler(input, ctx) {
     await requireOrganisation(ctx.db, input.id, { includeDeleted: true });
     const ids = await withMergedRecords(ctx, "organisation", input.id);
+    const names = await ctx.db
+      .selectFrom("core_organisation")
+      .select("name")
+      .where("id", "in", ids)
+      .execute();
     const counts = await queueErase(ctx, {
       object: "organisation",
       recordId: input.id,
       recordIds: ids,
       terms: [],
+      names: names.map((n) => n.name),
     });
     for (const id of ids) {
       ctx.recordChange({ object: "organisation", id, action: "erase", diff: {} });
@@ -1098,6 +1106,7 @@ export const organisationErase = defineOperation({
       activitiesDeleted: counts.activities,
       tasksDeleted: counts.tasks,
       auditRowsRedacted: await countRedactions(ctx.db, "organisation", input.id),
+      conversationsScrubbed: counts.conversations,
     }));
   },
 });
