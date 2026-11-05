@@ -54,3 +54,10 @@ never queued (that would dry-run a live session); every side effect is gated on 
 - A gatekeeper that ignores order or never answers `rejectAction` only delays its own later
   actions; the CRM's decision is committed first.
 - The approvals UI shows the gatekeeper's own description, which is what the reviewer approves.
+
+> Amended 2026-11-05 (stage 11 step 7, [ADR 0238](0238-outbound-message-placement.md)): when the
+> judge's `outbound.message` placement is on, `submitOutbound` reads a message an AI actor wrote
+> before the gate's decision is acted on. A finding, or no answer, turns `auto` into `review`; the
+> check is stored on the pending action (`outbound_check`, migration 0256) and shown to human
+> approvers. List fields of a description (`To`, `Cc`) are now stored with their items, one per
+> line (they were stored empty).
