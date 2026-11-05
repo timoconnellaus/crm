@@ -13,6 +13,7 @@ import {
   type IntegrationCaller,
   loadDeliverySettings,
   loadRoutes,
+  type ModelRunner,
   matchNotificationRoutes,
   type NotificationRoute,
   ROLES,
@@ -21,6 +22,7 @@ import {
   runNotificationDelivery,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
+import { runnerModels } from "../extensions/ai.ts";
 import { integrationRuntime } from "../integrations/runtime.ts";
 
 /** What delivery needs from the runner's env. */
@@ -75,17 +77,25 @@ export function systemCallIntegration(env: NotificationEnv): CallIntegration {
   };
 }
 
-/** The minute cron's delivery tick. `callIntegration` and `composeDigest` are for tests. */
+/**
+ * The minute cron's delivery tick. `callIntegration`, `composeDigest` and `models` are for tests;
+ * by default the digest's AI overview uses the deployment's model roles when it has AI (ADR 0206).
+ */
 export async function runNotificationCron(
   env: NotificationEnv,
   at: Date = new Date(),
-  options: { callIntegration?: CallIntegration; composeDigest?: DigestComposer } = {},
+  options: {
+    callIntegration?: CallIntegration;
+    composeDigest?: DigestComposer;
+    models?: ModelRunner | null;
+  } = {},
 ): Promise<DeliveryReport> {
   const report = await runNotificationDelivery({
     db: createCrmDb(env.DB).query,
     now: at,
     appOrigin: appOrigin(env),
     callIntegration: options.callIntegration ?? systemCallIntegration(env),
+    models: options.models !== undefined ? options.models : runnerModels(env),
     ...(options.composeDigest ? { composeDigest: options.composeDigest } : {}),
   });
   for (const problem of report.problems) console.warn(`notification delivery: ${problem}`);

@@ -363,6 +363,16 @@ async function queueRedactPending(
     );
   }
 
+  // The policy adjudicator's reasons may quote what the actions held (ADR 0204).
+  if (matched.length) {
+    ctx.write(
+      ctx.db
+        .updateTable("core_adjudication")
+        .set({ reason: ERASED })
+        .where("action_id", "in", jsonList(matched.map((r) => r.id))),
+    );
+  }
+
   // Pending actions that depend on a rejected one can never apply: reject them too.
   const roots = new Set(matched.filter(waiting).map((r) => r.id));
   if (roots.size) {

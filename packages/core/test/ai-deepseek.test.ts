@@ -154,7 +154,7 @@ describe("running roles on DeepSeek", () => {
     AI_GATEWAY_TOKEN: "aig-token",
   };
 
-  it("routes through AI Gateway's deepseek path with the BYOK key, thinking off where set", async () => {
+  it("routes through AI Gateway's compat endpoint as deepseek/deepseek-flash with the BYOK key, thinking off where set", async () => {
     const server = fakeOpenAiServer(() => "From DeepSeek.");
     const { models, binding } = testRunner({
       env: { ...gateway, AI_MODEL_ROLES: PRESET(), AI_GATEWAY_BYOK: "deepseek" },
@@ -163,15 +163,13 @@ describe("running roles on DeepSeek", () => {
     const result = await models.run("classify", [{ role: "user", content: "x" }]);
     expect(result).toMatchObject({ text: "From DeepSeek.", ...FLASH });
     const call = server.calls[0];
-    expect(call?.url).toBe(
-      "https://gateway.ai.cloudflare.com/v1/acct/gw/deepseek/chat/completions",
-    );
+    expect(call?.url).toBe("https://gateway.ai.cloudflare.com/v1/acct/gw/compat/chat/completions");
     // BYOK: no provider Authorization header, so the gateway adds the stored key.
     expect(call?.headers.authorization).toBeUndefined();
     expect(call?.headers["cf-aig-authorization"]).toBe("Bearer aig-token");
     expect(JSON.parse(call?.headers["cf-aig-metadata"] ?? "{}")).toEqual({ role: "classify" });
     expect(call?.body).toMatchObject({
-      model: "deepseek-flash",
+      model: "deepseek/deepseek-flash",
       max_tokens: 64,
       thinking: { type: "disabled" },
     });

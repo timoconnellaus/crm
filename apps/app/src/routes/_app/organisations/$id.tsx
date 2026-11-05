@@ -36,6 +36,7 @@ import { SimilarRecordsCard } from "#/components/ai/similar-records";
 import { RecordSummaryCard } from "#/components/ai/summary";
 import { useAppCommands } from "#/components/app-commands";
 import { PendingChangesBadge } from "#/components/approvals/pending-badge";
+import { AskAiButton } from "#/components/assistant/ask-buttons";
 import {
   ManualAutomationButtons,
   RecordAutomationsCard,
@@ -230,6 +231,7 @@ function OrganisationRecord({
         !deleted && (
           <>
             <ManualAutomationButtons object="organisation" id={org.id} />
+            <AskAiButton record={{ object: "organisation", id: org.id, label: org.name }} />
             {addTask && (
               <Button variant="outline" size="sm" onClick={addTask} aria-keyshortcuts="c">
                 <PlusIcon />

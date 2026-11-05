@@ -248,6 +248,18 @@
       "sha256": "cdd5e527fcebdbe6450704f9996ce08fc30f2de1fc3288f25c72f294ed59cdc4"
     },
     {
+      "name": "0200_assistant_conversations.sql",
+      "sha256": "f0327029acf0cb3bfce4d838731d07cdd097aa7813738da280d0caafaa777cc2"
+    },
+    {
+      "name": "0205_policy_adjudicator.sql",
+      "sha256": "36197965e44392ad1a5bd08baa13b67f480bcb345074a2b57dd7f1472518f8f2"
+    },
+    {
+      "name": "0210_daily_digest.sql",
+      "sha256": "c89ba91b9d6b7436601a11bc74d78fc9d2b909369d93d8f514fd9f1fe009a988"
+    },
+    {
       "name": "0220_entitlements.sql",
       "sha256": "dcf0e456d1a771e0e8db60e8bdfd33659ce947d4875ed817b9ac498c97e0721e"
     },
@@ -268,6 +280,15 @@
       "usedBy": [
         "ros-app",
         "ros-runner"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "ros-app:AssistantConversation",
+      "optional": false,
+      "type": "durable_object",
+      "usedBy": [
+        "ros-app"
       ]
     },
     {
@@ -443,6 +464,11 @@
           "name": "RUNNER",
           "service": "$WORKER_NAME(ros-runner)",
           "type": "service"
+        },
+        {
+          "class_name": "AssistantConversation",
+          "name": "ASSISTANT",
+          "type": "durable_object_namespace"
         },
         {
           "name": "AUTOMATION_EVENTS",
@@ -629,7 +655,14 @@
       "dependsOn": [
         "ros-runner"
       ],
-      "durableObjectMigrations": [],
+      "durableObjectMigrations": [
+        {
+          "new_sqlite_classes": [
+            "AssistantConversation"
+          ],
+          "tag": "v1"
+        }
+      ],
       "mainModule": "index.js",
       "modules": [
         {
@@ -704,7 +737,7 @@
           "source": "installer"
         }
       ],
-      "sha256": "3a1468a4ead8dc9b2c20d02673a5d93946a587028c0cec896ce5bf7e22546460"
+      "sha256": "071424883e3f32e434ce22eaaec4193265c91b532508708502648f8bf8a2812c"
     },
     {
       "bindings": [

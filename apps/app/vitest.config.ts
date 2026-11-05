@@ -30,6 +30,9 @@ export default mergeConfig(
         bindings: {
           TEST_MIGRATIONS: await readD1Migrations(migrationsDir),
           BETTER_AUTH_SECRET: "test-secret-test-secret-test-secret-123",
+          // The scripted stand-ins answer every model role (the assistant's conversation object
+          // reads its env from here; tests that need "no AI" pass their own env).
+          AI_FAKE_MODEL: "true",
         },
         serviceBindings: { RUNNER: "ros-runner" },
         // The fake Cloudflare account's D1 database in the self-updater tests.

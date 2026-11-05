@@ -4,6 +4,8 @@
 import type { CoreDatabase, CrmDb, PendingActionStatus } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
+import { ADJUDICATOR_PRINCIPAL } from "../adjudicator/judge.ts";
+import { loadVerdicts, verdictViewSchema } from "../adjudicator/run.ts";
 import { ApprovalStateError, objectOfId } from "../approvals/queue.ts";
 import { approvalDecidedMessages, emitEvents, eventOriginOf } from "../automations/events.ts";
 import { deliverOutbox, emitDurably, outboxEntries, outboxInserts } from "../automations/outbox.ts";
@@ -118,6 +120,11 @@ export const pendingActionSchema = z.object({
       implementsRevert: z.boolean(),
     })
     .nullable(),
+  /**
+   * The policy adjudicator's verdict (ADR 0204), for human approvers only: always null for AI,
+   * MCP, automation and extension callers, whose own work it judges.
+   */
+  adjudication: verdictViewSchema.nullable(),
 });
 export type PendingActionView = z.infer<typeof pendingActionSchema>;
 
@@ -219,7 +226,33 @@ function toActionView(row: PendingRow, now: string): PendingActionView {
     compactedAt: row.compacted_at,
     summary: parse(row.summary, null),
     outbound: row.connection_id !== null ? outboundView(row) : null,
+    adjudication: null,
   };
+}
+
+/** Human approvers (people who may approve) see verdicts; nobody else does (ADR 0204). */
+function seesVerdicts(ctx: HandlerContext): boolean {
+  return ctx.actor === "human" && roleHasPermission(ctx.user.role, "records:write");
+}
+
+/**
+ * Adds the adjudicator's verdicts for human approvers. For everyone else the verdicts stay null
+ * and an action the adjudicator applied shows no decider: the actor never learns it was judged.
+ */
+async function withVerdicts(
+  ctx: HandlerContext,
+  actions: PendingActionView[],
+): Promise<PendingActionView[]> {
+  if (!seesVerdicts(ctx)) {
+    return actions.map((a) =>
+      a.decidedBy === ADJUDICATOR_PRINCIPAL ? { ...a, decidedBy: null } : a,
+    );
+  }
+  const verdicts = await loadVerdicts(
+    ctx.db,
+    actions.map((a) => a.id),
+  );
+  return actions.map((a) => ({ ...a, adjudication: verdicts.get(a.id) ?? null }));
 }
 
 function outboundView(row: PendingRow): PendingActionView["outbound"] {
@@ -337,8 +370,9 @@ async function loadChangeSetDetail(ctx: HandlerContext, id: string) {
   const set = await changeSetQuery(ctx.db).where("c.id", "=", id).executeTakeFirst();
   if (!set) throw new NotFoundError("change set", id);
   assertCanSee(ctx, set.user_id);
-  const actions = (await loadActions(ctx.db, { changeSetIds: [id] })).map((r) =>
-    toActionView(r, ctx.now),
+  const actions = await withVerdicts(
+    ctx,
+    (await loadActions(ctx.db, { changeSetIds: [id] })).map((r) => toActionView(r, ctx.now)),
   );
   return { ...summarise(set, actions), actions };
 }
@@ -388,12 +422,15 @@ export const approvalStatus = defineOperation({
       ? query.where("c.session_id", "=", ctx.origin.sessionId)
       : query.where("c.session_id", "is", null);
     const sets = await query.orderBy("c.id", "desc").limit(10).execute();
-    const actions = await loadActions(ctx.db, { changeSetIds: sets.map((s) => s.id) });
+    const actions = await withVerdicts(
+      ctx,
+      (await loadActions(ctx.db, { changeSetIds: sets.map((s) => s.id) })).map((a) =>
+        toActionView(a, ctx.now),
+      ),
+    );
     return {
       changeSets: sets.map((set) => {
-        const mine = actions
-          .filter((a) => a.change_set_id === set.id)
-          .map((a) => toActionView(a, ctx.now));
+        const mine = actions.filter((a) => a.changeSetId === set.id);
         return { ...summarise(set, mine), actions: mine };
       }),
     };

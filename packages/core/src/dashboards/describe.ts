@@ -178,6 +178,11 @@ const FAKE_DEFAULT: Record<string, unknown> = {
   clickThrough: { object: "person" },
 };
 
+/** The canned widget the stand-ins pick for a prompt (also used by the scripted assistant). */
+export function fakeWidget(prompt: string): Record<string, unknown> {
+  return FAKE_WIDGETS.find((w) => w.match.test(prompt))?.widget ?? FAKE_DEFAULT;
+}
+
 /**
  * A deterministic stand-in for the build role, for local development and e2e tests without an
  * AI binding (`AI_FAKE_MODEL=true`). It picks a canned widget by keywords in the prompt and
@@ -187,7 +192,7 @@ export function fakeBuildModel(): ModelRunner {
   return {
     async run(_role, messages) {
       const prompt = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-      const widget = FAKE_WIDGETS.find((w) => w.match.test(prompt))?.widget ?? FAKE_DEFAULT;
+      const widget = fakeWidget(prompt);
       return { text: `\`\`\`json\n${JSON.stringify(widget, null, 2)}\n\`\`\``, model: "fake" };
     },
   };

@@ -8,9 +8,11 @@ export {
   applyMigrations,
   CORE_SCHEMA_VERSION,
   getMigrationLevel,
+  highestMigration,
   MIGRATIONS_TABLE,
   type Migration,
   type MigrationLevel,
+  migrationNumber,
 } from "./migrate.ts";
 export type * from "./schema.ts";
 

@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { SimilarRecordsCard } from "#/components/ai/similar-records";
 import { RecordSummaryCard } from "#/components/ai/summary";
+import { AskAiButton } from "#/components/assistant/ask-buttons";
 import {
   ManualAutomationButtons,
   RecordAutomationsCard,
@@ -112,6 +113,9 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
       actions={
         <>
           <ManualAutomationButtons object={info.name} id={id} />
+          <AskAiButton
+            record={{ object: info.name, id, ...(data.title ? { label: data.title } : {}) }}
+          />
           <Button variant="outline" onClick={onDelete} disabled={remove.isPending}>
             <Trash2Icon />
             Delete

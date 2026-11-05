@@ -5,6 +5,7 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import {
   type AutomationQueueMessage,
+  type AutomationTestInput,
   type AutomationTestReport,
   type CodeResult,
   type EvaluateResult,
@@ -200,11 +201,7 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
   }
 
   // AutomationHost (ADR 0130): automation.test, run, retry, replay and cancel from ros-app.
-  testAutomation(input: {
-    automationId: string;
-    record?: { object: string; id: string };
-    userId: string;
-  }): Promise<AutomationTestReport> {
+  testAutomation(input: AutomationTestInput): Promise<AutomationTestReport> {
     return automationHost(this.env).testAutomation(input);
   }
   startManualRun(input: StartRunInput): Promise<{ runIds: string[]; skipped: number }> {

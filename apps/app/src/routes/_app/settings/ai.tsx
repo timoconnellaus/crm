@@ -1,6 +1,7 @@
 // Settings → AI (admins, ADRs 0150-0155): each model role's provider, model, capabilities,
 // fallback and where the setting comes from, with Edit (capability-checked by ai.updateRole) and
-// Test; provider keys stored as Workers secrets or AI Gateway BYOK (never shown); usage and spend
+// Test and a review-independence warning; provider keys stored in AI Gateway (BYOK, the default
+// with a gateway) or as Workers secrets (never shown); usage and spend
 // per role from AI Gateway; and the semantic search index.
 import type { CoreOutput } from "@relationship-os/core";
 import {
@@ -96,7 +97,7 @@ const SOURCE_LABELS: Record<Role["source"], string> = {
 };
 
 /** Providers whose models are not in the catalogue: the model is typed with its capabilities. */
-const FREE_TEXT_PROVIDERS = new Set<ProviderId>(["openai-compatible", "jev"]);
+const FREE_TEXT_PROVIDERS = new Set<ProviderId>(["openai-compatible", "jev", "custom"]);
 const OTHER_MODEL = "__other__";
 const NO_FALLBACK = "__none__";
 
@@ -338,6 +339,17 @@ function RoleCard({
             {role.notReadyReason}
           </p>
         )}
+        {role.warnings.map((warning) => (
+          <p
+            key={warning}
+            className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+            role="note"
+            data-testid="role-warning"
+          >
+            <CircleAlertIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <span className="min-w-0">{warning}</span>
+          </p>
+        ))}
         {role.ignored.map((layer) => (
           <p key={layer.layer} className="text-xs text-amber-700 dark:text-amber-400">
             Ignored the {layer.layer} setting: {layer.problems.join("; ")}
@@ -554,9 +566,15 @@ function EditRoleDialog({
                   id="ai-custom-model"
                   value={customModel}
                   onChange={(e) => setCustomModel(e.target.value)}
-                  placeholder="e.g. my-model-v2"
+                  placeholder={provider === "custom" ? "custom-<slug>/<model>" : "e.g. my-model-v2"}
                   autoComplete="off"
                 />
+                {provider === "custom" && (
+                  <p className="text-xs text-muted-foreground">
+                    The AI Gateway custom provider and model, as the gateway names them, e.g.{" "}
+                    <code>custom-together/deepseek-ai/DeepSeek-V4.1-Flash-1017</code>.
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {(
@@ -686,8 +704,9 @@ function ProvidersSection({ settings }: { settings: Settings }) {
       <CardHeader>
         <CardTitle>Provider keys</CardTitle>
         <CardDescription>
-          Workers AI needs no key. Other providers need an API key, stored as a Workers secret or in
-          AI Gateway (BYOK). Keys go straight to Cloudflare and are never shown again.
+          Workers AI needs no key. Other providers need an API key, stored in AI Gateway (BYOK, the
+          default when there is a gateway) or as a Workers secret. Keys go straight to Cloudflare
+          and are never shown again.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
@@ -726,7 +745,11 @@ function ProvidersSection({ settings }: { settings: Settings }) {
               <div className="grid min-w-0 flex-1 gap-0.5">
                 <span className="flex flex-wrap items-center gap-2 font-medium">
                   {p.label}
-                  {p.ready ? (
+                  {p.id === "custom" && p.ready ? (
+                    <Badge variant="outline" className="font-normal text-muted-foreground">
+                      Keys in AI Gateway, per provider
+                    </Badge>
+                  ) : p.ready ? (
                     <Badge variant="secondary" className="font-normal">
                       <KeyRoundIcon aria-hidden />
                       {p.keySource === "byok" ? "Key in AI Gateway" : "Key set"}
@@ -741,15 +764,17 @@ function ProvidersSection({ settings }: { settings: Settings }) {
                   <span className="text-xs text-muted-foreground">{p.reason}</span>
                 )}
               </div>
-              {modes.length > 0 && (
+              {modes.length > 0 && (p.id !== "custom" || modes.includes("byok")) && (
                 <div className="flex gap-2">
-                  {p.ready && (p.keySource === "secret" || p.keySource === "byok") && (
-                    <Button variant="ghost" size="sm" onClick={() => setRemoving(p)}>
-                      Remove
-                    </Button>
-                  )}
+                  {p.id !== "custom" &&
+                    p.ready &&
+                    (p.keySource === "secret" || p.keySource === "byok") && (
+                      <Button variant="ghost" size="sm" onClick={() => setRemoving(p)}>
+                        Remove
+                      </Button>
+                    )}
                   <Button variant="outline" size="sm" onClick={() => setAdding(p)}>
-                    {p.ready ? "Replace key" : "Add key"}
+                    {p.ready && p.id !== "custom" ? "Replace key" : "Add key"}
                   </Button>
                 </div>
               )}
@@ -802,8 +827,15 @@ function AddKeyDialog({
   onClose: () => void;
 }) {
   const store = useOpMutation("ai.setProviderKey", { invalidates: ["ai."] });
+  const custom = provider.id === "custom";
+  // BYOK in the deployment's AI Gateway when there is one (ADR 0203); a custom provider exists
+  // only in the gateway, so its key is BYOK only.
+  const available = custom ? modes.filter((m) => m === "byok") : modes;
   const [apiKey, setApiKey] = useState("");
-  const [mode, setMode] = useState<(typeof modes)[number]>(modes[0] ?? "secret");
+  const [slug, setSlug] = useState("");
+  const [mode, setMode] = useState<(typeof modes)[number]>(
+    available.includes("byok") ? "byok" : (available[0] ?? "secret"),
+  );
   const [error, setError] = useState<string | null>(null);
 
   async function submit(event: FormEvent) {
@@ -811,7 +843,12 @@ function AddKeyDialog({
     if (provider.id === "workers-ai") return;
     setError(null);
     try {
-      const out = await store.mutateAsync({ provider: provider.id, apiKey, mode });
+      const out = await store.mutateAsync({
+        provider: provider.id,
+        apiKey,
+        mode,
+        ...(custom ? { customProvider: slug.trim() } : {}),
+      });
       setApiKey("");
       toast.success(
         out.stored === "byok"
@@ -835,6 +872,22 @@ function AddKeyDialog({
               again.
             </DialogDescription>
           </DialogHeader>
+          {custom && (
+            <div className="grid gap-2">
+              <Label htmlFor="ai-custom-slug">Custom provider</Label>
+              <Input
+                id="ai-custom-slug"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="together"
+                autoComplete="off"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Its slug in AI Gateway. The key is stored under <code>custom-{"<slug>"}</code>.
+              </p>
+            </div>
+          )}
           <div className="grid gap-2">
             <Label htmlFor="ai-api-key">API key</Label>
             <Input
@@ -854,7 +907,7 @@ function AddKeyDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {modes.map((m) => (
+                {available.map((m) => (
                   <SelectItem key={m} value={m}>
                     {MODE_LABELS[m]}
                   </SelectItem>
@@ -874,7 +927,10 @@ function AddKeyDialog({
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={store.isPending || apiKey.trim().length < 8}>
+            <Button
+              type="submit"
+              disabled={store.isPending || apiKey.trim().length < 8 || (custom && !slug.trim())}
+            >
               {store.isPending ? "Storing…" : "Store key"}
             </Button>
           </DialogFooter>

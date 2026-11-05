@@ -36,6 +36,7 @@ export const PROVIDERS = [
   "anthropic",
   "jev",
   "openai-compatible",
+  "custom",
 ] as const;
 export type ProviderId = (typeof PROVIDERS)[number];
 
@@ -48,8 +49,13 @@ export interface ProviderInfo {
   secretName?: string;
   /** Direct OpenAI-compatible base URL, used when no AI Gateway is configured. */
   baseURL?: string;
-  /** The provider slug in AI Gateway (provider-native path and BYOK provider config). */
+  /**
+   * The provider's name in AI Gateway: the `{provider}/` prefix of a model id on the unified
+   * (compat) endpoint, the provider-native path, and the BYOK provider config slug (ADR 0203).
+   */
   gatewaySlug?: string;
+  /** Reachable only through AI Gateway (custom providers): no direct base URL, key is BYOK. */
+  gatewayOnly?: boolean;
 }
 
 export const PROVIDER_INFO: Record<ProviderId, ProviderInfo> = {
@@ -113,7 +119,39 @@ export const PROVIDER_INFO: Record<ProviderId, ProviderInfo> = {
     needsKey: true,
     secretName: "AI_KEY_CUSTOM",
   },
+  // An AI Gateway custom provider (ADR 0180, ADR 0203). The model id names it, exactly as the
+  // gateway's unified endpoint wants it: `custom-<slug>/<model>`. Only reachable through the
+  // gateway, and its key is BYOK, stored under the provider slug `custom-<slug>`. Models must
+  // declare their capabilities.
+  custom: {
+    id: "custom",
+    label: "AI Gateway custom provider",
+    needsKey: true,
+    gatewayOnly: true,
+  },
 };
+
+/** A custom provider's model id: `custom-<slug>/<model>` (the gateway's own naming). */
+const CUSTOM_MODEL = /^(custom-[a-z0-9][a-z0-9-]*)\/(.+)$/;
+
+/**
+ * The AI Gateway provider slug a custom provider's model belongs to (`custom-together` for
+ * `custom-together/deepseek-ai/…`), or null when the id is not in that form.
+ */
+export function customProviderSlug(model: string): string | null {
+  return CUSTOM_MODEL.exec(model.trim())?.[1] ?? null;
+}
+
+/**
+ * A model's id on AI Gateway's unified (compat) endpoint, `{provider}/{model}` (ADR 0203):
+ * `deepseek/deepseek-flash`, `google-ai-studio/gemini-2.5-flash`; a custom provider's model id is
+ * already in that form. Null for a provider the gateway does not know (jev, openai-compatible).
+ */
+export function gatewayModelId(provider: ProviderId, model: string): string | null {
+  if (provider === "custom") return customProviderSlug(model) ? model.trim() : null;
+  const slug = PROVIDER_INFO[provider].gatewaySlug;
+  return slug ? `${slug}/${model}` : null;
+}
 
 /** What a model can do. Unknown models must declare this before a role accepts them. */
 export interface ModelCapabilities {
@@ -489,6 +527,11 @@ export function capabilityProblems(
     return [`unknown provider "${ref.provider}"`];
   }
   if (!ref.model?.trim()) return ["no model given"];
+  if (ref.provider === "custom" && !customProviderSlug(ref.model)) {
+    return [
+      `an AI Gateway custom provider's model is written custom-<slug>/<model> (got "${ref.model}")`,
+    ];
+  }
   const caps = capabilitiesOf(ref);
   const name = `${PROVIDER_INFO[ref.provider].label} ${ref.model}`;
   if (!caps) {
@@ -707,6 +750,30 @@ export const ROLE_PRESETS: Record<string, RolePreset> = {
     },
   },
 };
+
+// ---- Review independence (ADR 0031, ADR 0203) ---------------------------------------------
+
+/**
+ * ADR 0031 wants the policy adjudicator (`review`) on a different model from the actor's (the
+ * `assistant`), so one model's blind spot is not both the change and its review. Not enforced:
+ * the `deepseek-flash` preset knowingly shares one model (ADR 0192). Settings → AI shows the
+ * message as a warning on the review role; saving is never blocked.
+ */
+export function reviewIndependence(
+  roles: Record<"review" | "assistant", { provider: ProviderId; model: string }>,
+): { ok: boolean; message?: string } {
+  const { review, assistant } = roles;
+  if (review.provider !== assistant.provider || review.model.trim() !== assistant.model.trim()) {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    message:
+      `The review role uses the same model as the assistant (${PROVIDER_INFO[review.provider].label} ` +
+      `${review.model}), so the policy adjudicator is not independent of the agent it reviews. ` +
+      "Choose a different model for one of them.",
+  };
+}
 
 /** Thrown when operator input for AI_MODEL_ROLES is not a usable deploy layer. */
 export class RoleLayerError extends Error {

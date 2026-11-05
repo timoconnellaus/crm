@@ -57,6 +57,7 @@ import { callOp } from "#/lib/operations";
 import { errorMessage } from "#/lib/query";
 import { useObjectInfo } from "#/lib/schema";
 import { useUsers } from "#/lib/users-adapter";
+import { useOptionalAssistant } from "../assistant/assistant-provider.tsx";
 import { openFilteredList } from "./list-href.ts";
 import { rowsToCsv, WidgetBody } from "./widget-renderers.tsx";
 
@@ -330,6 +331,7 @@ function WidgetCard({
   const client = useQueryClient();
   const navigate = useNavigate();
   const [showSql, setShowSql] = useState(false);
+  const assistant = useOptionalAssistant();
   const key = [
     "op",
     "widget.run",
@@ -427,8 +429,13 @@ function WidgetCard({
             )}
             <DropdownMenuItem
               onSelect={() => {
+                const prompt = assistantPrompt(dashboard, widget, values);
+                if (assistant) {
+                  assistant.ask({ prompt });
+                  return;
+                }
                 void navigator.clipboard
-                  ?.writeText(assistantPrompt(dashboard, widget, values))
+                  ?.writeText(prompt)
                   .then(() => toast.success("Prompt copied: paste it into your assistant"))
                   .catch(() => toast.error("Could not copy"));
               }}

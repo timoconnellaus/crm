@@ -169,3 +169,9 @@ never delete account-wide providers.
   inputs, and vars not declared in a manifest were always passed through.
 - `create-relationship-os` now bundles `@relationship-os/core/ai-roles` (pure data and functions), so it uses the same
   registry, presets and checks as the app.
+
+> Amended 2026-11-05 ([ADR 0203](0203-gateway-first-model-registry.md)): with a gateway, DeepSeek
+> is now called through the unified endpoint as `deepseek/deepseek-flash`
+> (`…/{gateway}/compat/chat/completions`), not the provider-native `…/{gateway}/deepseek` path;
+> the `thinking` body field is sent the same way. The review-independence trade-off above is now
+> shown as a non-blocking warning on the review role in Settings → AI (`reviewIndependence`).

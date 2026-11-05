@@ -119,6 +119,7 @@ const report = (partial: Partial<AutomationTestReport> = {}): AutomationTestRepo
   approvals: [],
   policyPreset: "balanced",
   ok: true,
+  stored: true,
   ...partial,
 });
 

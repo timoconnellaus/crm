@@ -13,6 +13,7 @@ import {
   PROVIDERS,
   ROLE_REQUIREMENTS,
   resolveRoles,
+  reviewIndependence,
 } from "../ai/roles.ts";
 import { ConfigError, OperationError, ValidationError } from "../errors.ts";
 import { defineOperation } from "../operation.ts";
@@ -66,6 +67,8 @@ const resolvedRoleSchema = z.object({
   }),
   ready: z.boolean(),
   notReadyReason: z.string().nullable(),
+  /** Non-blocking advice, e.g. the review role sharing the assistant's model (ADR 0031). */
+  warnings: z.array(z.string()),
 });
 
 const settingsOutput = z.object({
@@ -152,6 +155,7 @@ export const aiSettingsGet = defineOperation({
       };
     });
     const ready = new Map(providers.map((p) => [p.id, p]));
+    const independence = reviewIndependence(roles);
     const counts = await ctx.db
       .selectFrom("core_embedding")
       .select((eb) => eb.fn.countAll<number>().as("n"))
@@ -187,6 +191,7 @@ export const aiSettingsGet = defineOperation({
           },
           ready: Boolean(p?.ready),
           notReadyReason: p?.ready ? null : (p?.reason ?? "Not configured"),
+          warnings: role === "review" && independence.message ? [independence.message] : [],
         };
       }),
       providers,
@@ -373,13 +378,21 @@ const keyProviders = PROVIDERS.filter((p) => PROVIDER_INFO[p].needsKey) as [
 export const aiSetProviderKey = defineOperation({
   name: "ai.setProviderKey",
   description:
-    "Store a provider's API key (admins): as a Workers secret on ros-app and ros-runner through " +
-    "the Cloudflare API, or in AI Gateway (BYOK). The key goes straight to Cloudflare: it is " +
-    "never written to the database, the audit log or any response.",
+    "Store a provider's API key (admins): in AI Gateway (BYOK, the default when the deployment " +
+    "has a gateway) or as a Workers secret on ros-app and ros-runner, through the Cloudflare " +
+    "API. A custom provider's key is BYOK only, under `custom-<slug>`. The key goes straight to " +
+    "Cloudflare: it is never written to the database, the audit log or any response.",
   input: z.object({
     provider: z.enum(keyProviders),
     apiKey: z.string().trim().min(8).max(4096),
-    mode: z.enum(["secret", "byok"]).default("secret"),
+    /** Default: BYOK when the deployment has AI Gateway, else a Workers secret. */
+    mode: z.enum(["secret", "byok"]).optional(),
+    /** The custom provider's slug (`together` or `custom-together`); provider `custom` only. */
+    customProvider: z
+      .string()
+      .trim()
+      .regex(/^(custom-)?[a-z0-9][a-z0-9-]{0,62}$/, "Use the custom provider's slug")
+      .optional(),
   }),
   output: z.object({
     provider: z.string(),
@@ -398,16 +411,29 @@ export const aiSetProviderKey = defineOperation({
     targets: output.targets,
   }),
   async handler(input, ctx) {
-    if (!ctx.aiAdmin?.status().keyModes.includes(input.mode)) {
+    const modes = ctx.aiAdmin?.status().keyModes ?? [];
+    const custom = input.provider === "custom";
+    const mode = input.mode ?? (custom || modes.includes("byok") ? "byok" : "secret");
+    if (custom && (mode !== "byok" || !input.customProvider)) {
+      throw new ValidationError(
+        "A custom provider's key is stored in AI Gateway (BYOK): give the provider's slug",
+      );
+    }
+    if (!ctx.aiAdmin || !modes.includes(mode)) {
       throw new ConfigError(
-        input.mode === "byok"
+        mode === "byok"
           ? "BYOK needs CLOUDFLARE_ACCOUNT_ID, the CLOUDFLARE_API_TOKEN secret and AI_GATEWAY_ID (docs/deploying.md)"
           : "Storing keys needs CLOUDFLARE_ACCOUNT_ID and the CLOUDFLARE_API_TOKEN secret (docs/deploying.md)",
       );
     }
     let stored: Awaited<ReturnType<typeof ctx.aiAdmin.setProviderKey>>;
     try {
-      stored = await ctx.aiAdmin.setProviderKey(input.provider, input.apiKey, input.mode);
+      stored = await ctx.aiAdmin.setProviderKey(
+        input.provider,
+        input.apiKey,
+        mode,
+        input.customProvider,
+      );
     } catch (error) {
       throw new OperationError(
         "config",
@@ -415,13 +441,18 @@ export const aiSetProviderKey = defineOperation({
       );
     }
     const before = await loadAiSettings(ctx.db);
-    const byok = new Set(before.byok);
-    if (stored.stored === "byok") byok.add(input.provider);
-    else byok.delete(input.provider);
-    await saveSettings(ctx, { ...before, byok: [...byok] });
+    // A custom provider is always BYOK (it exists only in the gateway): nothing to record.
+    if (!custom) {
+      const byok = new Set(before.byok);
+      if (stored.stored === "byok") byok.add(input.provider);
+      else byok.delete(input.provider);
+      await saveSettings(ctx, { ...before, byok: [...byok] });
+    }
     ctx.recordChange({
       object: "ai_settings",
-      id: `key:${input.provider}`,
+      id: custom
+        ? `key:custom-${input.customProvider?.replace(/^custom-/, "")}`
+        : `key:${input.provider}`,
       action: "update",
       // Where the key lives, never the key.
       before: { keyStore: before.byok.includes(input.provider) ? "byok" : null },

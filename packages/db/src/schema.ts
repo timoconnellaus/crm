@@ -637,14 +637,32 @@ export interface CoreNotificationPreferenceTable {
   user_id: string;
   channels: ColumnType<string, string | undefined, string>;
   digest: ColumnType<number, number | undefined, number>;
+  /** Migration 0210 (ADR 0206): the in-app daily digest, on by default. */
+  digest_in_app: ColumnType<number, number | undefined, number>;
   updated_at: string;
 }
 
-/** Migration 0172: one external delivery (email / Slack), keyed for exactly-once sending. */
+/** Migration 0200: the in-app assistant's conversation list (ADR 0200). */
+export interface CoreAssistantConversationTable {
+  id: string;
+  user_id: string;
+  title: string;
+  context: string | null;
+  turns: ColumnType<number, number | undefined, number>;
+  preview: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: ColumnType<string | null, string | null | undefined, string | null>;
+}
+
+/**
+ * Migration 0172: one external delivery (email / Slack), keyed for exactly-once sending. Migration
+ * 0210 (ADR 0206) adds `inApp` for a daily digest that went to the app only.
+ */
 export interface CoreNotificationDeliveryTable {
   key: string;
   kind: "notification" | "escalation" | "digest" | "route";
-  channel: "email" | "slack";
+  channel: "email" | "slack" | "inApp";
   user_id: string | null;
   status: "sending" | "sent" | "pending" | "failed" | "skipped";
   detail: string | null;
@@ -772,6 +790,8 @@ export interface CorePendingActionTable {
   facet_key: Defaulted<string | null>;
   gk_action: Defaulted<number | null>;
   action_kind: Defaulted<string | null>;
+  /** Migration 0205 (ADR 0204): why the gate routed it to review; null: never auto-approved. */
+  review_source: Defaulted<ReviewSource | null>;
 }
 
 export interface CorePendingActionRecordsTable {
@@ -1017,6 +1037,43 @@ export interface CoreSampleRecordsTable {
   created_at: Timestamp;
 }
 
+/** Why the gate routed a pending action to review (migration 0205, ADR 0204). */
+export type ReviewSource = "policy" | "floor" | "always" | "dependency";
+
+/** The written policy, one row per version (migration 0205, ADR 0204). */
+export interface CoreWrittenPolicyTable {
+  version: number;
+  text: string;
+  hash: string;
+  created_at: Timestamp;
+  created_by: string;
+}
+
+export type AdjudicationMode = "shadow" | "active";
+export type AdjudicationVerdict = "approve" | "deny" | "escalate";
+export type AdjudicationOutcome = "recorded" | "approved" | "apply_failed" | "escalated";
+
+/** One policy adjudicator verdict per pending action (migration 0205, ADR 0204). */
+export interface CoreAdjudicationTable {
+  id: string;
+  action_id: string;
+  judged_at: Timestamp;
+  mode: AdjudicationMode;
+  verdict: AdjudicationVerdict;
+  confidence: number;
+  reason: string;
+  outcome: AdjudicationOutcome;
+  acted: Defaulted<number>;
+  note: Defaulted<string | null>;
+  provider: Defaulted<string | null>;
+  model: Defaulted<string | null>;
+  policy_version: Defaulted<number | null>;
+  policy_hash: Defaulted<string | null>;
+  threshold: number;
+  error: Defaulted<JsonText | null>;
+  audit_id: string;
+}
+
 /** Cached `summarise` output (migration 0150, ADR 0153). */
 export interface CoreAiSummaryTable {
   kind: "record" | "meeting" | "activity" | "changeset";
@@ -1082,6 +1139,8 @@ export interface CoreDatabase {
   core_setup: CoreSetupTable;
   core_sample_records: CoreSampleRecordsTable;
   core_ai_summary: CoreAiSummaryTable;
+  core_written_policy: CoreWrittenPolicyTable;
+  core_adjudication: CoreAdjudicationTable;
   core_embedding: CoreEmbeddingTable;
   core_embedding_queue: CoreEmbeddingQueueTable;
   core_meta: CoreMetaTable;
@@ -1145,6 +1204,7 @@ export interface CoreDatabase {
   core_automation_outbox: CoreAutomationOutboxTable;
   core_notification_preference: CoreNotificationPreferenceTable;
   core_notification_delivery: CoreNotificationDeliveryTable;
+  core_assistant_conversation: CoreAssistantConversationTable;
   crm_stage_history: CrmStageHistoryView;
   crm_users: CrmUsersView;
   crm_people: CrmPeopleView;

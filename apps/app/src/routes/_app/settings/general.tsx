@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@relationship-os/ui/components/card";
+import { Input } from "@relationship-os/ui/components/input";
 import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,
@@ -124,8 +125,56 @@ function GeneralPage() {
           </CardContent>
         )}
       </Card>
+      <AssistantNameCard isAdmin={isAdmin} />
       {isAdmin && <SetupCard />}
     </PageLayout>
+  );
+}
+
+/** The in-app assistant's display name (ADR 0200). Never "Claude"; the default is "Assistant". */
+function AssistantNameCard({ isAdmin }: { isAdmin: boolean }) {
+  const settings = useOp("settings.get", {});
+  const update = useOpMutation("settings.update", { invalidates: ["settings."] });
+  const [name, setName] = useState<string | null>(null);
+  const current = settings.data?.assistantName ?? "Assistant";
+  const value = name ?? current;
+  async function onSave() {
+    try {
+      await update.mutateAsync({ assistantName: value.trim() });
+      toast.success(`The assistant is now called ${value.trim()}`);
+      setName(null);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle>Assistant</CardTitle>
+        <CardDescription>
+          The name the in-app assistant goes by (Cmd-J, /assistant). It answers with the model
+          chosen for the assistant role in Settings → AI.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-1.5">
+        <Label htmlFor="assistant-name">Name</Label>
+        <div className="flex flex-wrap gap-2">
+          <Input
+            id="assistant-name"
+            value={value}
+            maxLength={40}
+            onChange={(event) => setName(event.target.value)}
+            disabled={!isAdmin}
+            className="w-full sm:w-72"
+          />
+          {isAdmin && name !== null && name.trim() !== current && (
+            <Button onClick={onSave} disabled={!name.trim() || update.isPending}>
+              Save
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

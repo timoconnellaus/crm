@@ -131,7 +131,7 @@ Who initiated an operation: `human`, `assistant` (in-app AI), `mcp` (an external
 `automation`, `extension` (extension code through `codemode:crm`).
 
 **Approval pipeline**
-Gate → adjudicator → human queue, configured per org. It decides whether an operation applies
+Gate → policy adjudicator → human queue, configured per org. It decides whether an operation applies
 automatically, is denied, or waits.
 
 **Floor**
@@ -169,9 +169,30 @@ scopes they granted (`read`, `write`, `admin`). It is also the MCP session that 
 belong to. Users revoke their own in Settings → Connected apps; admins can revoke anyone's.
 _Avoid_: integration (that is a gatekeeper), token, client (when you mean the authorization)
 
-**Adjudicator**
-The optional AI reviewer that judges pending changes against the org's **written policy**. Its
-reviewer is the LLM (model role `review`) or Jev (placement `adjudicator.policy`, ADR 0230).
+**Policy adjudicator**
+The optional AI reviewer (model role `review`) that judges each pending action the gate routed to
+review against the org's **written policy**: `approve`, `deny` or `escalate`, with a confidence
+and a reason (ADR 0031, ADR 0204). Its mode is `off`, `shadow` or `active`. In active mode an
+`approve` at or above the confidence threshold is applied as the original actor and attributed to
+the adjudicator (`decided_by = adjudicator`); everything else, a `deny` included, stays for a
+person. It never approves what the **floor** or an always-reviewed operation (extension installs)
+routed to review, nor outbound, schema or extension changes. Its **verdicts** are shown to human
+approvers only, never to the actor, and every one is stored (`core_adjudication`) and audited
+(`adjudicator.verdict`). Its reviewer is asked through the **Judge** seam: the LLM (model role
+`review`) today, or Jev (placement `adjudicator.policy`) from stage 11 (ADR 0204, ADR 0230).
+_Avoid_: adjudicator alone in UI copy, AI approver
+
+**Shadow mode**
+The adjudicator's first mode once switched on: it judges and records verdicts, and approvers see
+them next to each item in the Approvals inbox, but it never acts. The **agreement rate** (how its
+approve and deny verdicts match people's decisions, with a verdict × decision confusion matrix, by
+day or week) shows whether to trust it. Only an admin switches it to active, and only from shadow.
+
+**Written policy**
+The org's plain-language rules the policy adjudicator judges by: what may be approved, what must be
+denied, what needs a person. Only human admins edit it (`adjudicator.setPolicy`, audited). Each
+save is a new version with a SHA-256 hash; every verdict records the version it used.
+_Avoid_: prompt, rules file
 
 **Extension**
 A unit of customisation written as code against the SDK contract (`defineObject`, `defineDashboard`,
@@ -343,8 +364,17 @@ _Avoid_: alert, message (when you mean the stored notification)
 
 **Notification preference**
 A person's choice, per notification type, of whether a notice also reaches them by email or Slack
-DM (in-app is always on), and whether they get a daily email digest of unread notices and pending
-approvals.
+DM (in-app is always on), and whether they get the daily digest in the app (on by default) and by
+email (off by default).
+
+**Daily digest**
+Once a day, from the admin's digest hour in the automation timezone, one summary per person:
+changes others (including the assistant and automations) made to records they own or are assigned
+in the last 24 hours, their tasks due today or overdue, the approvals waiting (for people who can
+approve) and their unread notices. It arrives as an in-app `digest` notification when there is
+news, and by email when they asked for it, at most once a day, optionally opening with a labelled
+AI overview (ADR 0206). Activities are never part of it.
+_Avoid_: daily summary, newsletter
 
 **Channel route**
 An admin rule that posts a short message with a link to a Slack channel when a record of an object
@@ -419,6 +449,21 @@ _Avoid_: user (when you mean the caller of a request), session
 The deploy-time choice of how a Principal is resolved: `better-auth` (default) or
 `cloudflare-access`, selected by `IDENTITY_PROVIDER`. Implements `IdentityProvider`.
 
+**Assistant**
+The in-app AI, named "Assistant" by default and renamed in Settings → General (`assistantName`;
+never "Claude"). It answers with the `assistant` model role and acts as actor `assistant` for the
+signed-in person, as an MCP client of our own MCP server (the same tools, gate, change sets and
+simulation as an external client). Each conversation is a Durable Object
+(`AssistantConversation`, `asc_…`) holding its history (reasoning included, ADR 0201) and its
+running turn, which readers can resume; its id is the assistant's MCP session. It opens with
+Cmd-J on any page, at `/assistant`, from "Ask AI" on records and "Ask about N selected" on lists,
+and knows the page, record and selection (ADR 0030, ADR 0200).
+_Avoid_: Claude, chatbot, copilot
+
+**Conversation**
+One thread with the Assistant: a Durable Object plus one `core_assistant_conversation` row for the
+person's list. A **turn** is one message and everything the Assistant did to answer it.
+
 **Model role**
 A named AI job (`build`, `assistant`, `summarise`, `extract`, `classify`, `embed`, `vision`, `review`)
 mapped to a provider + model in the model registry. Code asks for a role, never a model.
@@ -430,16 +475,21 @@ Workers AI), deploy config (`AI_MODEL_ROLES`) and admin overrides (Settings → 
 `core_settings`, settings only). Each role declares the capabilities it needs (tool use, JSON
 output, context size, vision, embeddings); the registry rejects a model that lacks one. "JSON
 output" is met by JSON mode (`json_object`) or a JSON schema; no role sends a schema yet
-(ADR 0192). Calls run through the AI SDK and AI Gateway (ADR 0150). Provider keys are Workers
-secrets or AI Gateway BYOK, never D1 (ADR 0151).
+(ADR 0192). Calls run through the AI SDK and AI Gateway: Workers AI over the binding, other
+providers through the unified endpoint as `provider/model`, custom providers as
+`custom-<slug>/<model>` (ADR 0150, ADR 0203). Provider keys are AI Gateway BYOK or Workers
+secrets, never D1 (ADR 0151).
 _Avoid_: model config, LLM settings
 
 **Judge**
-The seam (`packages/core/src/judge/`) that asks typed questions about one piece of evidence and gets
-answers with probabilities: Choice (one label from a closed set), Noul (yes/no) and Score (an
-ordered scale). Code holds every threshold and decides what follows; an answer is a judgement,
-never permission. It sits beside the model role registry and is not a model role. Its one provider
-is **Jev**. Off when the deployment has no Jev key, and then nothing changes (ADR 0230).
+The seam that asks typed questions about one piece of evidence and gets answers with
+probabilities, or "unavailable": Choice (one label from a closed set), Noul (yes / no / unknown)
+and, from stage 11, Score (an ordered scale). Code holds every threshold and decides what follows;
+an answer is a judgement, never permission, and an unavailable judge fails closed (the adjudicator
+escalates to a person). Stage 7b built it for the adjudicator (`packages/core/src/adjudicator/judges.ts`,
+ADR 0204) with one implementation, the LLM judge over the `review` role. Stage 11 adds **Jev** as
+its provider (and may move it to `packages/core/src/judge/`); Jev is off when the deployment has
+no Jev key, and then nothing changes (ADR 0230).
 _Avoid_: reviewer (that is the adjudicator's), classifier, the `review` role
 
 **Jev**

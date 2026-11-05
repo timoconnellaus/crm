@@ -133,3 +133,9 @@ All pages read 2026-11-05.
 > a fixture provider. An account that already has `custom-together` keeps it. `--provider-key`
 > also records built-in providers in a new `AI_GATEWAY_BYOK` var, so the model registry knows
 > the gateway holds their key, and `--model-roles` sets a deployment's `AI_MODEL_ROLES`.
+
+> Amended 2026-11-05 ([ADR 0203](0203-gateway-first-model-registry.md)): **stage 7b chose the
+> unified endpoint.** The registry calls third-party chat through
+> `…/{gateway}/compat/chat/completions` with `provider/model` ids, and a role names a custom
+> provider as `{ provider: "custom", model: "custom-<slug>/<model>" }`. Settings → AI's key form
+> now uses `setGatewayProviderKey`, including for custom providers (`custom-<slug>`).

@@ -31,11 +31,19 @@ import {
 } from "../automations/summary.ts";
 import {
   AUTOMATION_SETTINGS,
+  type AutomationDraftTarget,
   type AutomationHost,
+  DRAFT_TARGET_ERRORS,
   MAX_CASCADE_DEPTH,
   type RunStatus,
 } from "../automations/types.ts";
-import { ConfigError, NotFoundError, OperationError, ValidationError } from "../errors.ts";
+import {
+  ConfigError,
+  ForbiddenError,
+  NotFoundError,
+  OperationError,
+  ValidationError,
+} from "../errors.ts";
 import { refreshSchemaRegistry } from "../extensions/schema.ts";
 import { getObject } from "../fields/index.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
@@ -338,33 +346,86 @@ export const automationTest = defineOperation({
     "runs as it would for real, through the approval policy, but writes are simulated (later " +
     "steps see them) and waits are skipped and shown. Reports whether the trigger and conditions " +
     "match the record, each step, the records it would create or change, the notifications it " +
-    "would send and the changes that would need approval. Use it after writing an automation.",
+    "would send and the changes that would need approval. Pass `id` for an installed " +
+    "automation. Use it after writing an automation: after extension.propose, test the proposed " +
+    "automation with proposal { actionId, key } and show the result before the proposal is " +
+    "approved (actionId: the pending action extension.propose returned; key: the automation's " +
+    "name in the extension's automations). A proposal can be tested only while it is pending.",
   input: S["automation.test"].input,
   output: S["automation.test"].output,
   permission: "records:read",
   risk: "read",
   mcp: { curated: true, title: "Test automation" },
   async handler(input, ctx) {
-    // An unknown id (e.g. an automation whose extension is still waiting for approval) is a
-    // typed not_found here, before ros-runner is asked, not an internal error from the runner.
-    await loadAutomation(ctx.db, input.id).catch((error: unknown) => {
-      if (!(error instanceof NotFoundError)) throw error;
-      throw new OperationError(
-        "not_found",
-        `No installed automation with id ${input.id}. An automation exists only once its ` +
-          "extension is installed (after its proposal is approved); automation.list shows " +
-          "the installed ones and their ids.",
-        { object: "automation", id: input.id },
-      );
-    });
-    const report = await host(ctx).testAutomation({
-      automationId: input.id,
-      ...(input.record ? { record: input.record } : {}),
-      userId: ctx.user.id,
-    });
+    const record = input.record ? { record: input.record } : {};
+    if (!input.proposal) {
+      // An unknown id (e.g. an automation whose extension is still waiting for approval) is a
+      // typed not_found here, before ros-runner is asked, not an internal error from the runner.
+      // A proposed automation is tested with `proposal` instead.
+      await loadAutomation(ctx.db, input.id as string).catch((error: unknown) => {
+        if (!(error instanceof NotFoundError)) throw error;
+        throw new OperationError(
+          "not_found",
+          `No installed automation with id ${input.id}. An automation exists only once its ` +
+            "extension is installed (after its proposal is approved); automation.list shows " +
+            "the installed ones and their ids. To test a proposed one, pass proposal " +
+            "{ actionId, key } instead of id.",
+          { object: "automation", id: input.id },
+        );
+      });
+      const report = await host(ctx).testAutomation({
+        automationId: input.id as string,
+        ...record,
+        userId: ctx.user.id,
+      });
+      return { report };
+    }
+    const draft = await proposedAutomation(ctx, input.proposal);
+    const report = await host(ctx).testAutomation({ draft, ...record, userId: ctx.user.id });
+    if (!report.ok && report.error && DRAFT_TARGET_ERRORS.includes(report.error.code)) {
+      throw new ValidationError(report.error.message, {
+        code: report.error.code,
+        actionId: input.proposal.actionId,
+        extensionId: draft.extensionId,
+        key: draft.key,
+      });
+    }
     return { report };
   },
 });
+
+/**
+ * The proposed automation behind an extension.apply pending action (ADR 0133, stage 7b): only
+ * while it is pending, and visible as the proposal is (approval.get: people see every proposal,
+ * other actors only their own).
+ */
+async function proposedAutomation(
+  ctx: HandlerContext,
+  proposal: { actionId: string; key: string },
+): Promise<AutomationDraftTarget> {
+  const row = await ctx.db
+    .selectFrom("core_extension_proposals as p")
+    .innerJoin("core_pending_action as a", "a.id", "p.action_id")
+    .select(["p.extension_id", "p.commit_oid", "a.status", "a.user_id", "a.expires_at"])
+    .where("p.action_id", "=", proposal.actionId)
+    .where("a.operation", "=", "extension.apply")
+    .executeTakeFirst();
+  if (!row) throw new NotFoundError("extension proposal", proposal.actionId);
+  if (ctx.actor !== "human" && row.user_id !== ctx.user.id) {
+    throw new ForbiddenError("That proposal belongs to another user");
+  }
+  const status = row.status === "pending" && row.expires_at <= ctx.now ? "expired" : row.status;
+  if (status !== "pending") {
+    throw new ValidationError(
+      `Proposal ${proposal.actionId} is ${status}, so it cannot be tested as a proposal` +
+        (status === "applied"
+          ? ` (it is installed: test it with id ${row.extension_id}.${proposal.key})`
+          : " (propose the extension again to test it)"),
+      { actionId: proposal.actionId, status },
+    );
+  }
+  return { extensionId: row.extension_id, commit: row.commit_oid, key: proposal.key };
+}
 
 function statusOperation(name: "automation.enable" | "automation.disable") {
   const enable = name === "automation.enable";

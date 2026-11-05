@@ -1,7 +1,7 @@
 // Recording a pending action (ADR 0022). When the gate says `review`, the pipeline dry-runs the
 // handler (its writes are discarded), turns the result into a diff preview and simulated records,
 // finds the earlier pending actions it depends on, and queues it in the session's change set.
-import type { CrmDb } from "@relationship-os/db";
+import type { CrmDb, ReviewSource } from "@relationship-os/db";
 import type { Compilable } from "kysely";
 import { diffRecords, type FieldDiff } from "../diff.ts";
 import { ConflictError, NotFoundError, type PendingApproval, ValidationError } from "../errors.ts";
@@ -44,6 +44,8 @@ export interface QueueRequest {
   expiryDays?: number | undefined;
   overlay: Overlay;
   dryRun: () => Promise<DryRunResult>;
+  /** Why the gate routed it to review (ADR 0204): what the policy adjudicator may approve. */
+  reviewSource?: ReviewSource | undefined;
 }
 
 export interface QueuedAction {
@@ -412,6 +414,7 @@ export async function prepareQueuedAction(req: QueueRequest): Promise<QueuedActi
       }),
       provisional: JSON.stringify(provisional),
       depends_on: JSON.stringify(dependsOn),
+      review_source: req.reviewSource ?? null,
       status: "pending",
       created_at: req.now,
       expires_at: expiresAt,

@@ -5,10 +5,27 @@
 // or written to D1. The Workers secret API creates a new Worker version with the secret, so a key
 // takes effect on the next request served by that version (within seconds).
 //   Workers secrets: PUT /accounts/{account}/workers/scripts/{script}/secrets  (Workers Scripts Write)
-//   AI Gateway BYOK: POST /accounts/{account}/ai-gateway/gateways/{gateway}/provider_configs
+//   AI Gateway BYOK: CloudflareClient.setGatewayProviderKey (ADR 0180, ADR 0203): the gateway's
+//                    Secrets Store, then DELETE + POST …/gateways/{gateway}/provider_configs
 //                    (AI Gateway Edit + Secrets Store Write)
 //   Usage:           GET  /accounts/{account}/ai-gateway/gateways/{gateway}/logs  (AI Gateway Read)
+import { CloudflareClient } from "@relationship-os/release";
 import { isModelRole, type ModelRole, PROVIDER_INFO, type ProviderId } from "./roles.ts";
+
+/**
+ * The AI Gateway provider slug a provider's BYOK key is stored under: the built-in slug
+ * (`deepseek`, `google-ai-studio`, …) or `custom-<slug>` for a custom provider (ADR 0180).
+ */
+export function gatewayKeySlug(provider: ProviderId, customSlug?: string): string | null {
+  if (provider === "custom") {
+    const slug = customSlug
+      ?.trim()
+      .toLowerCase()
+      .replace(/^custom-/, "");
+    return slug && /^[a-z0-9][a-z0-9-]{0,62}$/.test(slug) ? `custom-${slug}` : null;
+  }
+  return PROVIDER_INFO[provider].gatewaySlug ?? null;
+}
 
 export interface AiAdminEnv {
   CLOUDFLARE_ACCOUNT_ID?: string;
@@ -57,10 +74,12 @@ export interface UsageReport {
 
 export interface AiAdmin {
   status(): AiAdminStatus;
+  /** `customSlug` names the custom provider (`together` or `custom-together`) for `custom`. */
   setProviderKey(
     provider: ProviderId,
     key: string,
     mode: KeyMode,
+    customSlug?: string,
   ): Promise<{ stored: KeyMode; targets: string[] }>;
   deleteProviderKey(provider: ProviderId, mode: KeyMode): Promise<void>;
   usage(days: number): Promise<UsageReport>;
@@ -140,22 +159,33 @@ export function cloudflareAiAdmin(
 
   return {
     status,
-    async setProviderKey(provider, key, mode) {
+    async setProviderKey(provider, key, mode, customSlug) {
       const info = PROVIDER_INFO[provider];
-      if (!info.needsKey || !info.secretName) {
-        throw new AiAdminError(`${info.label} does not take a key`);
-      }
+      if (!info.needsKey) throw new AiAdminError(`${info.label} does not take a key`);
       if (mode === "byok") {
-        if (!gateway || !info.gatewaySlug) {
-          throw new AiAdminError("BYOK needs AI_GATEWAY_ID and a provider AI Gateway supports");
+        const slug = gatewayKeySlug(provider, customSlug);
+        if (!gateway || !slug) {
+          throw new AiAdminError(
+            provider === "custom"
+              ? "A custom provider's key needs AI_GATEWAY_ID and the provider's slug"
+              : "BYOK needs AI_GATEWAY_ID and a provider AI Gateway supports",
+          );
         }
-        await call("POST", `/ai-gateway/gateways/${gateway}/provider_configs`, {
-          alias: "default",
-          default_config: true,
-          provider_slug: info.gatewaySlug,
-          secret: key,
-        });
-        return { stored: "byok", targets: [`AI Gateway ${gateway}`] };
+        if (!account || !token) throw new AiAdminError("The Cloudflare API is not configured");
+        // ADR 0180's path, shared with `create-relationship-os --provider-key`: attaches (or
+        // creates) the gateway's Secrets Store, replaces any key stored for the provider, and
+        // stores this one under the `default` alias. The key is only ever in the request body.
+        const client = new CloudflareClient({ token, apiBase: API, fetch: doFetch });
+        try {
+          await client.setGatewayProviderKey(account, gateway, slug, key);
+        } catch (error) {
+          // CloudflareApiError messages carry the API's errors, never the request body.
+          throw new AiAdminError(error instanceof Error ? error.message : String(error));
+        }
+        return { stored: "byok", targets: [`AI Gateway ${gateway} (${slug})`] };
+      }
+      if (!info.secretName) {
+        throw new AiAdminError(`${info.label} keys are stored in AI Gateway (BYOK) only`);
       }
       for (const script of scripts) {
         await call("PUT", `/workers/scripts/${script}/secrets`, {

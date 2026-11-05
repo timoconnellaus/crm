@@ -248,7 +248,8 @@ How stage 5 runs automations ([ADR 0130](adr/0130-automation-runtime.md), test m
   Workflow waits for the decision (approval resumes, rejection follows `onRejected`, expiry ends
   the run `expired`).
 - **Test mode.** One executor call with `InvocationContext.simulate`: gates recorded, writes
-  dry-run into an in-memory overlay, nothing written, no events.
+  dry-run into an in-memory overlay, nothing written, no events. A proposed automation is tested
+  at its proposed commit with `proposal { actionId, key }` (stage 7b; report not stored).
 - **Operations.** `automation.list/get/test/enable/disable/runs/run/retry/replay/cancel/explain/
   killSwitch/settings/updateSettings` (`packages/core/src/operations/automation.ts`); ros-app
   reaches the runner's `AutomationHost` RPC for test, run, retry, replay and cancel.
@@ -293,7 +294,9 @@ Stage 6a ([ADR 0110](adr/0110-integration-host-per-connection.md) to
 - **Notification delivery** ([ADR 0172](adr/0172-notification-delivery.md)): ros-runner's minute
   cron reads new `core_notifications` rows behind a 30 s lag through a keyset cursor and sends each
   to the email/Slack channels its recipient chose, escalates unread approval notices and sends the
-  daily digest. Every send is claimed in `core_notification_delivery` first and goes through the
+  daily digest ([ADR 0206](adr/0206-daily-digest.md)): changes others made to my records (read once
+  a tick through `core_audit_at_idx`), tasks due, approvals waiting and unread notices, as an
+  in-app `digest` notification (on by default) and by email when asked for. Every send is claimed in `core_notification_delivery` first and goes through the
   integration host as a system outbound action on the admin-chosen org email-send / Slack
   connection, gated like any outbound action. The automation consumer also posts admin channel
   routes for record events, once per event, route and record.
@@ -311,7 +314,8 @@ Configurable per org ([ADR 0011](adr/0011-approval-pipeline.md)):
 Only human admins can change the policy. Every decision is audited.
 
 The human queue is built (stage 2, [ADR 0022](adr/0022-approval-queue-and-simulation.md),
-[ADR 0032](adr/0032-mcp-sessions-and-approval-mechanics.md)); the adjudicator comes in stage 7.
+[ADR 0032](adr/0032-mcp-sessions-and-approval-mechanics.md)); the policy adjudicator in stage 7b
+([ADR 0204](adr/0204-policy-adjudicator.md)), described at the end of this section.
 A `review` decision dry-runs the operation and records a **pending action** (diff preview,
 simulated result, dependencies, the agent's reason) in a **change set**, then returns
 `pending_approval`. The originating MCP session's reads (`get`, `list`, `search.global`,
@@ -324,6 +328,28 @@ People review in the **Approvals inbox** (`/approvals`: change sets with readabl
 reject whole or per item), with a count in the sidebar and **pending-change badges** on record
 headers and list rows (`approval.pendingForRecord`). An erase also scrubs pending actions that
 mention the erased record (ADR 0032 amendment).
+
+**Policy adjudicator** (stage 7b, [ADR 0031](adr/0031-policy-adjudicator.md),
+[ADR 0204](adr/0204-policy-adjudicator.md)). Admins set its mode (`off` / `shadow` / `active`,
+core_settings `adjudicator`), a confidence threshold and the **written policy**
+(`core_written_policy`, versioned and hashed) under Settings → Policy adjudicator, all through
+human-only `adjudicator.*` operations. The pipeline records on each pending action *why* it went to
+review (`review_source`: the preset, the floor, `alwaysReview`, or a pending dependency) and, after
+the review batch commits, calls the context's `onQueued` hook; ros-app's runs the adjudicator in
+the background (`waitUntil`), so the caller gets `pending_approval` exactly as before, and the
+10-minute cron sweeps up anything missed (ros-runner's queued actions included). With the mode off
+that is one settings read and no writes. The adjudicator asks the `review` role in JSON mode, with
+the policy and instructions as the system message and the change as fenced, escaped data
+(`judgePendingItem`), validates the reply with zod (one repair round; invalid, empty or cut off →
+`escalate`, confidence 0), and stores one verdict per action in `core_adjudication` with an
+`adjudicator.verdict` audit row. In shadow mode that is all. In active mode a valid `approve` at or
+above the threshold, for an action the preset (or a dependency) routed to review, whose risk is not
+outbound, schema or extension and whose dependencies are applied, is applied through the approval
+machinery as the original actor with `decided_by = adjudicator`; every other verdict, `deny`
+included, stays pending for a person with the reason shown. Verdicts appear beside each item in the
+Approvals inbox for people who may approve, and never in what `approval.*` or `audit.list` return
+to the assistant, MCP clients, automations or extensions. `adjudicator.agreement` (Settings) reports
+the agreement rate against people's decisions.
 
 ### MCP
 
@@ -364,8 +390,10 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
  operation ── ctx.models.run("summarise", …) ──► registry: shipped (Workers AI) → AI_MODEL_ROLES → Settings → AI
                                                     │ capability check (tools, JSON, context, vision, embeddings)
                                                     ▼
-                                AI SDK ── workers-ai-provider (AI binding) ─┐
-                                       └─ @ai-sdk/openai-compatible ────────┴─► AI Gateway (cf-aig-metadata: role) ─► provider
+                                AI SDK ── workers-ai-provider ── AI binding, gateway: { id, metadata: { role } } ──► AI Gateway ─► Workers AI
+                                       └─ @ai-sdk/openai-compatible ── …/{gateway}/compat, model "provider/model" ─► AI Gateway ─► provider
+                                            (cf-aig-metadata: role, cf-aig-authorization; BYOK: no Authorization)
+                                          no gateway (--ai-gateway off): binding without the option; provider's own URL
 ```
 
 - **The registry** resolves each role through shipped defaults (every role on Workers AI),
@@ -375,22 +403,30 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   summaries. Every call goes through AI Gateway when `AI_GATEWAY_ID` is set, tagged with its role;
   the installer and the updater create a gateway per deployment and set it
   ([ADR 0180](adr/0180-ai-gateway-provisioned-per-deployment.md)).
-- **Providers**: Workers AI (the binding) and, optionally, OpenAI, Google AI Studio, OpenRouter,
-  DeepSeek, Anthropic and any OpenAI-compatible endpoint, each through the gateway's
-  provider path (`…/{gateway}/deepseek/…`). A deployment can pick a **model role preset**
+- **Providers** (gateway-first, [ADR 0203](adr/0203-gateway-first-model-registry.md)):
+  Workers AI (the binding, with its `gateway` option) and, optionally, OpenAI, Google AI Studio,
+  OpenRouter, DeepSeek, Anthropic and AI Gateway **custom providers**, called through the
+  gateway's unified endpoint (`…/{gateway}/compat`) with `provider/model` ids
+  (`deepseek/deepseek-flash`, `custom-<slug>/<model>`). Embeddings use the provider-native path.
+  Jev and other OpenAI-compatible endpoints are called directly. With no gateway every provider
+  is called at its own URL. A deployment can pick a **model role preset**
   (`create-relationship-os --model-roles deepseek-flash`), stored as its `AI_MODEL_ROLES` in the deployment
   state, and `AI_GATEWAY_BYOK` says which providers' keys the gateway holds
   ([ADR 0192](adr/0192-deepseek-provider-and-model-role-presets.md)). The shipped defaults stay
   on Workers AI.
 - **Settings → AI** (`ai.*` operations, admins): per role provider, model, fallback, capability
-  badges and a Test button; provider keys stored as Workers secrets through the Cloudflare API or
-  as AI Gateway BYOK, **never in D1** ([ADR 0151](adr/0151-provider-keys-as-workers-secrets-or-byok.md));
+  badges, a Test button and a warning when `review` shares the assistant's model (ADR 0031);
+  provider keys stored as AI Gateway BYOK (the default with a gateway, through
+  `CloudflareClient.setGatewayProviderKey`) or as Workers secrets, **never in D1** ([ADR 0151](adr/0151-provider-keys-as-workers-secrets-or-byok.md));
   usage and spend per role from AI Gateway's logs, cached 10 minutes
   ([ADR 0152](adr/0152-usage-and-spend-per-role.md)).
 - **Summaries** (`summary.*`, [ADR 0153](adr/0153-ai-summaries.md)): record summaries (people,
   organisations, deals), meeting prep, one-liners for long emails and notes, and change-set
   summaries for approvers. Cached in `core_ai_summary` by a SHA-256 of their facts and the model,
-  so any change makes them stale; generated only on request; labelled AI-generated.
+  so any change makes them stale; generated only on request; labelled AI-generated. The daily
+  digest ([ADR 0206](adr/0206-daily-digest.md)) opens with a one or two sentence AI overview (one
+  `summarise` call per digest, in ros-runner's cron, labelled AI-generated; the plain digest
+  without AI or on any error).
 - **Semantic search** ([ADR 0154](adr/0154-embeddings-queue-and-vectorize.md),
   [ADR 0155](adr/0155-hybrid-search-similar-records-and-retrieval.md)):
 
@@ -410,8 +446,29 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   `pnpm run deploy` adds `ai` (both Workers) and `vectorize` (ros-app). Without them AI features
   say AI is not configured and search is full-text only. Locally `AI_FAKE_MODEL=true` answers
   every role with deterministic stand-ins and keeps vectors in memory.
-- **Stage 7b** adds the in-app assistant (`assistant` role, retrieval through `search.hybrid` /
-  `retrieve`), the policy adjudicator (`review` role) and the daily digest.
+- **The in-app assistant** ([ADR 0030](adr/0030-in-app-assistant.md),
+  [ADR 0200](adr/0200-in-app-assistant-build.md), [ADR 0201](adr/0201-assistant-reasoning-content.md)):
+
+```
+ Cmd-J panel · /assistant · Ask AI · Ask about N selected ─ POST /api/assistant/turn (SSE) ─┐
+   (page, record, selection)                     GET …/conversations/:id[/stream?after=N] │
+                                                                                          ▼
+ ros-app: AssistantConversation DO (one per conversation, SQLite: messages, turns; no alarms)
+   └─ turn: chatModels("assistant") ─► AI SDK streamText loop ─► tools = MCP client ──► createCrmMcpServer
+        (primary, then fallback)        (≤16 steps)              (in-process transport)  (actor assistant,
+                                                                                          session = asc_…)
+                                                     ─► pipeline: gate · change set · simulation · audit
+```
+
+  The assistant is an MCP client of the same server `/mcp` builds per request, connected in
+  process, so its tools, descriptions and results are an external client's. It acts as actor
+  `assistant` for the signed-in person (role, no scopes) with origin `{ surface: "assistant",
+  sessionId: <conversation> }`; its pending actions group in that session's change set and are
+  shown inline with Approve / Reject. The conversation object stores the AI SDK's model messages
+  with their reasoning (DeepSeek's thinking mode needs `reasoning_content` replayed) and streams
+  each turn's events to any number of readers, who resume with `?after=<seq>`. D1 holds only the
+  conversation list (`core_assistant_conversation`, one write per turn through
+  `assistant.finishTurn`). `EVAL_VIA=assistant` runs the stage 2–5 eval sets through it.
 
 - **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
   [`docs/jev.md`](jev.md); stage 11, proposed): a seam beside the registry, not a model role.

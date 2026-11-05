@@ -19,22 +19,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@relationship-os/ui/components/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@relationship-os/ui/components/tooltip";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-  EllipsisIcon,
-  PlusIcon,
-  RotateCcwIcon,
-  SparklesIcon,
-  Trash2Icon,
-  UserXIcon,
-} from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UserXIcon } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { SimilarRecordsCard } from "#/components/ai/similar-records";
 import { RecordSummaryCard } from "#/components/ai/summary";
 import { useAppCommands } from "#/components/app-commands";
 import { PendingChangesBadge } from "#/components/approvals/pending-badge";
+import { AskAiButton } from "#/components/assistant/ask-buttons";
 import {
   ManualAutomationButtons,
   RecordAutomationsCard,
@@ -219,11 +212,7 @@ function PersonRecord({
         actions={
           <>
             {!deleted && <ManualAutomationButtons object="person" id={person.id} />}
-            <DisabledAction
-              label="Ask AI"
-              icon={<SparklesIcon />}
-              reason="The AI assistant arrives in a later stage."
-            />
+            <AskAiButton record={{ object: "person", id: person.id, label: person.displayName }} />
             {addTask && (
               <Button variant="outline" size="sm" onClick={addTask} aria-keyshortcuts="c">
                 <PlusIcon />
@@ -349,37 +338,6 @@ function PersonRecord({
         onOpenChange={(open) => !open && setEnding(null)}
       />
     </>
-  );
-}
-
-/** A header action that is not available yet: disabled, with the reason in a tooltip. */
-function DisabledAction({
-  label,
-  icon,
-  reason,
-}: {
-  label: string;
-  icon: ReactNode;
-  reason: string;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        {/* aria-disabled rather than disabled, so it stays focusable and the tooltip shows. */}
-        <Button
-          variant="outline"
-          size="sm"
-          aria-disabled="true"
-          aria-description={reason}
-          className="cursor-not-allowed opacity-50"
-          onClick={(event) => event.preventDefault()}
-        >
-          {icon}
-          {label}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{reason}</TooltipContent>
-    </Tooltip>
   );
 }
 

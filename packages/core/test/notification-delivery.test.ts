@@ -510,8 +510,21 @@ describe("the daily digest", () => {
       },
     });
     const date = now().toISOString().slice(0, 10);
-    // The member asked for a digest; the admin did not; the viewer has nothing unread to see.
-    expect(report.digests).toEqual([{ key: `digest:${date}:${member.id}`, status: "sent" }]);
+    // The member asked for the email digest (and gets it in-app too, by default); the admin did
+    // not, so gets it in-app only (approvals waiting); the viewer has nothing to report.
+    const byKey = new Map(report.digests.map((d) => [d.key, d]));
+    expect(byKey.get(`digest:${date}:${member.id}`)).toEqual({
+      key: `digest:${date}:${member.id}`,
+      status: "sent",
+      detail: "in-app",
+    });
+    expect(await ledger(`digest:${date}:${member.id}`)).toMatchObject({ channel: "email" });
+    expect(await ledger(`digest:${date}:${admin.id}`)).toMatchObject({
+      channel: "inApp",
+      status: "sent",
+    });
+    expect(byKey.has(`digest:${date}:${viewer.id}`)).toBe(false);
+    expect(inputs).toHaveLength(1);
     const input = inputs[0] as DigestInput;
     expect(input.items.map((i) => i.title)).toContain("Fresh for the digest");
     expect(input.items.map((i) => i.title)).not.toContain("Private board email");
@@ -542,8 +555,20 @@ describe("the daily digest", () => {
     day.setUTCHours(8, 0, 0, 0);
     clock = day.getTime();
     await notify(member.id, "Next day");
+    calls.length = 0;
     const report = await tick(advance(MINUTE));
-    expect(report.digests).toEqual([]);
+    const date = now().toISOString().slice(0, 10);
+    // Still in the app (on by default), no longer by email.
+    expect(report.digests).toContainEqual({
+      key: `digest:${date}:${member.id}`,
+      status: "sent",
+      detail: "in-app",
+    });
+    expect(await ledger(`digest:${date}:${member.id}`)).toMatchObject({ channel: "inApp" });
+    const digestEmails = calls.filter((c) =>
+      String((c.args[0] as { subject?: unknown }).subject ?? "").includes("Daily digest"),
+    );
+    expect(digestEmails).toEqual([]);
   });
 });
 
@@ -756,11 +781,12 @@ describe("cost", () => {
       appOrigin: null,
       callIntegration: fakeCall,
     });
-    expect(rowsRead).toBeLessThan(40);
+    // The new-notice pass also reads the in-app digests written since the last tick.
+    expect(rowsRead).toBeLessThan(50);
     expect(await scans()).toEqual([]);
   });
 
-  it("the digest reads its people and their last day through the partial and user indexes", async () => {
+  it("the digest reads its people and their last day through the primary key and user indexes", async () => {
     const day = new Date(clock);
     day.setUTCDate(day.getUTCDate() + 1);
     day.setUTCHours(9, 0, 0, 0);
@@ -774,7 +800,8 @@ describe("cost", () => {
       appOrigin: null,
       callIntegration: fakeCall,
     });
-    expect(report.digests.map((d) => d.status)).toEqual(["sent"]);
+    // The member by email and in-app, the admin in-app (approvals waiting).
+    expect(report.digests.map((d) => d.status)).toEqual(["sent", "sent"]);
     expect(rowsRead).toBeLessThan(600);
     expect(await scans()).toEqual([]);
   });

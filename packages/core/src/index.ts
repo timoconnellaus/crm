@@ -1,5 +1,9 @@
 // @relationship-os/core: the operations registry and everything an operation needs. See README.md.
 
+export * from "./adjudicator/agreement.ts";
+export * from "./adjudicator/judge.ts";
+export * from "./adjudicator/judges.ts";
+export * from "./adjudicator/run.ts";
 export * from "./ai/admin.ts";
 export * from "./ai/embedding.ts";
 export * from "./ai/hybrid.ts";
@@ -7,6 +11,11 @@ export * from "./ai/summaries.ts";
 export * from "./ai/vectors.ts";
 export { DEFAULT_APPROVAL_EXPIRY_DAYS, runSessionKey } from "./approvals/queue.ts";
 export { isSimulatedRead } from "./approvals/simulation.ts";
+export * from "./assistant/events.ts";
+export * from "./assistant/fake.ts";
+export * from "./assistant/history.ts";
+export * from "./assistant/loop.ts";
+export * from "./assistant/prompt.ts";
 export * from "./automations/bindings.ts";
 export * from "./automations/cron.ts";
 export * from "./automations/events.ts";
@@ -53,6 +62,7 @@ export * from "./models.ts";
 export * from "./notifications/channels.ts";
 export * from "./notifications/delivery.ts";
 export * from "./notifications/digest.ts";
+export * from "./notifications/digest-content.ts";
 export * from "./notifications/ledger.ts";
 export * from "./notifications/preferences.ts";
 export * from "./notifications/purge.ts";
@@ -61,9 +71,11 @@ export * from "./notifications/send.ts";
 export * from "./notifications/types.ts";
 export * from "./operation.ts";
 export * from "./operations/activity.ts";
+export * from "./operations/adjudicator.ts";
 export * from "./operations/affiliation.ts";
 export * from "./operations/ai.ts";
 export * from "./operations/approval.ts";
+export * from "./operations/assistant.ts";
 export * from "./operations/audit.ts";
 export * from "./operations/automation.ts";
 export * from "./operations/code.ts";
@@ -103,6 +115,7 @@ export {
   type InvocationContext,
   invokeOperation,
   operationObject,
+  type QueuedEvent,
   readCountHour,
   redactInput,
 } from "./pipeline.ts";

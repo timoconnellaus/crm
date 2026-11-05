@@ -9,3 +9,9 @@ Status: accepted, 2026-11-04 (stage 7 interview).
 
 ## Why
 One tool surface to design, test and evaluate. Anything the assistant can do, an external MCP client can do, and vice versa.
+
+> Amended 2026-11-05 ([ADR 0200](0200-in-app-assistant-build.md), [ADR 0201](0201-assistant-reasoning-content.md)):
+> built in stage 7b. The assistant is an MCP client of the same server `/mcp` builds, connected
+> in process rather than over HTTP; the conversation id is its MCP session; under Balanced it keeps
+> its own policy column (bulk writes up to 25 apply). Its history keeps reasoning content and
+> replays it, so DeepSeek's thinking mode works.

@@ -8,6 +8,7 @@ import {
   CreditCardIcon,
   DatabaseIcon,
   DownloadCloudIcon,
+  GavelIcon,
   LifeBuoyIcon,
   ListOrderedIcon,
   PlugIcon,
@@ -36,6 +37,7 @@ function Section({
   description: string;
   to?:
     | "/settings/approval-policy"
+    | "/settings/adjudicator"
     | "/settings/users"
     | "/settings/audit"
     | "/settings/connected-apps"
@@ -191,6 +193,14 @@ function SettingsPage() {
               title="Audit log"
               description="Every change, who made it and how."
               to="/settings/audit"
+            />
+          )}
+          {isAdmin && (
+            <Section
+              icon={<GavelIcon className="size-5" />}
+              title="Policy adjudicator"
+              description="An AI reviewer for changes waiting for approval: your written policy, shadow mode and its agreement rate."
+              to="/settings/adjudicator"
             />
           )}
           {isAdmin && (

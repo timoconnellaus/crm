@@ -114,3 +114,14 @@ object label, the record title and a link.
   with a fake transport, escalation, digest, routes, privacy, rows read and `EXPLAIN QUERY PLAN`)
   and `apps/runner/test/notification-delivery.test.ts` (the real email-send gatekeeper with a fake
   Email Service, the fake provider's Slack workspace, the deal-won route through the consumer).
+
+## Amendment, 2026-11-05 (stage 7b, [ADR 0206](0206-daily-digest.md))
+The digest pass (3) changed. Its content is now changes others made to the person's records,
+their tasks due today or overdue, approvals waiting and unread notices, with an optional labelled
+AI overview (one `summarise` call). It also arrives **in the app**, as a `digest` notification, on
+for everyone unless they turn it off (`digestInApp`), and only when there is news; the email copy
+keeps the `digest` preference. The pass walks every person by primary key (≤ 50 a tick), so it
+runs even with no channel configured; the `digest = 1` partial index is dropped. One ledger claim
+`digest:<date>:<userId>` covers both copies and the model call, with channel `inApp` when no email
+goes (migration 0210). "With no channel configured a tick reads one settings row" is now three
+(delivery settings, cron state, automation timezone) outside the digest window.

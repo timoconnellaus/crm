@@ -14,6 +14,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
+import { Route as AppAssistantRouteImport } from './routes/_app/assistant'
 import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppSetupRouteImport } from './routes/_app/setup'
@@ -33,6 +34,7 @@ import { Route as AppOrganisationsIdRouteImport } from './routes/_app/organisati
 import { Route as AppPeopleIndexRouteImport } from './routes/_app/people/index'
 import { Route as AppPeopleIdRouteImport } from './routes/_app/people/$id'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
+import { Route as AppSettingsAdjudicatorRouteImport } from './routes/_app/settings/adjudicator'
 import { Route as AppSettingsAiRouteImport } from './routes/_app/settings/ai'
 import { Route as AppSettingsApprovalPolicyRouteImport } from './routes/_app/settings/approval-policy'
 import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
@@ -49,9 +51,13 @@ import { Route as AppSettingsStorageRouteImport } from './routes/_app/settings/s
 import { Route as AppSettingsSupportAccessRouteImport } from './routes/_app/settings/support-access'
 import { Route as AppSettingsUpdatesRouteImport } from './routes/_app/settings/updates'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
+import { Route as ApiAssistantTurnRouteImport } from './routes/api/assistant/turn'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppXObjectIndexRouteImport } from './routes/_app/x/$object/index'
 import { Route as AppXObjectIdRouteImport } from './routes/_app/x/$object/$id'
+import { Route as ApiAssistantConversationsIdRouteImport } from './routes/api/assistant/conversations/$id'
+import { Route as ApiAssistantConversationsIdStopRouteImport } from './routes/api/assistant/conversations/$id.stop'
+import { Route as ApiAssistantConversationsIdStreamRouteImport } from './routes/api/assistant/conversations/$id.stream'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -75,6 +81,11 @@ const AppActivityRoute = AppActivityRouteImport.update({
 const AppApprovalsRoute = AppApprovalsRouteImport.update({
   id: '/approvals',
   path: '/approvals',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssistantRoute = AppAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
   getParentRoute: () => AppRoute,
 } as any)
 const AppImportRoute = AppImportRouteImport.update({
@@ -172,6 +183,11 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   path: '/settings/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsAdjudicatorRoute = AppSettingsAdjudicatorRouteImport.update({
+  id: '/settings/adjudicator',
+  path: '/settings/adjudicator',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsAiRoute = AppSettingsAiRouteImport.update({
   id: '/settings/ai',
   path: '/settings/ai',
@@ -258,6 +274,11 @@ const AppSettingsUsersRoute = AppSettingsUsersRouteImport.update({
   path: '/settings/users',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiAssistantTurnRoute = ApiAssistantTurnRouteImport.update({
+  id: '/api/assistant/turn',
+  path: '/api/assistant/turn',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -273,12 +294,31 @@ const AppXObjectIdRoute = AppXObjectIdRouteImport.update({
   path: '/x/$object/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiAssistantConversationsIdRoute =
+  ApiAssistantConversationsIdRouteImport.update({
+    id: '/api/assistant/conversations/$id',
+    path: '/api/assistant/conversations/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAssistantConversationsIdStopRoute =
+  ApiAssistantConversationsIdStopRouteImport.update({
+    id: '/stop',
+    path: '/stop',
+    getParentRoute: () => ApiAssistantConversationsIdRoute,
+  } as any)
+const ApiAssistantConversationsIdStreamRoute =
+  ApiAssistantConversationsIdStreamRouteImport.update({
+    id: '/stream',
+    path: '/stream',
+    getParentRoute: () => ApiAssistantConversationsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/sign-in': typeof SignInRoute
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
+  '/assistant': typeof AppAssistantRoute
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
   '/setup': typeof AppSetupRoute
@@ -293,6 +333,7 @@ export interface FileRoutesByFullPath {
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
+  '/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/settings/ai': typeof AppSettingsAiRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/settings/audit': typeof AppSettingsAuditRoute
@@ -309,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
+  '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/automations/': typeof AppAutomationsIndexRoute
   '/dashboards/': typeof AppDashboardsIndexRoute
@@ -316,12 +358,16 @@ export interface FileRoutesByFullPath {
   '/people/': typeof AppPeopleIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/x/$object/$id': typeof AppXObjectIdRoute
+  '/api/assistant/conversations/$id': typeof ApiAssistantConversationsIdRouteWithChildren
   '/x/$object/': typeof AppXObjectIndexRoute
+  '/api/assistant/conversations/$id/stop': typeof ApiAssistantConversationsIdStopRoute
+  '/api/assistant/conversations/$id/stream': typeof ApiAssistantConversationsIdStreamRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
+  '/assistant': typeof AppAssistantRoute
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
   '/setup': typeof AppSetupRoute
@@ -337,6 +383,7 @@ export interface FileRoutesByTo {
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
+  '/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/settings/ai': typeof AppSettingsAiRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/settings/audit': typeof AppSettingsAuditRoute
@@ -353,6 +400,7 @@ export interface FileRoutesByTo {
   '/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
+  '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/automations': typeof AppAutomationsIndexRoute
   '/dashboards': typeof AppDashboardsIndexRoute
@@ -360,7 +408,10 @@ export interface FileRoutesByTo {
   '/people': typeof AppPeopleIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/x/$object/$id': typeof AppXObjectIdRoute
+  '/api/assistant/conversations/$id': typeof ApiAssistantConversationsIdRouteWithChildren
   '/x/$object': typeof AppXObjectIndexRoute
+  '/api/assistant/conversations/$id/stop': typeof ApiAssistantConversationsIdStopRoute
+  '/api/assistant/conversations/$id/stream': typeof ApiAssistantConversationsIdStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -368,6 +419,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/_app/activity': typeof AppActivityRoute
   '/_app/approvals': typeof AppApprovalsRoute
+  '/_app/assistant': typeof AppAssistantRoute
   '/_app/import': typeof AppImportRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/setup': typeof AppSetupRoute
@@ -383,6 +435,7 @@ export interface FileRoutesById {
   '/_app/dashboards/$id': typeof AppDashboardsIdRoute
   '/_app/organisations/$id': typeof AppOrganisationsIdRoute
   '/_app/people/$id': typeof AppPeopleIdRoute
+  '/_app/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/_app/settings/ai': typeof AppSettingsAiRoute
   '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
   '/_app/settings/audit': typeof AppSettingsAuditRoute
@@ -399,6 +452,7 @@ export interface FileRoutesById {
   '/_app/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/_app/settings/updates': typeof AppSettingsUpdatesRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
+  '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/automations/': typeof AppAutomationsIndexRoute
   '/_app/dashboards/': typeof AppDashboardsIndexRoute
@@ -406,7 +460,10 @@ export interface FileRoutesById {
   '/_app/people/': typeof AppPeopleIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/x/$object/$id': typeof AppXObjectIdRoute
+  '/api/assistant/conversations/$id': typeof ApiAssistantConversationsIdRouteWithChildren
   '/_app/x/$object/': typeof AppXObjectIndexRoute
+  '/api/assistant/conversations/$id/stop': typeof ApiAssistantConversationsIdStopRoute
+  '/api/assistant/conversations/$id/stream': typeof ApiAssistantConversationsIdStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -415,6 +472,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/activity'
     | '/approvals'
+    | '/assistant'
     | '/import'
     | '/notifications'
     | '/setup'
@@ -429,6 +487,7 @@ export interface FileRouteTypes {
     | '/dashboards/$id'
     | '/organisations/$id'
     | '/people/$id'
+    | '/settings/adjudicator'
     | '/settings/ai'
     | '/settings/approval-policy'
     | '/settings/audit'
@@ -445,6 +504,7 @@ export interface FileRouteTypes {
     | '/settings/support-access'
     | '/settings/updates'
     | '/settings/users'
+    | '/api/assistant/turn'
     | '/api/auth/$'
     | '/automations/'
     | '/dashboards/'
@@ -452,12 +512,16 @@ export interface FileRouteTypes {
     | '/people/'
     | '/settings/'
     | '/x/$object/$id'
+    | '/api/assistant/conversations/$id'
     | '/x/$object/'
+    | '/api/assistant/conversations/$id/stop'
+    | '/api/assistant/conversations/$id/stream'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/sign-in'
     | '/activity'
     | '/approvals'
+    | '/assistant'
     | '/import'
     | '/notifications'
     | '/setup'
@@ -473,6 +537,7 @@ export interface FileRouteTypes {
     | '/dashboards/$id'
     | '/organisations/$id'
     | '/people/$id'
+    | '/settings/adjudicator'
     | '/settings/ai'
     | '/settings/approval-policy'
     | '/settings/audit'
@@ -489,6 +554,7 @@ export interface FileRouteTypes {
     | '/settings/support-access'
     | '/settings/updates'
     | '/settings/users'
+    | '/api/assistant/turn'
     | '/api/auth/$'
     | '/automations'
     | '/dashboards'
@@ -496,13 +562,17 @@ export interface FileRouteTypes {
     | '/people'
     | '/settings'
     | '/x/$object/$id'
+    | '/api/assistant/conversations/$id'
     | '/x/$object'
+    | '/api/assistant/conversations/$id/stop'
+    | '/api/assistant/conversations/$id/stream'
   id:
     | '__root__'
     | '/_app'
     | '/sign-in'
     | '/_app/activity'
     | '/_app/approvals'
+    | '/_app/assistant'
     | '/_app/import'
     | '/_app/notifications'
     | '/_app/setup'
@@ -518,6 +588,7 @@ export interface FileRouteTypes {
     | '/_app/dashboards/$id'
     | '/_app/organisations/$id'
     | '/_app/people/$id'
+    | '/_app/settings/adjudicator'
     | '/_app/settings/ai'
     | '/_app/settings/approval-policy'
     | '/_app/settings/audit'
@@ -534,6 +605,7 @@ export interface FileRouteTypes {
     | '/_app/settings/support-access'
     | '/_app/settings/updates'
     | '/_app/settings/users'
+    | '/api/assistant/turn'
     | '/api/auth/$'
     | '/_app/automations/'
     | '/_app/dashboards/'
@@ -541,7 +613,10 @@ export interface FileRouteTypes {
     | '/_app/people/'
     | '/_app/settings/'
     | '/_app/x/$object/$id'
+    | '/api/assistant/conversations/$id'
     | '/_app/x/$object/'
+    | '/api/assistant/conversations/$id/stop'
+    | '/api/assistant/conversations/$id/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -550,7 +625,9 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   ConnectHandoffRoute: typeof ConnectHandoffRoute
   GatekeeperSplatRoute: typeof GatekeeperSplatRoute
+  ApiAssistantTurnRoute: typeof ApiAssistantTurnRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiAssistantConversationsIdRoute: typeof ApiAssistantConversationsIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -588,6 +665,13 @@ declare module '@tanstack/react-router' {
       path: '/approvals'
       fullPath: '/approvals'
       preLoaderRoute: typeof AppApprovalsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/assistant': {
+      id: '/_app/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AppAssistantRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/import': {
@@ -723,6 +807,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/adjudicator': {
+      id: '/_app/settings/adjudicator'
+      path: '/settings/adjudicator'
+      fullPath: '/settings/adjudicator'
+      preLoaderRoute: typeof AppSettingsAdjudicatorRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/ai': {
       id: '/_app/settings/ai'
       path: '/settings/ai'
@@ -835,6 +926,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsUsersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/assistant/turn': {
+      id: '/api/assistant/turn'
+      path: '/api/assistant/turn'
+      fullPath: '/api/assistant/turn'
+      preLoaderRoute: typeof ApiAssistantTurnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -856,12 +954,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppXObjectIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/assistant/conversations/$id': {
+      id: '/api/assistant/conversations/$id'
+      path: '/api/assistant/conversations/$id'
+      fullPath: '/api/assistant/conversations/$id'
+      preLoaderRoute: typeof ApiAssistantConversationsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/assistant/conversations/$id/stop': {
+      id: '/api/assistant/conversations/$id/stop'
+      path: '/stop'
+      fullPath: '/api/assistant/conversations/$id/stop'
+      preLoaderRoute: typeof ApiAssistantConversationsIdStopRouteImport
+      parentRoute: typeof ApiAssistantConversationsIdRoute
+    }
+    '/api/assistant/conversations/$id/stream': {
+      id: '/api/assistant/conversations/$id/stream'
+      path: '/stream'
+      fullPath: '/api/assistant/conversations/$id/stream'
+      preLoaderRoute: typeof ApiAssistantConversationsIdStreamRouteImport
+      parentRoute: typeof ApiAssistantConversationsIdRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppApprovalsRoute: typeof AppApprovalsRoute
+  AppAssistantRoute: typeof AppAssistantRoute
   AppImportRoute: typeof AppImportRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppSetupRoute: typeof AppSetupRoute
@@ -874,6 +994,7 @@ interface AppRouteChildren {
   AppDashboardsIdRoute: typeof AppDashboardsIdRoute
   AppOrganisationsIdRoute: typeof AppOrganisationsIdRoute
   AppPeopleIdRoute: typeof AppPeopleIdRoute
+  AppSettingsAdjudicatorRoute: typeof AppSettingsAdjudicatorRoute
   AppSettingsAiRoute: typeof AppSettingsAiRoute
   AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
@@ -902,6 +1023,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppApprovalsRoute: AppApprovalsRoute,
+  AppAssistantRoute: AppAssistantRoute,
   AppImportRoute: AppImportRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppSetupRoute: AppSetupRoute,
@@ -914,6 +1036,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardsIdRoute: AppDashboardsIdRoute,
   AppOrganisationsIdRoute: AppOrganisationsIdRoute,
   AppPeopleIdRoute: AppPeopleIdRoute,
+  AppSettingsAdjudicatorRoute: AppSettingsAdjudicatorRoute,
   AppSettingsAiRoute: AppSettingsAiRoute,
   AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
   AppSettingsAuditRoute: AppSettingsAuditRoute,
@@ -941,13 +1064,33 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiAssistantConversationsIdRouteChildren {
+  ApiAssistantConversationsIdStopRoute: typeof ApiAssistantConversationsIdStopRoute
+  ApiAssistantConversationsIdStreamRoute: typeof ApiAssistantConversationsIdStreamRoute
+}
+
+const ApiAssistantConversationsIdRouteChildren: ApiAssistantConversationsIdRouteChildren =
+  {
+    ApiAssistantConversationsIdStopRoute: ApiAssistantConversationsIdStopRoute,
+    ApiAssistantConversationsIdStreamRoute:
+      ApiAssistantConversationsIdStreamRoute,
+  }
+
+const ApiAssistantConversationsIdRouteWithChildren =
+  ApiAssistantConversationsIdRoute._addFileChildren(
+    ApiAssistantConversationsIdRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   SignInRoute: SignInRoute,
   ApiHealthRoute: ApiHealthRoute,
   ConnectHandoffRoute: ConnectHandoffRoute,
   GatekeeperSplatRoute: GatekeeperSplatRoute,
+  ApiAssistantTurnRoute: ApiAssistantTurnRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiAssistantConversationsIdRoute:
+    ApiAssistantConversationsIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

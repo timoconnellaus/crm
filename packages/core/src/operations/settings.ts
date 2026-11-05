@@ -1,7 +1,7 @@
 // settings.* operations: the org's general settings (Settings → General and the setup wizard):
 // the base currency (ADR 0101: every currency field without its own currency displays in it;
 // changing it relabels amounts, it never converts them), and since stage 8 the organisation's
-// name, logo and timezone and the AI mode (ADR 0167).
+// name, logo and timezone and the AI mode (ADR 0167), and since stage 7b the assistant's name (ADR 0200).
 import { z } from "zod";
 import { defineOperation } from "../operation.ts";
 
@@ -10,6 +10,7 @@ export { COMMON_CURRENCIES } from "../currencies.ts";
 import {
   AI_MODE_SETTING,
   AI_MODES,
+  ASSISTANT_NAME_SETTING,
   BASE_CURRENCY_SETTING,
   type GeneralSettings,
   isTimezone,
@@ -42,6 +43,13 @@ const generalSettings = z.object({
   aiMode: z
     .enum(AI_MODES)
     .describe("workers-ai: every model role uses Workers AI in this account (no third-party keys)"),
+  assistantName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .refine((name) => !/claude/i.test(name), "The assistant is not called Claude")
+    .describe('The in-app assistant\'s display name, shown in the UI (default "Assistant")'),
 });
 
 export const settingsGet = defineOperation({
@@ -65,6 +73,7 @@ const SETTING_KEYS: Record<keyof GeneralSettings, string> = {
   logo: ORG_LOGO_SETTING,
   timezone: ORG_TIMEZONE_SETTING,
   aiMode: AI_MODE_SETTING,
+  assistantName: ASSISTANT_NAME_SETTING,
 };
 
 export const settingsUpdate = defineOperation({
@@ -72,7 +81,7 @@ export const settingsUpdate = defineOperation({
   description:
     "Change the org's general settings (admins). baseCurrency is the ISO 4217 code currency " +
     "fields display in; changing it relabels amounts and does not convert them. orgName, logo " +
-    "(a data: URL) and timezone describe the organisation; aiMode chooses the AI provider.",
+    "(a data: URL) and timezone describe the organisation; aiMode chooses the AI provider; assistantName renames the in-app assistant.",
   input: generalSettings.partial(),
   output: generalSettings,
   permission: "settings:manage",

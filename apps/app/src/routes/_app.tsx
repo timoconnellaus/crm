@@ -10,7 +10,7 @@ import {
   SidebarTrigger,
 } from "@relationship-os/ui/components/sidebar";
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, SparklesIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import {
   AppCommandsProvider,
@@ -20,6 +20,8 @@ import {
   useAppCommandsState,
 } from "../components/app-commands.tsx";
 import { AppSidebar } from "../components/app-sidebar.tsx";
+import { AssistantPanel } from "../components/assistant/assistant-panel.tsx";
+import { AssistantProvider, useAssistant } from "../components/assistant/assistant-provider.tsx";
 import { CommandPalette } from "../components/command-palette.tsx";
 import { NotificationBell } from "../components/notifications/notification-bell.tsx";
 import { CreateOrganisationDialog } from "../components/organisations/create-organisation-dialog.tsx";
@@ -58,27 +60,29 @@ function AppLayout() {
   useFocusOnNavigate();
   return (
     <AppCommandsProvider>
-      <a
-        href="#main"
-        className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
-      >
-        Skip to content
-      </a>
-      <SidebarProvider className="h-dvh overflow-hidden">
-        <AppSidebar />
-        <SidebarInset className="min-h-0 min-w-0 overflow-hidden pr-[env(safe-area-inset-right)]">
-          <SupportBanner />
-          <AppHeader />
-          <div
-            className="min-h-0 min-w-0 flex-1 overflow-y-auto [view-transition-name:page]"
-            id="main"
-            tabIndex={-1}
-          >
-            <Outlet />
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-      <AppOverlays />
+      <AssistantProvider>
+        <a
+          href="#main"
+          className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+        >
+          Skip to content
+        </a>
+        <SidebarProvider className="h-dvh overflow-hidden">
+          <AppSidebar />
+          <SidebarInset className="min-h-0 min-w-0 overflow-hidden pr-[env(safe-area-inset-right)]">
+            <SupportBanner />
+            <AppHeader />
+            <div
+              className="min-h-0 min-w-0 flex-1 overflow-y-auto [view-transition-name:page]"
+              id="main"
+              tabIndex={-1}
+            >
+              <Outlet />
+            </div>
+          </SidebarInset>
+        </SidebarProvider>
+        <AppOverlays />
+      </AssistantProvider>
     </AppCommandsProvider>
   );
 }
@@ -101,6 +105,24 @@ function useFocusOnNavigate() {
     });
     return () => cancelAnimationFrame(frame);
   }, [pathname]);
+}
+
+/** Opens the assistant panel (Cmd-J). */
+function AssistantButton() {
+  const assistant = useAssistant();
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => assistant.toggle()}
+      aria-keyshortcuts="Meta+J Control+J"
+      data-testid="open-assistant"
+    >
+      <SparklesIcon />
+      <span className="hidden sm:inline">Ask AI</span>
+      <Kbd className="hidden sm:inline-flex">⌘J</Kbd>
+    </Button>
+  );
 }
 
 /** Shown on every page while the signed-in user is a support user (ADR 0212). */
@@ -142,6 +164,7 @@ function AppHeader() {
         <Kbd className="ml-auto hidden sm:inline-flex">⌘K</Kbd>
       </Button>
       <div className="hidden flex-1 sm:block" />
+      <AssistantButton />
       <NotificationBell />
       <UserMenu principal={principal} signOutUrl={signOutUrl} />
     </header>
@@ -165,7 +188,7 @@ function createKindFor(pathname: string): { kind: CreateKind; options?: CreateOp
 
 /** Dialogs controlled by AppCommands, plus the global shortcuts that open them. */
 function AppOverlays() {
-  const { isAdmin } = Route.useRouteContext();
+  const { isAdmin, user } = Route.useRouteContext();
   const state = useAppCommandsState();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -191,6 +214,7 @@ function AppOverlays() {
         isAdmin={isAdmin}
       />
       <ShortcutSheet open={state.shortcuts} onOpenChange={state.setShortcuts} />
+      <AssistantPanel canApprove={user.role !== "viewer"} />
       <CreatePersonDialog
         open={state.creating === "person"}
         onOpenChange={(open) => state.setCreating(open ? "person" : null)}

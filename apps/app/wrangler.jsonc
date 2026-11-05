@@ -36,6 +36,12 @@
   // OAuth 2.1 for /mcp (ADR 0021): clients, grants and hashed tokens. Provisioned by name on
   // first deploy, like the D1 database.
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  // The in-app assistant (ADR 0030, ADR 0200): one Durable Object per conversation (asc_…), with
+  // SQLite storage for its history. No alarms: it works only while someone is talking to it.
+  "durable_objects": {
+    "bindings": [{ "name": "ASSISTANT", "class_name": "AssistantConversation" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AssistantConversation"] }],
   // Workers Rate Limiting (ADR 0056, docs/deploying.md). Limits are per Cloudflare location and
   // approximate; change them here and redeploy. namespace_id must be an integer unique within
   // the account: change these if another Worker in your account already uses them.

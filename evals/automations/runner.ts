@@ -11,6 +11,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { configureVia } from "@relationship-os/evals-mcp/lib/assistant.ts";
 import {
   checkCredentials,
   modelCliOptions,
@@ -114,6 +115,9 @@ async function main(): Promise<number> {
   }
 
   const cookie = await signIn(options.baseUrl, options.user);
+  if (configureVia(options.baseUrl, cookie)) {
+    console.log("EVAL_VIA=assistant: tasks run through the deployment's in-app assistant");
+  }
   const openSession = async (clientName: string) =>
     openMcpSession(
       options.baseUrl,
