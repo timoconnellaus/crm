@@ -7,6 +7,7 @@ import { McpServer, type StandardSchemaWithJSON } from "@modelcontextprotocol/se
 import {
   type AnyOperation,
   coreRegistry,
+  errorForLog,
   type FieldDefinition,
   type InvocationContext,
   invokeByName,
@@ -219,7 +220,7 @@ export async function callForMcp(
     if (error instanceof PendingApprovalError) return text(error.pending);
     const typed = toOperationError(error);
     if (typed.code === "internal" || typed.code === "config") {
-      console.error(`mcp ${name} failed`, error);
+      console.error(`mcp ${name} failed`, errorForLog(error));
       return text({ error: { code: typed.code, message: typed.message } }, true);
     }
     return text({ error: typed.toJSON() }, true);

@@ -62,6 +62,7 @@ export * from "./integrations/outbound.ts";
 export * from "./integrations/runtime.ts";
 export * from "./invoke.ts";
 export * from "./list.ts";
+export * from "./log.ts";
 export * from "./models.ts";
 export * from "./notifications/channels.ts";
 export * from "./notifications/delivery.ts";

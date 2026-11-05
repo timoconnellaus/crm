@@ -498,6 +498,8 @@ async function rerun(
   const found = await loadDefinition(env, run.automation_id);
   if (!found) throw new Error(`No automation ${run.automation_id}`);
   const trigger = JSON.parse(run.trigger) as {
+    /** Set when an erase redacted the run (ADR 0320): its record and inputs are gone. */
+    erased?: boolean;
     eventId?: string;
     change?: RunCandidate["change"];
     approval?: RunCandidate["approval"];
@@ -506,6 +508,9 @@ async function rerun(
     manual?: AutomationRunParams["manual"];
     chain?: string[];
   };
+  if (trigger.erased) {
+    throw new Error("This run was about a record that has been erased, so it cannot run again");
+  }
   // The steps that completed (their values were kept) replay without running again.
   const journal: AutomationJournalEntry[] = [];
   if (mode === "retry") {
