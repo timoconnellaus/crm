@@ -212,16 +212,49 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
     .where("record_id", "in", recordIds)
     .execute();
   ctx.write(deleteSummariesStatement(ctx.db, [...recordIds, ...activityIds, ...taskIds]));
+  const touched = [
+    ...recordIds.map((id) => ({ object, id })),
+    ...[...activityIds, ...linked.map((l) => l.id)].map((id) => ({ object: "activity", id })),
+    ...[...taskIds, ...linkedTasks.map((l) => l.id)].map((id) => ({ object: "task", id })),
+  ];
+  // Only records that have a vector need the drain (to delete or refresh it): a queue row for
+  // one that never had a vector would only keep the erased id around until a drain runs, which
+  // is never when semantic search is off. Looked up by primary key, per object.
+  const embedded = new Set<string>();
+  for (const kind of new Set(touched.map((t) => t.object))) {
+    for (const part of chunk(touched.filter((t) => t.object === kind).map((t) => t.id))) {
+      const rows = await ctx.db
+        .selectFrom("core_embedding")
+        .select("record_id")
+        .where("object_type", "=", kind)
+        .where("record_id", "in", part)
+        .execute();
+      for (const row of rows) embedded.add(row.record_id);
+    }
+  }
   const enqueue = enqueueEmbeddings(
     ctx.db,
-    [
-      ...recordIds.map((id) => ({ object, id })),
-      ...[...activityIds, ...linked.map((l) => l.id)].map((id) => ({ object: "activity", id })),
-      ...[...taskIds, ...linkedTasks.map((l) => l.id)].map((id) => ({ object: "task", id })),
-    ],
+    touched.filter((t) => embedded.has(t.id)),
     ctx.now,
   );
   if (enqueue) ctx.write(enqueue);
+  // Deleted records without a vector: any queue row for them (from earlier writes, waiting for a
+  // drain) has nothing left to do and only holds the id.
+  const deleted = [
+    ...recordIds.map((id) => ({ object: object as string, id })),
+    ...activityIds.map((id) => ({ object: "activity", id })),
+    ...taskIds.map((id) => ({ object: "task", id })),
+  ].filter((t) => !embedded.has(t.id));
+  for (const kind of new Set(deleted.map((t) => t.object))) {
+    for (const part of chunk(deleted.filter((t) => t.object === kind).map((t) => t.id))) {
+      ctx.write(
+        ctx.db
+          .deleteFrom("core_embedding_queue")
+          .where("object_type", "=", kind)
+          .where("record_id", "in", part),
+      );
+    }
+  }
 
   // 3d. Assistant conversations that referenced the records (ADR 0200): their objects redact
   // their stored history now (before the commit, so an unreachable one fails the erase), and

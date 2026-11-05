@@ -853,9 +853,10 @@ export const syncIngest = defineOperation({
       internalDomains(ctx.db),
       erasedAddresses(ctx.db, addressesOf(input.items as Item[])),
     ]);
-    const items = erased.size
-      ? (input.items as Item[]).map((item) => withoutErased(item, erased))
-      : (input.items as Item[]);
+    const items = input.items as Item[];
+    // Replaced in place: the pipeline writes this call's audit row from `input` after the
+    // handler returns, so the audit log never records an erased address either.
+    if (erased.size) items.forEach((item, i) => (items[i] = withoutErased(item, erased)));
     const addresses = addressesOf(items);
     const domains = [
       ...new Set(

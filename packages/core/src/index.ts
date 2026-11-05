@@ -128,6 +128,13 @@ export { runTrashPurge, type TrashPurgeOptions } from "./purge.ts";
 export * from "./rate-limit.ts";
 export { BATCH_MAX, jsonList, purgeCutoff, restorableUntil } from "./records/common.ts";
 export {
+  BLOB_MAX_ATTEMPTS,
+  drainAllBlobDeletions,
+  drainBlobDeletions,
+  ERASE_LOG_PREFIX,
+  type EraseLogEntry,
+} from "./records/erase-log.ts";
+export {
   assertLinkTargets,
   LINK_TARGETS,
   type LinkedRecord,

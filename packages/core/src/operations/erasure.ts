@@ -20,7 +20,8 @@ export const erasureAddressStatus = defineOperation({
     "which mail and calendar sync drops (the list holds only a hash of each address). Admins only.",
   input: z.object({ email: address }),
   output: z.object({ erased: z.boolean(), erasedAt: z.string().nullable() }),
-  permission: "records:erase",
+  // The admin Audit page's permission: admins only, and a read.
+  permission: "audit:read",
   risk: "read",
   actors: ["human"],
   mcp: { expose: false },

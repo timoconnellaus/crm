@@ -836,8 +836,11 @@ export async function invokeOperation<O extends AnyOperation>(
   // stage 5 events consumer embeds (`embedViaEvents`), it does so from the record events this call
   // emits and no queue row is written; otherwise (no Vectorize, local dev, tests, scripts) they
   // are queued in this batch for the post-commit drain and the cron.
+  // Operations that queue their own embeddings (erase, sync) decide exactly what to queue.
   const embedding =
-    op.risk === "read" || (ctx.events && ctx.embedViaEvents && !ctx.simulate)
+    op.risk === "read" ||
+    SELF_ENQUEUEING.has(op.name) ||
+    (ctx.events && ctx.embedViaEvents && !ctx.simulate)
       ? null
       : embeddingQueueStatement(ctx.db.query, changes, now);
   if (embedding) statements.push(embedding);

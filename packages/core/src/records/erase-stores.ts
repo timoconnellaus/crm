@@ -52,18 +52,20 @@ const DROP = Symbol("drop");
  * "[erased]" whole (a log line, an error message), as audit inputs are.
  */
 export function redactJson(value: unknown, m: SubjectMatcher, pattern: RegExp | null): unknown {
-  const walk = (v: unknown): unknown => {
+  const walk = (v: unknown, nested: boolean): unknown => {
     if (typeof v === "string") {
       if (m.identifies(v)) return DROP;
       return mentions(v, pattern) ? ERASED : v;
     }
-    if (Array.isArray(v)) return v.map(walk).filter((x) => x !== DROP);
+    if (Array.isArray(v)) return v.map((x) => walk(x, true)).filter((x) => x !== DROP);
     if (v && typeof v === "object") {
       const out: Record<string, unknown> = {};
       for (const [key, child] of Object.entries(v)) {
-        const r = walk(child);
+        const r = walk(child, true);
         if (r === DROP) {
-          if (typeof child === "string") return DROP;
+          // An entry holding their address is about them (an attendee, a recipient): it goes
+          // whole. The top-level value itself is kept without that property.
+          if (typeof child === "string" && nested) return DROP;
           continue;
         }
         out[key] = r;
@@ -72,8 +74,8 @@ export function redactJson(value: unknown, m: SubjectMatcher, pattern: RegExp | 
     }
     return v;
   };
-  const r = walk(value);
-  return r === DROP ? (typeof value === "string" ? ERASED : null) : r;
+  const r = walk(value, false);
+  return r === DROP ? ERASED : r;
 }
 
 function redactJsonText(text: string | null, m: SubjectMatcher, pattern: RegExp | null) {
