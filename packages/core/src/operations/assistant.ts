@@ -2,7 +2,9 @@
 // conversations. The conversation itself (history, streaming, turns) lives in its Durable Object;
 // D1 keeps one row per conversation for /assistant. Every operation is scoped to ctx.user, human
 // only (the UI and the conversation object acting for its owner) and invisible to MCP.
+import { sql } from "kysely";
 import { z } from "zod";
+import { conversationRefPattern, MAX_REFS_PER_TURN } from "../assistant/scrub.ts";
 import { ForbiddenError, NotFoundError } from "../errors.ts";
 import { newId } from "../ids.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
@@ -165,7 +167,17 @@ export const assistantFinishTurn = defineOperation({
   description:
     "Record that a turn of your conversation finished (the list's preview and turn count). " +
     "Called by the conversation itself once per turn.",
-  input: z.object({ id: conversationId, preview: z.string().max(2000).nullable() }),
+  input: z.object({
+    id: conversationId,
+    preview: z.string().max(2000).nullable(),
+    refs: z
+      .array(z.string().regex(conversationRefPattern))
+      .max(MAX_REFS_PER_TURN)
+      .optional()
+      .describe(
+        "People and organisations (ids) and emails (email:<sha256>) the turn referenced, for erase",
+      ),
+  }),
   output: conversationSchema,
   permission: "records:read",
   risk: "write",
@@ -182,6 +194,20 @@ export const assistantFinishTurn = defineOperation({
         .set({ turns: row.turns + 1, preview, updated_at: ctx.now })
         .where("id", "=", input.id),
     );
+    // The erase index (migration 0270): one statement in the same batch, whatever the count.
+    if (input.refs?.length) {
+      ctx.write(
+        ctx.db
+          .insertInto("core_assistant_conversation_refs")
+          .orIgnore()
+          .columns(["conversation_id", "ref"])
+          .expression(
+            ctx.db
+              .selectFrom(sql<{ value: string }>`json_each(${JSON.stringify(input.refs)})`.as("j"))
+              .select([sql<string>`${input.id}`.as("conversation_id"), "j.value as ref"]),
+          ),
+      );
+    }
     return fromRow({ ...row, turns: row.turns + 1, preview, updated_at: ctx.now });
   },
 });
@@ -206,6 +232,7 @@ export const assistantDeleteConversation = defineOperation({
         .updateTable("core_assistant_conversation")
         .set({ deleted_at: ctx.now, title: "(deleted)", preview: null, context: null })
         .where("id", "=", input.id),
+      ctx.db.deleteFrom("core_assistant_conversation_refs").where("conversation_id", "=", input.id),
     );
     return { id: input.id, deleted: true as const };
   },

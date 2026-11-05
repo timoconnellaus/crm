@@ -104,3 +104,48 @@ refused on both tables, unconditionally.
   and `core_embedding` row; scrubbed shared ones are re-embedded from the scrubbed text
   (ADR 0154). `core_embedding` holds only ids and hashes. Tested in
   `packages/core/test/ai-embeddings.test.ts` ("erase removes the person's vectors…").
+
+## Amendment, 2026-11-05 (in-app assistant conversations)
+Stage 7b put assistant conversations in a Durable Object per conversation (ADR 0200), out of
+reach of the SQL above, so an erased person's details survived in chat history: the tool calls
+that looked them up, the records the tools returned, and what the person and the assistant wrote.
+An erase now removes them there too, redacting rather than deleting, consistent with the audit log.
+- **Finding them: an index.** `core_assistant_conversation_refs` (migration 0270) has one row per
+  conversation and referenced person or organisation id, or email address as
+  `email:<sha256 of the lower-cased address>` (a conversation that names someone only by email is
+  found without D1 storing the address). The conversation object extracts them from each finished
+  turn's messages and page context and sends them in `assistant.finishTurn`, the one D1 write a
+  turn already makes, as one `INSERT … SELECT FROM json_each` in that batch: no extra request,
+  nothing per token or tool call. Until such an update succeeds for a conversation (one from
+  before 0270, or after a failed update) the object sends its whole history's refs. The migration
+  indexes existing conversations' context (record and selection ids).
+  `assistant.deleteConversation` deletes its refs.
+- **Scrubbing them.** `queueErase` looks the subject's ids and hashed emails up in the index (live
+  conversations only) and calls `AssistantConversationStore.scrub(conversationId, { terms, names
+  })` for each, which ros-app implements with the object's `scrub` RPC. In stored messages:
+  - a **tool call** whose input mentions the subject gets input `{ "erased": true }`, and a
+    **tool result** whose output mentions them gets output `"[erased]"`, whole, as an audit row's
+    input does;
+  - **text** (the person's messages, the assistant's replies, reasoning) and turn errors have each
+    mention replaced with `"[erased]"`.
+  "Mentions" means the ids, emails and phone numbers above (case-insensitive; phone numbers in any
+  formatting), plus the subject's **names** as whole words (a person's display, given and family
+  names of 3+ characters; an organisation's name). Names are matched here, unlike in the audit log
+  and shared activities, because these conversations are known to be about the subject. A turn
+  running during the erase has its in-memory events redacted and its messages redacted before they
+  are stored.
+- **Before the commit, failing closed.** The objects are scrubbed in the handler, before the batch
+  commits; if one cannot be reached, or the caller has no store (only ros-app's UI adapter wires
+  one), the erase fails with a `config` error and nothing is erased, so it can be retried
+  (scrubbing is idempotent). A scrub that succeeded before a failed commit only removed data that
+  was about to be erased. While an erase is only simulated (an approval preview, test mode)
+  nothing is scrubbed.
+- **D1 side, in the erase's batch.** The conversations' list rows lose mentions in `title` and
+  `preview`; a `context` that mentions the subject becomes null; the subject's refs are deleted.
+  `person.erase` and `organisation.erase` report `conversationsScrubbed`.
+- **Limits.** A conversation that names the subject only in free text, without their id or email
+  (no lookup, no context), is not indexed and not found (the free-text rule above). A turn that
+  first looks the subject up while the erase runs is indexed after it, so its refs and messages
+  can survive; erase is rare and admin-run. Other text the assistant repeated from a record (a job
+  title, a city) stays where it is not inside an erased tool result. ADR 0153's summaries need
+  nothing more: they live in D1 and are already deleted.

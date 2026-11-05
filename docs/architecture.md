@@ -468,7 +468,10 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   with their reasoning (DeepSeek's thinking mode needs `reasoning_content` replayed) and streams
   each turn's events to any number of readers, who resume with `?after=<seq>`. D1 holds only the
   conversation list (`core_assistant_conversation`, one write per turn through
-  `assistant.finishTurn`). `EVAL_VIA=assistant` runs the stage 2–5 eval sets through it.
+  `assistant.finishTurn`) and, in the same write, the people, organisations and (hashed) emails
+  each turn referenced (`core_assistant_conversation_refs`), so an erase finds the conversations
+  to redact and asks their objects to scrub them before it commits (ADR 0019 amendment).
+  `EVAL_VIA=assistant` runs the stage 2–5 eval sets through it.
 
 - **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
   [`docs/jev.md`](jev.md); stage 11, proposed): a seam beside the registry, not a model role.

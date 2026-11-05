@@ -15,6 +15,8 @@ import {
   type AssistantEvent,
   type AssistantEventInput,
   assistantInstructions,
+  type ConversationScrub,
+  conversationRefs,
   type InvocationContext,
   invokeByName,
   loadGeneralSettings,
@@ -27,6 +29,10 @@ import {
   rateLimit,
   runAssistantTurn,
   type StoredMessage,
+  scrubMessage,
+  scrubPattern,
+  scrubText,
+  scrubValue,
   type TranscriptItem,
   transcriptFromMessages,
 } from "@relationship-os/core";
@@ -93,6 +99,8 @@ function int(value: string | undefined, fallback: number): number {
 
 export class AssistantConversation extends DurableObject<AssistantEnv> {
   #running: RunningTurn | null = null;
+  /** Erases that arrived while a turn ran: applied to its messages before they are stored. */
+  #scrubs: ConversationScrub[] = [];
 
   constructor(ctx: DurableObjectState, env: AssistantEnv) {
     super(ctx, env);
@@ -254,6 +262,53 @@ export class AssistantConversation extends DurableObject<AssistantEnv> {
     await this.ctx.storage.deleteAll();
   }
 
+  /**
+   * Redacts an erased person or organisation from the stored history (ADR 0019 and ADR 0200
+   * amendments): tool calls and results that mention them lose their content, and mentions in
+   * text, reasoning and turn errors become "[erased]". Called by `person.erase` /
+   * `organisation.erase` for conversations the ref index lists, before the erase commits; not
+   * owner-checked (only server code holds the binding). A running turn's events are redacted too,
+   * and its messages are when they are stored.
+   */
+  async scrub(scrub: ConversationScrub): Promise<{ messages: number }> {
+    const pattern = scrubPattern(scrub);
+    if (!pattern) return { messages: 0 };
+    let changed = 0;
+    this.ctx.storage.transactionSync(() => {
+      const rows = this.ctx.storage.sql
+        .exec<{ seq: number; json: string }>("SELECT seq, json FROM messages ORDER BY seq")
+        .toArray();
+      for (const row of rows) {
+        const message = JSON.parse(row.json) as ModelMessage;
+        const scrubbed = scrubMessage(message, pattern);
+        if (scrubbed === message) continue;
+        changed += 1;
+        this.ctx.storage.sql.exec(
+          "UPDATE messages SET json = ? WHERE seq = ?",
+          JSON.stringify(scrubbed),
+          row.seq,
+        );
+      }
+      const errors = this.ctx.storage.sql
+        .exec<{ turn: number; error: string }>(
+          "SELECT turn, error FROM turns WHERE error IS NOT NULL",
+        )
+        .toArray();
+      for (const row of errors) {
+        const error = scrubText(row.error, pattern);
+        if (error !== row.error) {
+          this.ctx.storage.sql.exec("UPDATE turns SET error = ? WHERE turn = ?", error, row.turn);
+        }
+      }
+    });
+    const running = this.#running;
+    if (running) {
+      this.#scrubs.push(scrub);
+      running.events = running.events.map((event) => scrubValue(event, pattern));
+    }
+    return { messages: changed };
+  }
+
   #emit(input: AssistantEventInput) {
     const running = this.#running;
     if (!running) return;
@@ -396,6 +451,15 @@ export class AssistantConversation extends DurableObject<AssistantEnv> {
       if (!(caught instanceof ConversationError)) console.error("assistant turn failed", caught);
       this.#emit({ type: "error", message: error });
     }
+    // An erase that arrived during the turn applies to what it is about to store.
+    if (this.#scrubs.length) {
+      for (const scrub of this.#scrubs.splice(0)) {
+        const pattern = scrubPattern(scrub);
+        newMessages = newMessages.map((m) => scrubMessage(m, pattern));
+        error = error === null ? null : scrubText(error, pattern);
+        preview = preview === null ? null : scrubText(preview, pattern);
+      }
+    }
     // One transaction: the turn's messages and its status.
     this.ctx.storage.transactionSync(() => {
       for (const message of newMessages) {
@@ -414,15 +478,25 @@ export class AssistantConversation extends DurableObject<AssistantEnv> {
         running.turn,
       );
     });
-    // The conversation list (D1): once per turn, through an operation, as the owner.
+    // The conversation list (D1): once per turn, through an operation, as the owner. It also
+    // indexes the records and emails the turn referenced, so an erase can find this conversation
+    // (migration 0270). Until one such update succeeds (an older conversation, or a failed
+    // update), the whole stored history is indexed.
     try {
       const user = await this.#actingUser(request.userId);
+      const indexed = this.#meta("refs_indexed") === "1";
+      const refs = await conversationRefs([
+        indexed ? newMessages : this.#stored().map((m) => m.message),
+        request.context ?? null,
+      ]);
       await invokeByName(
         "assistant.finishTurn",
-        { id: request.conversationId, preview: preview ?? error },
+        { id: request.conversationId, preview: preview ?? error, refs },
         { actor: "human", user, origin: { surface: "ui" }, db },
       );
+      if (!indexed) this.#setMeta("refs_indexed", "1");
     } catch (caught) {
+      this.ctx.storage.sql.exec("DELETE FROM meta WHERE key = 'refs_indexed'");
       console.warn("assistant: could not update the conversation list", caught);
     }
     this.#emit({ type: "turn-end", status, at: new Date().toISOString() });

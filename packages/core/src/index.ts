@@ -16,6 +16,7 @@ export * from "./assistant/fake.ts";
 export * from "./assistant/history.ts";
 export * from "./assistant/loop.ts";
 export * from "./assistant/prompt.ts";
+export * from "./assistant/scrub.ts";
 export * from "./automations/bindings.ts";
 export * from "./automations/cron.ts";
 export * from "./automations/events.ts";
