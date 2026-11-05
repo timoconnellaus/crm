@@ -3,6 +3,7 @@ packages:
   - packages/*
   - extensions/*
   - evals/*
+  - scripts/release
 
 # Build scripts we allow to run on install.
 onlyBuiltDependencies:

@@ -1,0 +1,22 @@
+{
+  "name": "@crm/release",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Release bundles, manifests, verification and the Cloudflare API deploy engine shared by the create-crm CLI and the self-updater (ADR 0053, 0054, 0160-0169). Runtime-neutral: Web APIs only, so it runs in Node and in Workers.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts",
+    "./testing/node": "./src/testing/node-sqlite.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@crm/config": "workspace:*",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

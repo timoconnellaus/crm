@@ -19,8 +19,23 @@ export const getSession = createServerFn({ method: "GET" }).handler(async ({ con
     principal,
     user: user ? { id: user.id, role: user.role } : null,
     signOutUrl: provider.signOutUrl,
+    identityProvider: provider.kind,
+    // The first-run setup wizard (ADR 0167) opens for admins until it is completed or skipped.
+    setupOpen: user?.role === "admin" ? await setupOpen() : false,
   };
 });
+
+async function setupOpen(): Promise<boolean> {
+  try {
+    const row = await env.DB.prepare("SELECT status FROM core_setup WHERE id = 1").first<{
+      status: string;
+    }>();
+    return row?.status === "pending" || row?.status === "in_progress";
+  } catch {
+    // Before migration 0161 there is no wizard.
+    return false;
+  }
+}
 
 /** Which sign-in methods the sign-in page should offer. */
 export const getSignInMethods = createServerFn({ method: "GET" }).handler(async () => {

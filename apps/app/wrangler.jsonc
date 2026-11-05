@@ -86,6 +86,15 @@
     "AI_SECRET_SCRIPTS": "crm-app,crm-runner",
     // Local dev and e2e only (.dev.vars sets it): "true" answers the build role with a
     // deterministic stand-in when there is no `ai` binding. Never set it in production.
-    "AI_FAKE_MODEL": ""
+    "AI_FAKE_MODEL": "",
+    // Release (stage 8, ADR 0160): the installed release's version, set by the release manifest.
+    // Empty means a source deploy (`pnpm run deploy`), which the self-updater cannot update.
+    "CRM_RELEASE_VERSION": "",
+    // Where Settings → Updates reads releases from (public GitHub Releases, no telemetry).
+    // Forks that publish their own releases change it.
+    "CRM_RELEASE_REPO": "timoconnellaus/crm",
+    // The Cloudflare account the self-updater deploys to. Filled in by the installer from the
+    // release manifest's $ACCOUNT_ID placeholder; never committed.
+    "CRM_ACCOUNT_ID": ""
   }
 }

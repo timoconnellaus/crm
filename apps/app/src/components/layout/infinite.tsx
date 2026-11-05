@@ -109,10 +109,18 @@ export function VirtualFeed<T>({
   const scrollRef = useScrollElement();
   const listRef = useRef<HTMLOListElement & HTMLUListElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
+  // The page's scroller, held in state. React attaches a child's layout effects before its
+  // parent's ref, so when this list mounts in the same commit as PageLayout (cached data, e.g. on
+  // Back) scrollRef.current is still null on first render. Picking it up in an effect re-renders
+  // once it exists; otherwise the virtualizer measures a 0px viewport and renders no rows.
+  const [scroller, setScroller] = useState<HTMLElement | null>(() => scrollRef?.current ?? null);
+  useEffect(() => {
+    const element = scrollRef?.current ?? null;
+    if (element !== scroller) setScroller(element);
+  });
 
   // Where the list starts inside the scroller (content above it: filters, a description).
   useLayoutEffect(() => {
-    const scroller = scrollRef?.current;
     const list = listRef.current;
     if (!scroller || !list) return;
     const measure = () =>
@@ -126,11 +134,11 @@ export function VirtualFeed<T>({
     const content = scroller.firstElementChild;
     if (content) observer.observe(content);
     return () => observer.disconnect();
-  }, [scrollRef]);
+  }, [scroller]);
 
   const virtualizer = useVirtualizer({
     count: items.length,
-    getScrollElement: () => scrollRef?.current ?? null,
+    getScrollElement: () => scroller,
     estimateSize: () => estimateSize,
     overscan: 6,
     scrollMargin,

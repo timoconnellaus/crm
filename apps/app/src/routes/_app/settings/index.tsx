@@ -6,6 +6,7 @@ import {
   ChevronRightIcon,
   CoinsIcon,
   DatabaseIcon,
+  DownloadCloudIcon,
   ListOrderedIcon,
   PlugIcon,
   PlugZapIcon,
@@ -40,6 +41,7 @@ function Section({
     | "/settings/integrations"
     | "/settings/notifications"
     | "/settings/storage"
+    | "/settings/updates"
     | "/settings/ai"
     | "/settings/general"
     | "/settings/automations";
@@ -114,7 +116,7 @@ function SettingsPage() {
           <Section
             icon={<CoinsIcon className="size-5" />}
             title="General"
-            description="The base currency deal values and other amounts are shown in."
+            description="Organisation name, logo, timezone and base currency; setup and sample data."
             to="/settings/general"
           />
           <Section
@@ -201,6 +203,14 @@ function SettingsPage() {
               title="Storage"
               description="Database size against its 10 GB limit, and how long history is kept."
               to="/settings/storage"
+            />
+          )}
+          {isAdmin && (
+            <Section
+              icon={<DownloadCloudIcon className="size-5" />}
+              title="Updates"
+              description="The installed version, new releases and their changelogs, update and roll back."
+              to="/settings/updates"
             />
           )}
         </div>

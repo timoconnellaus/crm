@@ -25,12 +25,12 @@ export default defineConfig({
     { name: "smoke", testMatch: "smoke.spec.ts", use: { ...devices["Desktop Chrome"] } },
     {
       name: "desktop",
-      testIgnore: "smoke.spec.ts",
+      testIgnore: ["smoke.spec.ts", "live/**"],
       use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 900 }, storageState },
     },
     {
       name: "phone",
-      testIgnore: "smoke.spec.ts",
+      testIgnore: ["smoke.spec.ts", "live/**"],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 390, height: 844 },

@@ -1,0 +1,36 @@
+{
+  "name": "create-crm",
+  "version": "0.1.0",
+  "description": "Install, upgrade and roll back the open-source CRM in your own Cloudflare account from a verified release bundle. No wrangler, no service of ours, no telemetry.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/timoconnellaus/crm.git",
+    "directory": "packages/create-crm"
+  },
+  "type": "module",
+  "bin": {
+    "create-crm": "dist/cli.js",
+    "crm": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@crm/config": "workspace:*",
+    "@crm/release": "workspace:*",
+    "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
