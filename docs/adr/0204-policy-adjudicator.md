@@ -154,3 +154,26 @@ bounded by the number of pending actions. `rows_read` budgets are in
   `enabledAt`), and actions queued before migration 0205 are never auto-approved.
 - A dependent action judged before its dependency is applied escalates (`note: dependency`); it is
   not re-judged when the dependency is applied later.
+
+## The Judge seam (amended 2026-11-05, for Jev)
+The user wants **Jev** (TypeSafe AI's typed decision model) in the architecture, with the
+adjudicator as one of its main uses. The verdict therefore comes through a small **`Judge`
+interface** in core (`packages/core/src/adjudicator/judges.ts`):
+- Two question kinds: `choice` (one of a fixed set of labels) and `noul` (yes / no / unknown).
+  Each returns `{ status: "answered", probabilities, rationale? }`, a probability per label, or
+  `{ status: "unavailable", code, reason }`.
+- **The judge only judges.** The adjudicator asks one `choice` question over
+  approve | deny | escalate (`reviewQuestion`: the instructions and written policy as trusted
+  text, the pending change as the untrusted subject). Code takes the most likely label and its
+  probability and `decideAction` applies the threshold, the floor and every other rule.
+- **Failing closed.** An unavailable judge (model error, no valid reply, not configured) is an
+  escalation with confidence 0: it goes to a person and is never approved.
+- **The shipped implementation is `llmJudge`**: any chat model through the registry's `review`
+  role, in JSON mode with zod validation and one repair round. An LLM states one label and one
+  confidence, so the chosen label gets that confidence and the other labels share the rest.
+  `reviewJudge` is it with the adjudicator's reply format (`verdict`, `<pending_change>` tags).
+- **No Jev SDK or provider is added here.** "Stage 11: Jev" will add a Jev implementation of
+  `Judge`, and calibrate the thresholds from labelled cases (the eval set in `evals/adjudicator`
+  is the start of that).
+Tested in `packages/core/test/adjudicator-judges.test.ts` (a typed judge's distribution, the
+threshold applied by code, an unavailable judge escalating, the LLM judge's JSON mode and repair).

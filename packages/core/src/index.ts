@@ -2,6 +2,7 @@
 
 export * from "./adjudicator/agreement.ts";
 export * from "./adjudicator/judge.ts";
+export * from "./adjudicator/judges.ts";
 export * from "./adjudicator/run.ts";
 export * from "./ai/admin.ts";
 export * from "./ai/embedding.ts";

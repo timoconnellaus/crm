@@ -178,8 +178,15 @@ the adjudicator (`decided_by = adjudicator`); everything else, a `deny` included
 person. It never approves what the **floor** or an always-reviewed operation (extension installs)
 routed to review, nor outbound, schema or extension changes. Its **verdicts** are shown to human
 approvers only, never to the actor, and every one is stored (`core_adjudication`) and audited
-(`adjudicator.verdict`).
-_Avoid_: adjudicator alone in UI copy, judge, AI approver
+(`adjudicator.verdict`). It asks its question through a **Judge**.
+_Avoid_: adjudicator alone in UI copy, AI approver
+
+**Judge**
+The typed-decision interface the adjudicator asks through (`packages/core/src/adjudicator/judges.ts`):
+a `choice` (one of fixed labels) or `noul` (yes / no / unknown) question answered with a
+probability per label, or "unavailable". A judge only judges; code applies thresholds, and an
+unavailable judge escalates to a person. Today the LLM judge (the `review` role); Jev in Stage 11
+(ADR 0204).
 
 **Shadow mode**
 The adjudicator's first mode once switched on: it judges and records verdicts, and approvers see

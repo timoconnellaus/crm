@@ -32,6 +32,7 @@ import {
   decideAction,
   type JudgeResult,
   judgePendingItem,
+  reviewJudge,
   VERDICT_OPERATION,
 } from "./judge.ts";
 
@@ -268,8 +269,9 @@ async function adjudicate(
 
   const op = await resolve(deps, row.operation);
   const dependsOn = parse<string[]>(row.depends_on, []);
+  // The Judge seam: the `review` role as an LLM judge today, Jev in Stage 11 (ADR 0204).
   const judged = await judgePendingItem(
-    (messages, options) => models.run("review", messages, options),
+    reviewJudge((messages, options) => models.run("review", messages, options)),
     policy.text,
     {
       operation: row.operation,
