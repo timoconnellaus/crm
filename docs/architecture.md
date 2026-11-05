@@ -304,7 +304,7 @@ Configurable per org ([ADR 0011](adr/0011-approval-pipeline.md)):
 
 1. **Deterministic gate** (code): actor × risk class → `auto` / `deny` / `review`, never below the
    deploy-time floor.
-2. **Policy adjudicator** (optional): the `review` model role (Jev or a second LLM) judges the
+2. **Policy adjudicator** (optional): a second LLM (the `review` model role) or Jev (the judge) judges the
    simulated change against the org's written policy → approve / deny / escalate.
 3. **Human queue**: escalations, with the adjudicator's reasoning attached.
 
@@ -376,7 +376,7 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   the installer and the updater create a gateway per deployment and set it
   ([ADR 0180](adr/0180-ai-gateway-provisioned-per-deployment.md)).
 - **Providers**: Workers AI (the binding) and, optionally, OpenAI, Google AI Studio, OpenRouter,
-  DeepSeek, Anthropic, Jev and any OpenAI-compatible endpoint, each through the gateway's
+  DeepSeek, Anthropic and any OpenAI-compatible endpoint, each through the gateway's
   provider path (`…/{gateway}/deepseek/…`). A deployment can pick a **model role preset**
   (`create-relationship-os --model-roles deepseek-flash`), stored as its `AI_MODEL_ROLES` in the deployment
   state, and `AI_GATEWAY_BYOK` says which providers' keys the gateway holds
@@ -412,6 +412,27 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   every role with deterministic stand-ins and keeps vectors in memory.
 - **Stage 7b** adds the in-app assistant (`assistant` role, retrieval through `search.hybrid` /
   `retrieve`), the policy adjudicator (`review` role) and the daily digest.
+
+- **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
+  [`docs/jev.md`](jev.md); stage 11, proposed): a seam beside the registry, not a model role.
+  Code asks it typed questions (Choice, Noul, Score) at a named **placement** and gets
+  probabilities; code holds the thresholds and decides. Its provider is **Jev**, pinned in code,
+  reached through AI Gateway's custom provider `custom-typesafe`, with its key as BYOK or the
+  `TYPESAFE_API_KEY` secret. Placements: does a proposed automation or extension do what the
+  person asked (advice), the adjudicator's Jev reviewer (fails closed), each summary statement
+  against its facts, model-written outbound messages (fails closed), job changes from signatures
+  and the shape of a described widget. Without a key the judge is off and nothing changes.
+  Thresholds come from labelled sets (`pnpm eval:calibrate`), and tests and CI only replay
+  ([ADR 0231](adr/0231-judge-calibration-and-replay.md)).
+
+```
+ placement ── ctx.judge.ask({ placement, state, questions }) ──► off? JudgeUnavailable("off")
+                                                                    │ on: key via BYOK or TYPESAFE_API_KEY
+                                                                    ▼
+                    jevJudge (fetch) ─► AI Gateway custom-typesafe ─► api.typesafe.ai/v1/systemone (JEV_MODEL)
+                                                                    │
+ typed answers (validated) or JudgeUnavailable { reason } ◄────────┘  ─► code: thresholds, fail open or closed
+```
 
 ### 9. Dashboards and views
 
@@ -484,7 +505,7 @@ apps/
   control/             hosted SaaS control plane and dispatch Worker (stage 10)  → "ros-control", "ros-dispatch"
   marketing/           the landing page relationshiposcrm.com                    → Worker "ros-marketing"
 packages/
-  core/                operations registry, risk classes, policy types, model role registry (ai/), schema reconciler
+  core/                operations registry, risk classes, policy types, model role registry (ai/), the judge (judge/), schema reconciler
   db/                  core D1 migrations (incl. core_base_* views), typed core schema
   auth/                IdentityProvider interface; better-auth and cloudflare-access adapters
   sdk/                 the extension contract (defineExtension, defineTool), formula language, test harness

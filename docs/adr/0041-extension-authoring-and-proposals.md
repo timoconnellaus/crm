@@ -83,3 +83,10 @@ alone, and `commitShipped` refuses it.
 - `alwaysReview` is general: later stages can use it for anything that must never auto-apply.
 - Proposals left pending expire like any pending action (7 days by default); the commit stays in
   the workspace history.
+
+> Amended 2026-11-05 ([ADR 0230](0230-jev-as-the-typed-judge.md), proposed with stage 11):
+> `extension.check` and `extension.propose` take an optional `request` (the person's own words;
+> the assistant passes them from its own code). With the judge on, placement `authoring.intent`
+> asks Jev whether the manifest does exactly what was asked, one question per property, and the
+> findings are `warning` issues and are stored on the proposal for the approval screen. They never
+> fail the check.
