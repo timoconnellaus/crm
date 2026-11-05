@@ -43,6 +43,8 @@ export interface FakeGatewayLog {
   model: string;
   cost: number | null;
   cached?: boolean;
+  /** The request's `cf-aig-metadata`, as the JSON string AI Gateway stores. */
+  metadata?: string;
 }
 
 export interface FakeCloudflareOptions {
@@ -399,6 +401,20 @@ export class FakeCloudflare {
       }[];
       let logs = [...(this.gatewayLogs.get(m[1] as string) ?? [])];
       for (const f of filters) {
+        if (f.key === "metadata.value" && f.operator === "eq") {
+          // Any metadata entry with this value (the API does not pair it with a key).
+          const wanted = String(f.value[0]);
+          logs = logs.filter((l) => {
+            try {
+              return Object.values(JSON.parse(l.metadata ?? "{}") as object).some(
+                (value) => String(value) === wanted,
+              );
+            } catch {
+              return false;
+            }
+          });
+          continue;
+        }
         if (f.key !== "created_at") continue;
         const v = String(f.value[0]);
         logs = logs.filter((l) => (f.operator === "gt" ? l.created_at >= v : l.created_at < v));
@@ -676,6 +692,12 @@ export class FakeCloudflare {
       if (!script.versions.some((v) => v.id === target)) return fail(400, 10215, "unknown version");
       script.current = target;
       return ok({ id: this.id("dep") });
+    }
+    const secret = /^\/secrets\/([^/]+)$/.exec(rest);
+    if (secret && method === "DELETE") {
+      const name = decodeURIComponent(secret[1] as string);
+      if (!script.secrets.delete(name)) return fail(404, 10056, `secret ${name} not found`);
+      return ok(null);
     }
     if (rest === "/secrets") {
       if (method === "PUT") {

@@ -18,6 +18,17 @@ export interface ControlSecrets {
   GITHUB_TOKEN?: string;
   /** The relationshiposcrm.com zone: Cloudflare for SaaS custom hostnames, "account" placement. */
   SAAS_ZONE_ID?: string;
+  /**
+   * Platform AI's token (ADR 0213 amendment): an account token with Workers AI Read and AI Gateway
+   * Run, set as AI_PLATFORM_TOKEN on every hosted deployment's AI Workers. One for all tenants:
+   * who a call is billed to is the tenant tag the deployment's host code sets, not the token.
+   */
+  PLATFORM_AI_TOKEN?: string;
+  /**
+   * The deployment channel's master secret (ADR 0250): each tenant's ROS_CONTROL_KEY is an HMAC
+   * of its tenant id under this, so the control plane stores no per-tenant key.
+   */
+  CONTROL_CHANNEL_SECRET?: string;
 }
 
 export interface FakePlatformBindings {

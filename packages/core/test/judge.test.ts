@@ -275,6 +275,28 @@ describe("routing and keys", () => {
     expect(judgeRoute({ JUDGE_BYOK: "true" })).toMatchObject({ ready: false, reason: "no-key" });
   });
 
+  it("on a hosted deployment, calls TypeSafe directly with the tenant's own key, never a gateway", () => {
+    const hosted = {
+      AI_PLATFORM_GATEWAY_ID: "ros-platform",
+      AI_GATEWAY_ID: "ros",
+      CLOUDFLARE_ACCOUNT_ID: "acct",
+      AI_GATEWAY_TOKEN: GATEWAY_TOKEN,
+    };
+    const route = judgeRoute({ ...hosted, TYPESAFE_API_KEY: KEY });
+    if (!route.ready) throw new Error("not ready");
+    expect(route).toMatchObject({ viaGateway: false, keySource: "secret" });
+    expect(route.url).toBe("https://api.typesafe.ai/v1/systemone");
+    expect(Object.keys(route.headers("authoring.intent")).sort()).toEqual([
+      "authorization",
+      "content-type",
+    ]);
+    // BYOK needs a gateway of the deployment's own, which a hosted tenant does not have.
+    expect(judgeRoute({ ...hosted, JUDGE_BYOK: "true" })).toMatchObject({
+      ready: false,
+      reason: "off",
+    });
+  });
+
   it("never logs the key or the gateway token, on any outcome", async () => {
     const lines: string[] = [];
     vi.spyOn(console, "log").mockImplementation((...a) => lines.push(a.join(" ")));

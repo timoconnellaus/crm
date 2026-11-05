@@ -59,6 +59,13 @@ export interface JudgeEnv {
   AI_GATEWAY_TOKEN?: string | undefined;
   /** Deploy config: JSON `{ "<placement>": true | false }` over the shipped defaults. */
   JUDGE_PLACEMENTS?: string | undefined;
+  /**
+   * Set on hosted deployments (ADR 0213 amendment). There the judge never goes through a gateway:
+   * not the shared platform gateway (it carries Platform AI only, which the plan pays for, and
+   * Jev is not Platform AI), and the tenant has no gateway of its own. The customer's TypeSafe key
+   * is a tenant Worker secret, called directly, as their other own keys are (ADR 0232).
+   */
+  AI_PLATFORM_GATEWAY_ID?: string | undefined;
 }
 
 export type JudgeKeySource = "byok" | "secret";
@@ -92,7 +99,7 @@ export function judgeKeyStatus(env: JudgeEnv): {
     return { keySource: route.keySource, viaGateway: route.viaGateway, problem: null };
   return {
     keySource: null,
-    viaGateway: Boolean(gatewayBase(env)),
+    viaGateway: !env.AI_PLATFORM_GATEWAY_ID?.trim() && Boolean(gatewayBase(env)),
     problem: route.reason === "no-key" ? route.why : null,
   };
 }
@@ -102,8 +109,9 @@ export function judgeKeyStatus(env: JudgeEnv): {
  * reachable: no BYOK through a gateway and no TYPESAFE_API_KEY.
  */
 export function judgeRoute(env: JudgeEnv): JudgeRoute {
-  const base = gatewayBase(env);
-  const byok = env.JUDGE_BYOK?.trim().toLowerCase() === "true";
+  const hosted = Boolean(env.AI_PLATFORM_GATEWAY_ID?.trim());
+  const base = hosted ? null : gatewayBase(env);
+  const byok = !hosted && env.JUDGE_BYOK?.trim().toLowerCase() === "true";
   const secret = env.TYPESAFE_API_KEY?.trim() || undefined;
   if (!secret && !byok) {
     return { ready: false, reason: "off", why: "No Jev key: TYPESAFE_API_KEY or BYOK" };

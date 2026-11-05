@@ -136,6 +136,19 @@ reviewable module under `packages/core/src/judge/questions/`.
 | 6 | `widget.shape`: which shape of widget answers the request | `widget.describe` | Open (advice) | Yes, last |
 | 7 | `eval.*`: rubric graders in the evals | Eval runs | Never a pass | Yes |
 
+Proposed by later stages, after stage 11:
+
+- **`import.mapping`** (stage 12, [ADR 0241](adr/0241-ai-import-mapping-and-custom-fields.md)): one
+  Choice per import column over the candidate fields code gathered (with `new field` and `skip`),
+  and per stage or picklist value over the target options. Disagreement with the model's plan is
+  flagged on the mapping screen; code never changes the plan. Fails open (the person confirms every
+  mapping).
+- **`outbound.message`, more callers** (stage 13): AI-drafted emails a person will send (findings
+  inline in the compose box) and the first send of a new sequence version with AI-drafted templates
+  (findings on the pending approval). No new questions.
+- Stages 14, 15 and 16 add no placement: permissions, assignment rules and duplicate matching are
+  exact code (rule 1).
+
 Proposed by the brief and **dropped or deferred**, with why:
 
 - **The assistant reading "yes, do it" before applying a change set.** Dropped. A change set is

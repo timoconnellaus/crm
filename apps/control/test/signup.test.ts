@@ -43,7 +43,9 @@ describe("sign-up to a working deployment", () => {
       `tenant-${tenant}`,
     ]);
     expect([...s.fake.cloudflare.d1.values()].some((d) => d.name === `ros-${tenant}`)).toBe(true);
-    expect(s.fake.cloudflare.gateways.has(`${tenant}-ros`)).toBe(true);
+    // No AI Gateway of its own (ADR 0210 amendment): Platform AI goes through the shared one.
+    expect(s.fake.cloudflare.gateways.has(`${tenant}-ros`)).toBe(false);
+    expect(s.fake.cloudflare.gateways.get("ros-platform")).toMatchObject({ cache_ttl: 0 });
 
     // Routed by verified hostname, and its crons are in the dispatch Worker's schedule.
     expect(await readRoute(env.ROUTES, "acme.relationshiposcrm.com")).toEqual({

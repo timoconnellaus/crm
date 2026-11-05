@@ -39,6 +39,17 @@ fresh install" could only be done by an admin clicking after every install.
   the answer in `docs/saas-go-live.md` (decision 2). Until then the record-content switches stay
   off for hosted tenants; the switch to enforce that in code comes with the first such placement
   (build steps 6 to 8).
+- **Hosted deployments** ([ADR 0213](0213-ai-usage-billing.md) amendment, ADR 0250): the judge
+  calls TypeSafe **directly, with the tenant's own key**, never through a gateway. Not the shared
+  platform gateway: it carries Platform AI only (what the plan pays for, tagged and metered per
+  tenant by `platformFetch`), and Jev is not Platform AI; the platform holds no TypeSafe account.
+  Not a per-deployment gateway: a hosted tenant has none. So `judgeRoute` ignores `AI_GATEWAY_ID`
+  and `JUDGE_BYOK` when `AI_PLATFORM_GATEWAY_ID` is set, and the key is the tenant Worker secret
+  `TYPESAFE_API_KEY`, set through the control plane over the signed deployment channel the way
+  the customer's other own keys (`AI_KEY_<PROVIDER>`) are. Until Settings → AI can send it
+  (build step 10), a hosted tenant's judge is off. Routing through the customer's own connected
+  gateway (`AI_CUSTOMER_GATEWAY`) is possible later, but not needed: the direct call is what
+  their other own keys do.
 - **Placements without a switch:** `adjudicator.policy` follows the adjudicator's reviewer; the
   Test button and the eval graders always ask.
 - **The adjudicator's reviewer (decision 3):** `core_settings.adjudicator.reviewer` is `llm`,

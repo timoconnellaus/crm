@@ -1132,7 +1132,22 @@ export interface CoreSupportGrantsTable {
   user_id: string | null;
 }
 
+/**
+ * Migration 0260 (ADR 0213 amendment): model usage counted in a hosted workspace, per day, role
+ * and provider. `billed` is 1 for Platform AI, 0 for the customer's own key.
+ */
+export interface CoreAiUsageTable {
+  day: string;
+  role: string;
+  provider: string;
+  billed: number;
+  requests: number;
+  tokens_in: number;
+  tokens_out: number;
+}
+
 export interface CoreDatabase {
+  core_ai_usage: CoreAiUsageTable;
   core_entitlements: CoreEntitlementsTable;
   core_support_grants: CoreSupportGrantsTable;
   core_install: CoreInstallTable;

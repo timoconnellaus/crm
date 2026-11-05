@@ -118,6 +118,11 @@
     // The judge (Jev, ADR 0230), as on ros-app: keep these in step with apps/app/wrangler.jsonc.
     "JUDGE_BYOK": "",
     "JUDGE_PLACEMENTS": "",
+    // Hosted SaaS only (ADR 0213 amendment), set at provisioning: Platform AI through the shared
+    // gateway, tagged with the tenant. Keep in step with apps/app/wrangler.jsonc.
+    "AI_PLATFORM_GATEWAY_ID": "",
+    "AI_PLATFORM_ACCOUNT_ID": "",
+    "ROS_TENANT_ID": "",
     // The CRM's public origin (https://crm.example.com), where connect popups are handed back.
     // ros-app passes the request's origin; this is the fallback.
     "APP_ORIGIN": "",

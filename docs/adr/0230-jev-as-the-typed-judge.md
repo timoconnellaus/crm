@@ -212,3 +212,8 @@ To close them: provision the `typesafe` custom provider (the installer and updat
 `JUDGE_BYOK=true` after `--provider-key typesafe=…` (check 2), and read the gateway's Logs
 filtered by metadata `judge = judge.test` (check 3); commit the probe reports and amend this ADR.
 Until check 2 passes, the Worker secret `TYPESAFE_API_KEY` is the key path to rely on.
+
+> Amended 2026-11-05 (merging the hosted platform AI build, ADR 0213 amendment): on a hosted
+> deployment the judge never routes through a gateway. It calls TypeSafe directly with the
+> tenant's own `TYPESAFE_API_KEY` (a tenant Worker secret, like the customer's other own keys);
+> `AI_GATEWAY_ID` and `JUDGE_BYOK` are ignored there. Why: [ADR 0232](0232-judge-defaults-and-user-decisions.md).

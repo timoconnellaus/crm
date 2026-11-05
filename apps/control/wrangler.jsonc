@@ -62,6 +62,9 @@
     "AI_MARKUP_PERCENT": "20",
     // AI providers we pay for; spend on any other provider is the customer's own key (free).
     "PLATFORM_AI_PROVIDERS": "workers-ai",
+    // The one shared AI Gateway every hosted deployment's Platform AI goes through, tagged per
+    // tenant (ADR 0213 amendment). Provisioning creates it (caching off) and checks it.
+    "PLATFORM_AI_GATEWAY": "ros-platform",
     "IDLE_PAUSE_DAYS": "60",
     "DELETE_GRACE_DAYS": "30",
     "TRIAL_DAYS": "14",

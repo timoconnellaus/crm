@@ -1,6 +1,8 @@
-// AI Gateway provisioning (ADR 0180): with the `ai` feature on, every deployment gets its own
-// AI Gateway, and every model call goes through it (Workers AI through the binding's gateway
-// option, other providers through the gateway's provider and unified endpoints). Used by
+// AI Gateway provisioning (ADR 0180): with the `ai` feature on, every self-hosted deployment gets
+// its own AI Gateway, and every model call goes through it (Workers AI through the binding's
+// gateway option, other providers through the gateway's provider and unified endpoints). Hosted
+// deployments have `aiGateway: false` and use the control plane's shared Platform AI gateway
+// instead (ADR 0213 amendment). Used by
 // `create-relationship-os` (install and repair) and by runUpdate (`ros upgrade` and the self-updater), so an
 // upgrade creates whatever is missing.
 //

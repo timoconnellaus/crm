@@ -28,7 +28,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 250,
+  "coreSchemaVersion": 260,
   "extensionContract": {
     "supported": [
       1
@@ -298,6 +298,10 @@
     {
       "name": "0250_judge.sql",
       "sha256": "48f0ef7a9433a63d5f98bae38854fe415860ff8683c709ac95bdc9716c605dec"
+    },
+    {
+      "name": "0260_ai_usage.sql",
+      "sha256": "6712bf72e8050cdfb8fe30cf46bee9796c23251fc04797589af1a79605ea5684"
     }
   ],
   "product": "relationship-os",
@@ -566,6 +570,16 @@
           "type": "plain_text"
         },
         {
+          "name": "AI_PLATFORM_ACCOUNT_ID",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "AI_PLATFORM_GATEWAY_ID",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "AI_PROVIDERS",
           "text": "",
           "type": "plain_text"
@@ -621,6 +635,11 @@
           "type": "plain_text"
         },
         {
+          "name": "ROS_CONTROL_URL",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "ROS_RELEASE_REPO",
           "text": "timoconnellaus/relationship-os",
           "type": "plain_text"
@@ -632,6 +651,11 @@
         },
         {
           "name": "ROS_SUPPORT_PUBLIC_KEY",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "ROS_TENANT_ID",
           "text": "",
           "type": "plain_text"
         },
@@ -779,7 +803,7 @@
           "source": "installer"
         }
       ],
-      "sha256": "5c71a594574dc8f9358e265d18eeccdf67570a5bc19bfc3f4ee984a9cd27ed5e"
+      "sha256": "c93ec060223f69f54769ea839ceda2e158803a6ad1fc12bd11d69eba30af383f"
     },
     {
       "bindings": [
@@ -881,6 +905,16 @@
           "type": "plain_text"
         },
         {
+          "name": "AI_PLATFORM_ACCOUNT_ID",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "AI_PLATFORM_GATEWAY_ID",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "AI_PROVIDERS",
           "text": "",
           "type": "plain_text"
@@ -912,6 +946,11 @@
         },
         {
           "name": "JUDGE_PLACEMENTS",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "ROS_TENANT_ID",
           "text": "",
           "type": "plain_text"
         }
@@ -990,7 +1029,7 @@
       ],
       "role": "runner",
       "secrets": [],
-      "sha256": "b553eb3e6f32a9d93220d35345f5c4a3fa9064e6c2396a69cdef3ba5a2cd61b7"
+      "sha256": "2595e2244120412754d0d7e6648216057f01be76017d8d5314f0d8bf7d5eadd3"
     },
     {
       "bindings": [],
