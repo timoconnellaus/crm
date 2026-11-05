@@ -1,16 +1,29 @@
 ---
-// Shared shell for every page. Placeholder until the real design lands; it loads nothing from
-// another origin (no fonts, scripts, analytics or embeds), which scripts/check-static.mjs enforces.
-import "../styles.css";
+// The shell for every page: metadata, self-hosted fonts, the icon sprite, header and footer. It
+// loads nothing from another origin (no fonts, scripts, analytics or embeds), which
+// scripts/check-static.mjs enforces.
+import Fonts from "../components/Fonts.astro";
+import Footer from "../components/Footer.astro";
+import Header from "../components/Header.astro";
+import Sprite from "../components/Sprite.astro";
+import "../styles/base.css";
 
 interface Props {
   title?: string;
   description?: string;
+  /** True on the landing page itself (in-page header links). */
+  home?: boolean;
+  /** Keep the page out of search results (form results, 404). */
+  noindex?: boolean;
 }
 const {
-  title = "Relationship OS",
-  description = "The AI-native CRM that runs in your own Cloudflare account.",
+  title = "Relationship OS · The AI-native CRM you can run yourself",
+  description = "Relationship OS is a CRM you shape by asking. Your AI builds fields, dashboards and automations, you approve each change, and it runs on Cloudflare in your own account or ours.",
+  home = false,
+  noindex = false,
 } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL("/og.png", Astro.site);
 ---
 
 <!doctype html>
@@ -18,14 +31,40 @@ const {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="referrer" content="no-referrer" />
-    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
-    <title>{title}</title>
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#f7f4ff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e0b1f" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta property="og:site_name" content="Relationship OS" />
+    <meta property="og:title" content="Relationship OS" />
+    <meta property="og:description" content="The operating system for your customer relationships." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Relationship OS: the operating system for your customer relationships." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Marks that JavaScript runs, before first paint, so no-JS styles never flash. -->
+    <script is:inline>document.documentElement.classList.add("js");</script>
+    <Fonts />
   </head>
-  <body class="min-h-screen bg-background text-foreground antialiased">
-    <main class="mx-auto flex max-w-xl flex-col gap-8 px-6 py-24">
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <Sprite />
+    <Header home={home} />
+    <main id="main">
       <slot />
     </main>
+    <Footer />
+    <script>
+      import "../scripts/site.ts";
+    </script>
   </body>
 </html>

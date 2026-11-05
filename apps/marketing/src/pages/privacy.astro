@@ -1,0 +1,31 @@
+---
+import Simple from "../layouts/Simple.astro";
+import { CONTACT_EMAIL } from "../links.ts";
+---
+
+<Simple
+  title="Privacy"
+  eyebrow="Privacy"
+  heading="What this site keeps about you"
+  lead="Very little. There are no trackers, analytics, cookies or third-party scripts on relationshiposcrm.com."
+  description="What relationshiposcrm.com stores when you join the waitlist, and how to have it deleted."
+>
+  <div class="prose">
+    <h2>The waitlist</h2>
+    <p>
+      When you join the waitlist we store your email address, the team size if you chose one, and
+      when you signed up. We use it to email you once, when the hosted version opens. We don't add
+      you to a newsletter and we don't share it with anyone.
+    </p>
+    <h2>Requests to the site</h2>
+    <p>
+      The site runs on Cloudflare, which handles every request to it. To stop form spam we count
+      submissions per IP address for a minute. We don't store your IP address with your signup.
+    </p>
+    <h2>Deleting your details</h2>
+    <p>
+      Email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> from the address you signed up with
+      and we'll delete it.
+    </p>
+  </div>
+</Simple>

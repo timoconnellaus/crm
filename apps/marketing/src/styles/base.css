@@ -1,0 +1,535 @@
+/* Relationship OS marketing site: tokens, base type, buttons, header, footer and reveal.
+   "Soft chrome": Y2K chrome and glass, softened. Light and dark follow the system; set
+   data-theme="light" or "dark" on <html> to force one.
+   Motion follows .claude/skills/animate: transform and opacity only, strong ease-out curves, short
+   UI durations, hover effects only on (hover: hover) and (pointer: fine), and reduced motion keeps
+   gentle opacity fades but drops movement. */
+
+:root {
+  color-scheme: light;
+  --bg: #f7f4ff;
+  --bg-2: #efeaff;
+  --card: rgba(255, 255, 255, 0.82);
+  --solid: #ffffff;
+  --line: #ddd6f7;
+  --line-2: #c9c0f0;
+  --ink: #14102b;
+  --body: #2e2a48;
+  --muted: #5f5980;
+  --violet: #5b3df5;
+  --violet-2: #7a62ff;
+  --aqua: #00a99f;
+  --aqua-soft: #9ff3ea;
+  --pink: #ffb4d6;
+  --peri: #c0c7ff;
+  --disp: "Unbounded", system-ui, sans-serif;
+  --font: "Manrope", system-ui, sans-serif;
+  --glow-1: rgba(255, 180, 214, 0.45);
+  --glow-2: rgba(0, 194, 184, 0.22);
+  --glow-3: rgba(192, 199, 255, 0.65);
+  --dither: rgba(20, 16, 43, 0.06);
+  --band: #14102b;
+  --band-ink: #f2efff;
+  --band-muted: #aaa3cf;
+  --danger: #b42318;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--violet) 35%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e0b1f;
+    --bg-2: #161230;
+    --card: rgba(30, 25, 62, 0.82);
+    --solid: #1a1538;
+    --line: #2c2654;
+    --line-2: #3b3470;
+    --ink: #f2efff;
+    --body: #d4cff0;
+    --muted: #a39dc8;
+    --violet: #8a75ff;
+    --violet-2: #a493ff;
+    --glow-1: rgba(255, 120, 190, 0.14);
+    --glow-2: rgba(0, 194, 184, 0.12);
+    --glow-3: rgba(91, 61, 245, 0.26);
+    --dither: rgba(255, 255, 255, 0.04);
+    --band: #070512;
+    --danger: #ff8a7a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e0b1f;
+  --bg-2: #161230;
+  --card: rgba(30, 25, 62, 0.82);
+  --solid: #1a1538;
+  --line: #2c2654;
+  --line-2: #3b3470;
+  --ink: #f2efff;
+  --body: #d4cff0;
+  --muted: #a39dc8;
+  --violet: #8a75ff;
+  --violet-2: #a493ff;
+  --glow-1: rgba(255, 120, 190, 0.14);
+  --glow-2: rgba(0, 194, 184, 0.12);
+  --glow-3: rgba(91, 61, 245, 0.26);
+  --dither: rgba(255, 255, 255, 0.04);
+  --band: #070512;
+  --danger: #ff8a7a;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+[hidden] {
+  /* biome-ignore lint/complexity/noImportantStyles: the hidden attribute must win over any display. */
+  display: none !important;
+}
+html,
+body {
+  overflow-x: clip;
+}
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+body {
+  background: var(--bg);
+  color: var(--body);
+  font: 17px / 1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a {
+  color: inherit;
+}
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: 10px;
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.skip {
+  position: absolute;
+  left: 16px;
+  top: -48px;
+  z-index: 50;
+  background: var(--solid);
+  color: var(--ink);
+  padding: 10px 14px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.skip:focus {
+  top: 12px;
+}
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.eyebrow {
+  display: inline-block;
+  font: 700 12px var(--font);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--violet);
+}
+h1,
+h2 {
+  font-family: var(--disp);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+h1 {
+  font-size: clamp(36px, 5.6vw, 68px);
+  line-height: 1.06;
+  max-width: 17ch;
+  margin: 18px auto 0;
+}
+h1 .chrome-text {
+  background: linear-gradient(
+    100deg,
+    var(--violet) 0%,
+    #9a7bff 35%,
+    var(--aqua) 70%,
+    var(--violet) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+h2 {
+  font-size: clamp(28px, 3.4vw, 42px);
+  line-height: 1.12;
+  max-width: 22ch;
+}
+.eyebrow + h2 {
+  margin-top: 14px;
+}
+h3 {
+  font: 700 18px / 1.35 var(--font);
+  color: var(--ink);
+}
+p {
+  text-wrap: pretty;
+}
+.lead {
+  font-size: 19px;
+  color: var(--muted);
+  max-width: 56ch;
+}
+h2 + .lead {
+  margin-top: 18px;
+}
+section {
+  padding: 112px 0;
+  position: relative;
+}
+
+/* Buttons. The hover glow is a pseudo-element faded with opacity, so only opacity animates. */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 14px;
+  border: 0;
+  font: 700 15px var(--font);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #fff;
+  background: linear-gradient(180deg, var(--violet-2), var(--violet));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 8px 20px rgba(91, 61, 245, 0.28);
+  transition: transform 160ms var(--ease-out);
+}
+.btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 12px 26px rgba(91, 61, 245, 0.36);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover::after {
+    opacity: 1;
+  }
+}
+.btn.ghost {
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+  box-shadow: none;
+}
+.btn.ghost::after {
+  display: none;
+}
+.btn[aria-busy="true"] {
+  cursor: progress;
+  opacity: 0.8;
+}
+.textlink {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  border-bottom: 1.5px solid var(--peri);
+}
+@media (hover: hover) and (pointer: fine) {
+  .textlink:hover {
+    border-color: var(--violet);
+  }
+}
+.chrome {
+  padding: 2px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #ffffff, #c0c7ff 28%, #f4f4fb 50%, #a9b3e8 72%, #ffffff);
+}
+.glass {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+}
+svg.i {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+/* Header. The bottom border fades in on scroll (a pseudo-element, so only opacity animates). */
+header.site {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+header.site::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--line);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+header.site.scrolled::after {
+  opacity: 1;
+}
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 68px;
+  gap: 16px;
+}
+.logo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font: 600 16px var(--disp);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.logo i {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff, var(--peri) 40%, var(--violet) 100%);
+}
+.links {
+  display: flex;
+  gap: 28px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.links a {
+  text-decoration: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .links a:hover {
+    color: var(--ink);
+  }
+}
+.nav .btn {
+  height: 40px;
+  font-size: 14px;
+  padding: 0 16px;
+  border-radius: 12px;
+}
+.menu-btn {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line-2);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+.mobile-menu {
+  display: none;
+}
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--line);
+  padding: 36px 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+footer .wrap {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+footer a {
+  text-decoration: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  footer a:hover {
+    color: var(--ink);
+  }
+}
+
+/* Reveal on scroll: opacity and a small rise, once. Only with JavaScript, so the page reads
+   without it. Siblings in a grid are staggered by 60ms. */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 500ms var(--ease-out),
+    transform 500ms var(--ease-out);
+}
+.js .reveal.seen {
+  opacity: 1;
+  transform: none;
+}
+.js .reveal:nth-child(2) {
+  transition-delay: 60ms;
+}
+.js .reveal:nth-child(3) {
+  transition-delay: 120ms;
+}
+.js .reveal:nth-child(4) {
+  transition-delay: 180ms;
+}
+.js .reveal:nth-child(5) {
+  transition-delay: 240ms;
+}
+.js .reveal:nth-child(6) {
+  transition-delay: 300ms;
+}
+
+/* Simple pages (privacy, form results, 404) */
+.page {
+  padding: 96px 0 120px;
+  background: radial-gradient(700px 360px at 50% 0%, var(--glow-3), transparent 70%);
+}
+.page .wrap {
+  max-width: 760px;
+}
+.page h1 {
+  margin: 14px 0 0;
+  font-size: clamp(32px, 4.4vw, 48px);
+  max-width: 20ch;
+}
+.page .lead {
+  margin-top: 18px;
+}
+.page .prose {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 66ch;
+}
+.page .prose h2 {
+  font-size: 22px;
+  margin-top: 16px;
+}
+.page .actions {
+  margin-top: 32px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal {
+    transform: none;
+    transition: opacity 300ms ease;
+  }
+  .btn:active {
+    transform: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .links,
+  .nav > .btn {
+    display: none;
+  }
+  .js .menu-btn {
+    display: inline-flex;
+  }
+  /* Without JavaScript there is no menu, so keep the call to action in the bar. */
+  html:not(.js) .nav > .btn {
+    display: inline-flex;
+  }
+  .js .mobile-menu {
+    display: block;
+    position: fixed;
+    inset: 68px 0 auto 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    padding: 8px 24px 20px;
+    transform: translateY(-8px);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 200ms var(--ease-out),
+      transform 200ms var(--ease-out),
+      visibility 0s linear 200ms;
+  }
+  .js .mobile-menu.open {
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+    transition:
+      opacity 200ms var(--ease-out),
+      transform 200ms var(--ease-out),
+      visibility 0s;
+  }
+  .mobile-menu a {
+    display: block;
+    padding: 12px 0;
+    font-weight: 600;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .mobile-menu .btn {
+    margin-top: 14px;
+    width: 100%;
+    color: #fff;
+    border-bottom: 0;
+    display: flex;
+  }
+}
+@media (max-width: 600px) {
+  .wrap {
+    padding: 0 16px;
+  }
+  section {
+    padding: 80px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) and (max-width: 980px) {
+  .js .mobile-menu {
+    transform: none;
+  }
+}
