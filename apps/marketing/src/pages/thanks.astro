@@ -1,9 +1,8 @@
 ---
-import Page from "../layouts/Page.astro";
+// Where a contact-sales request lands without JavaScript. Waitlist signups go back to their form.
+import Simple from "../layouts/Simple.astro";
 ---
 
-<Page title="Thanks · Relationship OS">
-  <h1 class="text-3xl font-semibold tracking-tight">Thanks</h1>
-  <p class="text-muted-foreground">We have your details and will be in touch.</p>
-  <a href="/" class="underline">Back to Relationship OS</a>
-</Page>
+<Simple title="Thanks" heading="Thanks" lead="We have your details and will be in touch." noindex>
+  <div class="actions"><a class="btn" href="/">Back to Relationship OS</a></div>
+</Simple>

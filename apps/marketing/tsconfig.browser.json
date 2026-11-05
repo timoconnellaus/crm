@@ -1,0 +1,9 @@
+{
+  // The page's client scripts (src/scripts, run in the browser) and the Playwright specs.
+  "extends": "@relationship-os/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["src/scripts", "src/team-size.ts", "e2e", "playwright.config.ts"]
+}

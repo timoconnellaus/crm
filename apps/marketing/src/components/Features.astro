@@ -1,0 +1,58 @@
+---
+import Icon from "./Icon.astro";
+
+const features = [
+  {
+    icon: "users",
+    title: "People and organisations",
+    body: "Timelines with every note, call, email and meeting. Custom fields when you need them.",
+  },
+  {
+    icon: "deal",
+    title: "Deals and pipelines",
+    body: "Stages, values and forecasts, on a board or in a table.",
+  },
+  {
+    icon: "chart",
+    title: "Dashboards",
+    body: "Describe a chart and get one. Leaderboards, funnels and KPIs that update with your data.",
+  },
+  {
+    icon: "bolt",
+    title: "Automations",
+    body: "Reminders, follow-ups and hand-offs, tested before they go live.",
+  },
+  {
+    icon: "mail",
+    title: "Email and calendar",
+    body: "Gmail and Outlook conversations and meetings land on the right timelines. You choose what's shared.",
+  },
+  {
+    icon: "search",
+    title: "Summaries and search",
+    body: "Meeting prep, account summaries, and search that finds records by meaning as well as by words.",
+  },
+];
+---
+
+<section aria-labelledby="features-title">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">What's inside</span>
+      <h2 id="features-title">Everything a CRM needs, shaped around how you work.</h2>
+    </div>
+    <div class="features">
+      {
+        features.map((feature) => (
+          <div class="feature glass reveal">
+            <div class="ic">
+              <Icon name={feature.icon} />
+            </div>
+            <h3>{feature.title}</h3>
+            <p>{feature.body}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

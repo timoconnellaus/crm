@@ -1,0 +1,42 @@
+---
+const guarantees = [
+  {
+    title: "Sandboxed",
+    body: "Automations and extensions run in isolation, with no internet access except through connections you approve.",
+  },
+  {
+    title: "Approved",
+    body: "New fields, bulk edits, deletes and outgoing emails wait in an approvals inbox until someone signs off.",
+  },
+  {
+    title: "Audited",
+    body: "Every action by a person or an AI is logged, with who asked for it and why.",
+  },
+];
+---
+
+<section class="band" aria-labelledby="safety-title">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">Safety and control</span>
+      <h2 id="safety-title">AI does the work. People stay in charge.</h2>
+      <p class="lead">
+        Your admins decide what the AI can do on its own and what needs a person. Only a human admin
+        can loosen those rules.
+      </p>
+    </div>
+    <div class="guarantees">
+      {
+        guarantees.map((g, i) => (
+          <div class="g reveal">
+            <span class="n" aria-hidden="true">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <h3>{g.title}</h3>
+            <p>{g.body}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

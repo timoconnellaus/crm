@@ -1,0 +1,44 @@
+---
+const steps = [
+  {
+    title: "Ask in plain language",
+    body: "In the app, or from the AI you already use. Ask for a record, a report, a new field or a whole workflow.",
+  },
+  {
+    title: "Review the change set",
+    body: "See every field, record and automation the AI wants to add or change, with a test run showing what it would do.",
+  },
+  {
+    title: "Approve, and it's live",
+    body: "Approve the whole set or one change at a time. Rejecting a change also drops anything that depended on it.",
+  },
+];
+---
+
+<section id="how" aria-labelledby="how-title">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="eyebrow">How it works</span>
+      <h2 id="how-title">Describe what you need, then approve what the AI drafts.</h2>
+      <p class="lead">
+        Changes arrive as a change set you can read before anything happens. Until you approve, the
+        AI works against a preview, so it can keep going without touching real data.
+      </p>
+    </div>
+    <ol class="how">
+      {
+        steps.map((step, i) => (
+          <li class="glass reveal">
+            <span class="n" aria-hidden="true">
+              {i + 1}
+            </span>
+            <div>
+              <h3>{step.title}</h3>
+              <p>{step.body}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>

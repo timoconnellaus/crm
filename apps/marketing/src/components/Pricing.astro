@@ -1,0 +1,94 @@
+---
+import Icon from "./Icon.astro";
+
+interface Plan {
+  name: string;
+  price: string;
+  per?: string;
+  fine: string;
+  items: string[];
+  cta: { label: string; href: string };
+  featured?: boolean;
+}
+
+const plans: Plan[] = [
+  {
+    name: "Self-host",
+    price: "Free",
+    fine: "Source available under FSL. Each release becomes Apache 2.0 after two years.",
+    items: ["Every feature", "Your own Cloudflare account", "Bring your own AI keys"],
+    cta: { label: "Install it", href: "#self-host" },
+  },
+  {
+    name: "Free",
+    price: "$0",
+    fine: "Hosted by us, for one person.",
+    items: [
+      "1 user",
+      "Up to 1,000 people and organisations",
+      "Use your own AI over MCP, or buy AI credits",
+    ],
+    cta: { label: "Join the waitlist", href: "#waitlist" },
+  },
+  {
+    name: "Team",
+    price: "$39",
+    per: "/ month",
+    fine: "For small teams.",
+    items: ["Up to 10 users", "$10 of AI included each month", "Email support"],
+    cta: { label: "Join the waitlist", href: "#waitlist" },
+    featured: true,
+  },
+  {
+    name: "Business",
+    price: "$149",
+    per: "/ month",
+    fine: "For growing teams.",
+    items: ["Unlimited users", "$25 of AI included each month", "Priority support"],
+    cta: { label: "Join the waitlist", href: "#waitlist" },
+  },
+];
+---
+
+<section id="pricing" class="pricing" aria-labelledby="pricing-title">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow">Pricing</span>
+      <h2 id="pricing-title">Free to run yourself. Hosted when you'd rather not.</h2>
+    </div>
+    <div class="plans">
+      {
+        plans.map((plan) => (
+          <div class:list={["plan reveal", plan.featured ? "feat" : "glass"]}>
+            <h3 id={`plan-${plan.name.toLowerCase()}`}>{plan.name}</h3>
+            <span class="price">
+              {plan.price}
+              {plan.per && " "}
+              {plan.per && <small>{plan.per}</small>}
+            </span>
+            <span class="fine">{plan.fine}</span>
+            <ul>
+              {plan.items.map((item) => (
+                <li>
+                  <Icon name="check" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <a
+              class:list={["btn", { ghost: !plan.featured }]}
+              href={plan.cta.href}
+              aria-describedby={`plan-${plan.name.toLowerCase()}`}
+            >
+              {plan.cta.label}
+            </a>
+          </div>
+        ))
+      }
+    </div>
+    <p class="aiprice">
+      AI beyond the monthly allowance is billed at the provider's price plus 20%, itemised in
+      dollars. Connect your own AI over MCP and it costs nothing extra.
+    </p>
+  </div>
+</section>

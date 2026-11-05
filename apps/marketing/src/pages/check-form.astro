@@ -1,9 +1,12 @@
 ---
-import Page from "../layouts/Page.astro";
+import Simple from "../layouts/Simple.astro";
 ---
 
-<Page title="Check the form · Relationship OS">
-  <h1 class="text-3xl font-semibold tracking-tight">Please check the form</h1>
-  <p class="text-muted-foreground">We need a valid email address.</p>
-  <a href="/#signup" class="underline">Back to the form</a>
-</Page>
+<Simple
+  title="Check the form"
+  heading="Please check the form"
+  lead="We need a valid email address."
+  noindex
+>
+  <div class="actions"><a class="btn" href="/#waitlist">Back to the form</a></div>
+</Simple>

@@ -1,0 +1,38 @@
+---
+// The sticky header. On the landing page the links are in-page anchors; elsewhere they lead back
+// to it. Below 980px the links move into a menu (site.ts); without JavaScript the bar keeps its
+// call to action instead.
+import { REPO_URL } from "../links.ts";
+import Icon from "./Icon.astro";
+
+interface Props {
+  /** True on the landing page itself. */
+  home?: boolean;
+}
+const { home = false } = Astro.props;
+const at = (hash: string) => (home ? hash : `/${hash}`);
+const links = [
+  { href: at("#how"), label: "Product" },
+  { href: at("#self-host"), label: "Self-host" },
+  { href: at("#pricing"), label: "Pricing" },
+  { href: at("#enterprise"), label: "Enterprise" },
+  { href: REPO_URL, label: "GitHub" },
+];
+---
+
+<header class="site" id="top">
+  <div class="wrap nav">
+    <a class="logo" href={home ? "#top" : "/"}><i aria-hidden="true"></i>Relationship OS</a>
+    <nav class="links" aria-label="Main">
+      {links.map((link) => <a href={link.href}>{link.label}</a>)}
+    </nav>
+    <a class="btn" href={at("#waitlist")}>Join the waitlist</a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="mm" aria-label="Open menu">
+      <Icon name="menu" />
+    </button>
+  </div>
+  <nav class="mobile-menu" id="mm" aria-label="Menu">
+    {links.map((link) => <a href={link.href}>{link.label}</a>)}
+    <a class="btn" href={at("#waitlist")}>Join the waitlist</a>
+  </nav>
+</header>
