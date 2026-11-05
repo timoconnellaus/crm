@@ -114,7 +114,7 @@ only be fixed inside vendored code, so we propose them upstream instead of patch
   `syncToken`, which returns cancelled items). Until then the CRM reconciles deletes by listing
   windows (ADR 0112), which is complete but slower (hours, not seconds).
 
-- **V4, erasure inside gatekeeper storage** (found in the erase-completeness audit, ADR 0019
+- **V4, erasure inside gatekeeper storage** (found in the erase-completeness audit, ADR 0320 and ADR 0019
   amendment). Each bound resource is a Durable Object facet of the connection's `IntegrationHost`,
   with its own storage that only the vendored gatekeeper code can read. Some of it can hold mail
   to or from a person after a CRM erase, and no gatekeeper offers a way to remove it:

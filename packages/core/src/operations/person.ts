@@ -1106,7 +1106,11 @@ export const personErase = defineOperation({
     'replaced with "[erased]"; who did what and when is kept. In-app assistant conversations ' +
     "that referenced them are redacted the same way (tool calls and results that mention them " +
     "lose their content; their ids, emails, phone numbers and names in text become " +
-    '"[erased]"). Cannot be undone; use person.delete for a reversible delete.',
+    '"[erased]"). Former emails and phones count too. Synced email bodies, suggested contacts, ' +
+    "signatures, extension data related to them, automation run history and notifications about " +
+    "them are deleted or redacted, and their addresses are added to the erased-address list so " +
+    "mail sync does not collect them again. Cannot be undone; use person.delete for a " +
+    "reversible delete.",
   input: z.object({ id: personId }),
   output: z.object({
     id: z.string(),

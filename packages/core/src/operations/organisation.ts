@@ -1075,7 +1075,9 @@ export const organisationErase = defineOperation({
     "activities and tasks linked only to it are deleted, and its system activities are " +
     "removed from every timeline. Audit-log content that mentions it is replaced with " +
     '"[erased]" (who did what and when is kept), and so are in-app assistant conversations ' +
-    "that referenced it (its id and name). Cannot be undone; use organisation.delete for a " +
+    "that referenced it (its id and name). Its domains, website and street lines, current and " +
+    "former, are matched too, and extension data, run history and notifications about it are " +
+    "redacted or deleted. Cannot be undone; use organisation.delete for a " +
     "reversible delete.",
   input: z.object({ id: organisationId }),
   output: z.object({
