@@ -375,6 +375,13 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   summaries. Every call goes through AI Gateway when `AI_GATEWAY_ID` is set, tagged with its role;
   the installer and the updater create a gateway per deployment and set it
   ([ADR 0180](adr/0180-ai-gateway-provisioned-per-deployment.md)).
+- **Providers**: Workers AI (the binding) and, optionally, OpenAI, Google AI Studio, OpenRouter,
+  DeepSeek, Anthropic, Jev and any OpenAI-compatible endpoint, each through the gateway's
+  provider path (`…/{gateway}/deepseek/…`). A deployment can pick a **model role preset**
+  (`create-crm --model-roles deepseek-flash`), stored as its `AI_MODEL_ROLES` in the deployment
+  state, and `AI_GATEWAY_BYOK` says which providers' keys the gateway holds
+  ([ADR 0192](adr/0192-deepseek-provider-and-model-role-presets.md)). The shipped defaults stay
+  on Workers AI.
 - **Settings → AI** (`ai.*` operations, admins): per role provider, model, fallback, capability
   badges and a Test button; provider keys stored as Workers secrets through the Cloudflare API or
   as AI Gateway BYOK, **never in D1** ([ADR 0151](adr/0151-provider-keys-as-workers-secrets-or-byok.md));
