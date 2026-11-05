@@ -34,6 +34,8 @@ import { useHotkey } from "#/lib/hotkeys";
 import { errorMessage } from "#/lib/query";
 import { recallScroll, useScrollKey, useScrollMemory } from "#/lib/scroll-memory";
 import { PendingPopover, usePendingForRows } from "../approvals/pending-badge.tsx";
+import { AskAboutSelected } from "../assistant/ask-buttons.tsx";
+import { usePublishSelection } from "../assistant/assistant-provider.tsx";
 import { EmptyState, ErrorState } from "../empty-state.tsx";
 import { DefaultCell } from "./cells.tsx";
 
@@ -360,6 +362,10 @@ export function DataTable<Row extends { id: string }>({
 
   const showEmpty = query.isSuccess && rows.length === 0;
   const selectedCount = selected.size;
+  // The assistant's "these" (ADR 0200): at most 200 selected ids go with a question.
+  usePublishSelection(
+    selectedCount ? { object: object.name, ids: [...selected].slice(0, 200) } : null,
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="data-table-region">
@@ -392,6 +398,7 @@ export function DataTable<Row extends { id: string }>({
             </Button>
           )}
           <div className="flex-1" />
+          <AskAboutSelected object={object.name} ids={[...selected]} />
           {bulkActions?.({
             selected: loadedSelected,
             ids: [...selected],

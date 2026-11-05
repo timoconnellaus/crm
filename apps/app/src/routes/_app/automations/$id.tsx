@@ -6,9 +6,9 @@ import type { AutomationTestReport } from "@relationship-os/core";
 import { Button } from "@relationship-os/ui/components/button";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@relationship-os/ui/components/tooltip";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { MessageSquareIcon, PauseIcon, PlayIcon, PlugIcon, WorkflowIcon } from "lucide-react";
+import { PauseIcon, PlayIcon, PlugIcon, WorkflowIcon } from "lucide-react";
+import { AskAssistantButton } from "#/components/assistant/ask-buttons";
 import { useState } from "react";
 import { toast } from "sonner";
 import { connectionSlots, connectionsBanner } from "#/components/automations/connections-model";
@@ -114,7 +114,11 @@ function AutomationView({ detail }: { detail: AutomationDetailData }) {
             }}
           />
           <PauseButton detail={detail} />
-          <AskAssistantButton />
+          <AskAssistantButton
+            options={{
+              prompt: `Explain the automation ${detail.id}: what it does, and why it ran most recently.`,
+            }}
+          />
         </div>
       }
       tabs={
@@ -259,31 +263,3 @@ function ConnectionsBanner({
   );
 }
 
-/**
- * The in-app assistant arrives in stage 7. Until then the button is shown (as in the reference)
- * but disabled, saying where to ask instead: Claude through MCP.
- */
-const ASK_REASON = "Coming in stage 7. Meanwhile, ask Claude about this automation through MCP.";
-
-function AskAssistantButton() {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        {/* aria-disabled rather than disabled, so it stays focusable and the tooltip shows. */}
-        <Button
-          variant="outline"
-          size="sm"
-          aria-disabled="true"
-          aria-description={ASK_REASON}
-          className="cursor-not-allowed opacity-50"
-          onClick={(event) => event.preventDefault()}
-          data-testid="ask-assistant"
-        >
-          <MessageSquareIcon />
-          Ask the assistant
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{ASK_REASON}</TooltipContent>
-    </Tooltip>
-  );
-}

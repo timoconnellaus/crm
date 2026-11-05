@@ -40,6 +40,7 @@ import {
   ManualAutomationButtons,
   RecordAutomationsCard,
 } from "#/components/automations/record-automations";
+import { AskAiButton } from "#/components/assistant/ask-buttons";
 import { EmptyState } from "#/components/empty-state";
 import { ExtensionFieldsCards } from "#/components/fields/fields-card";
 import { useEnrichAction } from "#/components/integrations/enrich-action";
@@ -230,6 +231,7 @@ function OrganisationRecord({
         !deleted && (
           <>
             <ManualAutomationButtons object="organisation" id={org.id} />
+            <AskAiButton record={{ object: "organisation", id: org.id, label: org.name }} />
             {addTask && (
               <Button variant="outline" size="sm" onClick={addTask} aria-keyshortcuts="c">
                 <PlusIcon />

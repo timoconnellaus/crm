@@ -11,6 +11,7 @@ import {
   ManualAutomationButtons,
   RecordAutomationsCard,
 } from "#/components/automations/record-automations";
+import { AskAiButton } from "#/components/assistant/ask-buttons";
 import { EmptyState } from "#/components/empty-state";
 import { FieldsCard } from "#/components/fields/fields-card";
 import { useRecordHistory, useTimeline } from "#/components/record/adapters";
@@ -112,6 +113,9 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
       actions={
         <>
           <ManualAutomationButtons object={info.name} id={id} />
+          <AskAiButton
+            record={{ object: info.name, id, ...(data.title ? { label: data.title } : {}) }}
+          />
           <Button variant="outline" onClick={onDelete} disabled={remove.isPending}>
             <Trash2Icon />
             Delete

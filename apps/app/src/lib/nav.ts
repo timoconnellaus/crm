@@ -2,6 +2,7 @@
 import {
   ActivityIcon,
   BellIcon,
+  BotIcon,
   Building2Icon,
   CheckSquareIcon,
   HomeIcon,
@@ -27,6 +28,7 @@ export interface NavItem {
   to:
     | "/"
     | "/dashboards"
+    | "/assistant"
     | "/people"
     | "/organisations"
     | "/tasks"
@@ -63,6 +65,12 @@ export const MAIN_NAV: NavItem[] = [
   { to: "/people", label: "People", icon: UsersIcon, keywords: ["contacts", "persons"] },
   { to: "/organisations", label: "Organisations", icon: Building2Icon, keywords: ["companies"] },
   { to: "/tasks", label: "Tasks", icon: CheckSquareIcon, keywords: ["todo"] },
+  {
+    to: "/assistant",
+    label: "Assistant",
+    icon: BotIcon,
+    keywords: ["ai", "ask", "chat", "help", "conversations"],
+  },
   {
     to: "/automations",
     label: "Automations",
