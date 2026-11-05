@@ -90,8 +90,9 @@ function redactJsonText(text: string | null, m: SubjectMatcher, pattern: RegExp 
 // --- Sync --------------------------------------------------------------------------------------
 
 /**
- * Suggested contacts, signatures and job-change suggestions for the subject go; their addresses
- * join the erased-address list (hashed) so sync does not collect them again.
+ * Suggested contacts, signatures and job-change suggestions for a person go; their addresses
+ * join the erased-address list (hashed) so sync does not collect them again. An organisation
+ * loses the suggested contacts at its domains.
  */
 export async function queueEraseSync(ctx: HandlerContext, s: StoreSubject): Promise<number> {
   const termsJson = JSON.stringify(s.terms);
@@ -130,6 +131,17 @@ export async function queueEraseSync(ctx: HandlerContext, s: StoreSubject): Prom
           )
           .onConflict((oc) => oc.doNothing()),
       );
+    }
+  } else if (s.terms.length) {
+    // An organisation: suggested contacts at its domains (current and former) are its data.
+    const contacts = await ctx.db
+      .selectFrom("core_suggested_contact")
+      .select("email")
+      .where("domain", "in", jsonList(s.terms))
+      .execute();
+    suggestions = contacts.length;
+    for (const part of chunk(contacts.map((c) => c.email))) {
+      ctx.write(ctx.db.deleteFrom("core_suggested_contact").where("email", "in", part));
     }
   }
   // Other people's job-change evidence can quote the subject (a shared signature, an address).

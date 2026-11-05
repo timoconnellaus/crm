@@ -155,3 +155,39 @@ in facet storage only vendored code can read, and `packages/gatekeeper-*`, `gate
   logging (`collectLog: false` on the binding, losing per-role usage for Workers AI calls), or move
   to Workers AI's REST endpoint with an API token so payload logging can be turned off alone, as
   hosted does.
+
+> **Amended 2026-11-06 (user decision): a narrower organisation erase.** "Shared emails lose their
+> full body when someone in them is erased" stays true for a **person** erase, unchanged. An
+> **organisation** erase drops an email's full body only when **no person is linked** to that
+> email (`core_activity_links`, object `person`). When a person is still on it, the email is
+> theirs as much as the organisation's, so the body is kept:
+> - **R2 rewrite.** Before the commit, the body is read from R2, the organisation's terms (domains,
+>   website, street lines, current and former; the same terms as everywhere else) are replaced with
+>   `[erased]`, and it is written back under the same key; `body_ref` stays. Like the erase log,
+>   the write happens before the D1 batch: if the batch then fails, the body is already scrubbed and
+>   a retry finds nothing to change. A simulation reads and writes nothing.
+> - **Snippet only** when the body cannot be rewritten (no blob storage, the object is missing or
+>   unreadable, the write fails): `body_ref` is cleared and the body queued for deletion, as for a
+>   person, keeping the scrubbed snippet. Never a kept body that was not scrubbed.
+> - The subject, snippet and payload are scrubbed as before; the organisation's own data and links
+>   go as before; emails linked only to it are deleted as before.
+> - The organisation's **name** is not matched in a kept body, as in snippets and other shared text
+>   (names are matched only in contexts known to be about the subject). The user's decision names
+>   the terms to scrub, not the name; an organisation's name in a person's email is mostly about
+>   the person's work.
+> - Found by the updated every-store test: an organisation erase now also deletes **suggested
+>   contacts at its domains** (`core_suggested_contact.domain`, current and former), which it had
+>   left behind. They are counted in `suggestionsRemoved`. Sync may suggest such an address again
+>   from later mail; organisations have no erased-address list.
+>
+> Tests: `erase-stores.test.ts` ("organisation.erase reaches every store"): a kept body rewritten
+> (and nothing of the organisation left in D1 or R2), an email with no person on it losing its
+> body, an email only about the organisation deleted, the snippet-only fallback (object missing; no
+> blob storage), and a person erase afterwards still dropping the body.
+
+> **Amended 2026-11-06 ([ADR 0330](0330-self-hosted-workers-ai-over-rest.md)):** the "not
+> covered" AI Gateway item and the decision left to the user are resolved. Self-hosted Workers AI
+> now goes over REST through the deployment's gateway with `cf-aig-collect-log-payload: false`
+> whenever the installer has given the gateway token Workers AI Read (`AI_GATEWAY_REST`). Prompts
+> are still logged only on the binding fallback (a hand-set or older token that could not be
+> replaced), and the installer warns when that is the case.

@@ -57,7 +57,9 @@ export interface EraseCounts {
 
 /** The counts person.erase and organisation.erase report beyond the audit and conversations. */
 export const eraseCountsOutput = {
-  suggestionsRemoved: z.number().describe("Suggested contacts removed (people)"),
+  suggestionsRemoved: z
+    .number()
+    .describe("Suggested contacts removed (a person's addresses; an organisation's domains)"),
   extensionRowsErased: z.number().describe("Extension rows deleted or scrubbed"),
   runsRedacted: z.number().describe("Automation runs redacted"),
   notificationsDeleted: z.number(),
@@ -337,19 +339,36 @@ async function queueScrubShared(
       ]),
     )
     .execute();
+  // An organisation erase keeps the full body of an email a person is still linked to (ADR 0320
+  // amendment, 2026-11-06): the email is theirs as much as the organisation's.
+  const keepBodies =
+    object === "organisation" ? await personLinked(ctx, activities) : new Set<string>();
   for (const a of activities) {
     const subject = m.text(a.subject);
     const body = m.text(a.body);
     const payload = JSON.stringify(scrubJson(JSON.parse(a.payload), m).value);
-    // The full email body in R2 is dropped, not rewritten: a body is mostly about its sender and
-    // recipients (greetings, signatures, quoted replies) and names are not matched in shared
-    // text, so a rewrite would leave them. The scrubbed snippet stays; the R2 object is queued
-    // for deletion by trigger (core_blob_deletion, ADR 0320).
-    if (subject === a.subject && body === a.body && payload === a.payload && !a.body_ref) continue;
+    // A person erase drops the full email body in R2 rather than rewriting it: a body is mostly
+    // about its sender and recipients (greetings, signatures, quoted replies) and names are not
+    // matched in shared text, so a rewrite would leave them. So does an organisation erase when
+    // no person is left on the email. The scrubbed snippet stays; the R2 object is queued for
+    // deletion by trigger (core_blob_deletion, ADR 0320). Otherwise an organisation erase
+    // rewrites the body without the organisation's terms, or, if it cannot, keeps the snippet only.
+    const bodyRef =
+      a.body_ref && keepBodies.has(a.id) && (await rewriteBody(ctx, a.body_ref, m))
+        ? a.body_ref
+        : null;
+    if (
+      subject === a.subject &&
+      body === a.body &&
+      payload === a.payload &&
+      bodyRef === a.body_ref
+    ) {
+      continue;
+    }
     ctx.write(
       ctx.db
         .updateTable("core_activity")
-        .set({ subject, body, payload, body_ref: null, updated_at: ctx.now })
+        .set({ subject, body, payload, body_ref: bodyRef, updated_at: ctx.now })
         .where("id", "=", a.id),
     );
   }
@@ -370,6 +389,51 @@ async function queueScrubShared(
         .set({ title, notes, updated_at: ctx.now })
         .where("id", "=", t.id),
     );
+  }
+}
+
+/** The activities (of those with a full body) that a person is linked to. */
+async function personLinked(
+  ctx: HandlerContext,
+  activities: readonly { id: string; body_ref: string | null }[],
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  const withBody = activities.filter((a) => a.body_ref).map((a) => a.id);
+  for (const part of chunk(withBody)) {
+    const rows = await ctx.db
+      .selectFrom("core_activity_links")
+      .select("activity_id")
+      .distinct()
+      .where("object_type", "=", "person")
+      .where("activity_id", "in", part)
+      .execute();
+    for (const row of rows) out.add(row.activity_id);
+  }
+  return out;
+}
+
+/**
+ * Rewrites a full email body in R2 without the subject's terms (an organisation erase that keeps
+ * the body). True when the body is kept: rewritten, already clean, or (in a simulation) would be.
+ * False when it cannot be (no blob storage, the object is missing or unreadable, the write
+ * fails): the caller then drops it and keeps the scrubbed snippet only. Written before the commit,
+ * like the erase log: a failed commit leaves the body scrubbed, and a retry finds nothing to do.
+ */
+async function rewriteBody(
+  ctx: HandlerContext,
+  key: string,
+  m: ReturnType<typeof subjectMatcher>,
+): Promise<boolean> {
+  if (!ctx.blobs) return false;
+  if (ctx.simulation) return true;
+  try {
+    const text = await ctx.blobs.get(key);
+    if (text === null) return false;
+    const scrubbed = m.text(text) ?? text;
+    if (scrubbed !== text) await ctx.blobs.put(key, scrubbed);
+    return true;
+  } catch {
+    return false;
   }
 }
 
