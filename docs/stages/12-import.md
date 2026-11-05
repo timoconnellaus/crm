@@ -307,10 +307,8 @@ Migrations 0280–0289 (block G in `docs/parallel-work.md`). ADRs 0240 and 0241.
 7. The evals and fixtures (start writing fixtures in step 1; they drive everything after).
 8. `import.mapping`, once stage 11's seam is on `main`.
 
-## Open questions
-- Should a Member be able to import at all under stage 14, or only Admins and Managers (proposed:
-  Admins and Managers by default, a setting to allow Members)?
-- The undo window is 30 days, tied to Trash purge. Longer would need the ledger and created records
-  kept outside Trash's rules. Is 30 days enough?
-- Should an import with matching "overwrite" require an admin, since it can change many existing
-  records at once?
+## Decided (2026-11-05, user interview)
+- **Who may import:** Admins and Managers by default; an admin setting allows Members.
+- **Undo window:** 30 days, tied to the Trash purge.
+- **Overwrite** of matching records requires an Admin. Skip and update-empty-fields-only stay open to anyone allowed to import.
+- **After each import** a duplicate scan runs over the imported records (stage 16).

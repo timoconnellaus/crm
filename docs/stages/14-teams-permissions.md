@@ -255,10 +255,8 @@ Migrations 0300–0309 (block I in `docs/parallel-work.md`). ADRs 0244 and 0245.
 7. Cost budgets.
 8. 14b seams are part of step 1; SSO and SCIM afterwards, in their own PR.
 
-## Open questions
-- **Unowned records** under `own` and `own team`: visible to everyone (proposed, HubSpot-like), or
-  only to Admins and Managers?
-- **Related titles:** show a hidden related record's title (proposed, as Salesforce shows lookup
-  names) or "Restricted record"?
-- **Members importing:** off by default (proposed)?
-- **SCIM-managed users' roles:** may admins override a role the IdP set?
+## Decided (2026-11-05, user interview)
+- **Unowned records** under `own` and `own team` are visible to everyone.
+- **Related titles:** a hidden related record shows its title, not clickable.
+- **Members importing:** off by default; an admin setting turns it on (stage 12).
+- **SCIM-managed users' roles:** the identity provider is the source of truth; admins may not override a role set through SCIM.
