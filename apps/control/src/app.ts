@@ -1,5 +1,6 @@
-// ros-control's HTTP surface: customer pages, the admin console, the Stripe webhook and (fake
-// mode only) the fake Stripe and mailbox pages.
+// ros-control's HTTP surface: customer pages, the admin console, the Stripe webhook, hosted
+// deployments' signed calls (ADR 0250) and (fake mode only) the fake Stripe and mailbox pages.
+import { AI_SECRET_PATH } from "@relationship-os/release";
 import { audit, recentAudit } from "./audit.ts";
 import {
   clearSessionCookie,
@@ -44,6 +45,7 @@ import {
 import { accountPage, signInPage, signUpPage } from "./pages/customer.ts";
 import { html, page, redirect } from "./pages/layout.ts";
 import { PLANS, slugProblem } from "./plans.ts";
+import { handleAiSecret } from "./platform-ai.ts";
 import {
   type RolloutRow,
   resumeRollout,
@@ -92,6 +94,8 @@ export async function handle(
   try {
     if (path === "/api/stripe/webhook" && method === "POST") return await stripeWebhook(s, request);
     if (path === "/api/health") return Response.json({ ok: true, mode: s.env.PLATFORM_MODE });
+    // A hosted deployment's signed call back to us (ADR 0250): no cookie, no form.
+    if (path === AI_SECRET_PATH && method === "POST") return await handleAiSecret(s, request);
     // Forms are same-origin only (SameSite=Lax cookies plus this check).
     if (method === "POST") {
       const origin = request.headers.get("origin");

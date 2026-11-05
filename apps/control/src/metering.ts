@@ -1,17 +1,22 @@
-// AI usage billing (ADR 0213). Each deployment has its own AI Gateway, which logs every model
-// call with its provider and AI Gateway's cost estimate. Once a day, per deployment:
+// AI usage billing (ADR 0213 and its amendment). Every hosted deployment's Platform AI goes
+// through one shared AI Gateway, each call tagged with the tenant (`cf-aig-metadata`), and AI
+// Gateway logs it with its provider and cost estimate. Once a day, per deployment, metering reads
+// that gateway's logs filtered by the tenant tag (and, for a deployment provisioned before the
+// shared gateway, its own gateway's logs):
 //
 //   provider cost   all logged spend (shown to the customer, itemised)
 //   billable cost   spend on providers we pay for (PLATFORM_AI_PROVIDERS, default Workers AI),
-//                   excluding cache hits. BYOK providers are the customer's own bill: free here.
-//                   Calls an MCP client makes with its own model never reach the gateway at all.
+//                   excluding cache hits. The customer's own keys are called directly at the
+//                   provider (or through their own gateway) and never reach ours: free here, and
+//                   shown to them in the workspace. Calls an MCP client makes with its own model
+//                   never reach a gateway at all.
 //   charged         billable × (1 + AI_MARKUP_PERCENT/100), in dollars, never "credits"
 //
 // Paid plans: charged spend beyond the plan's monthly allowance is reported to Stripe as a Billing
 // Meter event in cents (identifier `ai-<tenant>-<day>`, so a retried day is never double-billed).
 // Free plan: charged spend is debited from prepaid credit; when it runs out the entitlement
 // `platformAi` turns off and platform-paid models stop (BYOK and MCP keep working).
-import type { DeploymentState } from "@relationship-os/release";
+import { CloudflareApiError, type DeploymentState } from "@relationship-os/release";
 import { audit } from "./audit.ts";
 import {
   type AccountRow,
@@ -23,6 +28,7 @@ import {
 import { intVar } from "./env.ts";
 import { syncEntitlements } from "./instances.ts";
 import { chargedMicros, overageCents, PLANS } from "./plans.ts";
+import { platformGatewayId } from "./platform-ai.ts";
 import type { Services } from "./services.ts";
 import { dollars } from "./util.ts";
 
@@ -37,13 +43,55 @@ export interface DayUsage {
   truncated: boolean;
 }
 
-/** The deployment's gateway: provisioning always records its id in the state (ADR 0180). */
-function gatewayOf(state: DeploymentState): string | null {
+/**
+ * A deployment's own gateway, if it has one: only a deployment provisioned before the shared
+ * Platform AI gateway (ADR 0180); new hosted deployments have `aiGateway: false`.
+ */
+function ownGatewayOf(state: DeploymentState): string | null {
   if (state.ai === false) return null;
   return typeof state.aiGateway === "string" && state.aiGateway ? state.aiGateway : null;
 }
 
-export async function readDayUsage(s: Services, gatewayId: string, day: string): Promise<DayUsage> {
+/** The tenant a shared-gateway log is tagged with (its `cf-aig-metadata`), or null. */
+function taggedTenant(metadata: string | null | undefined): string | null {
+  if (!metadata) return null;
+  try {
+    const tenant = (JSON.parse(metadata) as { tenant?: unknown }).tenant;
+    return typeof tenant === "string" ? tenant : null;
+  } catch {
+    return null;
+  }
+}
+
+const EMPTY: DayUsage = {
+  requests: 0,
+  providerCostMicros: 0,
+  billableCostMicros: 0,
+  unpriced: 0,
+  truncated: false,
+};
+
+function addUsage(a: DayUsage, b: DayUsage): DayUsage {
+  return {
+    requests: a.requests + b.requests,
+    providerCostMicros: a.providerCostMicros + b.providerCostMicros,
+    billableCostMicros: a.billableCostMicros + b.billableCostMicros,
+    unpriced: a.unpriced + b.unpriced,
+    truncated: a.truncated || b.truncated,
+  };
+}
+
+/**
+ * One day of a gateway's logs. With `tenant`, the shared platform gateway: only logs whose tenant
+ * tag is that tenant (the API filters by metadata value; each log is checked again here, so a log
+ * whose tag merely contains the same value under another key is never billed to it).
+ */
+export async function readDayUsage(
+  s: Services,
+  gatewayId: string,
+  day: string,
+  tenant?: string,
+): Promise<DayUsage> {
   const platform = new Set(
     (s.env.PLATFORM_AI_PROVIDERS ?? "workers-ai")
       .split(",")
@@ -60,8 +108,14 @@ export async function readDayUsage(s: Services, gatewayId: string, day: string):
     truncated: false,
   };
   for (let page = 1; ; page++) {
-    const { logs, totalPages } = await s.cf.gatewayLogs(s.accountId, gatewayId, { from, to, page });
+    const { logs, totalPages } = await s.cf.gatewayLogs(s.accountId, gatewayId, {
+      from,
+      to,
+      page,
+      ...(tenant ? { metadataValue: tenant } : {}),
+    });
     for (const log of logs) {
+      if (tenant && taggedTenant(log.metadata) !== tenant) continue;
       usage.requests += 1;
       const micros = log.cost == null ? 0 : Math.round(log.cost * 1_000_000);
       usage.providerCostMicros += micros;
@@ -90,10 +144,16 @@ export async function meterDay(s: Services, instanceId: string, day: string): Pr
   if (!instance || !state || instance.placement === "customer-account") return;
   const account = await accountById(s.db, instance.account_id);
   if (!account) return;
-  const gateway = gatewayOf(state);
-  const usage: DayUsage = gateway
-    ? await readDayUsage(s, gateway, day)
-    : { requests: 0, providerCostMicros: 0, billableCostMicros: 0, unpriced: 0, truncated: false };
+  let usage: DayUsage = EMPTY;
+  if (state.ai !== false) {
+    usage = await readDayUsage(s, platformGatewayId(s), day, instanceId).catch((error) => {
+      // The shared gateway not existing yet means no Platform AI call has been made.
+      if (error instanceof CloudflareApiError && error.status === 404) return EMPTY;
+      throw error;
+    });
+  }
+  const own = ownGatewayOf(state);
+  if (own) usage = addUsage(usage, await readDayUsage(s, own, day));
   const markup = intVar(s.env.AI_MARKUP_PERCENT, 20);
   const charged = chargedMicros(usage.billableCostMicros, markup);
   const month = day.slice(0, 7);

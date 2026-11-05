@@ -51,6 +51,9 @@ export function buildServices(env: ControlEnv, options: { origin?: string } = {}
       "CLOUDFLARE_ACCOUNT_ID",
       "STRIPE_SECRET_KEY",
       "STRIPE_WEBHOOK_SECRET",
+      // Hosted AI (ADR 0213 amendment, ADR 0250).
+      "PLATFORM_AI_TOKEN",
+      "CONTROL_CHANNEL_SECRET",
     ] as const) {
       if (!env[name]) throw new Error(`PLATFORM_MODE=live needs the ${name} secret`);
     }

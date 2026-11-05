@@ -29,6 +29,7 @@ export function isModelRole(value: unknown): value is ModelRole {
 /** Providers a role can use. Workers AI is the default for every role; the rest are optional. */
 export const PROVIDERS = [
   "workers-ai",
+  "platform",
   "openai",
   "google",
   "openrouter",
@@ -64,6 +65,14 @@ export const PROVIDER_INFO: Record<ProviderId, ProviderInfo> = {
     label: "Workers AI",
     needsKey: false,
     gatewaySlug: "workers-ai",
+  },
+  // Platform AI (ADR 0213 amendment): the AI a hosted deployment's plan pays for. Workers AI's
+  // models (`@cf/…`, the same catalogue entries), called through the one shared platform gateway
+  // with a tenant tag. Only on hosted deployments, where every Workers AI role becomes this.
+  platform: {
+    id: "platform",
+    label: "Platform AI",
+    needsKey: false,
   },
   openai: {
     id: "openai",
@@ -506,7 +515,33 @@ export function shippedModel(role: ModelRole): string {
 }
 
 export function catalogueModel(provider: ProviderId, model: string): CatalogueModel | undefined {
-  return MODEL_CATALOGUE.find((m) => m.provider === provider && m.model === model);
+  // Platform AI serves Workers AI's models: the same entries.
+  const listed = provider === "platform" ? "workers-ai" : provider;
+  return MODEL_CATALOGUE.find((m) => m.provider === listed && m.model === model);
+}
+
+/**
+ * Resolved roles as a hosted deployment runs them (ADR 0213 amendment): every Workers AI model,
+ * primary or fallback, is Platform AI, so it goes through the shared platform gateway with the
+ * tenant tag and is billed to the plan. A hosted deployment never calls Workers AI untagged.
+ */
+export function onPlatform(
+  roles: Record<ModelRole, ResolvedRole>,
+): Record<ModelRole, ResolvedRole> {
+  const out = {} as Record<ModelRole, ResolvedRole>;
+  for (const role of MODEL_ROLES) {
+    const r = roles[role];
+    out[role] = {
+      ...platformRef(r),
+      fallback: r.fallback ? platformRef(r.fallback) : null,
+    };
+  }
+  return out;
+}
+
+/** One model reference on a hosted deployment: Workers AI becomes Platform AI. */
+export function platformRef<T extends { provider: ProviderId }>(ref: T): T {
+  return ref.provider === "workers-ai" ? { ...ref, provider: "platform" } : ref;
 }
 
 /** A model's capabilities: the catalogue's, else what the configuration declares, else none. */

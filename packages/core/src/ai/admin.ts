@@ -9,8 +9,13 @@
 //                    Secrets Store, then DELETE + POST …/gateways/{gateway}/provider_configs
 //                    (AI Gateway Edit + Secrets Store Write)
 //   Usage:           GET  /accounts/{account}/ai-gateway/gateways/{gateway}/logs  (AI Gateway Read)
+//
+// Hosted deployments use hostedAiAdmin (hosted-admin.ts) instead: no Cloudflare API token, keys
+// set through the control plane, usage from the workspace's own counts.
 import { CloudflareClient } from "@relationship-os/release";
+import type { CustomerGateway } from "./platform.ts";
 import { isModelRole, type ModelRole, PROVIDER_INFO, type ProviderId } from "./roles.ts";
+import type { ProviderUsage } from "./usage.ts";
 
 /**
  * The AI Gateway provider slug a provider's BYOK key is stored under: the built-in slug
@@ -47,6 +52,13 @@ export interface AiAdminStatus {
   scripts: string[];
   /** What is missing, in words, when a mode is unavailable. */
   missing: string[];
+  /**
+   * A hosted workspace: keys are secrets on the workspace's own Workers, set through the control
+   * plane, and called directly at the provider (or through the customer's own gateway).
+   */
+  hosted?: boolean;
+  /** Hosted: the customer's own AI Gateway, when connected (never its token). */
+  customerGateway?: { accountId: string; gatewayId: string; authenticated: boolean } | null;
 }
 
 export interface RoleUsage {
@@ -70,6 +82,10 @@ export interface UsageReport {
   truncated: boolean;
   sampled: number;
   fetchedAt: string;
+  /** Where the numbers come from: AI Gateway's logs, or the workspace's own counts (hosted). */
+  source?: "gateway" | "workspace";
+  /** Workspace counts: per provider, and whether it is billed (Platform AI) or the customer's. */
+  providers?: ProviderUsage[];
 }
 
 export interface AiAdmin {
@@ -83,6 +99,8 @@ export interface AiAdmin {
   ): Promise<{ stored: KeyMode; targets: string[] }>;
   deleteProviderKey(provider: ProviderId, mode: KeyMode): Promise<void>;
   usage(days: number): Promise<UsageReport>;
+  /** Hosted only: connect (or, with null, disconnect) the customer's own AI Gateway. */
+  setCustomerGateway?(gateway: CustomerGateway | null): Promise<void>;
 }
 
 export class AiAdminError extends Error {

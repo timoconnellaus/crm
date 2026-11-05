@@ -580,19 +580,31 @@ export class CloudflareClient {
 
   /**
    * One page (≤ 50) of a gateway's logs created in [from, to), oldest first, with the fields
-   * metering needs. `cost` is AI Gateway's estimate in US dollars.
+   * metering needs. `cost` is AI Gateway's estimate in US dollars. `metadataValue` keeps only
+   * logs with that value in their `cf-aig-metadata` (the shared platform gateway's tenant tag,
+   * ADR 0213 amendment); `metadata` is the JSON string AI Gateway stores.
    */
   async gatewayLogs(
     accountId: string,
     gatewayId: string,
-    window: { from: string; to: string; page: number },
+    window: { from: string; to: string; page: number; metadataValue?: string },
   ) {
     const filters = JSON.stringify([
       { key: "created_at", operator: "gt", value: [window.from] },
       { key: "created_at", operator: "lt", value: [window.to] },
+      ...(window.metadataValue
+        ? [{ key: "metadata.value", operator: "eq", value: [window.metadataValue] }]
+        : []),
     ]);
     const { result, info } = await this.request<
-      { id: string; provider: string; model: string; cost?: number | null; cached?: boolean }[]
+      {
+        id: string;
+        provider: string;
+        model: string;
+        cost?: number | null;
+        cached?: boolean;
+        metadata?: string | null;
+      }[]
     >(
       "GET",
       `/accounts/${accountId}/ai-gateway/gateways/${gatewayId}/logs?per_page=50&page=${window.page}&order_by=created_at&order_by_direction=asc&filters=${encodeURIComponent(filters)}`,
@@ -612,6 +624,19 @@ export class CloudflareClient {
       text: value,
       type: "secret_text",
     });
+  }
+
+  /** Removes a secret from a Worker (a user Worker with `forNamespace`). Missing is not an error. */
+  async deleteSecret(accountId: string, name: string, secret: string) {
+    try {
+      await this.request(
+        "DELETE",
+        `${this.scripts(accountId)}/${name}/secrets/${encodeURIComponent(secret)}`,
+      );
+    } catch (error) {
+      if (error instanceof CloudflareApiError && error.status === 404) return;
+      throw error;
+    }
   }
 
   async putSchedules(accountId: string, name: string, crons: string[]) {

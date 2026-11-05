@@ -86,3 +86,12 @@ ADR 0191 decided one isolated deployment per customer in our account, on Workers
 > customer's own keys are set as secrets on their tenant Worker and called directly (see the
 > amendment to ADR 0213). This removes the 20-gateways-per-account limit as a go-live blocker.
 > Provisioning stops creating a per-tenant gateway and token when that change is built.
+
+> **Amended 2026-11-05: built.** A hosted deployment's state has `aiGateway: false`, so the
+> Stage 8 engine creates no gateway or `AI_GATEWAY_TOKEN` for it (self-hosted installs are
+> unchanged). Instead provisioning ensures the shared gateway (`PLATFORM_AI_GATEWAY`) and gives
+> the AI Workers (ros-app, ros-runner) the vars `AI_PLATFORM_GATEWAY_ID`, `AI_PLATFORM_ACCOUNT_ID`
+> and `ROS_TENANT_ID` and the secret `AI_PLATFORM_TOKEN`; ros-app also gets `ROS_CONTROL_URL` and
+> the secret `ROS_CONTROL_KEY` ([ADR 0250](0250-deployment-to-control-plane-channel.md)). The
+> tenant id is now visible inside a deployment as that var, never in its data. "Per-tenant names,
+> nothing shared" has one exception: the Platform AI gateway, whose logs hold metadata only.

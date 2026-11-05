@@ -2,9 +2,17 @@
 // the model role registry in @relationship-os/core (ADR 0009, ADR 0150): shipped defaults (Workers AI) → deploy
 // config → Settings → AI overrides, through AI Gateway when AI_GATEWAY_ID is set. Without any
 // configured model the module fails with a clear error rather than reaching any network.
+//
+// On a hosted deployment these roles are Platform AI with the tenant tag (ADR 0213 amendment).
+// The tag is built by the model client from this Worker's env and the entitlement row: nothing an
+// extension passes (the text, the fields, the labels) can reach a header, so an extension cannot
+// bill its calls to another tenant.
+
+import { waitUntil } from "cloudflare:workers";
 import {
   type AiEnv,
   AiNotConfiguredError,
+  hostedModelOptions,
   loadAiSettings,
   type ModelRunner,
   modelRunnerFromEnv,
@@ -13,6 +21,15 @@ import {
 import { createCrmDb } from "@relationship-os/db";
 
 export { AiNotConfiguredError };
+
+/** waitUntil when inside a request; outside one the promise just runs. */
+function schedule(work: Promise<unknown>) {
+  try {
+    waitUntil(work);
+  } catch {
+    // Outside a request: the promise still runs.
+  }
+}
 
 /** The registry-backed runner for ros-runner's environment, or null without AI. */
 export function runnerModels(env: object): ModelRunner | null {
@@ -25,6 +42,8 @@ export function runnerModels(env: object): ModelRunner | null {
             loadSettings: () => loadAiSettings(db.query),
             // Hosted plans (ADR 0211): platform AI only while the allowance lasts; BYOK always.
             platformAi: () => platformAiAllowed(db.query),
+            // Hosted: the plan for the tenant tag, and usage counted in D1.
+            ...hostedModelOptions(e, db.query, schedule),
           }
         : {}),
     }) ?? null

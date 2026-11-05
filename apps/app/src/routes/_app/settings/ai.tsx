@@ -2,7 +2,10 @@
 // fallback and where the setting comes from, with Edit (capability-checked by ai.updateRole) and
 // Test and a review-independence warning; provider keys stored in AI Gateway (BYOK, the default
 // with a gateway) or as Workers secrets (never shown); usage and spend
-// per role from AI Gateway; and the semantic search index.
+// per role from AI Gateway; and the semantic search index. On a hosted workspace (ADR 0213
+// amendment) the built-in models are Platform AI, the customer's own keys are workspace secrets
+// set through the control plane and called directly, an own AI Gateway can be connected, and
+// usage is the workspace's own count, split into billed (Platform AI) and own-key usage.
 import type { CoreOutput } from "@relationship-os/core";
 import {
   AlertDialog,
@@ -165,6 +168,7 @@ function AiSettings() {
       )}
       <RolesSection settings={data} />
       <ProvidersSection settings={data} />
+      {data.admin.hosted && <OwnGatewayCard settings={data} />}
       <UsageCard />
       <SemanticSearchCard search={data.semanticSearch} />
     </div>
@@ -684,7 +688,11 @@ function ProvidersSection({ settings }: { settings: Settings }) {
   const [adding, setAdding] = useState<Provider | null>(null);
   const [removing, setRemoving] = useState<Provider | null>(null);
   const remove = useOpMutation("ai.deleteProviderKey", { invalidates: ["ai."] });
-  const keyed = settings.providers.filter((p) => p.needsKey);
+  const hosted = Boolean(settings.admin.hosted);
+  // Hosted: an AI Gateway custom provider needs the customer's own gateway.
+  const keyed = settings.providers.filter(
+    (p) => p.needsKey && !(hosted && p.id === "custom" && !settings.admin.customerGateway),
+  );
   const modes = settings.admin.keyModes;
 
   async function onRemove() {
@@ -704,13 +712,18 @@ function ProvidersSection({ settings }: { settings: Settings }) {
       <CardHeader>
         <CardTitle>Provider keys</CardTitle>
         <CardDescription>
-          Workers AI needs no key. Other providers need an API key, stored in AI Gateway (BYOK, the
-          default when there is a gateway) or as a Workers secret. Keys go straight to Cloudflare
-          and are never shown again.
+          {hosted
+            ? "Platform AI is included with your plan and needs no key. To use another provider, add your own API key: it is stored as a secret on your workspace, never in its database, and calls with it go straight to the provider. Your own keys' usage is never billed by us."
+            : "Workers AI needs no key. Other providers need an API key, stored in AI Gateway (BYOK, the default when there is a gateway) or as a Workers secret. Keys go straight to Cloudflare and are never shown again."}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {modes.length === 0 && (
+        {modes.length === 0 && hosted && (
+          <p className="text-sm text-muted-foreground" role="note">
+            Keys can't be stored right now: {settings.admin.missing.join(", ")}.
+          </p>
+        )}
+        {modes.length === 0 && !hosted && (
           <div
             className="grid gap-2 rounded-md border bg-muted/50 px-3 py-2.5 text-sm"
             role="note"
@@ -788,6 +801,7 @@ function ProvidersSection({ settings }: { settings: Settings }) {
           provider={adding}
           modes={modes}
           gateway={settings.admin.gateway}
+          hosted={hosted}
           onClose={() => setAdding(null)}
         />
       )}
@@ -819,11 +833,13 @@ function AddKeyDialog({
   provider,
   modes,
   gateway,
+  hosted,
   onClose,
 }: {
   provider: Provider;
   modes: Settings["admin"]["keyModes"];
   gateway: string | null;
+  hosted: boolean;
   onClose: () => void;
 }) {
   const store = useOpMutation("ai.setProviderKey", { invalidates: ["ai."] });
@@ -851,9 +867,11 @@ function AddKeyDialog({
       });
       setApiKey("");
       toast.success(
-        out.stored === "byok"
-          ? `${provider.label} key stored in AI Gateway`
-          : `${provider.label} key stored as a secret on ${out.targets.join(", ")}`,
+        hosted
+          ? `${provider.label} key stored as a secret on your workspace`
+          : out.stored === "byok"
+            ? `${provider.label} key stored in AI Gateway`
+            : `${provider.label} key stored as a secret on ${out.targets.join(", ")}`,
       );
       onClose();
     } catch (e) {
@@ -868,8 +886,9 @@ function AddKeyDialog({
           <DialogHeader>
             <DialogTitle>{provider.label} API key</DialogTitle>
             <DialogDescription>
-              The key goes straight to Cloudflare. It is never stored in the database or shown
-              again.
+              {hosted
+                ? "The key is stored as a secret on your workspace. It is never stored in the database or shown again, and calls with it go straight to the provider."
+                : "The key goes straight to Cloudflare. It is never stored in the database or shown again."}
             </DialogDescription>
           </DialogHeader>
           {custom && (
@@ -900,7 +919,7 @@ function AddKeyDialog({
               minLength={8}
             />
           </div>
-          <div className="grid gap-2">
+          <div className={hosted ? "hidden" : "grid gap-2"}>
             <Label htmlFor="ai-key-mode">Store it as</Label>
             <Select value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
               <SelectTrigger id="ai-key-mode" className="w-full">
@@ -940,11 +959,129 @@ function AddKeyDialog({
   );
 }
 
+// --- Own AI Gateway (hosted) -------------------------------------------------------------------
+
+function OwnGatewayCard({ settings }: { settings: Settings }) {
+  const connect = useOpMutation("ai.connectGateway", { invalidates: ["ai."] });
+  const own = settings.admin.customerGateway ?? null;
+  const [accountId, setAccountId] = useState("");
+  const [gatewayId, setGatewayId] = useState("");
+  const [token, setToken] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    try {
+      await connect.mutateAsync({
+        accountId: accountId.trim(),
+        gatewayId: gatewayId.trim(),
+        ...(token.trim() ? { token: token.trim() } : {}),
+      });
+      setToken("");
+      toast.success(`Connected AI Gateway “${gatewayId.trim()}”`);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
+  async function disconnect() {
+    try {
+      await connect.mutateAsync({ disconnect: true });
+      toast.success("Disconnected your AI Gateway");
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  }
+
+  return (
+    <Card data-testid="ai-own-gateway">
+      <CardHeader>
+        <CardTitle>Your own AI Gateway</CardTitle>
+        <CardDescription>
+          Optional. Connect an AI Gateway in your own Cloudflare account to get its logs and spend
+          tracking for calls made with your own keys. Platform AI never goes through it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {own ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span>
+              Connected: <code>{own.gatewayId}</code>
+              {own.authenticated ? " (with a token)" : ""}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void disconnect()}
+              disabled={connect.isPending}
+            >
+              Disconnect
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={(e) => void submit(e)} className="grid gap-3">
+            <div className="grid gap-2">
+              <Label htmlFor="ai-own-account">Cloudflare account id</Label>
+              <Input
+                id="ai-own-account"
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                autoComplete="off"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="ai-own-gateway">Gateway id</Label>
+              <Input
+                id="ai-own-gateway"
+                value={gatewayId}
+                onChange={(e) => setGatewayId(e.target.value)}
+                autoComplete="off"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="ai-own-token">Token (for an authenticated gateway)</Label>
+              <Input
+                id="ai-own-token"
+                type="password"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                A token with AI Gateway Run. Stored as a secret on your workspace, never shown
+                again.
+              </p>
+            </div>
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
+            <div>
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={connect.isPending || !accountId.trim() || !gatewayId.trim()}
+              >
+                {connect.isPending ? "Connecting…" : "Connect gateway"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // --- Usage and semantic search -----------------------------------------------------------------
 
 function UsageCard() {
   const usage = useOp("ai.usage", { days: 7 }, { staleTime: 5 * 60_000 });
   const data = usage.data;
+  if (data?.source === "workspace") return <WorkspaceUsageCard data={data} />;
   return (
     <Card data-testid="ai-usage">
       <CardHeader>
@@ -1008,6 +1145,59 @@ function UsageCard() {
               fetched {new Date(data.fetchedAt).toLocaleString()}.
             </p>
           </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Hosted: the workspace's own counts, per provider, with what is billed (Platform AI, priced on
+ * the account page) and what is the customer's own key (never billed).
+ */
+function WorkspaceUsageCard({ data }: { data: CoreOutput<"ai.usage"> }) {
+  const providers = data.providers ?? [];
+  return (
+    <Card data-testid="ai-usage">
+      <CardHeader>
+        <CardTitle>Usage</CardTitle>
+        <CardDescription>
+          Requests and tokens over the last 7 days. Platform AI is billed to your plan (see your
+          account's billing page); calls with your own keys are never billed by us.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-2">
+        {providers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No AI requests in the last 7 days.</p>
+        ) : (
+          <Table aria-label="Usage per provider">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Provider</TableHead>
+                <TableHead>Billing</TableHead>
+                <TableHead className="text-right">Requests</TableHead>
+                <TableHead className="text-right">Tokens in</TableHead>
+                <TableHead className="text-right">Tokens out</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {providers.map((p) => (
+                <TableRow key={`${p.provider}-${p.billed}`}>
+                  <TableCell>{p.label}</TableCell>
+                  <TableCell>{p.billed ? "Your plan" : "Your own key"}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {p.requests.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {p.tokensIn.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {p.tokensOut.toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </CardContent>
     </Card>

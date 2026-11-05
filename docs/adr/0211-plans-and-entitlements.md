@@ -40,3 +40,8 @@ Paid plans start with a 14-day trial (`TRIAL_DAYS`). Prices live in Stripe (ADR 
   end one record over its limit at the boundary.
 - While `platformAi` is off, semantic-search embeddings stop and search falls back to full text.
   Whether embeddings should stay included on every plan is open.
+
+> **Amended 2026-11-05 (hosted AI, ADR 0213 amendment):** on a hosted deployment the platform AI
+> the plan gates is the registry provider `platform` (the shared gateway, tagged per tenant). A
+> Workers secret key there is the customer's own (set from Settings → AI through the control plane,
+> ADR 0250) and is never blocked by `platformAi: false`. Self-hosted, nothing changes.

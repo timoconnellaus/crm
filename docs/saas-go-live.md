@@ -24,9 +24,13 @@ to `https://app.relationshiposcrm.com/signup?plan=free|team|business`.
    (`ros-control` also creates `ros-customers` if missing.)
 3. Create an **account API token** for `ros-control` with: Workers Scripts Edit, Workers for
    Platforms Edit, D1 Edit, Workers R2 Storage Edit, Workers KV Storage Edit, Queues Edit,
-   Vectorize Edit, AI Gateway Edit, Account API Tokens Edit (for the per-tenant AI Gateway token and
-   export tokens), Zone → SSL and Certificates Edit and Custom Hostnames Edit on
+   Vectorize Edit, AI Gateway Edit (the shared Platform AI gateway and its logs), Account API
+   Tokens Edit (export tokens), Zone → SSL and Certificates Edit and Custom Hostnames Edit on
    `relationshiposcrm.com`. Nothing else.
+3a. Create the **Platform AI token**, a second account API token, with only **Workers AI Read** and
+   **AI Gateway Run**. Every hosted deployment gets it as `AI_PLATFORM_TOKEN` to call Workers AI
+   through the shared gateway (ADR 0213 amendment). It can't change anything; who a call is billed
+   to is the tenant tag, not the token. → `PLATFORM_AI_TOKEN` (section 5).
 4. Create the KV namespace the two Workers share:
    `npx wrangler kv namespace create ros-routes`. Put its id in **both** configs: as `"id"` on the
    `ROUTES` binding in `wrangler.jsonc` and replacing `ros-routes-kv-id-set-at-go-live` in
@@ -43,7 +47,7 @@ Each was impossible to test with fakes; each has a fallback.
 
 | # | Check | How | If it fails |
 | --- | --- | --- | --- |
-| B1 | ~~AI Gateway allows only 20 gateways per account.~~ **Decided 2026-11-05:** one shared platform gateway with a tenant tag; the customer's own keys go in Settings and are set as tenant Worker secrets, called directly (ADR 0213 amendment). | Build the change (after Stage 7b). Then check on the staging tenant: platform AI calls carry the tenant tag; caching and prompt logging are off on the shared gateway; a BYOK key works and never appears in D1. | n/a |
+| B1 | ~~AI Gateway allows only 20 gateways per account.~~ **Built 2026-11-05:** one shared platform gateway (`ros-platform`) with a tenant tag; the customer's own keys go in Settings → AI and are set as tenant Worker secrets over the signed deployment channel, called directly (ADR 0213 amendment, ADR 0250). | On the staging tenant, see **B1 checks** below. | Platform AI path: switch `platformBaseUrl` to the gateway's own URL form, or the binding (loses payload-off). Channel: see ADR 0250. |
 | B2 | A service binding from `<t>-ros-app` to `<t>-ros-runner` **inside the namespace** works | Provision a staging tenant (section 6) and load a page that calls the runner (Settings → Extensions) | Set `DEFAULT_PLACEMENT=account` (ordinary Workers in our account on Custom Domains; ask Cloudflare to raise the 500-scripts limit) |
 | B3 | Queue consumers attach to user Workers | Staging tenant: create a record, check the automation event outbox drains | as B2 |
 | B4 | Worker Loader works in user Workers | Staging tenant: install the Deals extension (`/setup`) | as B2 |
@@ -52,6 +56,37 @@ Each was impossible to test with fakes; each has a fallback.
 | B7 | The AI Gateway logs API lists logs for gateways created after 2026-09-24, with `cost` for Workers AI | Staging tenant: run a summary; the next day's `cp_ai_usage` row has requests and cost | Price Workers AI from tokens (`metering.ts`), or meter from Workers AI neurons |
 | B8 | `KV` namespaces: 1,000 per account included, then $0.10 each (one per tenant, `OAUTH_KV`) | — | Accept the cost, or share one OAuth KV with key prefixes (app change) |
 
+### B1 checks (the shared Platform AI gateway)
+Nothing here could be tested with fakes. On the staging tenant, after provisioning:
+1. **Gateway settings.** Dashboard → AI → AI Gateway → `ros-platform`: caching off, logs on,
+   authenticated. (`GET /accounts/{id}/ai-gateway/gateways/ros-platform`: `cache_ttl` 0,
+   `collect_logs` true, `authentication` true.) No `<tenant>-ros` gateway exists.
+2. **A Platform AI call works.** In the workspace, Settings → AI → Test on the Summarise role.
+   It must answer. This proves Workers AI's REST endpoint (`/ai/v1/chat/completions`) accepts the
+   platform token with `cf-aig-gateway-id`. Then run a record summary and a semantic search (the
+   embed role, `/ai/v1/embeddings`).
+3. **The tag is on the log.** Open the call in the gateway's logs: metadata
+   `{"role":"summarise","tenant":"t…","plan":"free"}`, provider `workers-ai` (metering bills only
+   `PLATFORM_AI_PROVIDERS`; if the provider shows differently, set that var to what it shows), and
+   a `cost`.
+4. **No prompt or reply stored.** The same log has no request or response body
+   (`collect_log_payload` false). If the body is there, the REST path ignores
+   `cf-aig-collect-log-payload`: stop and fix before inviting anyone.
+5. **No cache.** Run the same Test twice: the second log is not `cached`.
+6. **Metering filters by tenant.** Next day (or run the sweep): the staging tenant's
+   `cp_ai_usage` row counts only its own calls. Check the logs API accepts the
+   `metadata.value eq <tenant>` filter (if it rejects it, metering fails loudly in the jobs log).
+7. **The customer's own key.** Settings → AI → Provider keys → add an OpenAI (or DeepSeek) key.
+   It must succeed: this proves the user Worker can reach `app.relationshiposcrm.com` and that the
+   WfP secrets API takes effect. Then: `wrangler`/API lists the secret `AI_KEY_OPENAI` on
+   `<t>-ros-app` and `<t>-ros-runner`; switch a role to it and Test; the call does **not** appear
+   in `ros-platform`'s logs; Settings → AI → Usage shows it under "Your own key"; the control
+   plane's `cp_audit` has `ai.secret_set` with the name only. Remove the key again.
+8. **Key never in D1.** `wrangler d1 execute` on the tenant's D1 and on `ros-control`: search every
+   table for the key's first characters. Nothing.
+9. **Own gateway (optional).** Connect an AI Gateway from another account in Settings → AI; a call
+   with the own key appears in that gateway's logs, not in ours.
+
 ## Beta-invite checklist
 Run this once there is interest and before the first beta invite goes out. Until then, nothing in
 this runbook needs doing.
@@ -59,8 +94,8 @@ this runbook needs doing.
    prices, meter and webhook (section 3); decide tax and terms.
 2. **Staging tenant:** provision it (section 6) and work through B1 to B8 above. Any failure in B2
    to B6 means switching to `DEFAULT_PLACEMENT=account`.
-3. **Shared gateway:** confirm the B1 build is in the release, and that its conditions hold
-   (caching off, prompt logging off, tenant tag set only by host code).
+3. **Shared gateway:** confirm the B1 build is in the release, and work through the B1 checks
+   above (caching off, prompt logging off, tenant tag on every Platform AI log, own keys direct).
 4. **Then** turn on sign-ups and send the invites.
 
 ## 3. Stripe (live mode)
@@ -99,8 +134,15 @@ npx wrangler secret put SAAS_ZONE_ID              # relationshiposcrm.com zone i
 npx wrangler secret put STRIPE_SECRET_KEY         # sk_live_…
 npx wrangler secret put STRIPE_WEBHOOK_SECRET     # whsec_…
 npx wrangler secret put SUPPORT_SIGNING_KEY
+npx wrangler secret put PLATFORM_AI_TOKEN         # section 1.3a
+npx wrangler secret put CONTROL_CHANNEL_SECRET    # deployment channel master secret (ADR 0250)
 npx wrangler secret put GITHUB_TOKEN              # optional, release download rate limit
 ```
+Generate `CONTROL_CHANNEL_SECRET` with
+`command node -e 'console.log(require("crypto").randomBytes(32).toString("base64url"))'`. Each
+tenant's `ROS_CONTROL_KEY` is derived from it, so changing it means re-setting that secret on every
+deployment.
+
 Vars, edited in `wrangler.jsonc` (not secrets): `PLATFORM_MODE: "live"`, `STAFF_EMAILS` (our staff,
 comma-separated), `SUPPORT_PUBLIC_KEY`, `STRIPE_PRICE_TEAM`, `STRIPE_PRICE_BUSINESS`,
 `STRIPE_PRICE_AI_OVERAGE`. Leave `JOBS_INLINE` off. Never commit the account id or a secret.
