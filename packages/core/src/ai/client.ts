@@ -428,14 +428,20 @@ export function providerStatus(
 
 /**
  * Headers for a call through AI Gateway: `cf-aig-metadata` with the role (usage per role, ADR
- * 0152) and, for an authenticated gateway, `cf-aig-authorization`. Never sent to a provider
- * called directly: the gateway token is for the gateway only.
+ * 0152), `cf-aig-collect-log-payload: false` and, for an authenticated gateway,
+ * `cf-aig-authorization`. Never sent to a provider called directly: the gateway token is for the
+ * gateway only.
+ *
+ * Payload logging is off (ADR 0320): the gateway keeps each call's metadata, tokens and cost (what
+ * Settings → AI's usage reads) but never the prompt or the response, which can hold record
+ * content that an erase cannot reach in the gateway's logs.
  */
 function gatewayHeaders(env: AiEnv, role: ModelRole): Record<string, string> {
   // Hosted: the customer's own gateway and its token, never the platform's.
   const token = isHosted(env) ? customerGateway(env)?.token : env.AI_GATEWAY_TOKEN;
   return {
     "cf-aig-metadata": JSON.stringify({ role }),
+    "cf-aig-collect-log-payload": "false",
     ...(token ? { "cf-aig-authorization": `Bearer ${token}` } : {}),
   };
 }

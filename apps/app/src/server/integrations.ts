@@ -60,6 +60,13 @@ export function blobStoreFor(env: { BLOBS?: R2Bucket }): BlobStore | undefined {
     delete: async (keys) => {
       if (keys.length) await bucket.delete(keys);
     },
+    list: async (prefix, cursor) => {
+      const page = await bucket.list({ prefix, ...(cursor ? { cursor } : {}) });
+      return {
+        keys: page.objects.map((o) => o.key),
+        ...(page.truncated ? { cursor: page.cursor } : {}),
+      };
+    },
   };
 }
 

@@ -12,6 +12,7 @@
 import type { CrmDb } from "@relationship-os/db";
 import type { Compilable } from "kysely";
 import { newId } from "../ids.ts";
+import { maskForLog } from "../log.ts";
 import type { AutomationQueueMessage, EventSink } from "./types.ts";
 
 /** One outbox row holds at most this much JSON (D1 rows and values stop at 2 MB). */
@@ -26,6 +27,11 @@ export function outboxBackoffMs(attempts: number): number {
 export const OUTBOX_PAGE = 50;
 /** After this many failed attempts a row is kept but logged loudly at every try. */
 export const OUTBOX_WARN_ATTEMPTS = 10;
+/**
+ * A row still unsent after this long is dropped (its id is logged, not its content): its events
+ * are stale by then, and the outbox must not keep record changes indefinitely (ADR 0320).
+ */
+export const OUTBOX_MAX_AGE_MS = 7 * 24 * 60 * 60_000;
 
 export interface OutboxEntry {
   id: string;
@@ -134,6 +140,8 @@ export interface OutboxRetryResult {
   failed: number;
   /** Rows looked at (due or not). */
   read: number;
+  /** Rows dropped unsent because they were older than OUTBOX_MAX_AGE_MS. */
+  dropped?: number;
 }
 
 /**
@@ -150,12 +158,19 @@ export async function retryOutbox(
   const iso = now.toISOString();
   const rows = await db.query
     .selectFrom("core_automation_outbox")
-    .select(["id", "messages", "attempts", "next_at"])
+    .select(["id", "messages", "attempts", "next_at", "created_at"])
     .orderBy("id")
     .limit(options.limit ?? OUTBOX_PAGE)
     .execute();
-  const result: OutboxRetryResult = { sent: 0, failed: 0, read: rows.length };
+  const result: OutboxRetryResult = { sent: 0, failed: 0, read: rows.length, dropped: 0 };
+  const stale = new Date(now.getTime() - OUTBOX_MAX_AGE_MS).toISOString();
   for (const row of rows) {
+    if (row.created_at < stale) {
+      console.error(`automation events: outbox row ${row.id} dropped unsent after 7 days`);
+      await db.query.deleteFrom("core_automation_outbox").where("id", "=", row.id).execute();
+      result.dropped = (result.dropped ?? 0) + 1;
+      continue;
+    }
     if (row.next_at > iso) continue;
     let messages: AutomationQueueMessage[];
     try {
@@ -170,7 +185,8 @@ export async function retryOutbox(
     } catch (error) {
       const attempts = row.attempts + 1;
       result.failed += 1;
-      const message = error instanceof Error ? error.message : String(error);
+      // Log-safe: the message can quote what was being sent (ADR 0320).
+      const message = maskForLog(error instanceof Error ? error.message : String(error));
       (attempts >= OUTBOX_WARN_ATTEMPTS ? console.error : console.warn)(
         `automation events: outbox row ${row.id} failed (attempt ${attempts})`,
         message,

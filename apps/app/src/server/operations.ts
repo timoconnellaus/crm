@@ -9,6 +9,7 @@ import {
   type AutomationHost,
   type EventSink,
   type ExtensionHost,
+  errorForLog,
   type InvocationContext,
   invokeByName,
   parseFloor,
@@ -221,7 +222,8 @@ export async function runOperation(
   } catch (error) {
     const typed = toOperationError(error);
     if (typed.code === "internal" || typed.code === "config") {
-      console.error(`operation ${call.name} failed`, error);
+      // Log-safe: the error can quote record content (ADR 0320).
+      console.error(`operation ${call.name} failed`, errorForLog(error));
       // Internal details stay in the logs.
       return { ok: false, error: { code: typed.code, message: typed.message } };
     }

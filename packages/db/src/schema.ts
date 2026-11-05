@@ -666,6 +666,25 @@ export interface CoreAssistantConversationRefsTable {
 }
 
 /**
+ * Migration 0330 (ADR 0320): erased people's addresses, as `sha256:<hex>` of the lower-cased
+ * address (never the address), so sync does not collect them again.
+ */
+export interface CoreErasedAddressTable {
+  hash: string;
+  object_type: "person" | "organisation";
+  erased_at: string;
+  erased_by: string | null;
+}
+
+/** Migration 0330 (ADR 0320): R2 objects to delete after a commit, drained with retries. */
+export interface CoreBlobDeletionTable {
+  key: string;
+  queued_at: string;
+  attempts: ColumnType<number, number | undefined, number>;
+  last_error: string | null;
+}
+
+/**
  * Migration 0172: one external delivery (email / Slack), keyed for exactly-once sending. Migration
  * 0210 (ADR 0206) adds `inApp` for a daily digest that went to the app only.
  */
@@ -1237,6 +1256,8 @@ export interface CoreDatabase {
   core_notification_delivery: CoreNotificationDeliveryTable;
   core_assistant_conversation: CoreAssistantConversationTable;
   core_assistant_conversation_refs: CoreAssistantConversationRefsTable;
+  core_erased_address: CoreErasedAddressTable;
+  core_blob_deletion: CoreBlobDeletionTable;
   crm_stage_history: CrmStageHistoryView;
   crm_users: CrmUsersView;
   crm_people: CrmPeopleView;

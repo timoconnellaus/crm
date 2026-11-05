@@ -12,12 +12,12 @@ import { runEmbeddingCron } from "./server/ai.ts";
 export { AssistantConversation } from "./server/assistant/conversation.ts";
 
 import { createAppHandler } from "./server/mcp/handler.ts";
-import { runScheduledMaintenance } from "./server/purge.ts";
+import { runBlobDeletionCron, runScheduledMaintenance } from "./server/purge.ts";
 import { handleSupportRoute, isSupportRoute } from "./server/support.ts";
 
 /**
- * The 10-minute cron in wrangler.jsonc: semantic search's embedding catch-up (ADR 0154) and the
- * policy adjudicator's sweep (ADR 0204).
+ * The 10-minute cron in wrangler.jsonc: semantic search's embedding catch-up (ADR 0154), the
+ * policy adjudicator's sweep (ADR 0204) and the blob deletion queue's retry (ADR 0320).
  */
 const EMBEDDING_CRON = "*/10 * * * *";
 
@@ -33,6 +33,7 @@ export default {
     if (controller.cron === EMBEDDING_CRON) {
       ctx.waitUntil(runEmbeddingCron(env));
       ctx.waitUntil(runAdjudicatorCron(env));
+      ctx.waitUntil(runBlobDeletionCron(env));
       return;
     }
     ctx.waitUntil(runScheduledMaintenance(env));
