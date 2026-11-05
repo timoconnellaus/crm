@@ -3,9 +3,11 @@
 // sync, calling a connected gatekeeper's session as the caller, and which outbound action kinds
 // may auto-apply. The integration host (crm-runner, one Durable Object per connection) is the
 // authority for accounts and facets; these operations keep the D1 mirror the UI reads.
+
 import type { CoreDatabase, CoreIntegrationConnectionTable } from "@crm/db";
 import type { Kysely, Selectable } from "kysely";
 import { z } from "zod";
+import { revokeBindingsPlan } from "../automations/bindings.ts";
 import { ForbiddenError, NotFoundError, OperationError, ValidationError } from "../errors.ts";
 import { newId } from "../ids.ts";
 import { CATALOGUE, catalogueEntry, syncKindOf } from "../integrations/catalogue.ts";
@@ -660,6 +662,13 @@ export const connectionDisconnect = defineOperation({
       before: { status: row.status },
       after: { status: "disconnected" },
     });
+    // Run-as (ADR 0170): automations bound to it pause, and the admins are told.
+    const revoked = await revokeBindingsPlan(
+      ctx.db,
+      { connectionId: row.id },
+      { reason: `${row.title} was disconnected`, by: ctx.user.id, now: ctx.now },
+    );
+    ctx.write(...revoked.statements);
     return ctx.afterCommit(async () => {
       try {
         await integrations.disconnect({ connectionId: row.id });

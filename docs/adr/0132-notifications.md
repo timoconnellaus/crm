@@ -92,3 +92,12 @@ while nobody is looking. This ADR records how it is built.
 - One row per recipient: an admin-wide notice to N admins is N small rows, bounded by the user
   count and deduped by key.
 - Without a manager field every escalation goes to admins; the Deals README says so.
+
+## Amendment, 2026-11-05 (stage 6b, [ADR 0172](0172-notification-delivery.md))
+- External delivery is crm-runner's minute cron, not `ctx.waitUntil` after each batch: it reads
+  new rows through `core_notifications_created_idx` behind a 30 s lag and a keyset cursor, so no
+  request path does extra work. Preferences, admin delivery settings (org connections per
+  channel, escalation, digest hour) and channel routes are stored and edited as ADR 0172 says.
+- `NotificationChannel.deliver` returns a `DeliveryOutcome` (`sent`, `pending`, `skipped`);
+  `NOTIFICATION_CHANNELS` lists `inApp`, `email` and `slack`.
+- The Slack DM kind for colleagues is `slack.dm.member` (auto-approvable), not `slack.dm`.

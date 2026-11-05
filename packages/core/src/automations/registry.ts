@@ -5,6 +5,7 @@ import type { CoreDatabase } from "@crm/db";
 import { type AutomationManifest, automationManifestSchema } from "@crm/sdk";
 import { type Compilable, type Kysely, sql } from "kysely";
 import { jsonList } from "../records/common.ts";
+import { WAITING_FOR_CONNECTIONS } from "./bindings.ts";
 import { AUTOMATION_SETTINGS, type AutomationDefinition, DEFAULT_RAILS } from "./types.ts";
 
 /** The trigger's object, when it has one (the matching index keys on it). */
@@ -50,8 +51,9 @@ export function automationSyncStatements(
           key,
           ...values,
           enabled: 1,
-          paused_reason: null,
-          paused_at: null,
+          // An automation that needs connections waits until a person binds them (ADR 0170).
+          paused_reason: spec.connections?.length ? WAITING_FOR_CONNECTIONS : null,
+          paused_at: spec.connections?.length ? input.now : null,
           created_at: input.now,
         })
         .onConflict((oc) => oc.column("id").doUpdateSet(values)),

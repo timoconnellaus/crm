@@ -28,7 +28,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 161,
+  "coreSchemaVersion": 172,
   "extensionContract": {
     "supported": [
       1
@@ -213,6 +213,18 @@
     {
       "name": "0161_setup_wizard.sql",
       "sha256": "e71695935c98bcbe626271c4a9b434be6705054d7293cedd7f6157a415124d49"
+    },
+    {
+      "name": "0170_automation_connections.sql",
+      "sha256": "86bd00e8e634e0cda0b567ca5b1c3e776324bf89c3af81170a7e04f70ebfbf77"
+    },
+    {
+      "name": "0171_automation_outbox.sql",
+      "sha256": "cbf7408156a19a2f698d5d58ced15a879f08239b78229a8e03d88b8ed0beee8d"
+    },
+    {
+      "name": "0172_notification_delivery.sql",
+      "sha256": "cdd5e527fcebdbe6450704f9996ce08fc30f2de1fc3288f25c72f294ed59cdc4"
     }
   ],
   "product": "crm",

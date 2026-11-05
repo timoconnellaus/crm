@@ -76,7 +76,7 @@ ADR 0114). They have no `UPSTREAM.md`, are linted normally, and use no capnweb-v
 | Package | Worker | What it does |
 | --- | --- | --- |
 | [`@crm/gatekeeper-email-send`](packages/gatekeeper-email-send/README.md) | `crm-gatekeeper-email-send` | Sends email with Cloudflare Email Service (`email.send`, `email.internal`) |
-| [`@crm/gatekeeper-slack-post`](packages/gatekeeper-slack-post/README.md) | `crm-gatekeeper-slack-post` | Posts to Slack and sends DMs as the bot of the same Slack app as the vendored read-only gatekeeper (`slack.post`, `slack.dm`) |
+| [`@crm/gatekeeper-slack-post`](packages/gatekeeper-slack-post/README.md) | `crm-gatekeeper-slack-post` | Posts to Slack and sends DMs as the bot of the same Slack app as the vendored read-only gatekeeper (`slack.post`, `slack.dm`, and `slack.dm.member`, auto-approvable for DMs to workspace members) |
 | [`@crm/gatekeeper-webhook`](packages/gatekeeper-webhook/README.md) | `crm-gatekeeper-webhook` | Receives signed webhooks and delivers typed events (ADR 0113) |
 
 ## Ported, not vendored: release tooling (stage 8)

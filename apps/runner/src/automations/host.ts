@@ -342,6 +342,7 @@ async function rerun(
     change?: RunCandidate["change"];
     approval?: RunCandidate["approval"];
     period?: string;
+    integration?: RunCandidate["integration"];
     manual?: AutomationRunParams["manual"];
     chain?: string[];
   };
@@ -376,6 +377,7 @@ async function rerun(
         ...(trigger.change ? { change: trigger.change } : {}),
         ...(trigger.approval ? { approval: trigger.approval } : {}),
         ...(trigger.period ? { period: trigger.period } : {}),
+        ...(trigger.integration ? { integration: trigger.integration } : {}),
       },
     ],
     {

@@ -184,6 +184,14 @@ export interface RunCandidate {
     records: { object: string; id: string }[];
   };
   period?: string;
+  /** webhook / syncEvent triggers: the integration event (`AutomationEvent.integration`). */
+  integration?: {
+    eventId: string;
+    source: "webhook" | "sync";
+    type: string;
+    connectionId: string | null;
+    payload: unknown;
+  };
   /** Delay before the run starts (debounce), seconds. */
   delaySeconds?: number;
 }

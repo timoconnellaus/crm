@@ -95,6 +95,56 @@ describe("automation contract checks", () => {
     ]);
   });
 
+  it("webhook and syncEvent triggers (stage 6b): sync events need activity read", () => {
+    const tellAdmins = [
+      { name: "tellAdmins", notifies: [{ to: "admins" as const, message: "Hi" }] },
+    ];
+    expect(
+      issues({
+        trigger: { type: "webhook", endpoint: "billing", events: ["invoice.paid"] },
+        steps: tellAdmins,
+      }),
+    ).toEqual([]);
+    expect(
+      issues({ trigger: { type: "syncEvent", event: "email.received" }, steps: tellAdmins }),
+    ).toEqual([
+      'permissions.read: Automation thing runs on synced activities: add "activity" to permissions.read',
+    ]);
+    expect(
+      issues(
+        {
+          trigger: { type: "syncEvent", event: "meeting.scheduled", from: "person" },
+          steps: tellAdmins,
+        },
+        { permissions: { ...base.permissions, read: ["activity"] } },
+      ),
+    ).toEqual([]);
+  });
+
+  it("connections: camelCase unique ids, gatekeeper declared in modules", () => {
+    expect(
+      issues({
+        connections: [
+          { id: "mailbox", gatekeeper: "email-send", purpose: "Send the welcome email" },
+          { id: "mailbox", gatekeeper: "email-send", purpose: "Again" },
+          { id: "Bad_id", gatekeeper: "slack-post", purpose: "Post" },
+        ],
+      }),
+    ).toEqual([
+      'automations.thing.connections.0.gatekeeper: The connection uses the email-send gatekeeper: add "email-send" to permissions.modules',
+      'automations.thing.connections.1.id: Connection id "mailbox" is declared twice',
+      'automations.thing.connections.1.gatekeeper: The connection uses the email-send gatekeeper: add "email-send" to permissions.modules',
+      'automations.thing.connections.2.id: Connection id "Bad_id" must be camelCase, e.g. mailbox',
+      'automations.thing.connections.2.gatekeeper: The connection uses the slack-post gatekeeper: add "slack-post" to permissions.modules',
+    ]);
+    expect(
+      issues(
+        { connections: [{ id: "mailbox", gatekeeper: "email-send", purpose: "Send" }] },
+        { permissions: { ...base.permissions, modules: ["crm", "email-send"] } },
+      ),
+    ).toEqual([]);
+  });
+
   it("dateRelative needs a date or datetime field", () => {
     expect(
       issues({

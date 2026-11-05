@@ -26,7 +26,7 @@ import type { ExtensionManifest } from "@crm/sdk";
 import { runModelRole } from "../extensions/ai.ts";
 import { CODE_MAX_CALLS } from "../extensions/code-mode.ts";
 import { embedsFromEvents } from "../extensions/embeddings.ts";
-import { gatekeeperCall } from "../integrations/code.ts";
+import { boundGatekeeperCall, gatekeeperCall } from "../integrations/code.ts";
 import { HOST_METHODS, type HostModule, isGatekeeperModule, isHostModule } from "./worker-code.ts";
 
 export const MAX_LOGS = 200;
@@ -379,6 +379,7 @@ export class RunHost extends RpcTarget {
   async #gatekeeper(vendor: string, method: string, args: unknown[]): Promise<unknown> {
     const run = this.#run;
     const code = run.code;
+    if (run.automation) return this.#runAs(run.automation, vendor, method, args);
     return json(
       await gatekeeperCall(this.#env as unknown as Env, {
         vendor,
@@ -390,6 +391,58 @@ export class RunHost extends RpcTarget {
         reason: code?.caller.reason,
       }),
     );
+  }
+
+  /**
+   * An automation step's gatekeeper call (ADR 0170): through the connection bound to the slot it
+   * names, as that connection's owner. A pending outbound action is recorded like a queued CRM
+   * write, so the Workflow waits for its decision (the review pause).
+   */
+  async #runAs(
+    automation: AutomationRunContext,
+    vendor: string,
+    method: string,
+    args: unknown[],
+  ): Promise<unknown> {
+    const run = this.#run;
+    const started = Date.now();
+    const { reply, pending } = await boundGatekeeperCall(this.#env as unknown as Env, {
+      vendor,
+      method,
+      args,
+      run: {
+        automationId: automation.automationId,
+        runId: automation.runId,
+        extensionId: run.extensionId,
+        depth: automation.depth,
+        chain: automation.chain,
+        rootEventId: automation.rootEventId,
+        test: Boolean(automation.simulate),
+      },
+    });
+    if (method === "call") {
+      const ok = (reply as { ok?: boolean }).ok === true;
+      run.operations.push({
+        operation: "integration.call",
+        ok,
+        ...(ok ? {} : { code: (reply as { error?: { code?: string } }).error?.code ?? "error" }),
+        ...(pending
+          ? {
+              pendingActionId: pending.actionId,
+              pending: {
+                actionId: pending.actionId,
+                changeSetId: pending.changeSetId,
+                expiresAt: pending.expiresAt,
+              },
+            }
+          : {}),
+        ms: Date.now() - started,
+        object: vendor,
+        step: null,
+        writes: 0,
+      });
+    }
+    return json(reply);
   }
 
   #log(args: unknown[]): null {
