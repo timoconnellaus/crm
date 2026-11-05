@@ -51,7 +51,9 @@ const judgeView = z.object({
 async function view(ctx: HandlerContext, settings: JudgeSettings) {
   const env = ctx.aiEnv ?? {};
   const key = judgeKeyStatus(env);
-  const resolved = resolvePlacements(env.JUDGE_PLACEMENTS, settings);
+  const resolved = resolvePlacements(env.JUDGE_PLACEMENTS, settings, {
+    hosted: Boolean(env.AI_PLATFORM_GATEWAY_ID?.trim()),
+  });
   const adjudicator = await loadAdjudicatorSettings(ctx.db);
   return {
     on: key.keySource !== null,

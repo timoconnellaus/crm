@@ -46,16 +46,26 @@ export function parsePlacementLayer(value: unknown): Partial<Record<JudgePlaceme
 
 export type PlacementSource = "shipped" | "deploy" | "admin" | "fixed";
 
+/**
+ * Hosted (SaaS) tenants may not turn on a placement that sends record content until TypeSafe has
+ * agreed zero data retention and `docs/saas-go-live.md` records it (ADR 0232, decision 2). Flip
+ * this, with that record, to let hosted tenants' layers decide as everyone else's do.
+ */
+export const HOSTED_RECORD_CONTENT_ALLOWED = false;
+
 /** Whether each placement asks the judge (given a key), and which layer said so. */
 export function resolvePlacements(
   deployVar: string | undefined,
   settings: JudgeSettings,
+  options: { hosted?: boolean } = {},
 ): Record<JudgePlacementId, { on: boolean; source: PlacementSource }> {
   const deploy = parsePlacementLayer(deployVar ?? "");
   const out = {} as Record<JudgePlacementId, { on: boolean; source: PlacementSource }>;
   for (const p of JUDGE_PLACEMENTS) {
     const id = p.id as JudgePlacementId;
-    if (!p.switchable) {
+    if (options.hosted && p.switchable && p.sendsRecordContent && !HOSTED_RECORD_CONTENT_ALLOWED) {
+      out[id] = { on: false, source: "fixed" };
+    } else if (!p.switchable) {
       out[id] = { on: true, source: "fixed" };
     } else if (settings.placements[id] !== undefined) {
       out[id] = { on: settings.placements[id] as boolean, source: "admin" };
