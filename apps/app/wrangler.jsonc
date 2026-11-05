@@ -88,6 +88,10 @@
     "AI_MODEL_ROLES": "",
     // Base URLs for the `openai-compatible` provider: JSON { "<provider>": { "baseURL" } }.
     "AI_PROVIDERS": "",
+    // "true": Workers AI goes over REST through the gateway with prompt and response logging off,
+    // because AI_GATEWAY_TOKEN also holds Workers AI Read. Set by the installer and the updater
+    // (ADR 0330); empty keeps Workers AI on the `ai` binding.
+    "AI_GATEWAY_REST": "",
     // Providers whose key is stored in AI Gateway as BYOK, comma-separated (e.g. "deepseek").
     // Set by `create-relationship-os --provider-key` (ADR 0192).
     "AI_GATEWAY_BYOK": "",

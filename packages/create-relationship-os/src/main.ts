@@ -59,6 +59,7 @@ import {
   type ReleaseBundle,
   type RunRecord,
   releaseAssetNames,
+  retireGatewayToken,
   rollbackTarget,
   runRollback,
   runsViaApi,
@@ -103,7 +104,10 @@ Options
                          the choice; re-run install with --ai to change it
   --ai-gateway <id|off>  AI Gateway every model call goes through (default: one named after the
                          install, e.g. ros, created with logging and authentication on and its
-                         token stored as AI_GATEWAY_TOKEN). off: call Workers AI directly
+                         token, with AI Gateway Run and Workers AI Read, stored as
+                         AI_GATEWAY_TOKEN). Workers AI then goes through it over REST with
+                         prompt and response logging off. off: call Workers AI directly over
+                         the binding
   --provider-key P=KEY   store a provider key in the gateway as BYOK (repeatable), e.g.
                          deepseek=… or openai=… (a custom provider by its slug; typesafe=… is
                          the judge's key, Jev, and sets JUDGE_BYOK). Never logged.
@@ -582,8 +586,9 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
   if (aiGateway === false) {
     // Turned off: clear a gateway an earlier install set.
     for (const [worker, values] of Object.entries(vars)) {
-      if (values.AI_GATEWAY_ID === undefined) continue;
-      const { AI_GATEWAY_ID: _gone, ...rest } = values;
+      if (values.AI_GATEWAY_ID === undefined && values.AI_GATEWAY_REST === undefined) continue;
+      // Workers AI goes back to the binding, unchanged (ADR 0330).
+      const { AI_GATEWAY_ID: _gone, AI_GATEWAY_REST: _rest, ...rest } = values;
       vars[worker] = rest;
     }
   }
@@ -616,6 +621,7 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
     ...(aiGateway !== undefined ? { aiGateway } : {}),
     ...(previous?.aiGatewayCreated ? { aiGatewayCreated: true } : {}),
     ...(previous?.aiGatewayTokenId ? { aiGatewayTokenId: previous.aiGatewayTokenId } : {}),
+    ...(previous?.aiGatewayTokenWorkersAi ? { aiGatewayTokenWorkersAi: true } : {}),
     workerNames: previous?.workerNames ?? {},
     ...(previous?.resourceNames ? { resourceNames: previous.resourceNames } : {}),
     vars,
@@ -678,6 +684,8 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
       io.out(`  setting secrets on ${worker}: ${Object.keys(values).sort().join(", ")}`);
   }
   const result = await deployWorkers({ api: s.api, bundle, state, secrets, log: (l) => io.out(l) });
+  // A gateway token this run replaced (ADR 0330) is deleted only now that the new one is deployed.
+  await retireGatewayToken(s.api, s.accountId, gateway.retiredTokenId, (l) => io.out(l));
   if (flags.wait) {
     io.out("Waiting for /api/health…");
     await healthSmoke(hostname, version, {

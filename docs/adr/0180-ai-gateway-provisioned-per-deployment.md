@@ -139,3 +139,12 @@ All pages read 2026-11-05.
 > `…/{gateway}/compat/chat/completions` with `provider/model` ids, and a role names a custom
 > provider as `{ provider: "custom", model: "custom-<slug>/<model>" }`. Settings → AI's key form
 > now uses `setGatewayProviderKey`, including for custom providers (`custom-<slug>`).
+
+> Amended 2026-11-06 ([ADR 0330](0330-self-hosted-workers-ai-over-rest.md)): **the gateway token
+> also holds Workers AI Read**, so self-hosted Workers AI can go over REST through the gateway with
+> payload logging off. Generated tokens get AI Gateway Run and Workers AI Read; a token generated
+> before (Run only) is replaced once, even while the Workers still hold it; a supplied token is
+> checked by listing one Workers AI model with it. The installer sets `AI_GATEWAY_REST=true` on the
+> gateway's Workers when the token can call Workers AI. A replaced token is now deleted only after
+> the deploy succeeds (`retiredTokenId`), not during provisioning. "Workers AI calls through the
+> `AI` binding ... need no token" still holds for installs without `AI_GATEWAY_REST`.

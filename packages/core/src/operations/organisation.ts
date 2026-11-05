@@ -1077,7 +1077,9 @@ export const organisationErase = defineOperation({
     '"[erased]" (who did what and when is kept), and so are in-app assistant conversations ' +
     "that referenced it (its id and name). Its domains, website and street lines, current and " +
     "former, are matched too, and extension data, run history and notifications about it are " +
-    "redacted or deleted. Cannot be undone; use organisation.delete for a " +
+    "redacted or deleted. A synced email's full body is deleted only when no person is linked " +
+    "to it; otherwise the body is kept without those terms. Cannot be undone; use " +
+    "organisation.delete for a " +
     "reversible delete.",
   input: z.object({ id: organisationId }),
   output: z.object({

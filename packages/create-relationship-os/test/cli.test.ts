@@ -232,6 +232,25 @@ describe("create-relationship-os install", () => {
   });
 });
 
+/**
+ * Turns the current install into one from before ADR 0330: its generated token holds AI Gateway
+ * Run only, the state does not know it can call Workers AI, and AI_GATEWAY_REST is not set.
+ */
+async function makePreRestInstall() {
+  for (const token of world.cf.tokens.values()) token.permissionGroups = ["pg-aig-run"];
+  const [row] = await sql("SELECT value FROM core_install");
+  const state = JSON.parse(String(row?.value));
+  delete state.aiGatewayTokenWorkersAi;
+  for (const values of Object.values(state.vars) as Record<string, string>[]) {
+    delete values.AI_GATEWAY_REST;
+  }
+  await sql(`UPDATE core_install SET value = '${JSON.stringify(state).replace(/'/g, "''")}'`);
+  for (const worker of ["ros-app", "ros-runner"]) {
+    const binding = world.cf.liveBinding(worker, "AI_GATEWAY_REST");
+    if (binding) binding.text = "";
+  }
+}
+
 const denyAiGateway = (_method: string, path: string) =>
   /\/ai-gateway\//.test(path)
     ? new Response(
@@ -262,14 +281,17 @@ describe("create-relationship-os install: AI Gateway", () => {
     ]);
     for (const worker of ["ros-app", "ros-runner"]) {
       expect(world.cf.liveBinding(worker, "AI_GATEWAY_ID")?.text).toBe("ros");
+      // ADR 0330: Workers AI over REST through the gateway, payload logging off.
+      expect(world.cf.liveBinding(worker, "AI_GATEWAY_REST")?.text).toBe("true");
     }
-    // One account token with AI Gateway Run only, stored on both Workers, never printed.
+    // One account token with AI Gateway Run and Workers AI Read only, stored on both Workers,
+    // never printed.
     expect(world.cf.tokens.size).toBe(1);
     const [tokenId, token] = [...world.cf.tokens][0] as [
       string,
       { value: string; permissionGroups: string[] },
     ];
-    expect(token.permissionGroups).toEqual(["pg-aig-run"]);
+    expect(token.permissionGroups).toEqual(["pg-aig-run", "pg-wai-read"]);
     expect(world.cf.scripts.get("ros-app")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token.value);
     expect(world.cf.scripts.get("ros-runner")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token.value);
     expect(output).not.toContain(token.value);
@@ -279,7 +301,35 @@ describe("create-relationship-os install: AI Gateway", () => {
       aiGateway: "ros",
       aiGatewayCreated: true,
       aiGatewayTokenId: tokenId,
+      aiGatewayTokenWorkersAi: true,
     });
+  });
+
+  it("repair replaces a token generated before ADR 0330 and turns on REST", async () => {
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    expect((await cli("--yes")).code).toBe(0);
+    await makePreRestInstall();
+    const oldId = [...world.cf.tokens.keys()][0] as string;
+    expect(world.cf.liveBinding("ros-app", "AI_GATEWAY_REST")?.text).toBe("");
+
+    const { code, output } = await cli("--yes");
+    expect(code, output).toBe(0);
+    expect(output).toContain("AI_GATEWAY_TOKEN: replaced");
+    // The old token is deleted after the deploy; the new one has both permissions.
+    expect(world.cf.tokens.has(oldId)).toBe(false);
+    expect(world.cf.tokens.size).toBe(1);
+    const [newId, token] = [...world.cf.tokens][0] as [
+      string,
+      { value: string; permissionGroups: string[] },
+    ];
+    expect(token.permissionGroups).toEqual(["pg-aig-run", "pg-wai-read"]);
+    for (const worker of ["ros-app", "ros-runner"]) {
+      expect(world.cf.scripts.get(worker)?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token.value);
+      expect(world.cf.liveBinding(worker, "AI_GATEWAY_REST")?.text).toBe("true");
+    }
+    expect(output).not.toContain(token.value);
+    const state = JSON.parse(String((await sql("SELECT value FROM core_install"))[0]?.value));
+    expect(state).toMatchObject({ aiGatewayTokenId: newId, aiGatewayTokenWorkersAi: true });
   });
 
   it("re-runs reuse everything: no second gateway, provider or token", async () => {
@@ -429,14 +479,31 @@ describe("create-relationship-os install: AI Gateway", () => {
     expect(off.code, off.output).toBe(0);
     expect(world.cf.gateways.size).toBe(0);
     expect(world.cf.liveBinding("ros-app", "AI_GATEWAY_ID")?.text).toBe("");
+    // Workers AI stays on the binding, unchanged (ADR 0330).
+    expect(world.cf.liveBinding("ros-app", "AI_GATEWAY_REST")?.text).toBe("");
 
     const on = await cli("--yes", "--ai-gateway", "ros");
     expect(on.code, on.output).toBe(0);
     expect(world.cf.gateways.has("ros")).toBe(true);
+    expect(world.cf.liveBinding("ros-runner", "AI_GATEWAY_REST")?.text).toBe("true");
     const gone = await cli("uninstall", "--yes");
     expect(gone.code, gone.output).toBe(0);
     expect(world.cf.gateways.size).toBe(0);
     expect(world.cf.tokens.size).toBe(0);
+  });
+});
+
+describe("create-relationship-os install: --ai-gateway off after on", () => {
+  it("puts Workers AI back on the binding", async () => {
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    expect((await cli("--yes")).code).toBe(0);
+    expect(world.cf.liveBinding("ros-app", "AI_GATEWAY_REST")?.text).toBe("true");
+    const off = await cli("--yes", "--ai-gateway", "off");
+    expect(off.code, off.output).toBe(0);
+    for (const worker of ["ros-app", "ros-runner"]) {
+      expect(world.cf.liveBinding(worker, "AI_GATEWAY_ID")?.text).toBe("");
+      expect(world.cf.liveBinding(worker, "AI_GATEWAY_REST")?.text).toBe("");
+    }
   });
 });
 
@@ -505,6 +572,46 @@ describe("ros upgrade, rollback and status", () => {
     const { code, output } = await cli("upgrade", "--yes");
     expect(code, output).toBe(0);
     expect(output).toContain("needs AI Gateway Edit");
+    expect(world.cf.liveBinding("ros-app", "ROS_RELEASE_VERSION")?.text).toBe("1.1.0");
+  });
+
+  it("an upgrade of an install from before ADR 0330 replaces its token and turns on REST", async () => {
+    await installed();
+    await makePreRestInstall();
+    const oldId = [...world.cf.tokens.keys()][0] as string;
+    await world.github.publish(await buildFixtureRelease({ version: "1.1.0" }));
+    const { code, output } = await cli("upgrade", "--yes");
+    expect(code, output).toBe(0);
+    expect(output).toContain("AI_GATEWAY_TOKEN: replaced");
+    expect(world.cf.tokens.has(oldId)).toBe(false);
+    const [token] = [...world.cf.tokens.values()];
+    expect(token?.permissionGroups).toEqual(["pg-aig-run", "pg-wai-read"]);
+    for (const worker of ["ros-app", "ros-runner"]) {
+      expect(world.cf.scripts.get(worker)?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token?.value);
+      expect(world.cf.liveBinding(worker, "AI_GATEWAY_REST")?.text).toBe("true");
+    }
+    expect(output).not.toContain(token?.value);
+    const state = JSON.parse(String((await sql("SELECT value FROM core_install"))[0]?.value));
+    expect(state).toMatchObject({ version: "1.1.0", aiGatewayTokenWorkersAi: true });
+  });
+
+  it("an upgrade that may not create tokens keeps the old token and Workers AI on the binding", async () => {
+    await installed();
+    await makePreRestInstall();
+    const oldId = [...world.cf.tokens.keys()][0] as string;
+    await world.github.publish(await buildFixtureRelease({ version: "1.1.0" }));
+    world.cf.failOn = (method, path) =>
+      method === "POST" && path.endsWith("/tokens")
+        ? Response.json(
+            { success: false, errors: [{ code: 9109, message: "Unauthorized" }] },
+            { status: 403 },
+          )
+        : undefined;
+    const { code, output } = await cli("upgrade", "--yes");
+    expect(code, output).toBe(0);
+    expect(output).toMatch(/stays on the binding/);
+    expect(world.cf.tokens.has(oldId)).toBe(true);
+    expect(world.cf.liveBinding("ros-app", "AI_GATEWAY_REST")?.text).toBe("");
     expect(world.cf.liveBinding("ros-app", "ROS_RELEASE_VERSION")?.text).toBe("1.1.0");
   });
 

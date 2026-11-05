@@ -114,6 +114,7 @@ export function aiEnvView(env: AiAppEnv): AiEnv {
     ...(env.AI_MODEL_ROLES ? { AI_MODEL_ROLES: env.AI_MODEL_ROLES } : {}),
     ...(env.AI_PROVIDERS ? { AI_PROVIDERS: env.AI_PROVIDERS } : {}),
     ...(env.AI_GATEWAY_BYOK ? { AI_GATEWAY_BYOK: env.AI_GATEWAY_BYOK } : {}),
+    ...(env.AI_GATEWAY_REST ? { AI_GATEWAY_REST: env.AI_GATEWAY_REST } : {}),
     ...(env.VECTORIZE_DIMENSIONS ? { VECTORIZE_DIMENSIONS: env.VECTORIZE_DIMENSIONS } : {}),
     ...(env.AI_FAKE_MODEL ? { AI_FAKE_MODEL: env.AI_FAKE_MODEL } : {}),
     // The judge's key, as "set" only (ADR 0230, ADR 0151).

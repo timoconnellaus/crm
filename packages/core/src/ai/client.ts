@@ -1,7 +1,9 @@
 // Running model roles (ADR 0009, ADR 0150, ADR 0203). The registry (roles.ts) says which provider
 // and model serve a role; this turns that into a call through the AI SDK (`ai`). Gateway-first:
-// - Workers AI: the `AI` binding (workers-ai-provider), with the binding's `gateway` option when
-//   AI_GATEWAY_ID is set (in-account, no token).
+// - Workers AI: over REST through the deployment's gateway with payload logging off, when the
+//   installer says the gateway token can call Workers AI (AI_GATEWAY_REST, ADR 0330); otherwise
+//   the `AI` binding (workers-ai-provider), with the binding's `gateway` option when AI_GATEWAY_ID
+//   is set (in-account, no token).
 // - Every other provider: OpenAI-compatible (@ai-sdk/openai-compatible). With AI Gateway
 //   configured, chat goes to its unified endpoint `…/{gateway}/compat` with `provider/model` ids
 //   (`deepseek/deepseek-flash`, `custom-<slug>/<model>`); otherwise the provider's own URL.
@@ -53,6 +55,12 @@ import {
   type RoleLayer,
   resolveRoles,
 } from "./roles.ts";
+import {
+  workersAiRest,
+  workersAiRestBaseUrl,
+  workersAiRestFetch,
+  workersAiRestHeaders,
+} from "./workers-ai-rest.ts";
 
 export interface ModelMessage {
   role: "system" | "user" | "assistant";
@@ -160,8 +168,13 @@ export interface AiEnv extends PlatformAiEnv {
   AI_GATEWAY_ID?: string;
   /** Account id, for AI Gateway URLs of third-party providers and the Cloudflare API. */
   CLOUDFLARE_ACCOUNT_ID?: string;
-  /** Secret: the gateway's `cf-aig-authorization` token, for an authenticated gateway. */
+  /**
+   * Secret: the gateway's `cf-aig-authorization` token, for an authenticated gateway. With
+   * AI_GATEWAY_REST it also holds Workers AI Read (ADR 0330).
+   */
   AI_GATEWAY_TOKEN?: string;
+  /** Var: "true" sends Workers AI over REST through the gateway, payload logging off (ADR 0330). */
+  AI_GATEWAY_REST?: string;
   /** Deploy config: a JSON role layer (shipped defaults → this → admin overrides). */
   AI_MODEL_ROLES?: string;
   /** Deploy config: JSON `{ "<provider>": { "baseURL": "…" } }` for openai-compatible. */
@@ -396,7 +409,8 @@ export function providerStatus(
     return { ready: false, reason: "On a hosted workspace, Workers AI is Platform AI" };
   }
   if (provider === "workers-ai") {
-    if (env.AI) return { ready: true, keySource: "binding" };
+    // Over REST (ADR 0330) or the binding: in-account Workers AI either way.
+    if (env.AI || workersAiRest(env)) return { ready: true, keySource: "binding" };
     if (env.AI_FAKE_MODEL === "true") return { ready: true, keySource: "binding" };
     return { ready: false, reason: "No `ai` binding on this Worker (docs/deploying.md)" };
   }
@@ -453,7 +467,10 @@ function requestHeaders(
   role: ModelRole,
   tag: TenantTag | null,
 ): Record<string, string> | undefined {
-  if (ref.provider === "workers-ai") return undefined;
+  if (ref.provider === "workers-ai") {
+    const rest = workersAiRest(env);
+    return rest ? workersAiRestHeaders(rest, role) : undefined;
+  }
   if (ref.provider === "platform") {
     const config = platformConfig(env);
     return tag && !("missing" in config) ? platformHeaders(config, role, tag) : undefined;
@@ -515,11 +532,30 @@ function workersAi(options: ModelRunnerOptions, role: ModelRole) {
   if (isHosted(env)) {
     throw new AiNotConfiguredError("On a hosted workspace, Workers AI is Platform AI");
   }
+  const rest = workersAiRest(env);
+  if (rest) {
+    // ADR 0330: Workers AI's REST endpoint through the deployment's gateway. The fetch forces the
+    // gateway headers, so payload logging is off on every call, whatever a caller passes.
+    const client = createOpenAICompatible({
+      name: "workers-ai",
+      baseURL: workersAiRestBaseUrl(rest),
+      headers: workersAiRestHeaders(rest, role),
+      fetch: workersAiRestFetch(rest, role, options.fetch),
+    });
+    return {
+      chat: (model: string) => client.chatModel(model),
+      embedding: (model: string) => client.textEmbeddingModel(model),
+    };
+  }
   if (!env.AI) throw new AiNotConfiguredError("AI is not configured: no `ai` binding");
-  return createWorkersAI({
+  const binding = createWorkersAI({
     binding: env.AI as Ai,
     ...(env.AI_GATEWAY_ID ? { gateway: { id: env.AI_GATEWAY_ID, metadata: { role } } } : {}),
   });
+  return {
+    chat: (model: string) => binding(model),
+    embedding: (model: string) => binding.textEmbedding(model),
+  };
 }
 
 function languageModel(
@@ -531,7 +567,7 @@ function languageModel(
 ): LanguageModel {
   let model: Exclude<LanguageModel, string>;
   if (ref.provider === "workers-ai") {
-    model = workersAi(options, role)(ref.model);
+    model = workersAi(options, role).chat(ref.model);
   } else {
     const { client, modelId } = openAiCompatible(options, settings, ref, role, "chat", tag);
     model = client.chatModel(modelId);
@@ -595,7 +631,7 @@ function embeddingModel(
   ref: ModelRef,
   tag: TenantTag | null,
 ) {
-  if (ref.provider === "workers-ai") return workersAi(options, "embed").textEmbedding(ref.model);
+  if (ref.provider === "workers-ai") return workersAi(options, "embed").embedding(ref.model);
   const { client, modelId } = openAiCompatible(options, settings, ref, "embed", "embed", tag);
   return client.textEmbeddingModel(modelId);
 }
@@ -845,6 +881,7 @@ export function modelRunnerFromEnv(
   const configured =
     hasBinding ||
     isHosted(env) ||
+    Boolean(workersAiRest(env)) ||
     Boolean(env.AI_MODEL_ROLES?.trim()) ||
     Object.values(PROVIDER_INFO).some((p) => keyFromEnv(env, p.secretName));
   if (hasBinding || (env.AI_FAKE_MODEL === "true" && options.fakes) || configured) {

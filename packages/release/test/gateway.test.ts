@@ -12,6 +12,7 @@ import {
   openBundle,
   provisionAiGateway,
   type ReleaseManifest,
+  retireGatewayToken,
   varWorkers,
   withByokProvider,
   withDeploymentVar,
@@ -43,6 +44,20 @@ async function setup() {
     resources: {},
   };
   return { cf, api, manifest, state };
+}
+
+/** Both gateway Workers exist and hold AI_GATEWAY_TOKEN (its value is not readable). */
+function holdToken(cf: FakeCloudflare) {
+  for (const name of ["ros-app", "ros-runner"]) {
+    cf.scripts.set(name, {
+      name,
+      versions: [],
+      secrets: new Map([["AI_GATEWAY_TOKEN", "x"]]),
+      schedules: [],
+      workersDev: false,
+      bindings: [],
+    });
+  }
 }
 
 describe("AI Gateway names", () => {
@@ -95,7 +110,7 @@ describe("per-deployment vars (ADR 0192)", () => {
 });
 
 describe("provisionAiGateway", () => {
-  it("creates the gateway with logging and authentication, the provider and a Run token", async () => {
+  it("creates the gateway with logging and authentication, the provider and a Run + Workers AI token", async () => {
     const { cf, api, manifest, state } = await setup();
     const lines: string[] = [];
     const result = await provisionAiGateway({ api, manifest, state, log: (l) => lines.push(l) });
@@ -104,17 +119,24 @@ describe("provisionAiGateway", () => {
     expect([...cf.customProviders.values()]).toEqual([
       expect.objectContaining({ slug: "example-llm", base_url: "https://llm.example.com" }),
     ]);
+    // ADR 0330: the token can call Workers AI, so Workers AI goes over REST (payload logging off).
     expect(result.vars).toEqual({
-      "ros-app": { AI_GATEWAY_ID: "ros" },
-      "ros-runner": { AI_GATEWAY_ID: "ros" },
+      "ros-app": { AI_GATEWAY_ID: "ros", AI_GATEWAY_REST: "true" },
+      "ros-runner": { AI_GATEWAY_ID: "ros", AI_GATEWAY_REST: "true" },
     });
     const [token] = [...cf.tokens.values()];
-    expect(token?.permissionGroups).toEqual(["pg-aig-run"]);
+    // One token: AI Gateway Run and Workers AI Read, nothing else, on the account only.
+    expect(token?.permissionGroups).toEqual(["pg-aig-run", "pg-wai-read"]);
+    expect(token?.resources).toEqual({ [`com.cloudflare.api.account.${ACCOUNT}`]: "*" });
     expect(result.secrets).toEqual({
       "ros-app": { AI_GATEWAY_TOKEN: token?.value },
       "ros-runner": { AI_GATEWAY_TOKEN: token?.value },
     });
-    expect(result.state).toMatchObject({ aiGateway: "ros", aiGatewayCreated: true });
+    expect(result.state).toMatchObject({
+      aiGateway: "ros",
+      aiGatewayCreated: true,
+      aiGatewayTokenWorkersAi: true,
+    });
     expect(lines.join("\n")).not.toContain(token?.value);
   });
 
@@ -140,12 +162,109 @@ describe("provisionAiGateway", () => {
     expect(cf.tokens.size).toBe(1);
   });
 
-  it("replaces the token (and deletes the old one) when a Worker lost it", async () => {
+  it("replaces the token when a Worker lost it, deleting the old one only after the deploy", async () => {
     const { cf, api, manifest, state } = await setup();
     const first = await provisionAiGateway({ api, manifest, state });
     const again = await provisionAiGateway({ api, manifest, state: { ...state, ...first.state } });
     expect(again.state.aiGatewayTokenId).not.toBe(first.state.aiGatewayTokenId);
+    expect(again.retiredTokenId).toBe(first.state.aiGatewayTokenId);
+    expect(cf.tokens.size).toBe(2);
+    await retireGatewayToken(api, ACCOUNT, again.retiredTokenId);
     expect([...cf.tokens.keys()]).toEqual([again.state.aiGatewayTokenId]);
+  });
+
+  it("replaces a token generated before ADR 0330 (AI Gateway Run only) once, and turns on REST", async () => {
+    const { cf, api, manifest, state } = await setup();
+    // An install from before: the Workers hold a Run-only token we generated; no REST var.
+    const old = await api.createAccountToken(ACCOUNT, "ros AI Gateway (Relationship OS)", [
+      "pg-aig-run",
+    ]);
+    holdToken(cf);
+    const before: DeploymentState = {
+      ...state,
+      aiGateway: "ros",
+      aiGatewayCreated: true,
+      aiGatewayTokenId: old.id,
+      vars: { "ros-app": { AI_GATEWAY_ID: "ros" }, "ros-runner": { AI_GATEWAY_ID: "ros" } },
+    };
+    const lines: string[] = [];
+    const result = await provisionAiGateway({
+      api,
+      manifest,
+      state: before,
+      log: (l) => lines.push(l),
+    });
+    const fresh = cf.tokens.get(result.state.aiGatewayTokenId as string);
+    expect(fresh?.permissionGroups).toEqual(["pg-aig-run", "pg-wai-read"]);
+    expect(result.secrets["ros-app"]).toEqual({ AI_GATEWAY_TOKEN: fresh?.value });
+    expect(result.secrets["ros-runner"]).toEqual({ AI_GATEWAY_TOKEN: fresh?.value });
+    expect(result.vars["ros-app"]).toEqual({ AI_GATEWAY_ID: "ros", AI_GATEWAY_REST: "true" });
+    expect(result.state.aiGatewayTokenWorkersAi).toBe(true);
+    expect(result.retiredTokenId).toBe(old.id);
+    expect(lines.join("\n")).toMatch(/AI_GATEWAY_TOKEN: replaced/);
+    // The next run changes nothing: the new token is kept.
+    const before2 = cf.calls.length;
+    const again = await provisionAiGateway({
+      api,
+      manifest,
+      state: { ...before, vars: result.vars, ...result.state },
+    });
+    expect(cf.calls.slice(before2).filter((c) => c.method !== "GET")).toEqual([]);
+    expect(again.secrets).toEqual({});
+    expect(again.retiredTokenId).toBeUndefined();
+    expect(again.vars["ros-runner"]).toEqual({ AI_GATEWAY_ID: "ros", AI_GATEWAY_REST: "true" });
+  });
+
+  it("keeps an old token and Workers AI on the binding when it may not create tokens", async () => {
+    const { cf, api, manifest, state } = await setup();
+    holdToken(cf);
+    cf.failOn = (method, path) =>
+      method === "POST" && path.endsWith("/tokens")
+        ? Response.json(
+            { success: false, errors: [{ code: 9109, message: "Unauthorized" }] },
+            { status: 403 },
+          )
+        : undefined;
+    const result = await provisionAiGateway({
+      api,
+      manifest,
+      state: {
+        ...state,
+        aiGatewayTokenId: "token-old",
+        vars: { "ros-app": { AI_GATEWAY_ID: "ros" } },
+      },
+    });
+    expect(result.secrets).toEqual({});
+    expect(result.vars["ros-app"]).toEqual({ AI_GATEWAY_ID: "ros" });
+    expect(result.state.aiGatewayTokenId).toBe("token-old");
+    expect(result.state.aiGatewayTokenWorkersAi).toBeUndefined();
+    expect(result.retiredTokenId).toBeUndefined();
+    expect(result.warnings.join(" ")).toMatch(/stays on the binding/);
+  });
+
+  it("leaves a hand-set token alone, with Workers AI on the binding and a warning", async () => {
+    const { cf, api, manifest, state } = await setup();
+    holdToken(cf);
+    const result = await provisionAiGateway({ api, manifest, state });
+    expect(cf.tokens.size).toBe(0);
+    expect(result.secrets).toEqual({});
+    expect(result.vars["ros-app"]).toEqual({ AI_GATEWAY_ID: "ros" });
+    expect(result.warnings.join(" ")).toMatch(/Workers AI Read/);
+  });
+
+  it("drops AI_GATEWAY_REST with the gateway off or AI off", async () => {
+    const { api, manifest, state } = await setup();
+    const vars = {
+      "ros-app": { AI_GATEWAY_REST: "true", IDENTITY_PROVIDER: "cloudflare-access" },
+      "ros-runner": { AI_GATEWAY_REST: "true" },
+    };
+    for (const off of [{ aiGateway: false as const }, { ai: false }]) {
+      const result = await provisionAiGateway({ api, manifest, state: { ...state, ...off, vars } });
+      expect(result.vars).toEqual({
+        "ros-app": { IDENTITY_PROVIDER: "cloudflare-access" },
+        "ros-runner": {},
+      });
+    }
   });
 
   it("fixes a custom provider whose base URL changed", async () => {
@@ -185,11 +304,43 @@ describe("provisionAiGateway", () => {
     expect(cf.tokens.size).toBe(0);
   });
 
-  it("uses a supplied token instead of generating one", async () => {
+  it("uses a supplied token instead of generating one, REST only if it can call Workers AI", async () => {
     const { cf, api, manifest, state } = await setup();
     const result = await provisionAiGateway({ api, manifest, state, token: "mine-123" });
     expect(result.secrets["ros-runner"]).toEqual({ AI_GATEWAY_TOKEN: "mine-123" });
     expect(cf.tokens.size).toBe(0);
+    // A Run-only token: the probe is refused, so Workers AI stays on the binding.
+    expect(result.vars["ros-app"]).toEqual({ AI_GATEWAY_ID: "ros" });
+    expect(result.state.aiGatewayTokenWorkersAi).toBeUndefined();
+    expect(result.warnings.join(" ")).toMatch(/cannot call Workers AI/);
+
+    cf.workersAiTokens.add("mine-456");
+    const good = await provisionAiGateway({ api, manifest, state, token: "mine-456" });
+    expect(good.vars["ros-app"]).toEqual({ AI_GATEWAY_ID: "ros", AI_GATEWAY_REST: "true" });
+    expect(good.state.aiGatewayTokenWorkersAi).toBe(true);
+    expect(good.warnings).toEqual([]);
+  });
+
+  it("retires a generated token when one is supplied, and does not regenerate over it", async () => {
+    const { cf, api, manifest, state } = await setup();
+    const first = await provisionAiGateway({ api, manifest, state });
+    cf.workersAiTokens.add("mine-789");
+    const supplied = await provisionAiGateway({
+      api,
+      manifest,
+      state: { ...state, ...first.state },
+      token: "mine-789",
+    });
+    expect(supplied.retiredTokenId).toBe(first.state.aiGatewayTokenId);
+    expect(supplied.state.aiGatewayTokenId).toBeUndefined();
+    holdToken(cf);
+    const later = await provisionAiGateway({
+      api,
+      manifest,
+      state: { ...state, ...supplied.state },
+    });
+    expect(later.secrets).toEqual({});
+    expect(later.vars["ros-app"]).toEqual({ AI_GATEWAY_ID: "ros", AI_GATEWAY_REST: "true" });
   });
 
   it("warns and carries on when the token may not create account tokens", async () => {
