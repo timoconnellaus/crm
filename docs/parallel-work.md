@@ -23,7 +23,7 @@ commit**, by editing this table. Use the next free block. Unused numbers in a bl
 | J | 0310–0319 | 0290–0299 (free) | Stage 15, Leads: assignment rules (migrations only) | specced |
 | K | 0320–0329 | 0300–0309 (free) | Stage 16, Duplicates (migrations only) | specced |
 | L | 0330–0339 | 0320–0329 | Erase completeness (every store) | in flight |
-| M | 0340–0349 | 0330–0339 | Self-hosted Workers AI over REST (no prompt logging); narrower organisation erase | in flight |
+| M | 0340–0349 | 0330–0339 | Self-hosted Workers AI over REST (no prompt logging); narrower organisation erase (ADR 0330 used; no migrations) | merged |
 
 Add more blocks of ten as needed. `CORE_SCHEMA_VERSION` is the highest migration number on `main`;
 when you merge `main`, keep the larger value.
@@ -37,7 +37,6 @@ Avoid these unless your build is the one named, because another build is changin
 | Area | Reserved for |
 | --- | --- |
 | `packages/core/src/ai/roles.ts`, `ai/client.ts`, hosted provisioning in `packages/release`, `apps/control` AI metering | Hosted platform AI |
-| `packages/core/src/ai/client.ts` (Workers AI routing), `packages/release/src/gateway.ts` (the gateway token), `organisation.erase` | Block M |
 | `person.erase`, `organisation.erase`, `records/erase.ts`, `assistant/erase.ts`, sync ingest's suppression check | Erase completeness |
 | Visibility and permissions anywhere | Stage 14, once it starts |
 | `packages/core/src/judge/`, `packages/core/src/adjudicator/` | Stage 11 placements |
