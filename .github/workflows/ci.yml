@@ -34,6 +34,29 @@ jobs:
       # The landing page (apps/marketing): its build fails on any tracker or third-party load.
       - run: pnpm --filter @relationship-os/marketing build
 
+  marketing-e2e:
+    name: Landing page (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @relationship-os/marketing exec playwright install --with-deps chromium
+      # Builds the site and serves it with the real Worker and a local D1 (playwright.config.ts).
+      - run: pnpm --filter @relationship-os/marketing test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: marketing-playwright-report
+          path: |
+            apps/marketing/playwright-report
+            apps/marketing/test-results
+          retention-days: 7
+
   e2e:
     name: E2E smoke (Playwright)
     runs-on: ubuntu-latest
