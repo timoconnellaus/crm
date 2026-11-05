@@ -25,6 +25,18 @@ interface FakeScript {
   schedules: string[];
   workersDev: boolean;
   bindings: Record<string, unknown>[];
+  /** Script tags (Workers for Platforms user Workers). */
+  tags?: string[];
+}
+
+/** One AI Gateway log entry, as the fake serves it (the fields metering reads). */
+export interface FakeGatewayLog {
+  id: string;
+  created_at: string;
+  provider: string;
+  model: string;
+  cost: number | null;
+  cached?: boolean;
 }
 
 export interface FakeCloudflareOptions {
@@ -72,6 +84,13 @@ export class FakeCloudflare {
   /** Workflows registered by script uploads (a workflow binding without script_name). */
   readonly workflows = new Map<string, { className: string; script: string }>();
   readonly scripts = new Map<string, FakeScript>();
+  /**
+   * Workers for Platforms dispatch namespaces (ADR 0210), each with its own user Workers. Like the
+   * real API, user Workers have no versions, deployments, schedules or workers.dev.
+   */
+  readonly namespaces = new Map<string, Map<string, FakeScript>>();
+  /** AI Gateway logs per gateway id, for metering tests (`addGatewayLog`). */
+  readonly gatewayLogs = new Map<string, FakeGatewayLog[]>();
   readonly domains: { hostname: string; service: string; zone_id: string }[] = [];
   readonly uploadedAssets = new Set<string>();
   /** AI Gateways by id, with their settings. */
@@ -108,6 +127,19 @@ export class FakeCloudflare {
   live(name: string) {
     const script = this.scripts.get(name);
     return script?.versions.find((v) => v.id === script.current);
+  }
+
+  /** A user Worker in a dispatch namespace, as uploaded last. */
+  userWorker(namespace: string, name: string) {
+    const script = this.namespaces.get(namespace)?.get(name);
+    const live = script?.versions.find((v) => v.id === script.current);
+    return script && live ? { ...live, tags: script.tags, secrets: script.secrets } : undefined;
+  }
+
+  addGatewayLog(gateway: string, log: Omit<FakeGatewayLog, "id">) {
+    const logs = this.gatewayLogs.get(gateway) ?? [];
+    logs.push({ ...log, id: this.id("log") });
+    this.gatewayLogs.set(gateway, logs);
   }
 
   liveBinding(script: string, binding: string) {
@@ -318,6 +350,29 @@ export class FakeCloudflare {
       }
       return ok([...this.gateways.values()]);
     }
+    m = new RegExp(`^${a}/ai-gateway/gateways/([^/]+)/logs$`).exec(path);
+    if (m && method === "GET") {
+      if (!this.gateways.has(m[1] as string)) return fail(404, 7002, "gateway not found");
+      const filters = JSON.parse(url.searchParams.get("filters") ?? "[]") as {
+        key: string;
+        operator: string;
+        value: string[];
+      }[];
+      let logs = [...(this.gatewayLogs.get(m[1] as string) ?? [])];
+      for (const f of filters) {
+        if (f.key !== "created_at") continue;
+        const v = String(f.value[0]);
+        logs = logs.filter((l) => (f.operator === "gt" ? l.created_at >= v : l.created_at < v));
+      }
+      logs.sort((x, y) => x.created_at.localeCompare(y.created_at));
+      const perPage = Number(url.searchParams.get("per_page") ?? 50);
+      const page = Number(url.searchParams.get("page") ?? 1);
+      const total = Math.max(1, Math.ceil(logs.length / perPage));
+      return ok(logs.slice((page - 1) * perPage, page * perPage), {
+        page,
+        total_pages: total,
+      });
+    }
     m = new RegExp(`^${a}/ai-gateway/gateways/([^/]+)(/provider_configs(?:/([^/]+))?)?$`).exec(
       path,
     );
@@ -454,18 +509,56 @@ export class FakeCloudflare {
       return ok(null);
     }
     m = new RegExp(`^${a}/workers/scripts/([^/]+)(/.*)?$`).exec(path);
-    if (m) return this.scriptRoute(method, m[1] as string, m[2] ?? "", b, form);
+    if (m)
+      return this.scriptRoute(this.scripts, false, method, m[1] as string, m[2] ?? "", b, form);
+
+    // Workers for Platforms
+    if (path === `${a}/workers/dispatch/namespaces`) {
+      if (method === "POST") {
+        const name = String(b.name);
+        if (this.namespaces.has(name)) return fail(400, 100119, "namespace exists");
+        this.namespaces.set(name, new Map());
+        return ok({ namespace_name: name });
+      }
+      return ok([...this.namespaces.keys()].map((namespace_name) => ({ namespace_name })));
+    }
+    m = new RegExp(
+      `^${a}/workers/dispatch/namespaces/([^/]+)(?:/scripts(?:/([^/]+)(/.*)?)?)?$`,
+    ).exec(path);
+    if (m) {
+      const ns = this.namespaces.get(decodeURIComponent(m[1] as string));
+      if (!ns) return fail(404, 100118, "namespace not found");
+      if (!path.includes("/scripts")) return ok({ namespace_name: m[1] });
+      if (!m[2]) {
+        if (method === "DELETE") {
+          const tag = (url.searchParams.get("tags") ?? "").replace(/:yes$/, "");
+          for (const [name, script] of ns) if (script.tags?.includes(tag)) ns.delete(name);
+          return ok(null);
+        }
+        return ok(
+          [...ns.values()].map((sc) => ({
+            script: { id: sc.name, migration_tag: sc.migrationTag, tags: sc.tags },
+          })),
+        );
+      }
+      return this.scriptRoute(ns, true, method, m[2], m[3] ?? "", b, form);
+    }
     return fail(404, 7003, `no route for ${method} ${path}`);
   }
 
   private async scriptRoute(
+    store: Map<string, FakeScript>,
+    namespaced: boolean,
     method: string,
     name: string,
     rest: string,
     b: Record<string, unknown>,
     form: FormData | undefined,
   ): Promise<Response> {
-    const script = this.scripts.get(name);
+    const script = store.get(name);
+    if (namespaced && /^\/(versions|deployments|schedules|subdomain)$/.test(rest)) {
+      return fail(404, 7003, `user Workers have no ${rest.slice(1)}`);
+    }
     if (rest === "" && method === "PUT") {
       if (!form) return fail(400, 10021, "expected multipart");
       const { metadata, modules } = await this.readUpload(form);
@@ -488,14 +581,16 @@ export class FakeCloudflare {
         schedules: [],
         workersDev: false,
         bindings: [],
+        tags: [],
       };
+      if (namespaced) target.tags = ((metadata.tags as string[] | undefined) ?? []).slice(0, 8);
       this.registerWorkflows(name, metadata);
       this.applySecrets(target, metadata);
       const versionId = this.id("ver");
       target.versions.push({ id: versionId, metadata, modules });
       target.current = versionId;
       if (migrations?.new_tag) target.migrationTag = migrations.new_tag;
-      this.scripts.set(name, target);
+      store.set(name, target);
       return ok({ id: name, migration_tag: target.migrationTag });
     }
     // Works before the script exists, as for a first deploy.
@@ -512,7 +607,7 @@ export class FakeCloudflare {
     }
     if (!script) return fail(404, 10007, `script ${name} not found`);
     if (rest === "" && method === "DELETE") {
-      this.scripts.delete(name);
+      store.delete(name);
       return ok(null);
     }
     if (rest === "/versions" && method === "POST") {
