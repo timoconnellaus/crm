@@ -3,9 +3,9 @@
 // `review` model through an OpenAI-compatible endpoint (runner.ts), or a deterministic fake (tests).
 import { computeAgreement } from "@relationship-os/core/adjudicator-agreement";
 import {
+  type ReviewModel,
   type ReviewResult,
   reviewPendingItem,
-  type ReviewModel,
 } from "@relationship-os/core/adjudicator-review";
 import type { EvalCase, Label } from "../fixtures.ts";
 

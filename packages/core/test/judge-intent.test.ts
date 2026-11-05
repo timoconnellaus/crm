@@ -258,7 +258,7 @@ describe("extension.check and extension.propose", () => {
       { id: m.id, request: "Notify the owner's manager (the model's summary)" },
       run(judge, m, { actor: "assistant", personsWords: REQUEST }),
     );
-    expect((judge.calls[0]?.state as unknown as IntentState).request).toBe(REQUEST);
+    expect((judge.calls[0]?.state as unknown as IntentState | undefined)?.request).toBe(REQUEST);
   });
 
   it.each(JUDGE_UNAVAILABLE_REASONS.filter((r) => r !== "off"))(
