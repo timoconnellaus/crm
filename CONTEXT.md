@@ -103,7 +103,21 @@ it also **redacts** the audit log: content that mentions the record becomes `"[e
 Activities and tasks only about the record are deleted; shared ones are scrubbed of its emails,
 phone numbers and id, and the search index is purged of it. Pending actions that touch or mention
 it are redacted, and rejected if still waiting. In-app assistant conversations that referenced it
-are redacted too (ADR 0019 amendment).
+are redacted too (ADR 0019 amendment). It also reaches sync, extension data, run history,
+notifications, events and synced email bodies, and puts a person's addresses on the
+**erased-address list** (ADR 0320).
+
+**Erased-address list**
+`core_erased_address`: SHA-256 hashes of erased people's email addresses (never the addresses).
+Sync drops a listed address from everything it ingests: participants, links, suggestions,
+signatures and the sender's own words. An admin removes an entry with `erasure.allowAddress` when
+the person comes back by consent.
+_Avoid_: blocklist, suppression list (that is email sending)
+
+**Erase log**
+One R2 object per erase (and per allowed address) holding only hashes of the erased ids and
+addresses, outside the restorable database. `erasure.reapply` reads it after a D1 restore and erases
+again whatever came back.
 _Avoid_: purge (that is retention), delete (that is soft)
 
 **Activity**

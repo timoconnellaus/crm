@@ -50,6 +50,7 @@ import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from
 import { findProvisionalIds, newId } from "./ids.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
 import type { Judge } from "./judge/types.ts";
+import { errorForLog } from "./log.ts";
 import type { ModelRunner } from "./models.ts";
 import { notifyStatements } from "./notifications/send.ts";
 import {
@@ -273,7 +274,7 @@ async function countRead(
         ),
     ]);
   } catch (error) {
-    console.error("failed to count read", op.name, error);
+    console.error("failed to count read", op.name, errorForLog(error));
   }
 }
 
@@ -380,7 +381,7 @@ async function auditAlone(row: AuditRow): Promise<void> {
   try {
     await row.ctx.db.batch([auditInsert(row.ctx.db, row)]);
   } catch (error) {
-    console.error("failed to write audit row", row.op.name, error);
+    console.error("failed to write audit row", row.op.name, errorForLog(error));
   }
 }
 
@@ -772,7 +773,7 @@ export async function invokeOperation<O extends AnyOperation>(
           ctx,
         );
       } catch (error) {
-        console.error("post-queue hook failed", op.name, error);
+        console.error("post-queue hook failed", op.name, errorForLog(error));
       }
     }
     throw new PendingApprovalError(queued.pending);
@@ -851,8 +852,11 @@ export async function invokeOperation<O extends AnyOperation>(
   // stage 5 events consumer embeds (`embedViaEvents`), it does so from the record events this call
   // emits and no queue row is written; otherwise (no Vectorize, local dev, tests, scripts) they
   // are queued in this batch for the post-commit drain and the cron.
+  // Operations that queue their own embeddings (erase, sync) decide exactly what to queue.
   const embedding =
-    op.risk === "read" || (ctx.events && ctx.embedViaEvents && !ctx.simulate)
+    op.risk === "read" ||
+    SELF_ENQUEUEING.has(op.name) ||
+    (ctx.events && ctx.embedViaEvents && !ctx.simulate)
       ? null
       : embeddingQueueStatement(ctx.db.query, changes, now);
   if (embedding) statements.push(embedding);
@@ -919,7 +923,7 @@ export async function invokeOperation<O extends AnyOperation>(
         embeddingsQueued: Boolean(embedding) || SELF_ENQUEUEING.has(op.name),
       });
     } catch (error) {
-      console.error("post-commit hook failed", op.name, error);
+      console.error("post-commit hook failed", op.name, errorForLog(error));
     }
   }
 

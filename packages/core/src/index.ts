@@ -65,6 +65,7 @@ export * from "./judge/index.ts";
 export * from "./judge/load.ts";
 export * from "./judge/questions/authoring-intent.ts";
 export * from "./list.ts";
+export * from "./log.ts";
 export * from "./models.ts";
 export * from "./notifications/channels.ts";
 export * from "./notifications/delivery.ts";
@@ -131,6 +132,13 @@ export * from "./principals.ts";
 export { runTrashPurge, type TrashPurgeOptions } from "./purge.ts";
 export * from "./rate-limit.ts";
 export { BATCH_MAX, jsonList, purgeCutoff, restorableUntil } from "./records/common.ts";
+export {
+  BLOB_MAX_ATTEMPTS,
+  drainAllBlobDeletions,
+  drainBlobDeletions,
+  ERASE_LOG_PREFIX,
+  type EraseLogEntry,
+} from "./records/erase-log.ts";
 export {
   assertLinkTargets,
   LINK_TARGETS,

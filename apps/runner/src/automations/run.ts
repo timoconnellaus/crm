@@ -5,6 +5,7 @@
 import {
   type AutomationDefinition,
   coreRegistry,
+  errorForLog,
   loadAutomationSettings,
   loadTriggerRecord,
   notifyStatements,
@@ -414,7 +415,7 @@ export async function finishRun(
       );
       statements.push(...(plan.statements as typeof statements));
     } catch (error) {
-      console.error("automation failed notice", error);
+      console.error("automation failed notice", errorForLog(error));
     }
   }
   await crm.batch(statements);

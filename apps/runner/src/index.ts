@@ -11,6 +11,7 @@ import {
   type EvaluateResult,
   type ExtensionHost,
   type ExtensionVersion,
+  errorForLog,
   type IntegrationRuntime,
   installShippedExtensions,
   loadAutomationSettings,
@@ -229,7 +230,7 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
       await embedFromEvents(this.env, messages);
       batch.ackAll();
     } catch (error) {
-      console.error("automation events: batch failed, retrying", error);
+      console.error("automation events: batch failed, retrying", errorForLog(error));
       batch.retryAll({ delaySeconds: 10 });
     }
   }
@@ -295,7 +296,7 @@ async function minuteStep<T>(name: string, run: () => Promise<T>): Promise<T | n
   try {
     return await run();
   } catch (error) {
-    console.error(`minute cron: ${name} failed`, error);
+    console.error(`minute cron: ${name} failed`, errorForLog(error));
     return null;
   }
 }

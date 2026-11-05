@@ -22,7 +22,14 @@ import {
   uniqueIds,
   withPrimary,
 } from "../records/common.ts";
-import { countRedactions, queueErase, withMergedRecords } from "../records/erase.ts";
+import {
+  afterErase,
+  countRedactions,
+  eraseCountsOutput,
+  queueErase,
+  withMergedRecords,
+} from "../records/erase.ts";
+import { personSubject } from "../records/erase-subject.ts";
 import { countLinks, queueClearTags, queueMoveLinks } from "../records/links.ts";
 import { loadTags, queueSetTags, tagsInputSchema } from "../records/tags.ts";
 import {
@@ -1099,7 +1106,11 @@ export const personErase = defineOperation({
     'replaced with "[erased]"; who did what and when is kept. In-app assistant conversations ' +
     "that referenced them are redacted the same way (tool calls and results that mention them " +
     "lose their content; their ids, emails, phone numbers and names in text become " +
-    '"[erased]"). Cannot be undone; use person.delete for a reversible delete.',
+    '"[erased]"). Former emails and phones count too. Synced email bodies, suggested contacts, ' +
+    "signatures, extension data related to them, automation run history and notifications about " +
+    "them are deleted or redacted, and their addresses are added to the erased-address list so " +
+    "mail sync does not collect them again. Cannot be undone; use person.delete for a " +
+    "reversible delete.",
   input: z.object({ id: personId }),
   output: z.object({
     id: z.string(),
@@ -1108,6 +1119,7 @@ export const personErase = defineOperation({
     tasksDeleted: z.number(),
     auditRowsRedacted: z.number(),
     conversationsScrubbed: z.number(),
+    ...eraseCountsOutput,
   }),
   permission: "records:erase",
   risk: "destructive",
@@ -1115,34 +1127,14 @@ export const personErase = defineOperation({
   async handler(input, ctx) {
     await requirePerson(ctx.db, input.id, { includeDeleted: true });
     const ids = await withMergedRecords(ctx, "person", input.id);
-    const [names, emails, phones] = await Promise.all([
-      ctx.db
-        .selectFrom("core_person")
-        .select(["display_name", "given_name", "family_name"])
-        .where("id", "in", ids)
-        .execute(),
-      ctx.db
-        .selectFrom("core_person_emails")
-        .select("email")
-        .where("person_id", "in", ids)
-        .execute(),
-      ctx.db
-        .selectFrom("core_person_phones")
-        .select(["number", "number_normalised"])
-        .where("person_id", "in", ids)
-        .execute(),
-    ]);
+    const subject = await personSubject(ctx.db, ids);
     const counts = await queueErase(ctx, {
       object: "person",
       recordId: input.id,
       recordIds: ids,
-      terms: [
-        ...emails.map((e) => e.email),
-        ...phones.flatMap((p) => [p.number, p.number_normalised]),
-      ],
-      names: names.flatMap((n) =>
-        [n.display_name, n.given_name, n.family_name].filter((v): v is string => Boolean(v)),
-      ),
+      terms: subject.terms,
+      names: subject.names,
+      addresses: subject.addresses,
     });
     for (const id of ids) ctx.recordChange({ object: "person", id, action: "erase", diff: {} });
     return ctx.afterCommit(async () => ({
@@ -1152,6 +1144,7 @@ export const personErase = defineOperation({
       tasksDeleted: counts.tasks,
       auditRowsRedacted: await countRedactions(ctx.db, "person", input.id),
       conversationsScrubbed: counts.conversations,
+      ...(await afterErase(ctx, counts)),
     }));
   },
 });
