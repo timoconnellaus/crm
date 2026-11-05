@@ -1,7 +1,8 @@
 // Signed-in layout: a viewport-high (h-dvh) shell that never scrolls itself. A fixed sidebar (a
-// drawer on phones), a header with search and the user menu, and the page, which brings its own
-// fixed header and single scroll region (PageLayout). Plus the app-wide command palette, shortcut
-// sheet and create dialogs.
+// drawer on phones), a header with search and the user menu, the page, which brings its own
+// fixed header and single scroll region (PageLayout), and the assistant docked on the right when
+// open (a sheet on phones). It sits outside the page, so it stays put across page changes. Plus
+// the app-wide command palette, shortcut sheet and create dialogs.
 import { Button } from "@relationship-os/ui/components/button";
 import { Kbd } from "@relationship-os/ui/components/kbd";
 import {
@@ -21,7 +22,11 @@ import {
 } from "../components/app-commands.tsx";
 import { AppSidebar } from "../components/app-sidebar.tsx";
 import { AssistantPanel } from "../components/assistant/assistant-panel.tsx";
-import { AssistantProvider, useAssistant } from "../components/assistant/assistant-provider.tsx";
+import {
+  AssistantProvider,
+  PANEL_ID,
+  useAssistant,
+} from "../components/assistant/assistant-provider.tsx";
 import { CommandPalette } from "../components/command-palette.tsx";
 import { NotificationBell } from "../components/notifications/notification-bell.tsx";
 import { CreateOrganisationDialog } from "../components/organisations/create-organisation-dialog.tsx";
@@ -57,6 +62,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
+  const { user } = Route.useRouteContext();
   useFocusOnNavigate();
   return (
     <AppCommandsProvider>
@@ -80,6 +86,7 @@ function AppLayout() {
               <Outlet />
             </div>
           </SidebarInset>
+          <AssistantPanel canApprove={user.role !== "viewer"} />
         </SidebarProvider>
         <AppOverlays />
       </AssistantProvider>
@@ -107,20 +114,23 @@ function useFocusOnNavigate() {
   }, [pathname]);
 }
 
-/** Opens the assistant panel (Cmd-J). */
+/** Opens and closes the assistant panel (Cmd-J). */
 function AssistantButton() {
   const assistant = useAssistant();
   return (
     <Button
-      variant="ghost"
+      variant={assistant.open ? "secondary" : "ghost"}
       size="sm"
       onClick={() => assistant.toggle()}
+      aria-label="Ask AI"
+      aria-expanded={assistant.open}
+      aria-controls={assistant.open ? PANEL_ID : undefined}
       aria-keyshortcuts="Meta+J Control+J"
       data-testid="open-assistant"
     >
       <SparklesIcon />
-      <span className="hidden sm:inline">Ask AI</span>
-      <Kbd className="hidden sm:inline-flex">⌘J</Kbd>
+      <span className="hidden @lg:inline">Ask AI</span>
+      <Kbd className="hidden @lg:inline-flex">⌘J</Kbd>
     </Button>
   );
 }
@@ -150,20 +160,22 @@ function AppHeader() {
   const { principal, signOutUrl } = Route.useRouteContext();
   const { openPalette } = useAppCommands();
   return (
-    <header className="z-10 flex min-h-14 shrink-0 items-center gap-2 border-b bg-background px-4 pt-[env(safe-area-inset-top)]">
+    // A size container: the header's own width (narrower beside the docked assistant), not the
+    // viewport's, decides what fits.
+    <header className="@container z-10 flex min-h-14 shrink-0 items-center gap-2 border-b bg-background px-4 pt-[env(safe-area-inset-top)]">
       <SidebarTrigger aria-label="Toggle navigation" />
       <Button
         variant="outline"
-        className="h-9 flex-1 justify-start gap-2 px-3 text-muted-foreground sm:max-w-sm"
+        className="h-9 min-w-0 flex-1 justify-start gap-2 px-3 text-muted-foreground @lg:max-w-sm"
         onClick={openPalette}
         data-testid="open-palette"
         aria-keyshortcuts="Meta+K Control+K"
       >
         <SearchIcon />
         <span className="truncate">Search or jump to…</span>
-        <Kbd className="ml-auto hidden sm:inline-flex">⌘K</Kbd>
+        <Kbd className="ml-auto hidden @lg:inline-flex">⌘K</Kbd>
       </Button>
-      <div className="hidden flex-1 sm:block" />
+      <div className="hidden flex-1 @lg:block" />
       <AssistantButton />
       <NotificationBell />
       <UserMenu principal={principal} signOutUrl={signOutUrl} />
@@ -188,7 +200,7 @@ function createKindFor(pathname: string): { kind: CreateKind; options?: CreateOp
 
 /** Dialogs controlled by AppCommands, plus the global shortcuts that open them. */
 function AppOverlays() {
-  const { isAdmin, user } = Route.useRouteContext();
+  const { isAdmin } = Route.useRouteContext();
   const state = useAppCommandsState();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -214,7 +226,6 @@ function AppOverlays() {
         isAdmin={isAdmin}
       />
       <ShortcutSheet open={state.shortcuts} onOpenChange={state.setShortcuts} />
-      <AssistantPanel canApprove={user.role !== "viewer"} />
       <CreatePersonDialog
         open={state.creating === "person"}
         onOpenChange={(open) => state.setCreating(open ? "person" : null)}

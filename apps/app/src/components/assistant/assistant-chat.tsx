@@ -237,24 +237,30 @@ export function Transcript({
   );
 }
 
+/** What the next message is about, shown subtly above the composer: "On: Acme Ltd". */
 function ContextChip({ context }: { context: AssistantContext }) {
+  let label: string | undefined;
   if (context.selection) {
     const n = context.selection.ids.length;
-    return (
-      <Badge variant="secondary" data-testid="assistant-context">
-        {n} {context.selection.object}
-        {n === 1 ? "" : "s"} selected
-      </Badge>
-    );
+    label = `${n} ${context.selection.object}${n === 1 ? "" : "s"} selected`;
+  } else if (context.record) {
+    label = context.record.label ?? `${context.record.object} ${context.record.id}`;
+  } else {
+    label = context.title;
   }
-  if (context.record) {
-    return (
-      <Badge variant="secondary" data-testid="assistant-context">
-        {context.record.label ?? `${context.record.object} ${context.record.id}`}
-      </Badge>
-    );
-  }
-  return null;
+  if (!label) return null;
+  return (
+    <Badge
+      variant="secondary"
+      className="max-w-full font-normal text-muted-foreground"
+      data-testid="assistant-context"
+      title={label}
+    >
+      <span className="truncate">
+        On: <span className="text-foreground">{label}</span>
+      </span>
+    </Badge>
+  );
 }
 
 export function Composer({
@@ -270,7 +276,8 @@ export function Composer({
   name: string;
   draft: string;
   onDraftChange: (text: string) => void;
-  autoFocus?: boolean;
+  /** Focuses the input when true, or each time this number changes (0: never). */
+  autoFocus?: boolean | number;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
