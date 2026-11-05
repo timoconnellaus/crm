@@ -11,8 +11,8 @@
     "preview": "vite preview",
     "deploy": "node ../../scripts/deploy.mjs",
     "types": "wrangler types --strict-vars=false",
-    "typecheck": "wrangler types --strict-vars=false --check && tsc --noEmit",
-    "test": "vitest run",
+    "typecheck": "wrangler types --strict-vars=false --check && tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run && vitest run -c vitest.node.config.ts",
     "test:e2e": "node ../../scripts/dev-setup.mjs && playwright test"
   },
   "dependencies": {

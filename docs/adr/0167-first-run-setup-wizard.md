@@ -26,3 +26,18 @@ Status: accepted, 2026-11-05 (stage 8 build).
 ## Consequences
 - The e2e global setup skips the wizard once; `setup-wizard.spec.ts` reopens it and walks it at desktop
   and phone sizes, including Workers AI only and sample data install and removal.
+
+## Amendment, 2026-11-06: the AI step shows the real configuration
+Step 3 offered one choice, "Use Workers AI only for now", and saved `aiMode: "workers-ai"`. Nothing
+read `aiMode` but a label on Settings → General; the model registry (ADRs 0150, 0192, 0203) never
+did. So a deployment installed with the `deepseek-flash` preset was told it used Workers AI.
+
+- Step 3 now shows what the roles resolve to, from `ai.settings` (the data behind Settings → AI):
+  which provider and model run which roles, whether that comes from the shipped defaults, the deploy
+  configuration or Settings → AI, and each provider in use that is not ready (a missing key, say).
+  Its choices are the real ones: keep it, or open Settings → AI to switch a role or add a key. A
+  preset is deploy configuration (`--model-roles`); the admin layer has no preset, so the wizard
+  does not offer one. Continuing saves only `{ ai: true }` as the step's answer.
+- `aiMode` is removed: the `settings.get`/`settings.update` field, the `ai_mode` setting (a stored
+  row is ignored) and the General label. `settings.update` strips unknown keys, so an older client
+  that still sends `aiMode` keeps working.

@@ -45,6 +45,23 @@ there (in your fork) to switch adapter. Everything else is a **secret** on `ros-
 `BETTER_AUTH_SECRET` is declared in `secrets.required`, so wrangler refuses to deploy `ros-app`
 without it. Set it even with Cloudflare Access (any random value): it keeps the config uniform.
 
+### Local development
+
+`pnpm dev` creates `apps/app/.dev.vars` from `.dev.vars.example`; put local secrets there,
+including provider keys (`AI_KEY_DEEPSEEK`, `AI_KEY_OPENAI`, …), `TYPESAFE_API_KEY`,
+`GOOGLE_CLIENT_*` and `CF_ACCESS_*`. Every name in the file reaches the Worker.
+
+That needs one adjustment. Once a Worker declares `secrets`, Wrangler and the Vite plugin load
+only the declared names from `.dev.vars` and silently drop the rest, and Wrangler has no list of
+optional secrets. Listing the optional ones as `required` would make every deploy demand every
+provider's key. So `vite dev` (only) widens the declaration to every name `.dev.vars` sets
+(`apps/app/dev-secrets.ts`, through the Cloudflare plugin's `config` hook in `vite.config.ts`).
+Builds and deploys read `wrangler.jsonc` unchanged, so a deploy still requires
+`BETTER_AUTH_SECRET`, and `wrangler types` still generates `Env` from `secrets.required`. Optional
+secrets are therefore not in the generated `Env`; code reads them as optional. `apps/app/test-node`
+checks this against Wrangler's own loader. Plain `wrangler dev` on `apps/app` is not widened, so use
+`pnpm dev`. `ros-runner` declares no secrets and loads all of its `.dev.vars`.
+
 The first user of a deployment (Better Auth sign-up, or the first Cloudflare Access user to load
 the app) becomes its admin; everyone after that is a member until an admin changes their role.
 
@@ -565,8 +582,8 @@ Save a screenshot of each numbered step to `docs/stages/assets/stage-8-manual/NN
 1. Create an API token with the permissions in [Option 1](#option-1-recommended-npx-create-relationship-os).
 2. `npx create-relationship-os` and answer the prompts (workers.dev, Better Auth). Screenshot the summary. (`01-install.png`)
 3. Open the printed URL, sign up; the setup wizard opens. Walk every step: organisation (name, logo,
-   currency, timezone), "Use Workers AI only for now", a policy preset, skip connect, install sample
-   data. (`02-wizard-*.png`)
+   currency, timezone), AI (check it states the deployment's real models and any missing key), a
+   policy preset, skip connect, install sample data. (`02-wizard-*.png`)
 4. Check People and Organisations show the "(sample)" records; remove them from Settings → General. (`03-sample.png`)
 5. Connect Claude over MCP (`docs/mcp.md`) and create a person from Claude. (`04-mcp.png`)
 6. Settings → Updates: version, channel, changelog; switch to beta and back. (`05-updates.png`)

@@ -1,10 +1,12 @@
 import { execSync } from "node:child_process";
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { devSecrets } from "./dev-secrets.ts";
 import pkg from "./package.json" with { type: "json" };
 import { configuratorSpecs } from "./src/components/integrations/configurator/vite-plugin.ts";
 
@@ -38,6 +40,17 @@ export default defineConfig(({ command }) => ({
       // scripts/deploy.mjs builds with a generated config that adds the AI bindings (ADR 0150).
       ...(process.env.ROS_WRANGLER_CONFIG ? { configPath: process.env.ROS_WRANGLER_CONFIG } : {}),
       viteEnvironment: { name: "ssr" },
+      // Local dev only: declared secrets would otherwise keep optional ones in .dev.vars (provider
+      // keys and the like) from reaching the Worker. Builds keep wrangler.jsonc's declaration, so
+      // deploys still require BETTER_AUTH_SECRET (dev-secrets.ts, docs/deploying.md).
+      ...(command === "serve"
+        ? {
+            config: (app) => {
+              const secrets = devSecrets(app.secrets, dirname(fileURLToPath(import.meta.url)));
+              if (secrets) app.secrets = secrets;
+            },
+          }
+        : {}),
       auxiliaryWorkers:
         command === "serve"
           ? [

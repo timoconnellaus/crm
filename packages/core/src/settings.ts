@@ -34,18 +34,13 @@ export { DEFAULT_POLICY };
 /** The base currency (migration 0100, ADR 0101): ISO 4217, JSON string. */
 export const BASE_CURRENCY_SETTING = "base_currency";
 
-/** Stage 8 (ADR 0167): the organisation's name, logo, timezone and AI mode, set by the wizard. */
+/** Stage 8 (ADR 0167): the organisation's name, logo and timezone, set by the wizard. */
 export const ORG_NAME_SETTING = "org_name";
 export const ORG_LOGO_SETTING = "org_logo";
 export const ORG_TIMEZONE_SETTING = "org_timezone";
-export const AI_MODE_SETTING = "ai_mode";
 /** Stage 7b (ADR 0200): the in-app assistant's display name. Never "Claude"; default "Assistant". */
 export const ASSISTANT_NAME_SETTING = "assistant_name";
 export const DEFAULT_ASSISTANT_NAME = "Assistant";
-
-/** "workers-ai": every model role uses Workers AI (the default until per-role providers, 7a). */
-export const AI_MODES = ["workers-ai"] as const;
-export type AiMode = (typeof AI_MODES)[number];
 
 export interface GeneralSettings {
   baseCurrency: string;
@@ -54,7 +49,6 @@ export interface GeneralSettings {
   logo: string | null;
   /** IANA timezone, e.g. Europe/London. */
   timezone: string;
-  aiMode: AiMode;
   /** The in-app assistant's display name (ADR 0200). */
   assistantName: string;
 }
@@ -79,7 +73,8 @@ export function isTimezone(tz: string): boolean {
 
 /**
  * The org's general settings. A missing or unreadable base currency falls back to USD, a missing
- * timezone to UTC and the AI mode to Workers AI.
+ * timezone to UTC. (A stored `ai_mode` row from before ADR 0167's amendment is ignored: which
+ * models run is the model registry's, Settings → AI.)
  */
 export async function loadGeneralSettings(db: Kysely<CoreDatabase>): Promise<GeneralSettings> {
   const rows = await db
@@ -90,7 +85,6 @@ export async function loadGeneralSettings(db: Kysely<CoreDatabase>): Promise<Gen
       ORG_NAME_SETTING,
       ORG_LOGO_SETTING,
       ORG_TIMEZONE_SETTING,
-      AI_MODE_SETTING,
       ASSISTANT_NAME_SETTING,
     ])
     .execute();
@@ -99,14 +93,12 @@ export async function loadGeneralSettings(db: Kysely<CoreDatabase>): Promise<Gen
   const name = get(ORG_NAME_SETTING);
   const logo = get(ORG_LOGO_SETTING);
   const timezone = get(ORG_TIMEZONE_SETTING);
-  const aiMode = get(AI_MODE_SETTING);
   const assistantName = get(ASSISTANT_NAME_SETTING);
   return {
     baseCurrency: typeof currency === "string" && /^[A-Z]{3}$/.test(currency) ? currency : "USD",
     orgName: typeof name === "string" && name.trim() ? name : null,
     logo: typeof logo === "string" && logo.startsWith("data:image/") ? logo : null,
     timezone: typeof timezone === "string" && isTimezone(timezone) ? timezone : "UTC",
-    aiMode: (AI_MODES as readonly unknown[]).includes(aiMode) ? (aiMode as AiMode) : "workers-ai",
     assistantName:
       typeof assistantName === "string" && assistantName.trim()
         ? assistantName.trim()

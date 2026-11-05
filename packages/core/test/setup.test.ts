@@ -16,16 +16,12 @@ describe("setup wizard", () => {
   it("starts pending on a fresh install, is resumable, and closes", async () => {
     const first = await invokeByName("setup.status", {}, context(admin));
     expect(first).toMatchObject({ status: "pending", step: "admin", open: true, sampleRecords: 0 });
-    await invokeByName(
-      "setup.save",
-      { step: "ai", data: { aiMode: "workers-ai" } },
-      context(admin),
-    );
+    await invokeByName("setup.save", { step: "ai", data: { organisation: true } }, context(admin));
     const resumed = await invokeByName("setup.status", {}, context(member));
     expect(resumed).toMatchObject({
       status: "in_progress",
       step: "ai",
-      data: { aiMode: "workers-ai" },
+      data: { organisation: true },
       open: true,
     });
     await invokeByName("setup.finish", { outcome: "skipped" }, context(admin));
@@ -37,7 +33,7 @@ describe("setup wizard", () => {
     expect(await invokeByName("setup.status", {}, context(admin))).toMatchObject({
       status: "in_progress",
       step: "admin",
-      data: { aiMode: "workers-ai" },
+      data: { organisation: true },
     });
     await invokeByName("setup.finish", { outcome: "completed" }, context(admin));
     expect(await invokeByName("setup.status", {}, context(admin))).toMatchObject({
@@ -56,7 +52,7 @@ describe("setup wizard", () => {
     ).rejects.toBeTruthy();
   });
 
-  it("stores the organisation profile and Workers AI mode through settings.update", async () => {
+  it("stores the organisation profile through settings.update, ignoring the removed aiMode", async () => {
     const logo = "data:image/png;base64,iVBORw0KGgo=";
     await invokeByName(
       "settings.update",
@@ -64,6 +60,7 @@ describe("setup wizard", () => {
         orgName: "Acme Ltd",
         logo,
         timezone: "Europe/London",
+        // Removed (ADR 0167's amendment); an older client may still send it.
         aiMode: "workers-ai",
         baseCurrency: "GBP",
       },
@@ -73,7 +70,6 @@ describe("setup wizard", () => {
       orgName: "Acme Ltd",
       logo,
       timezone: "Europe/London",
-      aiMode: "workers-ai",
       baseCurrency: "GBP",
       assistantName: "Assistant",
     });
