@@ -97,9 +97,11 @@ export interface DeployablePackage {
 
 /**
  * Workers with a wrangler.jsonc that are not part of a deployment: the landing page
- * (relationshiposcrm.com, ADR 0191) is deployed on its own by .github/workflows/marketing.yml.
+ * (relationshiposcrm.com, ADR 0191) is deployed on its own by .github/workflows/marketing.yml, and
+ * the hosted control plane (apps/control: ros-control and ros-dispatch, ADR 0210) is our own
+ * service, deployed by docs/saas-go-live.md, never part of a customer's deployment.
  */
-const NOT_RELEASED = new Set(["apps/marketing"]);
+const NOT_RELEASED = new Set(["apps/marketing", "apps/control"]);
 
 /** Every wrangler.jsonc under apps/ and packages/, sorted by directory. */
 export function readDeployablePackages(root: string): DeployablePackage[] {

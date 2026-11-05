@@ -681,7 +681,8 @@ async function devRoutes(s: Services, request: Request, url: URL): Promise<Respo
     // browser cannot resolve <org>.relationshiposcrm.com locally).
     const host = url.searchParams.get("host") ?? "";
     const path = url.searchParams.get("path") ?? "/";
-    if (!/^[a-z0-9.-]+$/.test(host) || !path.startsWith("/")) return new Response("Bad request", { status: 400 });
+    if (!/^[a-z0-9.-]+$/.test(host) || !path.startsWith("/"))
+      return new Response("Bad request", { status: 400 });
     return s.healthFetch(`https://${host}${path}`);
   }
   let m = /^\/dev\/stripe\/checkout\/([\w-]+)$/.exec(url.pathname);

@@ -30,7 +30,9 @@ test("sign up for Team, trial checkout, workspace provisioned and reachable", as
   await expect(page.getByRole("heading", { name: "Your account" })).toBeVisible();
   await expect(page.getByText("Running", { exact: true })).toBeVisible();
   await expect(page.getByText("trialing")).toBeVisible();
-  await expect(page.getByRole("link", { name: /Open e2e-ltd\.relationshiposcrm\.com/ })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /Open e2e-ltd\.relationshiposcrm\.com/ }),
+  ).toBeVisible();
 
   const health = await page.request.get(
     "/dev/tenant?host=e2e-ltd.relationshiposcrm.com&path=/api/health",
