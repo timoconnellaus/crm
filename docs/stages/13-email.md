@@ -274,13 +274,8 @@ Migrations 0290–0299 (block H in `docs/parallel-work.md`). ADRs 0242 and 0243.
 6. Tracking (opens, then clicks, then unsubscribe).
 7. The Jev feeds, once stage 11's seam is on `main`.
 
-## Open questions
-- **Who approves a new sequence version?** Proposed: anyone who may approve outbound actions,
-  including its author (it is a deliberate look at the rendered mail, not separation of duties),
-  with an admin setting to require an Admin or Manager.
-- **Approval scope:** proposed per sequence version (approving the content). The alternative is per
-  enrolment batch, which means one approval each time someone enrols people.
-- **Default send limits:** are 400 (Gmail), 1,500 (Workspace) and 2,000 a day at 20 a minute
-  (Microsoft 365) the right defaults?
-- **Org connections for sending:** should shared inboxes be allowed to send sequences, or only
-  compose and reply?
+## Decided (2026-11-05, user interview)
+- **Approval scope:** one approval per sequence version; editing the content creates a new version that needs approval again.
+- **Who approves:** anyone who may approve outbound actions, including the author. An admin setting requires an Admin or Manager instead.
+- **Default send limits:** Gmail 400 a day, Google Workspace 1,500 a day, Microsoft 365 2,000 a day, at most 20 a minute. Admins can change them.
+- **Shared inboxes** (org connections) may compose and reply but may not send sequences.
