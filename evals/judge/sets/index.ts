@@ -5,6 +5,7 @@ import { adjudicatorPolicySet } from "./adjudicator-policy.ts";
 import { authoringIntentSet } from "./authoring-intent.ts";
 import { outboundMessageSet } from "./outbound-message.ts";
 import { summaryStatementsSet } from "./summary-statements.ts";
+import { syncJobChangeSet } from "./sync-job-change.ts";
 import { widgetShapeSet } from "./widget-shape.ts";
 
 // biome-ignore lint/suspicious/noExplicitAny: each set has its own state and answer types; the runner only passes them through.
@@ -14,4 +15,5 @@ export const SETS: PlacementSet<any, any>[] = [
   outboundMessageSet,
   widgetShapeSet,
   adjudicatorPolicySet,
+  syncJobChangeSet,
 ];

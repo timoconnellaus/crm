@@ -33,6 +33,7 @@ import {
   vendorBinding,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
+import { runnerJudge } from "../extensions/ai.ts";
 import { HostQueue, type QueueCaller, type QueueHost } from "./queue.ts";
 import { adapterFor, type SyncKind } from "./sync.ts";
 
@@ -974,6 +975,8 @@ export class IntegrationHost extends DurableObject<Env> {
     // "Don't sync": read nothing into the CRM, but keep the cursor moving.
     if (sharing !== "none") {
       const db = createCrmDb(this.env.DB);
+      // sync.jobChange (ADR 0236): a changed signature of a known person may ask the judge.
+      const judge = runnerJudge(this.env);
       for (let i = 0; i < result.items.length; i += SYNC_BATCH_MAX) {
         const out = (await invokeByName(
           "sync.ingest",
@@ -983,6 +986,7 @@ export class IntegrationHost extends DurableObject<Env> {
             user,
             origin: { surface: "automation", automationId: `sync:${meta.connectionId}` },
             db,
+            judge,
           },
         )) as {
           created: number;

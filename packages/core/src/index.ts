@@ -69,6 +69,7 @@ export * from "./judge/questions/adjudicator-policy.ts";
 export * from "./judge/questions/authoring-intent.ts";
 export * from "./judge/questions/outbound-message.ts";
 export * from "./judge/questions/summary-statements.ts";
+export * from "./judge/questions/sync-job-change.ts";
 export * from "./judge/questions/widget-shape.ts";
 export * from "./judge/sentences.ts";
 export * from "./judge/usage.ts";

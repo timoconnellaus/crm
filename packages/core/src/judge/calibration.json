@@ -197,6 +197,25 @@
       "mode": "auto",
       "date": "2026-11-05"
     },
+    "sync.jobChange/different_employer": {
+      "hash": "2f3c388c22a96b70aafc2c1b9ddb8d97027f94d8156978e7b994906e104c2e23",
+      "model": "jev-1.14.0",
+      "threshold": 0.5,
+      "label": "different_employer",
+      "cases": 29,
+      "right": 29,
+      "wrong": 0,
+      "close": 0,
+      "unanswered": 0,
+      "closeCalls": [],
+      "highestBelow": 0.01,
+      "belowGap": 0.49,
+      "lowestAbove": 0.95,
+      "aboveGap": 0.45,
+      "runs": 3,
+      "mode": "record",
+      "date": "2026-11-05"
+    },
     "widget.shape/categories": {
       "hash": "2b35c64565dbc75db5b3f510cadc1cb807e3da3c724ea1a48e3c99eb1feb5cad",
       "model": "jev-1.14.0",

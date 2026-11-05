@@ -121,11 +121,12 @@ export const JUDGE_PLACEMENTS = [
     failMode: "open",
     onFailure: "Today's string compare decides",
     timeoutMs: 3_000,
-    sends: "Two signature blocks with phone, email and web lines removed, and a name and title",
+    sends:
+      "The new signature block with phone, email and web lines removed, what the last one said (title and company), and the person's name, organisation and title; only from mailboxes that share full content",
     sendsRecordContent: true,
     defaultOn: false,
     switchable: true,
-    built: false,
+    built: true,
     spendCounted: true,
   }),
   place({

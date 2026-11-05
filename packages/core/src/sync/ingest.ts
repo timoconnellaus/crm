@@ -19,6 +19,15 @@ import { enqueueEmbeddings } from "../ai/embedding.ts";
 import { NotFoundError, ValidationError } from "../errors.ts";
 import { newId } from "../ids.ts";
 import { eventInsert, type IntegrationEventInput } from "../integrations/events.ts";
+import {
+  askJobChange,
+  JOB_CHANGE_MAX_CALLS,
+  JOB_CHANGE_PLACEMENT,
+  JOB_CHANGE_THRESHOLD,
+  type JobChangeJudgement,
+  jobChangeState,
+} from "../judge/questions/sync-job-change.ts";
+import { judgeUsageStatement } from "../judge/usage.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import { jsonList } from "../records/common.ts";
 import { erasedAddressHash } from "../records/erase-subject.ts";
@@ -372,6 +381,13 @@ async function signals(ing: Ingest, items: EmailItem[]) {
     ]);
     const seen = new Map(known.map((k) => [k.person_id, k]));
     const jobs = new Map(current.map((c) => [c.person_id, c]));
+    // sync.jobChange (ADR 0236): Jev reads a changed signature, in place of the string compare,
+    // only where the mailbox shares full content (a metadata-only mailbox's text never leaves),
+    // and at most JOB_CHANGE_MAX_CALLS times a batch. Erased senders are already gone: their
+    // signatures were dropped with them (withoutErased) before this batch was looked at.
+    const judge = ing.sharing === "full" ? ing.ctx.judge : undefined;
+    const asks: Promise<void>[] = [];
+    const usage = { calls: 0, inputTokens: 0 };
     for (const item of signed) {
       const sender = item.from?.email ?? "";
       const person = ing.people.get(sender) ?? "";
@@ -382,23 +398,56 @@ async function signals(ing: Ingest, items: EmailItem[]) {
       const parsed = parseSignature(text, job?.display_name ?? item.from?.name);
       if (before && before.signature_hash !== hash) {
         const company = parsed.company;
-        const orgChanged =
-          company && job?.org_name && company.toLowerCase() !== job.org_name.toLowerCase();
-        if (orgChanged) {
+        const orgChanged = Boolean(
+          company && job?.org_name && company.toLowerCase() !== job.org_name.toLowerCase(),
+        );
+        const evidence = {
+          email: sender,
+          signature: text,
+          previousCompany: before.company,
+          messageId: item.messageId,
+          at: item.sentAt,
+        };
+        // The company named is always the one code parsed: Jev chooses, it does not extract.
+        const suggest = (judgement?: JobChangeJudgement) =>
           suggestJobChange(
             ing,
             person,
             "signature",
             `signature:${hash}`,
-            {
-              email: sender,
-              signature: text,
-              previousCompany: before.company,
-              messageId: item.messageId,
-              at: item.sentAt,
-            },
+            judgement ? { ...evidence, judge: judgement } : evidence,
             { organisationName: company, title: parsed.title },
           );
+        if (judge && job?.org_name && asks.length < JOB_CHANGE_MAX_CALLS) {
+          const state = jobChangeState({
+            name: job.display_name,
+            worksAt: job.org_name,
+            title: job.title,
+            previous: { title: before.title, company: before.company },
+            signature: text,
+          });
+          asks.push(
+            askJobChange(judge, state).then((asked) => {
+              if (asked.status === "failed") {
+                // Fails open: today's string compare decides. Off is not a call.
+                if (asked.reason !== "off") usage.calls += 1;
+                if (orgChanged) suggest();
+                return;
+              }
+              usage.calls += 1;
+              usage.inputTokens += asked.inputTokens;
+              if (asked.p >= JOB_CHANGE_THRESHOLD) {
+                suggest({
+                  verdict: asked.verdict,
+                  p: Math.round(asked.p * 100) / 100,
+                  threshold: JOB_CHANGE_THRESHOLD,
+                  model: asked.model,
+                });
+              }
+            }),
+          );
+        } else if (orgChanged) {
+          suggest();
         }
       }
       seen.set(person, {
@@ -430,6 +479,11 @@ async function signals(ing: Ingest, items: EmailItem[]) {
             }),
           ),
       );
+    }
+    await Promise.all(asks);
+    // The judge's spend (ADR 0234), in this ingest's batch.
+    if (usage.calls) {
+      ing.statements.push(judgeUsageStatement(db, JOB_CHANGE_PLACEMENT, usage, ing.ctx.now));
     }
   }
   // A known person (same name) writing from an unknown address at a new domain.
