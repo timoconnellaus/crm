@@ -12,6 +12,7 @@ import {
   type ExtensionVersion,
   type IntegrationRuntime,
   installShippedExtensions,
+  loadAutomationSettings,
   parseFloor,
   type RunToolInput,
   type RunToolResult,
@@ -251,8 +252,28 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
   }
 }
 
-/** One minute cron tick: each step's result, or null when it failed (logged). */
+/**
+ * One minute cron tick: each step's result, or null when it failed (logged).
+ *
+ * While the kill switch is engaged (by an admin, or by the self-updater for the length of an
+ * update, ADR 0164) the tick only reads it: no outbox retry, no integration events, no
+ * notification delivery. Their work stays queued (outbox rows, unconsumed events, notices past
+ * the delivery cursor) for the first tick after release, so nothing fires mid-migration and
+ * nothing is lost. Unreadable settings count as engaged.
+ */
 export async function minuteTick(env: Env, at: Date) {
+  const settings = await minuteStep("kill switch", () =>
+    loadAutomationSettings(createCrmDb(env.DB).query),
+  );
+  if (!settings || settings.killSwitch) {
+    return {
+      paused: true,
+      schedules: null,
+      outbox: null,
+      integrationEvents: null,
+      notifications: null,
+    };
+  }
   const schedules = await minuteStep("schedules", () => runAutomationCron(env, at));
   const outbox = await minuteStep("outbox", () =>
     retryOutbox(
@@ -270,7 +291,7 @@ export async function minuteTick(env: Env, at: Date) {
   );
   // Notification delivery (ADR 0172): email / Slack per preferences, escalation, the digest.
   const notifications = await minuteStep("notifications", () => runNotificationCron(env, at));
-  return { schedules, outbox, integrationEvents, notifications };
+  return { paused: false, schedules, outbox, integrationEvents, notifications };
 }
 
 async function minuteStep<T>(name: string, run: () => Promise<T>): Promise<T | null> {
