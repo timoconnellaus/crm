@@ -365,6 +365,8 @@ export interface IntentCheck {
   }[];
   model?: string | undefined;
   checkedAt: string;
+  /** Judge calls made and input tokens they used, for the spend count (ADR 0234). */
+  usage?: { calls: number; inputTokens: number } | undefined;
 }
 
 /** A check issue as extension.check and extension.propose report it. */
@@ -470,6 +472,7 @@ export async function checkIntent(input: {
   if (!names.length) return null;
   const automations: IntentCheck["automations"] = [];
   let model: string | undefined;
+  const usage = { calls: 0, inputTokens: 0 };
   for (const name of names) {
     const spec = input.manifest.automations[name] as AutomationManifest;
     const state = intentState({
@@ -482,6 +485,7 @@ export async function checkIntent(input: {
     if (asked.status === "failed") {
       // Off is not a failure: nothing is stored and nothing is shown.
       if (asked.reason === "off") return null;
+      usage.calls += 1;
       return {
         status: "unchecked",
         requestSource: input.requestSource,
@@ -489,8 +493,11 @@ export async function checkIntent(input: {
         reason: asked.reason,
         automations: [],
         checkedAt: input.now,
+        usage,
       };
     }
+    usage.calls += 1;
+    usage.inputTokens += asked.inputTokens;
     model = asked.model;
     automations.push({
       id: `${input.manifest.id}.${name}`,
@@ -509,6 +516,7 @@ export async function checkIntent(input: {
     automations,
     ...(model ? { model } : {}),
     checkedAt: input.now,
+    usage,
   };
 }
 

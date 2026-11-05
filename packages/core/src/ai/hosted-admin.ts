@@ -13,7 +13,7 @@ import {
   signDeploymentRequest,
 } from "@relationship-os/release";
 import type { Kysely } from "kysely";
-import { type AiAdmin, AiAdminError, type UsageReport } from "./admin.ts";
+import { type AiAdmin, AiAdminError, JUDGE_KEY_SECRET, type UsageReport } from "./admin.ts";
 import { customerGateway, customerGatewayProblems } from "./platform.ts";
 import { PROVIDER_INFO } from "./roles.ts";
 import { workspaceUsage } from "./usage.ts";
@@ -112,6 +112,13 @@ export function hostedAiAdmin(
       const info = PROVIDER_INFO[provider];
       if (!info.secretName) return;
       await send({ name: info.secretName });
+    },
+    async setJudgeKey(apiKey) {
+      // The customer's TypeSafe key, a tenant Worker secret called directly (ADR 0232).
+      const targets = await send(
+        apiKey === null ? { name: JUDGE_KEY_SECRET } : { name: JUDGE_KEY_SECRET, value: apiKey },
+      );
+      return { targets: targets.length ? targets : ["this workspace"] };
     },
     async setCustomerGateway(gateway) {
       if (!gateway) {

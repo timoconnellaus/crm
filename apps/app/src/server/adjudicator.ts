@@ -3,7 +3,7 @@
 // free so it is tested in workerd. With the adjudicator off it is one settings read.
 import { coreRegistry, parseFloor, runAdjudicatorSweep } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
-import { modelsFor } from "./ai.ts";
+import { judgeOf, modelsFor } from "./ai.ts";
 import { automationWiring, extensionHostFor, type OperationsEnv } from "./operations.ts";
 
 export async function runAdjudicatorCron(env: OperationsEnv, clock?: () => Date) {
@@ -17,6 +17,8 @@ export async function runAdjudicatorCron(env: OperationsEnv, clock?: () => Date)
       floor: parseFloor(env.APPROVAL_FLOOR),
       resolveOperation: (name) => coreRegistry.get(name),
       ...(models ? { models } : {}),
+      // The Jev reviewer (ADR 0233) when the judge has a key.
+      judge: judgeOf(env, db),
       ...(extensionHost ? { extensionHost } : {}),
       ...(events ? { events } : {}),
       ...(clock ? { clock } : {}),

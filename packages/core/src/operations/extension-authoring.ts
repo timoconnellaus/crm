@@ -33,6 +33,7 @@ import {
   summaryPrompt,
 } from "../extensions/proposal.ts";
 import { HIDDEN_RETENTION_DAYS } from "../extensions/reconciler.ts";
+import { judgeUsageStatement } from "../judge/usage.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 
 const extensionId = z
@@ -519,6 +520,10 @@ export const extensionPropose = defineOperation({
         created_at: ctx.now,
       }),
     );
+    // The judge's spend (ADR 0234), counted in the batch that writes the proposal.
+    if (intent.check?.usage?.calls) {
+      ctx.write(judgeUsageStatement(ctx.db, "authoring.intent", intent.check.usage, ctx.now));
+    }
     return {
       status: "pending_approval" as const,
       actionId: pending.actionId,

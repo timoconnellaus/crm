@@ -26,6 +26,7 @@ import {
   isHosted,
   type Judge,
   judgeFor,
+  judgeHasKey,
   judgeRoute,
   loadAiSettings,
   loadJudgeSettings,
@@ -240,13 +241,15 @@ export function aiContextFor(env: AiAppEnv, db: CrmDb) {
   // the same bindings, ADR 0154 amendment); the in-memory dev store is filled here instead.
   const index = env.VECTORIZE as VectorizeLike | undefined;
   const viaEvents = Boolean(index && typeof index.query === "function" && models?.embed);
+  const judge = judgeOf(env, db);
   return {
     ...(models ? { models } : {}),
-    judge: judgeOf(env, db),
+    judge,
     ...(vectors ? { vectors } : {}),
     ...(viaEvents ? { embedViaEvents: true } : {}),
     ...(onCommitted ? { onCommitted } : {}),
-    ...(models ? { onQueued: adjudicationHook() } : {}),
+    // The adjudicator can review with the `review` role or with Jev (ADR 0233).
+    ...(models || judgeHasKey(judge) ? { onQueued: adjudicationHook() } : {}),
     aiAdmin: aiAdminFor(env, db),
     aiEnv: aiEnvView(env),
   };

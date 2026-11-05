@@ -9,13 +9,16 @@ import { ADJUDICATOR_MODES } from "../adjudicator/review.ts";
 import {
   ADJUDICATOR_SETTING,
   type AdjudicatorSettings,
+  adjudicatorReviewer,
   DEFAULT_THRESHOLD,
+  judgeHasKey,
   loadAdjudicatorSettings,
   loadAgreementRows,
   loadWrittenPolicy,
   sha256Hex,
 } from "../adjudicator/run.ts";
 import { ValidationError } from "../errors.ts";
+import { MAX_POLICY_RULES, policyRules } from "../judge/policy-rules.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 
 const modeSchema = z.enum(ADJUDICATOR_MODES);
@@ -48,7 +51,29 @@ const settingsOutput = z.object({
    * same provider and model as `assistant`. A warning, not a block.
    */
   sameModelAsAssistant: z.boolean(),
+  /** Who reviews (ADR 0232, ADR 0233): Jev by default while the judge has a key, else the LLM. */
+  reviewer: z.enum(["llm", "jev"]),
+  /** The admin's choice of reviewer; null is the default. */
+  reviewerSetting: z.enum(["llm", "jev"]).nullable(),
+  /** The judge has a key, so Jev can be the reviewer. */
+  judgeAvailable: z.boolean(),
+  /** The written policy as the Jev reviewer reads it: numbered rules, split by code. */
+  rules: z.array(z.object({ number: z.number(), text: z.string() })),
+  /** The most rules the Jev reviewer takes. */
+  maxRules: z.number(),
 });
+
+/** Refuses a policy the Jev reviewer cannot read, while Jev is (or is to be) the reviewer. */
+function assertRulesFit(text: string, reviewer: "llm" | "jev") {
+  if (reviewer !== "jev") return;
+  const count = policyRules(text).length;
+  if (count > MAX_POLICY_RULES) {
+    throw new ValidationError(
+      `The Jev reviewer reads at most ${MAX_POLICY_RULES} rules, one per line; this policy has ${count}. Shorten it, or choose the LLM reviewer.`,
+      { field: "policy", rules: count, max: MAX_POLICY_RULES },
+    );
+  }
+}
 
 async function settingsView(ctx: HandlerContext, settings: AdjudicatorSettings) {
   const policy = await loadWrittenPolicy(ctx.db);
@@ -71,17 +96,27 @@ async function settingsView(ctx: HandlerContext, settings: AdjudicatorSettings) 
   } catch {
     models = null;
   }
+  const judgeAvailable = judgeHasKey(ctx.judge);
+  const reviewer = adjudicatorReviewer(settings, judgeAvailable);
   return {
     mode: settings.mode,
     threshold: settings.threshold,
     enabledAt: settings.enabledAt,
     policy: policy ? { ...policy, createdByName: author?.name ?? null } : null,
     models,
-    sameModelAsAssistant: Boolean(
-      models &&
-        models.review.provider === models.assistant.provider &&
-        models.review.model === models.assistant.model,
-    ),
+    // Independence matters for the LLM reviewer only: Jev is a different model by construction.
+    sameModelAsAssistant:
+      reviewer === "llm" &&
+      Boolean(
+        models &&
+          models.review.provider === models.assistant.provider &&
+          models.review.model === models.assistant.model,
+      ),
+    reviewer,
+    reviewerSetting: settings.reviewer ?? null,
+    judgeAvailable,
+    rules: policy ? policyRules(policy.text) : [],
+    maxRules: MAX_POLICY_RULES,
   };
 }
 
@@ -108,11 +143,20 @@ export const adjudicatorUpdate = defineOperation({
     "Change the policy adjudicator's mode or confidence threshold. Switching it on from off " +
     "starts in shadow mode (verdicts recorded, nothing acted on); only then can an admin switch " +
     "it to active, where approve verdicts at or above the threshold apply without a person. " +
-    "Needs a written policy. Admins only, people only.",
+    "Needs a written policy. `reviewer` picks who reviews: `jev` (the judge, the default while it " +
+    "has a key), `llm` (the review model role), or null for the default. Admins only, people only.",
   input: z
-    .object({ mode: modeSchema.optional(), threshold: thresholdSchema.optional() })
-    .refine((v) => v.mode !== undefined || v.threshold !== undefined, {
-      message: "Pass mode, threshold or both",
+    .object({
+      mode: modeSchema.optional(),
+      threshold: thresholdSchema.optional(),
+      reviewer: z
+        .enum(["llm", "jev"])
+        .nullable()
+        .optional()
+        .describe("Who reviews: jev, llm, or null for the default (Jev while the judge has a key)"),
+    })
+    .refine((v) => v.mode !== undefined || v.threshold !== undefined || v.reviewer !== undefined, {
+      message: "Pass mode, threshold, reviewer or a combination",
     }),
   output: settingsOutput,
   permission: "policy:manage",
@@ -128,16 +172,31 @@ export const adjudicatorUpdate = defineOperation({
         { field: "mode", from: before.mode, to: mode },
       );
     }
-    if (mode !== "off" && !(await loadWrittenPolicy(ctx.db))) {
+    const policy = await loadWrittenPolicy(ctx.db);
+    if (mode !== "off" && !policy) {
       throw new ValidationError("Write the policy the adjudicator judges by first", {
         field: "policy",
       });
+    }
+    const reviewerSetting = input.reviewer === undefined ? before.reviewer : input.reviewer;
+    const judgeAvailable = judgeHasKey(ctx.judge);
+    if (input.reviewer === "jev" && !judgeAvailable) {
+      throw new ValidationError(
+        "Jev can review only while the judge has a key: add the TypeSafe key in Settings → AI first",
+        { field: "reviewer" },
+      );
+    }
+    if (input.reviewer !== undefined && policy) {
+      assertRulesFit(
+        policy.text,
+        adjudicatorReviewer({ reviewer: reviewerSetting ?? undefined }, judgeAvailable),
+      );
     }
     const after: AdjudicatorSettings = {
       mode,
       threshold: input.threshold ?? before.threshold ?? DEFAULT_THRESHOLD,
       enabledAt: before.mode === "off" && mode !== "off" ? ctx.now : before.enabledAt,
-      ...(before.reviewer ? { reviewer: before.reviewer } : {}),
+      ...(reviewerSetting ? { reviewer: reviewerSetting } : {}),
     };
     const value = JSON.stringify(after);
     ctx.write(
@@ -152,8 +211,12 @@ export const adjudicatorUpdate = defineOperation({
       object: "settings",
       id: ADJUDICATOR_SETTING,
       action: "update",
-      before: { mode: before.mode, threshold: before.threshold },
-      after: { mode: after.mode, threshold: after.threshold },
+      before: {
+        mode: before.mode,
+        threshold: before.threshold,
+        reviewer: before.reviewer ?? null,
+      },
+      after: { mode: after.mode, threshold: after.threshold, reviewer: after.reviewer ?? null },
     });
     return settingsView(ctx, after);
   },
@@ -182,6 +245,8 @@ export const adjudicatorSetPolicy = defineOperation({
   mcp: { expose: false },
   async handler(input, ctx) {
     const before = await loadWrittenPolicy(ctx.db);
+    const settings = await loadAdjudicatorSettings(ctx.db);
+    assertRulesFit(input.text, adjudicatorReviewer(settings, judgeHasKey(ctx.judge)));
     const hash = await sha256Hex(input.text);
     const version = (before?.version ?? 0) + 1;
     if (before?.hash !== hash) {

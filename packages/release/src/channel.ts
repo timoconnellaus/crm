@@ -28,12 +28,18 @@ export const CHANNEL_MAX_SKEW_SECONDS = 300;
 
 /**
  * Secrets a deployment may ask the control plane to set or remove on its own Workers: provider
- * keys (`AI_KEY_<PROVIDER>`, ADR 0151) and the customer's own AI Gateway. Nothing else: never
+ * keys (`AI_KEY_<PROVIDER>`, ADR 0151), the customer's own AI Gateway, and the customer's own
+ * TypeSafe key for the judge (`TYPESAFE_API_KEY`, ADR 0232, ADR 0234). Nothing else: never
  * BETTER_AUTH_SECRET, the platform token or the channel key itself.
  */
 export const CUSTOMER_GATEWAY_SECRET = "AI_CUSTOMER_GATEWAY";
+export const CUSTOMER_JUDGE_SECRET = "TYPESAFE_API_KEY";
 export function isCustomerAiSecret(name: string): boolean {
-  return /^AI_KEY_[A-Z0-9_]{1,32}$/.test(name) || name === CUSTOMER_GATEWAY_SECRET;
+  return (
+    /^AI_KEY_[A-Z0-9_]{1,32}$/.test(name) ||
+    name === CUSTOMER_GATEWAY_SECRET ||
+    name === CUSTOMER_JUDGE_SECRET
+  );
 }
 
 /** The body of an AI secret call. `value` is absent when removing the secret. */

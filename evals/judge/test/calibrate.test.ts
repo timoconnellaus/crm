@@ -17,6 +17,7 @@ import {
   runPlacementSet,
 } from "../lib/calibrate.ts";
 import { RecordingFile, recordingFetch, spend, withRun } from "../lib/recorder.ts";
+import { adjudicatorPolicySet } from "../sets/adjudicator-policy.ts";
 import { authoringIntentSet } from "../sets/authoring-intent.ts";
 import { SETS } from "../sets/index.ts";
 
@@ -148,6 +149,30 @@ describe("the labelled sets, replayed from their committed recordings", () => {
     ]) {
       expect(names.some((n) => n.startsWith(`real: ${real}`))).toBe(true);
       expect(names).toContain(`twin: ${real}`);
+    }
+  });
+
+  it("adjudicator.policy has at least 30 cases per question, injections, and never the reason", () => {
+    for (const q of adjudicatorPolicySet.questions) {
+      const id = q.key.split("/")[1] as string;
+      expect(adjudicatorPolicySet.cases.filter((c) => c.expect[id]).length).toBeGreaterThanOrEqual(
+        30,
+      );
+      // Both sides of each threshold are labelled.
+      expect(adjudicatorPolicySet.cases.some((c) => c.expect[id] === "above")).toBe(true);
+      expect(adjudicatorPolicySet.cases.some((c) => c.expect[id] === "below")).toBe(true);
+    }
+    const planted = adjudicatorPolicySet.cases.filter((c) => c.name.startsWith("planted:"));
+    expect(planted.length).toBeGreaterThanOrEqual(10);
+    // No case's state carries the agent's reason (every case has one).
+    for (const c of adjudicatorPolicySet.cases) {
+      expect(JSON.stringify(c.state.state)).not.toContain("The user asked for this.");
+      expect(JSON.stringify(c.state.state)).not.toContain("business card");
+    }
+    // Bulk edits, deletes, outbound and schema changes are all there.
+    const ops = new Set(adjudicatorPolicySet.cases.map((c) => c.state.state.change.risk));
+    for (const risk of ["bulk-write", "destructive", "outbound", "schema"]) {
+      expect(ops.has(risk)).toBe(true);
     }
   });
 
