@@ -43,7 +43,7 @@ Each was impossible to test with fakes; each has a fallback.
 
 | # | Check | How | If it fails |
 | --- | --- | --- | --- |
-| B1 | **AI Gateway allows only 20 gateways per account.** Every hosted deployment gets its own. | Ask Cloudflare (limit increase form) to raise it to ≥ 1,000 before launch. | **Decision needed.** Options: a raised limit (preferred); or one shared platform gateway with a `tenant` metadata tag and BYOK keys moved to Workers secrets (per-tenant BYOK in a shared gateway would mix customers' keys, so not acceptable as is); or `--ai-gateway off` for Free (no metering, Workers AI direct, so Free gets no built-in AI). |
+| B1 | ~~AI Gateway allows only 20 gateways per account.~~ **Decided 2026-11-05:** one shared platform gateway with a tenant tag; the customer's own keys go in Settings and are set as tenant Worker secrets, called directly (ADR 0213 amendment). | Build the change (after Stage 7b). Then check on the staging tenant: platform AI calls carry the tenant tag; caching and prompt logging are off on the shared gateway; a BYOK key works and never appears in D1. | n/a |
 | B2 | A service binding from `<t>-ros-app` to `<t>-ros-runner` **inside the namespace** works | Provision a staging tenant (section 6) and load a page that calls the runner (Settings → Extensions) | Set `DEFAULT_PLACEMENT=account` (ordinary Workers in our account on Custom Domains; ask Cloudflare to raise the 500-scripts limit) |
 | B3 | Queue consumers attach to user Workers | Staging tenant: create a record, check the automation event outbox drains | as B2 |
 | B4 | Worker Loader works in user Workers | Staging tenant: install the Deals extension (`/setup`) | as B2 |
@@ -51,6 +51,17 @@ Each was impossible to test with fakes; each has a fallback.
 | B6 | `ros-dispatch` can deliver `scheduled()` to a user Worker | After a minute, staging tenant's System status shows a recent cron run | Replace delivery with a signed `POST /__scheduled` from the dispatch Worker (small change in ros-app/ros-runner), or `account` placement |
 | B7 | The AI Gateway logs API lists logs for gateways created after 2026-09-24, with `cost` for Workers AI | Staging tenant: run a summary; the next day's `cp_ai_usage` row has requests and cost | Price Workers AI from tokens (`metering.ts`), or meter from Workers AI neurons |
 | B8 | `KV` namespaces: 1,000 per account included, then $0.10 each (one per tenant, `OAUTH_KV`) | — | Accept the cost, or share one OAuth KV with key prefixes (app change) |
+
+## Beta-invite checklist
+Run this once there is interest and before the first beta invite goes out. Until then, nothing in
+this runbook needs doing.
+1. **Accounts:** subscribe to Workers for Platforms (section 1); create the Stripe live products,
+   prices, meter and webhook (section 3); decide tax and terms.
+2. **Staging tenant:** provision it (section 6) and work through B1 to B8 above. Any failure in B2
+   to B6 means switching to `DEFAULT_PLACEMENT=account`.
+3. **Shared gateway:** confirm the B1 build is in the release, and that its conditions hold
+   (caching off, prompt logging off, tenant tag set only by host code).
+4. **Then** turn on sign-ups and send the invites.
 
 ## 3. Stripe (live mode)
 1. **Products and prices** (USD):
