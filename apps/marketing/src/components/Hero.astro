@@ -1,0 +1,24 @@
+---
+import Demo from "./Demo.astro";
+import WaitlistForm from "./WaitlistForm.astro";
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="orb" aria-hidden="true"></div>
+  <div class="orb s" aria-hidden="true"></div>
+  <div class="wrap">
+    <span class="eyebrow">An AI-native CRM</span>
+    <h1 id="hero-title">
+      The operating system for your <span class="chrome-text">customer relationships.</span>
+    </h1>
+    <p class="lead">
+      Ask for a field, a dashboard or an automation. Your AI builds it, you approve it, and it runs
+      on infrastructure you own.
+    </p>
+    <WaitlistForm source="hero" />
+    <p class="sub2">
+      Or <a class="textlink" href="#self-host">self-host it on Cloudflare today</a>, free.
+    </p>
+  </div>
+  <Demo />
+</section>

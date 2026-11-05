@@ -147,9 +147,13 @@ async function main(): Promise<number> {
   const results = await runEval(selected, deps, async (authored, run) => {
     const proposed = authored.filter((a) => a.proposal);
     if (proposed.length === 0) return;
+    const inbox = new URL("/approvals", options.baseUrl).href;
     console.error(
-      `\nApprove these ${proposed.length} proposal(s) in ${new URL("/approvals", options.baseUrl).href}` +
-        ` (waiting up to ${options.approvalMinutes} min):\n` +
+      `\nACTION NEEDED: the run is paused until a person approves these ${proposed.length} ` +
+        `proposal(s).\nSign in to ${inbox} as an approver (an admin) and approve each one. ` +
+        "Installing an extension is human-only (ADR 0041), so nothing approves them for you.\n" +
+        `Waiting up to ${options.approvalMinutes} min (--approval-minutes); proposals still ` +
+        "unapproved then fail their case as `install`.\n" +
         proposed
           .map(
             (a) =>

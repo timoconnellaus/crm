@@ -1,0 +1,49 @@
+---
+import Icon from "./Icon.astro";
+
+const questions = [
+  {
+    q: "Is it open source?",
+    a: "The source is public under the Functional Source License. You can run it, change it and use it inside your company for free. Each release becomes Apache 2.0 after two years. The one thing the licence rules out is offering it as a competing hosted service.",
+  },
+  {
+    q: "Which AI models does it use?",
+    a: "Any model you route through Cloudflare AI Gateway. It ships with Workers AI models, so it works with only a Cloudflare account, and you can pick a different model for each job in Settings.",
+  },
+  {
+    q: "Where is my data stored?",
+    a: "Self-hosted, it lives in your Cloudflare account. Hosted, each customer gets a separate deployment and database.",
+  },
+  {
+    q: "Can the AI change things without asking?",
+    a: "Only what your admins allow. By default, new fields, bulk edits, deletes and outgoing messages wait for a person to approve them.",
+  },
+  {
+    q: "How is AI billed on hosted plans?",
+    a: "Team and Business include a monthly AI allowance. Past that, you pay the model provider's price plus 20%, itemised in dollars. On any plan you can connect your own AI over MCP instead.",
+  },
+  {
+    q: "Can I move from hosted to self-hosted?",
+    a: "Yes. Export everything and import it into your own deployment.",
+  },
+];
+---
+
+<section aria-labelledby="faq-title">
+  <div class="wrap">
+    <h2 id="faq-title" class="faq-title reveal">Questions</h2>
+    <div class="faq">
+      {
+        questions.map((item, i) => (
+          <details class="glass" open={i === 0}>
+            <summary>
+              {item.q}
+              <Icon name="plus" />
+            </summary>
+            <p>{item.a}</p>
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>

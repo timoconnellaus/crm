@@ -1,0 +1,226 @@
+---
+// The hero's product demo: five steps replaying the real app (in its own shadcn neutral theme).
+// demo.ts drives it from one clock. The markup is the no-JavaScript still: step 2's organisations
+// table with the new, pending Renewal date column. The app picture is decorative (aria-hidden);
+// the live region describes each step instead.
+import { DEMO_STEPS } from "../scripts/demo-steps.ts";
+import Icon from "./Icon.astro";
+
+const orgs = [
+  ["Halden Freight", "Logistics", "Maya Reid", "12 Dec"],
+  ["Northwind Dental", "Healthcare", "Sam Okafor", "3 Jan"],
+  ["Pell & Kerr", "Legal", "Maya Reid", "19 Jan"],
+  ["Brightwater Labs", "Software", "Ade Kim", "2 Feb"],
+  ["Juniper Outdoor", "Retail", "Sam Okafor", "14 Feb"],
+  ["Corvid Analytics", "Software", "Ade Kim", "27 Feb"],
+  ["Marlow Studios", "Media", "Maya Reid", "8 Mar"],
+];
+const bars = [
+  { label: "Lead", color: "var(--c1)", height: "78%" },
+  { label: "Qualified", color: "var(--c2)", height: "62%" },
+  { label: "Proposal", color: "var(--c3)", height: "88%" },
+  { label: "Negotiation", color: "var(--c4)", height: "40%" },
+  { label: "Won", color: "var(--c5)", height: "26%" },
+];
+const sideNav = [
+  { icon: "home", label: "Home", nav: "home" },
+  { icon: "grid", label: "Dashboards", nav: "dash" },
+  { icon: "users", label: "People" },
+  { icon: "building", label: "Organisations", nav: "org" },
+  { icon: "task", label: "Tasks" },
+  { icon: "flow", label: "Automations", nav: "auto" },
+  { icon: "inbox", label: "Approvals", nav: "appr", badge: true },
+  { icon: "pulse", label: "Activity" },
+];
+---
+
+<div class="demo" data-demo>
+  <div class="tabs" role="tablist" aria-label="What Relationship OS does">
+    {
+      DEMO_STEPS.map((step, i) => (
+        <button
+          class="tab"
+          type="button"
+          role="tab"
+          id={`t${i}`}
+          aria-controls="demo-screen"
+          aria-selected={i === 0 ? "true" : "false"}
+          tabindex={i === 0 ? 0 : -1}
+        >
+          <span class="n">{String(i + 1).padStart(2, "0")}</span>
+          <b>{step.name}</b>
+          <span class="d">{step.tagline}</span>
+          <i class="prog" aria-hidden="true" />
+        </button>
+      ))
+    }
+  </div>
+  <div class="chrome">
+    <div class="screen" id="demo-screen" role="tabpanel" aria-labelledby="t0" tabindex="0">
+      <div class="app" aria-hidden="true">
+        <aside class="a-side">
+          <div class="brand"><i></i>Relationship OS</div>
+          {
+            sideNav.map((item) => (
+              <div class:list={["it", { on: item.nav === "org" }]} data-nav={item.nav}>
+                <svg>
+                  <use href={`#i-${item.icon}`} />
+                </svg>
+                {item.label}
+                {item.badge && (
+                  <span class="badge" data-badge>
+                    3
+                  </span>
+                )}
+              </div>
+            ))
+          }
+          <div class="sec">Extensions</div>
+          <div class="it"><svg><use href="#i-deal"></use></svg>Deals</div>
+        </aside>
+        <div class="a-main">
+          <div class="a-top">
+            <div class="a-search">
+              <svg><use href="#i-search"></use></svg><span>Search or jump to…</span><kbd>⌘K</kbd>
+            </div>
+            <div class="a-user"><i>MR</i><span>Maya Reid</span></div>
+          </div>
+          <div class="a-stage" data-stage>
+            <div class="scene on" data-scene="org">
+              <div class="a-body">
+                <div class="a-head">
+                  <div class="a-title">Organisations <span class="cnt">412</span></div>
+                  <span class="a-btn p">+ New organisation</span>
+                </div>
+                <div class="a-table" data-orgtable>
+                  <div class="a-tr h">
+                    <span>Name</span><span>Industry</span><span>Owner</span><span class="col-new"
+                      >Renewal date<span class="pending">pending</span></span
+                    >
+                  </div>
+                  {
+                    orgs.map(([name, industry, owner, renewal]) => (
+                      <div class="a-tr">
+                        <span>{name}</span>
+                        <span>{industry}</span>
+                        <span>{owner}</span>
+                        <span class="col-new hl">{renewal}</span>
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+            </div>
+            <div class="scene" data-scene="dash">
+              <div class="a-body">
+                <div class="a-title">Sales overview</div>
+                <div class="describe">
+                  <div class="fake"><span data-describe></span></div>
+                  <span class="a-btn p">Describe a widget</span>
+                </div>
+                <div class="widgets">
+                  <div class="w new" data-widget>
+                    <div class="wt">Open deal value by stage</div>
+                    <div class="ws">This quarter · updates live</div>
+                    <div class="bars" data-bars>
+                      {
+                        bars.map((bar) => (
+                          <div class="bar" style={`background:${bar.color};height:${bar.height}`}>
+                            <small>{bar.label}</small>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  </div>
+                  <div class="w">
+                    <div class="wt">Pipeline this quarter</div>
+                    <div class="ws">All open deals</div>
+                    <div class="kpi">$1.24M</div>
+                    <div class="ws sub">38 open deals across 4 owners</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="scene" data-scene="auto">
+              <div class="a-body">
+                <div class="a-head">
+                  <div class="a-title">Deal goes quiet <span class="cnt">draft</span></div>
+                  <span class="a-btn" data-runtest>Run test</span>
+                </div>
+                <div class="flow">
+                  <div class="node"><small>When</small>A deal has no activity for 14 days</div>
+                  <div class="link-v"></div>
+                  <div class="node"><small>If</small>Stage is Proposal or Negotiation</div>
+                  <div class="link-v"></div>
+                  <div class="node">
+                    <small>Then</small>Create a follow-up task for the deal owner, due tomorrow
+                  </div>
+                </div>
+                <div class="testrun">
+                  <b>Test run · nothing was changed</b>
+                  <div><span>Pell &amp; Kerr renewal</span><span>task for Maya Reid</span></div>
+                  <div><span>Corvid Analytics expansion</span><span>task for Ade Kim</span></div>
+                  <div><span>Halden Freight pilot</span><span>task for Maya Reid</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="scene" data-scene="appr">
+              <div class="a-body">
+                <div class="a-title">Approvals</div>
+                <div class="a-sub">
+                  Changes waiting for you. The assistant kept working on top of these as if they had
+                  been applied.
+                </div>
+                <div class="ap" data-approval>
+                  <div class="ap-h">
+                    <div>
+                      <b>Assistant · "Renewal reminders"</b><small
+                        >Maya Reid · 3 changes · 2 minutes ago</small
+                      >
+                    </div>
+                    <div class="ap-btns">
+                      <span class="a-btn">Reject</span><span class="a-btn p" data-approve
+                        >✓ Approve</span
+                      >
+                    </div>
+                  </div>
+                  <div class="ap-r">
+                    <span class="tag f">schema</span> Add field <b>Renewal date</b> to Organisation
+                  </div>
+                  <div class="ap-r">
+                    <span class="tag">automation</span> Add <b>Renewal reminder</b>, 30 days before
+                  </div>
+                  <div class="ap-r">
+                    <span class="tag f">write</span> Set renewal dates on 7 organisations
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="a-panel" data-panel>
+              <div class="ph"><svg><use href="#i-spark"></use></svg>Assistant <kbd>⌘J</kbd></div>
+              <div class="pb" data-messages></div>
+              <div class="a-input">Ask the assistant…</div>
+            </div>
+            <div class="toast" data-toast><svg><use href="#i-check"></use></svg>Applied 3 changes</div>
+            <svg class="cursor" data-cursor viewBox="0 0 24 24">
+              <path d="M4 2l16 9-7 2-3 7z" fill="#fff" stroke="#111" stroke-width="1.5" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <p class="sr" data-live aria-live="polite">{DEMO_STEPS[1]?.description}</p>
+    </div>
+  </div>
+  <div class="demo-meta">
+    <button type="button" data-playpause aria-label="Pause the demo">
+      <Icon name="pause" /><span>Pause</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  import { startDemo } from "../scripts/demo.ts";
+
+  const root = document.querySelector<HTMLElement>("[data-demo]");
+  if (root) startDemo(root);
+</script>

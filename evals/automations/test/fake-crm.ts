@@ -16,6 +16,82 @@ export interface FakeBehaviour {
   summary?: (c: AutomationCase) => string;
   /** Overrides the installed trigger type (default: the case's first). */
   triggerType?: (c: AutomationCase) => string;
+  /** Overrides the pipelines and stages (default: the Deals extension's seeded ones). */
+  pipelines?: FakePipeline[];
+}
+
+export interface FakeStage {
+  id: string;
+  position: number;
+  type: "open" | "won" | "lost";
+  requiredFields?: string[];
+}
+
+export interface FakePipeline {
+  id: string;
+  name: string;
+  position: number;
+  stages: FakeStage[];
+}
+
+/**
+ * The Deals extension's seeded pipelines (extensions/deals/index.ts). Renewals is listed first and
+ * its stages share positions with New business, as on a seeded database where a stage picked by
+ * type and position alone lands in Renewals.
+ */
+export const DEALS_PIPELINES: FakePipeline[] = [
+  {
+    id: "pip_renewals",
+    name: "Renewals",
+    position: 2,
+    stages: [
+      { id: "stg_rnUpcoming", position: 1, type: "open", requiredFields: ["organisation"] },
+      { id: "stg_rnInDiscussion", position: 2, type: "open", requiredFields: ["value"] },
+      { id: "stg_rnRenewed", position: 4, type: "won", requiredFields: ["value"] },
+      { id: "stg_rnChurned", position: 5, type: "lost" },
+    ],
+  },
+  {
+    id: "pip_newBusiness",
+    name: "New business",
+    position: 1,
+    stages: [
+      { id: "stg_nbLead", position: 1, type: "open" },
+      { id: "stg_nbQualified", position: 2, type: "open", requiredFields: ["owner"] },
+      { id: "stg_nbWon", position: 5, type: "won", requiredFields: ["value"] },
+      { id: "stg_nbLost", position: 6, type: "lost" },
+    ],
+  },
+];
+
+type Condition = { field: string; op: string; value: unknown };
+const conditionsOf = (filter: unknown): Condition[] =>
+  !filter
+    ? []
+    : "and" in (filter as object)
+      ? (filter as { and: unknown[] }).and.flatMap(conditionsOf)
+      : [filter as Condition];
+
+/** The host's stage rules on creating a deal (extensions/deals/README.md, Behaviour). */
+function stageRuleError(pipelines: FakePipeline[], values: Record<string, unknown>) {
+  const pipeline = pipelines.find((p) => p.stages.some((s) => s.id === values.stage));
+  const stage = pipeline?.stages.find((s) => s.id === values.stage);
+  const invalid = (message: string, details: Record<string, unknown> = {}) => ({
+    isError: true,
+    error: { code: "invalid_input", message, details },
+  });
+  if (!pipeline || !stage) return invalid(`unknown stage ${String(values.stage)}`);
+  const inPipeline =
+    pipeline.id === (values.pipeline ?? pipelines.find((p) => p.name === "New business")?.id);
+  if (!inPipeline) return invalid("The stage is not in the deal's pipeline");
+  const required = [
+    ...(stage.requiredFields ?? []),
+    ...(stage.type === "lost" ? ["lostReason"] : []),
+  ];
+  const missing = required.find((field) => values[field] === undefined || values[field] === null);
+  return missing
+    ? invalid(`${stage.id} needs ${missing}`, { rule: "stage_required_fields", field: missing })
+    : null;
 }
 
 const caseOf = (extensionId: string) =>
@@ -62,6 +138,7 @@ export function fakeCrm(behaviour: FakeBehaviour = {}) {
   const disabled = new Set<string>();
   const records: { object: string; id: string; values: Record<string, unknown> }[] = [];
   const tests: Record<string, unknown>[] = [];
+  const pipelines = behaviour.pipelines ?? DEALS_PIPELINES;
   let seq = 0;
 
   const automationId = (extensionId: string) => `${extensionId}.auto`;
@@ -73,12 +150,37 @@ export function fakeCrm(behaviour: FakeBehaviour = {}) {
   };
   const operations: Record<string, (input: Record<string, unknown>) => unknown> = {
     "user.list": () => ({ items: [{ id: USER_ID, email: EMAIL }], nextCursor: null }),
-    "record.list": (input) =>
-      input.object === "deals.stage"
-        ? { items: [{ id: `stg_${(input.filter as { value: string }).value}` }], nextCursor: null }
-        : { items: [], nextCursor: null },
-    "record.create": (input) =>
-      create(String(input.object), input.values as Record<string, unknown>),
+    "record.list": (input) => {
+      const byPosition = <T extends { position: number }>(a: T, b: T) => a.position - b.position;
+      if (input.object === "deals.pipeline") {
+        const items = [...pipelines]
+          .sort(byPosition)
+          .map((p) => ({ id: p.id, values: { name: p.name, position: p.position } }));
+        return { items, nextCursor: null };
+      }
+      if (input.object !== "deals.stage") return { items: [], nextCursor: null };
+      const where = conditionsOf(input.filter);
+      const items = pipelines
+        .flatMap((p) =>
+          p.stages.map((s) => ({ ...s, pipeline: p.id }) as FakeStage & Record<string, unknown>),
+        )
+        .filter((s) => where.every((c) => c.op === "eq" && s[c.field] === c.value))
+        .sort(byPosition)
+        .slice(0, Number(input.limit ?? 50))
+        .map((s) => ({
+          id: s.id,
+          values: { pipeline: s.pipeline, type: s.type, requiredFields: s.requiredFields ?? [] },
+        }));
+      return { items, nextCursor: null };
+    },
+    "record.create": (input) => {
+      const values = input.values as Record<string, unknown>;
+      if (input.object === "deals.deal") {
+        const error = stageRuleError(pipelines, values);
+        if (error) return error;
+      }
+      return create(String(input.object), values);
+    },
     "automation.list": (input) => ({
       items: [...installed]
         .filter((id) => !input.extensionId || id === input.extensionId)

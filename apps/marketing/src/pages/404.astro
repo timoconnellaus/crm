@@ -1,8 +1,7 @@
 ---
-import Page from "../layouts/Page.astro";
+import Simple from "../layouts/Simple.astro";
 ---
 
-<Page title="Not found · Relationship OS">
-  <h1 class="text-3xl font-semibold tracking-tight">Page not found</h1>
-  <a href="/" class="underline">Back to Relationship OS</a>
-</Page>
+<Simple title="Not found" eyebrow="404" heading="Page not found" lead="There's nothing at this address." noindex>
+  <div class="actions"><a class="btn" href="/">Back to Relationship OS</a></div>
+</Simple>

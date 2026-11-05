@@ -1,8 +1,11 @@
 {
+  // The Worker and its tests. The browser scripts and the Playwright specs are checked by
+  // tsconfig.browser.json (DOM and Node types respectively).
   "extends": "@relationship-os/config/tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ESNext"],
     "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-plugin/types"]
   },
-  "include": ["src/**/*.ts", "test", "worker-configuration.d.ts"]
+  "include": ["src/**/*.ts", "test", "worker-configuration.d.ts"],
+  "exclude": ["src/scripts"]
 }

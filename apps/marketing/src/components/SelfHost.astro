@@ -1,0 +1,43 @@
+---
+// The install snippet matches docs/deploying.md ("Option 1"): the CLI isn't on npm yet, so it is
+// built and run from a checkout. Update both together.
+import { REPO_URL } from "../links.ts";
+import Icon from "./Icon.astro";
+
+const checks = [
+  "Workers, D1 and R2 in your account, with no servers to manage",
+  "Any model through AI Gateway, with routing and spend in one place",
+  "Updates you can preview, apply and roll back",
+];
+---
+
+<section id="self-host" aria-labelledby="self-host-title">
+  <div class="wrap split">
+    <div class="reveal">
+      <span class="eyebrow">Self-host</span>
+      <h2 id="self-host-title">Run it in your own Cloudflare account.</h2>
+      <p class="lead">
+        Your data stays in your account. The installer sets everything up and keeps it updated on
+        your schedule.
+      </p>
+      <ul class="checks">
+        {
+          checks.map((check) => (
+            <li>
+              <Icon name="check" />
+              {check}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+    <div class="chrome reveal">
+      <pre class="term" tabindex="0" aria-label="Install commands"><code><span class="c"># from a checkout of the repository</span>
+<span class="p">$ </span>git clone {REPO_URL}
+<span class="p">$ </span>cd relationship-os &amp;&amp; pnpm install
+<span class="p">$ </span>pnpm --filter create-relationship-os build
+<span class="p">$ </span>node packages/create-relationship-os/dist/cli.js
+<span class="c"># paste a Cloudflare API token, pick a hostname, done</span></code></pre>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,52 @@
+---
+// A waitlist form. It posts to the ros-marketing Worker and works without JavaScript: the Worker
+// redirects back to this form's "You're on the list" message (#joined-<source>), which CSS shows
+// via :target. With JavaScript (site.ts) it posts in the background and shows the same message.
+import { type FormSource, joinedAnchor, TEAM_SIZES } from "../team-size.ts";
+import Icon from "./Icon.astro";
+
+interface Props {
+  source: FormSource;
+  /** Adds the optional team-size select. */
+  teamSize?: boolean;
+}
+const { source, teamSize = false } = Astro.props;
+const id = (name: string) => `${source}-${name}`;
+---
+
+<form class="wl" method="post" action="/api/signup" data-waitlist aria-describedby={id("error")}>
+  <input type="hidden" name="kind" value="waitlist" />
+  <input type="hidden" name="source" value={source} />
+  <label class="sr" for={id("email")}>Work email</label>
+  <input
+    id={id("email")}
+    name="email"
+    type="email"
+    autocomplete="email"
+    placeholder="you@company.com"
+    maxlength="254"
+    required
+  />
+  {
+    teamSize && (
+      <>
+        <label class="sr" for={id("team-size")}>Team size (optional)</label>
+        <select id={id("team-size")} name="team_size">
+          <option value="">Team size</option>
+          {TEAM_SIZES.map((size) => (
+            <option value={size.value}>{size.label}</option>
+          ))}
+        </select>
+      </>
+    )
+  }
+  <!-- Honeypot: not rendered for people; naive bots fill it in and are ignored. -->
+  <div hidden>
+    <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+  </div>
+  <button class="btn" type="submit">Join the waitlist</button>
+  <span class="done" id={joinedAnchor(source)} role="status" tabindex="-1">
+    <Icon name="check" />You're on the list. We'll email you once.
+  </span>
+</form>
+<p class="form-error" id={id("error")} role="alert"></p>
