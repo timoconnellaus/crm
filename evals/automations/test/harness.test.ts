@@ -48,7 +48,12 @@ describe("runEval", () => {
     // Every case with a seed got its record before any automation existed.
     expect(seededBeforeApproval).toBe(cases.filter((c) => c.seed).length);
     const deal = crm.records.find((r) => r.values.name === "Eval won deal varodin");
-    expect(deal?.values).toMatchObject({ owner: USER_ID, stage: "stg_won", value: 12000 });
+    expect(deal?.values).toMatchObject({
+      owner: USER_ID,
+      pipeline: "pip_newBusiness",
+      stage: "stg_nbWon",
+      value: 12000,
+    });
     const closing = crm.records.find((r) => r.values.name === "Eval closing deal varodin");
     expect(closing?.values.expectedClose).toBe("2026-11-12");
 
@@ -71,6 +76,62 @@ describe("runEval", () => {
       counts: { writes: 1, checks: 1, proposes: 1, toolCalls: 3 },
     });
     expect(crm.disabled.size).toBe(10);
+  });
+
+  // Regression: on a seeded database the first open stage by position was Renewals' "Upcoming
+  // renewal", which requires an organisation, so the deal fixtures failed before the model ran.
+  const dealCases = ["close-date-reminder", "big-deal-alert", "new-deal-kickoff"].map(byId);
+  const approve = (crm: ReturnType<typeof fakeCrm>) => async () => crm.approveAll();
+
+  it("seeds deals in the default pipeline's first open stage on a seeded database", async () => {
+    const { crm, deps } = setup();
+    const results = await runEval(dealCases, deps, approve(crm));
+    expect(results.map((r) => [r.id, r.failures])).toEqual(dealCases.map((c) => [c.id, []]));
+    const deals = crm.records.filter((r) => String(r.values.name).startsWith("Eval "));
+    expect(deals.map((d) => [d.values.pipeline, d.values.stage])).toEqual(
+      dealCases.map(() => ["pip_newBusiness", "stg_nbLead"]),
+    );
+    expect(crm.records.filter((r) => r.object === "organisation")).toEqual([]);
+  });
+
+  it("fills the stage's required fields when the only pipeline's first stage has rules", async () => {
+    const { crm, deps } = setup({
+      pipelines: [
+        {
+          id: "pip_renewals",
+          name: "Renewals",
+          position: 1,
+          stages: [
+            {
+              id: "stg_upcoming",
+              position: 1,
+              type: "open",
+              requiredFields: ["organisation", "value", "expectedClose"],
+            },
+          ],
+        },
+      ],
+    });
+    const results = await runEval(dealCases, deps, approve(crm));
+    expect(results.map((r) => [r.id, r.failures])).toEqual(dealCases.map((c) => [c.id, []]));
+
+    // One eval organisation, suffixed like the other fixtures, shared by the run's deals.
+    const orgs = crm.records.filter((r) => r.object === "organisation");
+    expect(orgs.map((o) => o.values.name)).toEqual(["Eval Deals Ltd varodin"]);
+    const deals = crm.records.filter((r) => r.object === "deals.deal");
+    expect(deals).toHaveLength(3);
+    for (const deal of deals) {
+      expect(deal.values).toMatchObject({
+        pipeline: "pip_renewals",
+        stage: "stg_upcoming",
+        organisation: orgs[0]?.id,
+      });
+    }
+    // The case's own values win; empty required ones are filled.
+    const big = deals.find((d) => d.values.name === "Eval big deal varodin");
+    expect(big?.values).toMatchObject({ value: 100000, expectedClose: "2026-12-05" });
+    const closing = deals.find((d) => d.values.name === "Eval closing deal varodin");
+    expect(closing?.values.expectedClose).toBe("2026-11-12");
   });
 
   it("fails cases whose proposal was never approved", async () => {

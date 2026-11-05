@@ -1,9 +1,12 @@
 ---
-import Page from "../layouts/Page.astro";
+import Simple from "../layouts/Simple.astro";
 ---
 
-<Page title="Try again shortly · Relationship OS">
-  <h1 class="text-3xl font-semibold tracking-tight">Try again in a minute</h1>
-  <p class="text-muted-foreground">We received several submissions from you just now.</p>
-  <a href="/#signup" class="underline">Back to the form</a>
-</Page>
+<Simple
+  title="Try again shortly"
+  heading="Try again in a minute"
+  lead="We received several submissions from you just now."
+  noindex
+>
+  <div class="actions"><a class="btn" href="/#waitlist">Back to the form</a></div>
+</Simple>

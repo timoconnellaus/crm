@@ -1,0 +1,10 @@
+---
+// One icon from the sprite (Sprite.astro). Decorative: hidden from assistive technology.
+interface Props {
+  name: string;
+  class?: string;
+}
+const { name, class: className = "i" } = Astro.props;
+---
+
+<svg class={className} aria-hidden="true" focusable="false"><use href={`#i-${name}`}></use></svg>

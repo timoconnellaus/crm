@@ -1,0 +1,45 @@
+---
+const clients = [
+  { name: "Claude", detail: "Desktop and claude.ai" },
+  { name: "ChatGPT", detail: "Connectors" },
+  { name: "Cursor", detail: "And other MCP clients" },
+  { name: "Built in", detail: "The in-app assistant" },
+];
+---
+
+<section class="tight-top" aria-labelledby="mcp-title">
+  <div class="wrap mcp">
+    <div class="reveal">
+      <span class="eyebrow">Works with your AI</span>
+      <h2 id="mcp-title">Use it from Claude, ChatGPT or Cursor.</h2>
+      <p class="lead">
+        Relationship OS is an MCP server. Connect an MCP client and it can read and update your CRM,
+        with the same permissions and approval rules as a person. On the free plan, this is how you
+        bring your own AI.
+      </p>
+      <ul class="clients">
+        {
+          clients.map((client) => (
+            <li class="client glass">
+              <b>{client.name}</b>
+              <span>{client.detail}</span>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="note">
+        Sign in with OAuth and choose read, write or admin access. Revoke it from Settings at any
+        time.
+      </p>
+    </div>
+    <figure class="convo glass reveal" aria-label="Example conversation in an AI client">
+      <span class="who">In your AI client</span>
+      <div class="q">Log a call with Ade at Brightwater. They want the pilot extended to March.</div>
+      <span class="tool">activity_create · deal_update</span>
+      <div class="r">
+        Logged the call on Brightwater Labs. Changing the pilot's close date to 31 March is waiting
+        for approval in Relationship OS.
+      </div>
+    </figure>
+  </div>
+</section>

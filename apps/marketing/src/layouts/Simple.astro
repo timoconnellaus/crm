@@ -1,0 +1,25 @@
+---
+// A short page (privacy, form results, not found): an eyebrow, a heading, a lead and actions.
+import Page from "./Page.astro";
+
+interface Props {
+  title: string;
+  heading: string;
+  eyebrow?: string;
+  lead?: string;
+  description?: string;
+  noindex?: boolean;
+}
+const { title, heading, eyebrow, lead, description, noindex = false } = Astro.props;
+---
+
+<Page title={`${title} · Relationship OS`} description={description ?? lead} noindex={noindex}>
+  <section class="page" aria-labelledby="page-title">
+    <div class="wrap">
+      {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+      <h1 id="page-title">{heading}</h1>
+      {lead && <p class="lead">{lead}</p>}
+      <slot />
+    </div>
+  </section>
+</Page>

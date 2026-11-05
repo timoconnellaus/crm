@@ -1,0 +1,29 @@
+---
+// Self-hosted fonts (OFL, from @fontsource-variable): Unbounded for display, Manrope for text and
+// Inter inside the app demo. Latin subset only, variable weight, font-display: swap. The two the
+// hero needs are preloaded; Inter (the demo, further down) loads when used. Nothing is fetched from
+// another origin.
+import interUrl from "@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url";
+import manropeUrl from "@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2?url";
+import unboundedUrl from "@fontsource-variable/unbounded/files/unbounded-latin-wght-normal.woff2?url";
+
+const LATIN =
+  "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD";
+
+const faces = [
+  { family: "Unbounded", url: unboundedUrl, weight: "200 900" },
+  { family: "Manrope", url: manropeUrl, weight: "200 800" },
+  { family: "Inter", url: interUrl, weight: "100 900" },
+];
+
+const css = faces
+  .map(
+    (face) =>
+      `@font-face{font-family:"${face.family}";font-style:normal;font-display:swap;font-weight:${face.weight};src:url(${face.url}) format("woff2");unicode-range:${LATIN}}`,
+  )
+  .join("");
+---
+
+<link rel="preload" href={unboundedUrl} as="font" type="font/woff2" crossorigin />
+<link rel="preload" href={manropeUrl} as="font" type="font/woff2" crossorigin />
+<style is:inline set:html={css}></style>
