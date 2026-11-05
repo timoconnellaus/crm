@@ -1,9 +1,9 @@
 // Notifications inbox (ADR 0029): the signed-in user's notifications, newest first, in a
 // virtualised list that loads more as you scroll. All or Unread; Mark all read. Each opens its
 // record, approval or automation run and is marked read.
-import { Button } from "@crm/ui/components/button";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@crm/ui/components/tabs";
+import { Button } from "@relationship-os/ui/components/button";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { BellIcon, CheckCheckIcon } from "lucide-react";
 import { toast } from "sonner";

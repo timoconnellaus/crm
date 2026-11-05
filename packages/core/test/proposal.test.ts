@@ -1,6 +1,6 @@
 // The reviewer's view of an extension proposal (ADR 0041): the per-file diff and the host-computed
 // impact, including permissions widened over the installed version (AC3).
-import { type ExtensionManifest, manifestSchema } from "@crm/sdk";
+import { type ExtensionManifest, manifestSchema } from "@relationship-os/sdk";
 import { describe, expect, it } from "vitest";
 import {
   capDiff,

@@ -9,7 +9,7 @@ import type {
   Gatekeeper,
   GatekeeperUserVerifier,
   ResourceDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 import { ActionStore, REVERT_UNSUPPORTED_MESSAGE } from "./action-store.js";
 import {

@@ -1,7 +1,7 @@
 // Run-as wording and choices for an automation's declared connections (ADR 0170), as pure
 // functions (unit-tested in test/automation-connections-model.test.ts): which connections a person
 // may bind to a slot, the consent sentence, who a binding runs as, and the pause explanations.
-import { catalogueEntry } from "@crm/core/client";
+import { catalogueEntry } from "@relationship-os/core/client";
 
 /** The pause reason of an automation whose declared connections are not all bound (core). */
 export const WAITING_FOR_CONNECTIONS = "Waiting for connections";

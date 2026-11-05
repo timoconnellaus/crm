@@ -17,16 +17,16 @@ import {
   parseModelArgs,
   parseOnly,
   parsePositiveInt,
-} from "@crm/evals-mcp/lib/cli.ts";
-import { loadEvalEnvFile } from "@crm/evals-mcp/lib/env-file.ts";
-import { openMcpSession } from "@crm/evals-mcp/lib/mcp.ts";
+} from "@relationship-os/evals-mcp/lib/cli.ts";
+import { loadEvalEnvFile } from "@relationship-os/evals-mcp/lib/env-file.ts";
+import { openMcpSession } from "@relationship-os/evals-mcp/lib/mcp.ts";
 import {
   chatCompletionsModel,
   isFatalModelError,
   type ModelParams,
-} from "@crm/evals-mcp/lib/model.ts";
-import { authorize, type EvalUser, signIn } from "@crm/evals-mcp/lib/oauth.ts";
-import { summaryLine } from "@crm/evals-mcp/lib/report.ts";
+} from "@relationship-os/evals-mcp/lib/model.ts";
+import { authorize, type EvalUser, signIn } from "@relationship-os/evals-mcp/lib/oauth.ts";
+import { summaryLine } from "@relationship-os/evals-mcp/lib/report.ts";
 import {
   AUTHORING_TOOLS,
   type ExtensionsHarnessDeps,

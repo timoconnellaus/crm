@@ -1,6 +1,6 @@
 // GDPR erase (ADR 0019): hard-delete records now and redact the personal data the audit log holds
 // about them through the sanctioned path (markers in core_audit_redactions; migration 0008).
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, type SqlBool, sql } from "kysely";
 import { enqueueEmbeddings } from "../ai/embedding.ts";
 import { deleteSummariesStatement } from "../ai/summaries.ts";

@@ -1,8 +1,8 @@
 // The automation registry (ADR 0130): core_automations mirrors the `automations` of every
 // installed extension. extension.install syncs it in the install's own batch; the queue consumer,
 // the cron and the automation.* operations read it.
-import type { CoreDatabase } from "@crm/db";
-import { type AutomationManifest, automationManifestSchema } from "@crm/sdk";
+import type { CoreDatabase } from "@relationship-os/db";
+import { type AutomationManifest, automationManifestSchema } from "@relationship-os/sdk";
 import { type Compilable, type Kysely, sql } from "kysely";
 import { jsonList } from "../records/common.ts";
 import { WAITING_FOR_CONNECTIONS } from "./bindings.ts";

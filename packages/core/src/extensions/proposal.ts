@@ -1,7 +1,7 @@
 // What a reviewer sees for an extension proposal (stage 3b, ADR 0041): the per-file diff from the
 // installed version, and the impact the host computes from the manifests and the reconcile plan
 // (never from anything the extension says about itself).
-import type { ExtensionManifest, PermissionsManifest } from "@crm/sdk";
+import type { ExtensionManifest, PermissionsManifest } from "@relationship-os/sdk";
 import { automationSummary, manifestSummaryContext, triggerText } from "../automations/summary.ts";
 import type { SchemaChange } from "./reconciler.ts";
 

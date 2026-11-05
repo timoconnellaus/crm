@@ -31,7 +31,7 @@
 // This module deliberately has no runtime imports beyond other Node-safe kit leaves (in particular
 // no `cloudflare:workers`), so its logic runs under the kit's Node vitest project.
 
-import type { GitOid, GitPullHints, GitPullStatus } from "@crm/gatekeeper-interface/gatekeeper";
+import type { GitOid, GitPullHints, GitPullStatus } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { readBytesCapped, ResponseTooLargeError } from "./response-body";
 
 /** The `agent` capability sent with every request, mirroring the REST layer's User-Agent. */

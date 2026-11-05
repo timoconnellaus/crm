@@ -1,27 +1,27 @@
 // The authoring API's HierarchyPicker: choosing one node of a hierarchy (the whole of it, an open
 // container, or a leaf) with optional tabs, a breadcrumb, optional search and paging. As in a file
 // dialog, a choice lasts while it is in view. See `HierarchyPickerProps` in
-// @crm/gatekeeper-configurator-ui for the behaviour this follows.
+// @relationship-os/gatekeeper-configurator-ui for the behaviour this follows.
 import type {
   ConfiguratorUIHierarchyAncestor as Ancestor,
   HierarchyPickerProps,
   ConfiguratorUIHierarchyItem as Item,
   ConfiguratorUIHierarchyPage as Page,
   ConfiguratorUIHierarchyTab as Tab,
-} from "@crm/gatekeeper-configurator-ui";
+} from "@relationship-os/gatekeeper-configurator-ui";
 import {
   displayText,
   failureMessage,
   identifier,
   SEARCH_DEBOUNCE_MS,
-} from "@crm/gatekeeper-configurator-ui/options";
-import { Badge } from "@crm/ui/components/badge";
-import { Button as UIButton } from "@crm/ui/components/button";
-import { Input } from "@crm/ui/components/input";
-import { RadioGroup, RadioGroupItem } from "@crm/ui/components/radio-group";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@crm/ui/components/tabs";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/gatekeeper-configurator-ui/options";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button as UIButton } from "@relationship-os/ui/components/button";
+import { Input } from "@relationship-os/ui/components/input";
+import { RadioGroup, RadioGroupItem } from "@relationship-os/ui/components/radio-group";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { ChevronRightIcon, FileIcon, FolderIcon } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { useField, useFrame } from "./form-context.ts";

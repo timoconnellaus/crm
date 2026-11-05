@@ -1,7 +1,7 @@
 // Contract additions (stage 4a, ADR 0058): record tabs and panels, typed settings, and select
 // choices that require fields, through validateManifest and the host operations.
 import { env } from "cloudflare:workers";
-import { type ExtensionManifest, validateManifest } from "@crm/sdk";
+import { type ExtensionManifest, validateManifest } from "@relationship-os/sdk";
 import { beforeAll, describe, expect, it } from "vitest";
 import { type ActingUser, ForbiddenError, invoke, recordViewFilter } from "../src/index.ts";
 import { extId, manifest, reconcile } from "./extension-helpers.ts";

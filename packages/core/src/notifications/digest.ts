@@ -51,7 +51,11 @@ export const plainDigest: DigestComposer = (input) => {
       `${plural(input.pendingApprovals, "change waiting", "changes waiting")} for approval`,
     );
   }
-  const lines = [`Your CRM digest for ${input.date}`, "", `${counts.join(", ") || "Nothing new"}.`];
+  const lines = [
+    `Your Relationship OS digest for ${input.date}`,
+    "",
+    `${counts.join(", ") || "Nothing new"}.`,
+  ];
   if (input.pendingApprovals && input.approvalsUrl) {
     lines.push(`Review approvals: ${input.approvalsUrl}`);
   }
@@ -70,7 +74,7 @@ export const plainDigest: DigestComposer = (input) => {
   const more = input.unreadTotal - input.items.length;
   if (more > 0) lines.push("", `…and ${plural(more, "more", "more")} in the CRM.`);
   return {
-    subject: `[CRM] Daily digest: ${counts.join(", ") || "nothing new"}`,
+    subject: `[Relationship OS] Daily digest: ${counts.join(", ") || "nothing new"}`,
     text: lines.join("\n"),
   };
 };

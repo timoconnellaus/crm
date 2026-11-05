@@ -7,9 +7,9 @@
 //   inside PageLayout's scrolling body. Rows are measured as they render (and re-measured when
 //   they grow, e.g. an expanded audit entry); the next page loads when the rendered range nears
 //   the end.
-import { Button } from "@crm/ui/components/button";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+import { Button } from "@relationship-os/ui/components/button";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { errorMessage } from "#/lib/query";

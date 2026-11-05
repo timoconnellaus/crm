@@ -3,8 +3,8 @@
 // failures by kind: no widget, SQL that does not run, the wrong chart type, a broken mapping.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ModelParams } from "@crm/evals-mcp/lib/model.ts";
-import { cell, describeModel, summaryLine } from "@crm/evals-mcp/lib/report.ts";
+import type { ModelParams } from "@relationship-os/evals-mcp/lib/model.ts";
+import { cell, describeModel, summaryLine } from "@relationship-os/evals-mcp/lib/report.ts";
 import type { FailureKind } from "./grading.ts";
 import type { DashboardResult, Mode } from "./harness.ts";
 

@@ -1,7 +1,7 @@
 // Record tabs and side panels that extensions declare (ADR 0058, `recordTabs` / `recordPanels`):
 // each is a view spec of another object, filtered to records whose relation field points at the
 // record being shown, rendered with our own table, board, calendar and gallery components.
-import { Skeleton } from "@crm/ui/components/skeleton";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { type ReactNode, useMemo, useState } from "react";
 import { EmptyState } from "#/components/empty-state";

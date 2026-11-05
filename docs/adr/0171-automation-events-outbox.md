@@ -21,7 +21,7 @@ missing was at-least-once delivery from the producer.
 - Approval decisions are known only after the decision: `approval.reject` writes its outbox rows in
   its own batch; `approval.approve` and the expiry sweep write them right after (`emitDurably`),
   then send.
-- crm-runner's minute cron (`retryOutbox`) reads at most 50 rows in primary-key (time) order, takes
+- ros-runner's minute cron (`retryOutbox`) reads at most 50 rows in primary-key (time) order, takes
   those past `next_at` (a 60 s grace for the in-flight post-commit send, then backoff 1, 2, 4 … 60
   minutes), and dispatches them **directly** with `dispatchAutomationMessages`, so a queue outage
   does not block it. Success deletes the row; failure bumps `attempts` and `last_error` (logged

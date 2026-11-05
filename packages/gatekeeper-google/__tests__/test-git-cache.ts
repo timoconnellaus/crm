@@ -1,6 +1,6 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-google/__tests__/test-git-cache.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import { RpcTarget } from "cloudflare:workers";
-import type { GitCache, GitObjectType, GitOid } from "@crm/gatekeeper-interface/gatekeeper";
+import type { GitCache, GitObjectType, GitOid } from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 /**
  * Stands in for the action-scoped git cache the overseer passes to `applyAction()`. The Google

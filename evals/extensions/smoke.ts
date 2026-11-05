@@ -7,10 +7,10 @@
 //
 //   node evals/extensions/smoke.ts --base-url http://localhost:5173 [--only projects] [--propose]
 import { parseArgs } from "node:util";
-import type { RecordedCall } from "@crm/evals-mcp/lib/agent.ts";
-import { makeSuffix } from "@crm/evals-mcp/lib/harness.ts";
-import { openMcpSession, parseResult } from "@crm/evals-mcp/lib/mcp.ts";
-import { authorize, signIn } from "@crm/evals-mcp/lib/oauth.ts";
+import type { RecordedCall } from "@relationship-os/evals-mcp/lib/agent.ts";
+import { makeSuffix } from "@relationship-os/evals-mcp/lib/harness.ts";
+import { openMcpSession, parseResult } from "@relationship-os/evals-mcp/lib/mcp.ts";
+import { authorize, signIn } from "@relationship-os/evals-mcp/lib/oauth.ts";
 import { AUTHORING_TOOLS, parseCheck, proposalsOf } from "./lib/harness.ts";
 import { referenceSource } from "./lib/reference.ts";
 import { extensionIdFor, prompts } from "./prompts.ts";

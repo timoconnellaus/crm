@@ -20,20 +20,20 @@ role (ADR 0152) and no BYOK. The user decided:
 ## Decision
 
 ### What is provisioned
-With the `ai` feature on (the default, ADR 0156), `create-crm` install and repair, `crm upgrade`
+With the `ai` feature on (the default, ADR 0156), `create-relationship-os` install and repair, `ros upgrade`
 and the self-updater all run the same function, `provisionAiGateway` in
 `packages/release/src/gateway.ts`. Upgrades call it inside `runUpdate`'s switch step, after the
 new release's resources and before the Workers switch, so an upgrade creates whatever is missing.
 This is the path ADR 0164 already uses for resources.
 
 1. **The gateway.** Its id is the install name: the app Worker's deployed name without `-app`, so
-   `crm-app` → `crm`. `--ai-gateway <id>` picks another id. The installer finds the gateway by id
+   `ros-app` → `crm`. `--ai-gateway <id>` picks another id. The installer finds the gateway by id
    and creates it if it does not exist. It is created with logging on (`collect_logs`), no caching,
    no rate limit, and **authentication on**. Authentication is on for new gateways by default and
    cannot be turned off once on. An existing gateway that has logging or authentication off gets
    them turned on; its other settings are sent back unchanged, because the update API replaces
    them all. `aiGatewayCreated` in the deployment state records whether we created it, so
-   `crm uninstall` deletes only gateways it created. `--ai-gateway off` opts out: there is then no
+   `ros uninstall` deletes only gateways it created. `--ai-gateway off` opts out: there is then no
    gateway, and Workers AI is called directly.
 2. **Custom providers**, from `deploy-inputs.json` `aiGateway.customProviders`, carried in the
    release manifest as `aiGateway`. Custom providers are account-wide. Each one is found by slug,
@@ -44,7 +44,7 @@ This is the path ADR 0164 already uses for resources.
    and a slug with no `custom-` prefix, slugs must be unique, and turning authentication off fails
    the build.
 3. **`AI_GATEWAY_ID`** is set as a var on every Worker that declares it, which is the manifest's
-   `AI_GATEWAY_ID` input: crm-app and crm-runner.
+   `AI_GATEWAY_ID` input: ros-app and ros-runner.
 4. **`AI_GATEWAY_TOKEN`.** This is the value of `cf-aig-authorization`, an API token with
    **AI Gateway Run**. The installer creates an **account-owned API token** with only that
    permission group, scoped to the account. It looks up the group by name with the
@@ -73,10 +73,10 @@ the `default` alias. `provider` is the gateway's provider slug: built-in (`opena
 - It then creates the provider config with `secret`.
 
 The key is sent only in the request body, so it never appears in a log, a return value or an
-error message (the client already guarantees that last point). `create-crm --provider-key
+error message (the client already guarantees that last point). `create-relationship-os --provider-key
 together=…` (repeatable) calls it and maps a release custom provider's slug to `custom-<slug>`.
-Settings → AI's key form (stage 7b) is meant to use it too: `@crm/core` already depends on
-`@crm/release`. The provider slug a custom provider's key is stored under is not stated in the docs.
+Settings → AI's key form (stage 7b) is meant to use it too: `@relationship-os/core` already depends on
+`@relationship-os/release`. The provider slug a custom provider's key is stored under is not stated in the docs.
 We use `custom-<slug>`, the name the gateway uses for the provider in URLs and model strings. If
 that turns out wrong, the first real call shows a provider authentication error.
 
@@ -89,7 +89,7 @@ that turns out wrong, the first real call shows a provider authentication error.
 | Store a provider key (BYOK) | Secrets Store Edit (Write) and AI Gateway Edit | [provider configs](https://developers.cloudflare.com/api/resources/ai_gateway/subresources/provider_configs/methods/create/), [stores](https://developers.cloudflare.com/api/resources/secrets_store/subresources/stores/methods/create/), [BYOK](https://developers.cloudflare.com/ai-gateway/configuration/bring-your-own-keys/) |
 | Call the gateway (the generated token) | AI Gateway Run | [authentication](https://developers.cloudflare.com/ai-gateway/configuration/authentication/) |
 
-The install token (and `CRM_UPDATE_TOKEN` for one-click updates) needs the first three on top of
+The install token (and `ROS_UPDATE_TOKEN` for one-click updates) needs the first three on top of
 ADR 0163's list, plus the fourth for `--provider-key`. An account-level resource in a token policy
 is `com.cloudflare.api.account.<id>`
 ([create tokens via API](https://developers.cloudflare.com/fundamentals/api/how-to/create-via-api/)).
@@ -114,7 +114,7 @@ All pages read 2026-11-05.
   installs add the gateway when the update token allows it.
 - The install token asks for more: AI Gateway Edit and Account API Tokens Edit. Account API
   Tokens Edit can create other tokens, so a token that holds it should be kept to the CLI and not
-  stored as `CRM_UPDATE_TOKEN` unless one-click updates are wanted. Without it, the gateway is
+  stored as `ROS_UPDATE_TOKEN` unless one-click updates are wanted. Without it, the gateway is
   still created. Only the token step is skipped, with a warning saying how to set
   `AI_GATEWAY_TOKEN` by hand.
 - An update that fails after the token was generated rolls back. The token can then be left

@@ -1,7 +1,7 @@
 // Global search for the command palette: `search.global` (FTS5 over people, organisations,
 // activities and tasks, prefix match as you type), with each hit's route, and `search.hybrid`
 // for hits related by meaning once typing pauses.
-import type { HighlightSegment } from "@crm/core";
+import type { HighlightSegment } from "@relationship-os/core";
 import { callOp } from "./operations.ts";
 
 export type { HighlightSegment };

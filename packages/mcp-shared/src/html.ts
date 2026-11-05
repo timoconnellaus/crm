@@ -16,4 +16,4 @@ export {
   htmlResponse,
   INVALID_LINK_HTML,
   PAGE_STYLE,
-} from "@crm/gatekeeper-kit/connect-pages";
+} from "@relationship-os/gatekeeper-kit/connect-pages";

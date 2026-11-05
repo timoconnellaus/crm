@@ -15,8 +15,8 @@ import {
   type IntegrationEventRow,
   integrationEventMessage,
   jsonList,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { type DispatchEnv, dispatchAutomationMessages, type StartResult } from "./dispatch.ts";
 
 export const POLL_BATCH = 100;

@@ -1,6 +1,6 @@
-// @crm/sdk: the extension contract (ADR 0005, ADR 0023). See README.md.
+// @relationship-os/sdk: the extension contract (ADR 0005, ADR 0023). See README.md.
 //
-//   import { defineExtension, defineTool, z } from "@crm/sdk";
+//   import { defineExtension, defineTool, z } from "@relationship-os/sdk";
 //   export default defineExtension({ id: "example", version: "1.0.0", contractVersion: 1, ... });
 export { z } from "zod";
 export * from "./automation.ts";

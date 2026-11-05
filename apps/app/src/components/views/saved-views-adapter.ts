@@ -1,7 +1,7 @@
 // Persistence for saved views: the `view.*` operations, stored in `core_views`, personal or
 // shared with the org. The menu talks to this small adapter so it does not care where views live
 // (tests can pass another). A saved view's spec is any object view type (ADR 0056).
-import type { Filter, ObjectViewSpec, ObjectViewType, Sort } from "@crm/core/client";
+import type { Filter, ObjectViewSpec, ObjectViewType, Sort } from "@relationship-os/core/client";
 import { callOp } from "#/lib/operations";
 import type { LayoutConfig } from "./view-state.ts";
 

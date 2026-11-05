@@ -1,4 +1,4 @@
-// crm-app's front door for MCP (ADR 0021, ADR 0032). `workers-oauth-provider` serves OAuth 2.1
+// ros-app's front door for MCP (ADR 0021, ADR 0032). `workers-oauth-provider` serves OAuth 2.1
 // (metadata, dynamic client registration, token, revocation) and checks Bearer tokens on /mcp;
 // /oauth/consent is our authorization page; everything else goes to TanStack Start.
 //
@@ -12,7 +12,7 @@ import {
   OAuthProvider,
   type OAuthProviderOptions,
 } from "@cloudflare/workers-oauth-provider";
-import type { IdentityEnv } from "@crm/auth";
+import type { IdentityEnv } from "@relationship-os/auth";
 import {
   type ActingUser,
   bindConnectionGrant,
@@ -25,8 +25,8 @@ import {
   rateLimit,
   scopePermissions,
   touchConnection,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { createMcpHandler } from "agents/mcp/server";
 import { aiContextFor } from "../ai.ts";
 import { blobStoreFor, integrationRuntimeFor } from "../integrations.ts";
@@ -187,7 +187,7 @@ export function oauthOptions(
     refreshTokenTTL: REFRESH_TOKEN_TTL,
     resourceMetadata: {
       resource: env.MCP_RESOURCE || `${origin}${MCP_PATH}`,
-      resource_name: "CRM",
+      resource_name: "Relationship OS",
     },
     // Code exchange binds the provider's grant to the connected app; every refresh checks the
     // connection is still live, so revoking it also kills its refresh token.

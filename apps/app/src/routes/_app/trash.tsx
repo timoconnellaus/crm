@@ -1,16 +1,16 @@
 // Trash: soft-deleted people, organisations, activities and tasks (trash.list), newest first, in
 // a virtualised list that loads more as you scroll. Each is restorable with its object's restore
 // operation until its restorable-until date; restoring is optimistic and offers Undo.
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {

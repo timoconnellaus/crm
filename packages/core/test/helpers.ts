@@ -1,6 +1,6 @@
 // Test helpers: users with each role and invocation contexts over the real D1 binding.
 import { env } from "cloudflare:workers";
-import { createCrmDb } from "@crm/db";
+import { createCrmDb } from "@relationship-os/db";
 import type { ActingUser, Actor, InvocationContext, Role } from "../src/index.ts";
 import { newId } from "../src/index.ts";
 

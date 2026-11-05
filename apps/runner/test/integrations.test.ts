@@ -4,7 +4,7 @@
 // restricted reads that are never written anywhere.
 import { abortAllDurableObjects } from "cloudflare:test";
 import { env, exports } from "cloudflare:workers";
-import { type ActingUser, invokeByName, PendingApprovalError } from "@crm/core";
+import { type ActingUser, invokeByName, PendingApprovalError } from "@relationship-os/core";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { extensionHost } from "../src/index.ts";
 import { fakeProviderStub } from "../src/integrations/fake.ts";

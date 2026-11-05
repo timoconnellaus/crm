@@ -1,6 +1,6 @@
 // The graders on their own: test-mode reports against expectations, summary keywords, and the LLM
 // judge (with a scripted model).
-import { reply, scriptedModel } from "@crm/evals-mcp/test/fakes.ts";
+import { reply, scriptedModel } from "@relationship-os/evals-mcp/test/fakes.ts";
 import { describe, expect, it } from "vitest";
 import {
   gradeTest,

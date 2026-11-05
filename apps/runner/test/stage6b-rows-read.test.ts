@@ -3,8 +3,8 @@
 // connection index), revocation, and the outbox retry (one primary-key page). rows_read budgets
 // and EXPLAIN QUERY PLAN checks, on tables seeded so an unindexed read would show.
 import { env } from "cloudflare:workers";
-import { liveBinding, loadBindings, retryOutbox, revokeBindingsPlan } from "@crm/core";
-import { createCrmDb } from "@crm/db";
+import { liveBinding, loadBindings, retryOutbox, revokeBindingsPlan } from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { beforeAll, describe, expect, it } from "vitest";
 import { pollIntegrationEvents } from "../src/automations/integration-events.ts";
 

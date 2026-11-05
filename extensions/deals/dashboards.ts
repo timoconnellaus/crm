@@ -3,7 +3,7 @@
 // from the dashboard's filters (ADR 0057), and a click-through that opens exactly the deals it
 // counted (tested per widget in packages/core/test/deals-dashboards.test.ts). Every query walks
 // one of the deal indexes declared in index.ts.
-import type { DashboardDeclaration } from "@crm/sdk";
+import type { DashboardDeclaration } from "@relationship-os/sdk";
 
 const OWNER = "(:owner IS NULL OR d.owner = :owner)";
 const CLOSED_IN_RANGE = "d.closed_at >= :date_from AND d.closed_at < :date_to";

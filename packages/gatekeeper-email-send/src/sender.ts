@@ -39,7 +39,7 @@ export function assertSenderAllowed(sender: string, allowedDomains: string | und
   if (allowed.length === 0) {
     throw new Error(
       "No sender domains are configured for email sending: an administrator must set " +
-        "ALLOWED_SENDER_DOMAINS on the crm-gatekeeper-email-send Worker.",
+        "ALLOWED_SENDER_DOMAINS on the ros-gatekeeper-email-send Worker.",
     );
   }
   const domain = domainOf(sender);

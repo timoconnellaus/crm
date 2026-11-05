@@ -18,9 +18,9 @@
 // cancellations and responses mail people and can't be made idempotent, so each is claimed before
 // it is applied and a crash can't send it twice.
 
-import { ActionApplyError, defineActions, type ActionDefinition, type ActionPresentation, type TaggedAction } from "@crm/gatekeeper-kit/actions";
-import { buildDescription, codeSpan, plainInline, sanitizeTitle } from "@crm/gatekeeper-kit/action-description";
-import type { ProvisionalIds } from "@crm/gatekeeper-kit/simulation";
+import { ActionApplyError, defineActions, type ActionDefinition, type ActionPresentation, type TaggedAction } from "@relationship-os/gatekeeper-kit/actions";
+import { buildDescription, codeSpan, plainInline, sanitizeTitle } from "@relationship-os/gatekeeper-kit/action-description";
+import type { ProvisionalIds } from "@relationship-os/gatekeeper-kit/simulation";
 import { exchangeRefusal, isProvisional, realId } from "./binding";
 import { GraphApiError, type GraphApi } from "./graph-api";
 import { CalendarApi, idPath } from "./calendar-graph";

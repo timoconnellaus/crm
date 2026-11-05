@@ -1,6 +1,6 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-zoominfo/src/zoominfo-api.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import "cloudflare:workers";
-import { stripTrailingSlashes } from "@crm/gatekeeper-interface/gatekeeper";
+import { stripTrailingSlashes } from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 // ---------------------------------------------------------------------------
 // OAuth (Authorization Code + PKCE) and a thin HTTP wrapper around the ZoomInfo GTM API.

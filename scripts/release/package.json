@@ -1,6 +1,7 @@
 {
-  "name": "@crm/release-scripts",
+  "name": "@relationship-os/release-scripts",
   "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "type": "module",
   "description": "Builds release bundles and their manifest (ADR 0053, ADR 0160). See README.md.",
@@ -10,10 +11,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@crm/release": "workspace:*"
+    "@relationship-os/release": "workspace:*"
   },
   "devDependencies": {
-    "@crm/config": "workspace:*",
+    "@relationship-os/config": "workspace:*",
     "@types/node": "24.19.2",
     "typescript": "6.0.3",
     "vitest": "5.1.0"

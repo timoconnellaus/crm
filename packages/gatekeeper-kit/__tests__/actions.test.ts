@@ -1,6 +1,6 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-kit/__tests__/actions.test.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import { describe, expect, it, vi } from "vitest";
-import type { ApprovalQueue, GitCache } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ApprovalQueue, GitCache } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import type { RpcStub } from "cloudflare:workers";
 import {
   ActionApplyError,

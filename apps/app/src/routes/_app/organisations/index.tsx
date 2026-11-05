@@ -2,10 +2,10 @@
 // column picker) over a virtualised, infinitely scrolling DataTable of organisation.list, with
 // import/export and bulk merge, tags/owner and delete. Filter, sort and columns live in the URL;
 // hovering a link here preloads the first page and the count.
-import { organisationObject } from "@crm/core/client";
-import { Avatar, AvatarFallback, AvatarImage } from "@crm/ui/components/avatar";
-import { Button } from "@crm/ui/components/button";
-import { Kbd } from "@crm/ui/components/kbd";
+import { organisationObject } from "@relationship-os/core/client";
+import { Avatar, AvatarFallback, AvatarImage } from "@relationship-os/ui/components/avatar";
+import { Button } from "@relationship-os/ui/components/button";
+import { Kbd } from "@relationship-os/ui/components/kbd";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Building2Icon, PlusIcon } from "lucide-react";
 import { useCallback } from "react";

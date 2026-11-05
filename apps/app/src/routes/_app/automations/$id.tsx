@@ -2,11 +2,11 @@
 // (docs/stages/assets/05-automation-page.html): header (name, provenance line, status pill, Test
 // on a record…, Pause / Resume, Ask the assistant), tabs Overview / Runs (n) / Code / Versions.
 // `?tab=runs&run=arn_…` opens a run's detail (notifications link there).
-import type { AutomationTestReport } from "@crm/core";
-import { Button } from "@crm/ui/components/button";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@crm/ui/components/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@crm/ui/components/tooltip";
+import type { AutomationTestReport } from "@relationship-os/core";
+import { Button } from "@relationship-os/ui/components/button";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@relationship-os/ui/components/tooltip";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { MessageSquareIcon, PauseIcon, PlayIcon, PlugIcon, WorkflowIcon } from "lucide-react";
 import { useState } from "react";

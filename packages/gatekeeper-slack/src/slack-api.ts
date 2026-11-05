@@ -2,7 +2,7 @@
 // Slack Web API client for user-token reads and OAuth lifecycle. Maps responses to public types and
 // resolves known mentions.
 
-import { AccountDescription } from "@crm/gatekeeper-interface/gatekeeper";
+import { AccountDescription } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import {
   SlackConversationInfo, SlackConversationKind, SlackFile, SlackMessage, SlackReaction,
   SlackUser, SlackWorkspaceInfo,

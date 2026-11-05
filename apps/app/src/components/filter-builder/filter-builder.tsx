@@ -1,20 +1,20 @@
 // Filter builder: and/or groups of conditions over an object's field registry, emitting filter
 // JSON (`Filter`, ADR 0016). Controlled by `value`/`onChange`; edits apply as you type (debounced)
 // and only complete conditions reach the filter. `/` opens it and focuses the first input.
-import type { FieldDefinition, Filter, ObjectDefinition } from "@crm/core/client";
-import { getField } from "@crm/core/client";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Input } from "@crm/ui/components/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@crm/ui/components/popover";
+import type { FieldDefinition, Filter, ObjectDefinition } from "@relationship-os/core/client";
+import { getField } from "@relationship-os/core/client";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Input } from "@relationship-os/ui/components/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@relationship-os/ui/components/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/ui/components/select";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { FilterIcon, ListPlusIcon, PlusIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useHotkey } from "#/lib/hotkeys";

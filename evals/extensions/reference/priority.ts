@@ -1,5 +1,5 @@
 // Reference answer for the `task-priority` prompt.
-import { defineExtension } from "@crm/sdk";
+import { defineExtension } from "@relationship-os/sdk";
 
 export default defineExtension({
   id: "priority",

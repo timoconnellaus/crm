@@ -1,5 +1,5 @@
 // What the runtime's components share with the form that renders them: the "frame" of upstream.
-import type { ConfiguratorUIOption } from "@crm/gatekeeper-configurator-ui";
+import type { ConfiguratorUIOption } from "@relationship-os/gatekeeper-configurator-ui";
 import { createContext, useContext } from "react";
 
 /** A CheckboxList's options for one `name`, kept for the life of the form. */

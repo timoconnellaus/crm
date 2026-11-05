@@ -8,7 +8,7 @@ export const getSystemHealth = createServerFn({ method: "GET" }).handler(async (
   getHealth(env),
 );
 
-/** Starts crm-runner's hello-world Workflow through the RUNNER service binding. */
+/** Starts ros-runner's hello-world Workflow through the RUNNER service binding. */
 export const startHelloWorkflow = createServerFn({ method: "POST" })
   .validator((input: { name: string }) => ({ name: String(input.name).slice(0, 100) }))
   .handler(async ({ data }) => runner(env).startHelloWorkflow(data.name));

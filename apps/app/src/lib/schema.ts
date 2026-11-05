@@ -1,8 +1,8 @@
 // The deployment's objects as the UI sees them: `schema.objects` (core objects plus extension
 // objects and fields, from the field registry), converted to the client-side ObjectDefinition the
 // generic DataTable, FilterBuilder and ColumnPicker take.
-import type { FieldInfo, ObjectInfo } from "@crm/core";
-import type { FieldDefinition, FieldType, ObjectDefinition } from "@crm/core/client";
+import type { FieldInfo, ObjectInfo } from "@relationship-os/core";
+import type { FieldDefinition, FieldType, ObjectDefinition } from "@relationship-os/core/client";
 import { useOp } from "./query.ts";
 
 export type { FieldInfo, ObjectInfo };

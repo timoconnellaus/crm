@@ -6,7 +6,7 @@ import { expect, it, vi } from "vitest";
 import type { DriveNodePage } from "../src/configurator/drive-configurator-types";
 import { nodes, text } from "./configurator-tree";
 
-vi.mock("@crm/gatekeeper-configurator-ui", () => ({
+vi.mock("@relationship-os/gatekeeper-configurator-ui", () => ({
   h: (component: unknown, props: unknown, ...children: unknown[]) => ({
     component, props: props ?? {}, children,
   }),

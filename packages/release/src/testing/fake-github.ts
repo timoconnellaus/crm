@@ -5,6 +5,7 @@
 import { RELEASE_WORKFLOW_PATH, SLSA_PROVENANCE_V1 } from "../attestation.ts";
 import { releaseAssetNames } from "../bundle.ts";
 import { sha256Hex, toBase64 } from "../hash.ts";
+import { LEGACY_PRODUCT, legacyReleaseAssetNames } from "../legacy.ts";
 import type { FixtureRelease } from "./fixture-release.ts";
 
 export interface PublishOptions {
@@ -36,14 +37,18 @@ export class FakeGitHub {
 
   readonly repository: string;
   /** `origin` serves both the API and downloads (for a fake served over HTTP). */
-  constructor(repository = "timoconnellaus/crm", origin?: string) {
+  constructor(repository = "timoconnellaus/relationship-os", origin?: string) {
     this.repository = repository;
     this.base = origin ?? "https://github.test";
     this.api = origin ?? "https://api.github.test";
   }
 
   async publish(release: FixtureRelease, options: PublishOptions = {}) {
-    const names = releaseAssetNames(release.version);
+    // A pre-rename release (ADR 0190): crm-<version>.* assets, built in timoconnellaus/crm.
+    const legacy = release.manifest.product === LEGACY_PRODUCT;
+    const names = legacy
+      ? { ...legacyReleaseAssetNames(release.version), sums: "SHA256SUMS" }
+      : releaseAssetNames(release.version);
     let bundle = release.bundle;
     let sums = release.sums;
     if (options.tamper) {
@@ -66,7 +71,12 @@ export class FakeGitHub {
       publishedAt: new Date(Date.UTC(2026, 10, this.releases.length + 1)).toISOString(),
     });
     if (options.attest !== false) {
-      this.attest(release.digest, `v${release.version}`, options.workflow);
+      this.attest(
+        release.digest,
+        `v${release.version}`,
+        options.workflow ??
+          (legacy ? { repository: `https://github.com/${release.manifest.repository}` } : {}),
+      );
     }
   }
 

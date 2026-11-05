@@ -5,7 +5,12 @@
 //
 // Errors are thrown as OperationCallError with the pipeline's stable `code` (forbidden,
 // invalid_input, conflict, not_found, denied, review_not_supported, ...).
-import type { CoreInput, CoreOperationName, CoreOutput, OperationErrorCode } from "@crm/core";
+import type {
+  CoreInput,
+  CoreOperationName,
+  CoreOutput,
+  OperationErrorCode,
+} from "@relationship-os/core";
 import { callOperation } from "#/server/call-operation";
 
 export class OperationCallError extends Error {

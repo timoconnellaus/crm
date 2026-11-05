@@ -11,7 +11,7 @@
 import { DurableObject, RpcTarget, WorkerEntrypoint, restore, type RpcStub } from "cloudflare:workers";
 import type {
   ActionDescription, ConnectHandoff, GatekeeperConnectCallback, ObservationDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import type { CalendarGatekeeperProps, OutlookGatekeeperProps, SharePointAccess, SharePointGatekeeperProps } from "../../src/microsoft-env.js";
 import { GraphApi } from "../../src/graph-api.js";
 import { accountSource } from "../../src/microsoft-credentials.js";

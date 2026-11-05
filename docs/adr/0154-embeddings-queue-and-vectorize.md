@@ -48,7 +48,7 @@ no vector.
 - Then one D1 batch: state rows upserted, queue rows deleted only if not re-queued meanwhile.
   A failure leaves the rows queued with `attempts + 1`; after 8 attempts a row is left for an
   admin to look at (Settings → AI shows the queue size).
-- **When it runs**: crm-app's **post-commit hook** (`InvocationContext.onCommitted`, called after
+- **When it runs**: ros-app's **post-commit hook** (`InvocationContext.onCommitted`, called after
   a successful batch) starts a drain with `waitUntil` when the write queued anything, one drain at
   a time per isolate, coalescing writes that arrive meanwhile. A **10-minute cron** catches up
   whatever a drain missed and walks existing records once (`backfillEmbeddingQueue`, a rowid
@@ -56,7 +56,7 @@ no vector.
   gets its history indexed without a scan per run.
 
 ### Vectorize
-One index, `crm-records`, cosine, 384 dimensions (the shipped `bge-small-en-v1.5`), with a string
+One index, `ros-records`, cosine, 384 dimensions (the shipped `bge-small-en-v1.5`), with a string
 metadata index on `object`. `pnpm run deploy` creates it when missing
 (`wrangler vectorize create … --dimensions=384 --metric=cosine` and
 `create-metadata-index --property-name=object --type=string`,
@@ -87,18 +87,18 @@ for bge-small; re-embedding only on hash changes keeps that to new and edited te
 - Freshness is seconds after a write (the post-commit drain), at worst 10 minutes (the cron).
 - Vectorize mutations are asynchronous ("a few seconds"), so a record may not appear in semantic
   results immediately after being embedded.
-- In local development and e2e there is no Vectorize: with `AI_FAKE_MODEL=true` crm-app keeps
+- In local development and e2e there is no Vectorize: with `AI_FAKE_MODEL=true` ros-app keeps
   vectors in memory per isolate (ADR 0156).
 
 ## Amendment, 2026-11-05 (merged with stage 5: embeddings move onto the event queue)
 Stage 5 (ADR 0130) landed while 7a was in review: after every commit the pipeline sends the
-record changes to the `crm-automation-events` queue, consumed by crm-runner in batches of up to
+record changes to the `ros-automation-events` queue, consumed by ros-runner in batches of up to
 100 messages. Embeddings now use that path:
 
 - **Where a deployment has Vectorize** (the deploy script binds `VECTORIZE` and `AI` on both
-  Workers), crm-app and crm-runner set `InvocationContext.embedViaEvents`. The pipeline then
+  Workers), ros-app and ros-runner set `InvocationContext.embedViaEvents`. The pipeline then
   writes **no** `core_embedding_queue` row: the cost on the write path is zero beyond the event
-  stage 5 already sends. crm-runner's queue handler calls `embedRecordEvents` after dispatching
+  stage 5 already sends. ros-runner's queue handler calls `embedRecordEvents` after dispatching
   automations. It maps the batch's record changes to records whose embedded text may have changed
   (the same field rules; an affiliation event re-embeds its person, looked up by id), then embeds
   only changed hashes, at most 100 per model call. A redelivered batch costs no model call because
@@ -109,9 +109,9 @@ record changes to the `crm-automation-events` queue, consumed by crm-runner in b
   pipeline queues it in its batch (no Vectorize: local development, e2e, tests and scripts), never
   both. Erase and sync are unchanged: stage 5 emits no event for an erase (the record is gone), and
   `sync.ingest` writes activities without record changes, so both still queue their records
-  themselves and crm-app drains right after the commit.
-- crm-app's 10-minute cron still runs the one-time backfill and drains the queue: the failures
+  themselves and ros-app drains right after the commit.
+- ros-app's 10-minute cron still runs the one-time backfill and drains the queue: the failures
   above, erase, sync, and anything written without `embedViaEvents`.
-- The in-memory vector store of local development lives in crm-app, so locally crm-app keeps the
+- The in-memory vector store of local development lives in ros-app, so locally ros-app keeps the
   queue path even though events are sent.
 

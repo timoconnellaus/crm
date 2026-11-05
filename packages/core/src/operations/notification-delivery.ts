@@ -2,8 +2,8 @@
 // and daily digest, and the admin settings (the org connections email and Slack go out through,
 // escalation of unread approvals, the digest hour, and channel routes such as deal won → #sales).
 // Preferences are scoped to the calling person; the admin settings are human-admin only and
-// audited (they decide what leaves the CRM). Delivery itself is crm-runner's minute cron.
-import type { CoreDatabase } from "@crm/db";
+// audited (they decide what leaves the CRM). Delivery itself is ros-runner's minute cron.
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ForbiddenError, ValidationError } from "../errors.ts";

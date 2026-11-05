@@ -2,7 +2,7 @@
 import {
   Button, Fragment, h, Notice, Section,
   type ConfiguratorUIRenderContext, type ConfiguratorUISpec,
-} from "@crm/gatekeeper-configurator-ui";
+} from "@relationship-os/gatekeeper-configurator-ui";
 import type {
   OutlookConfiguratorAccess as Access,
   OutlookConfiguratorRpc as Rpc,

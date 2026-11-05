@@ -3,8 +3,8 @@
 // apply (what approval runs: installExtension), approve and reject (people only), eject, and the
 // proposal detail the approvals inbox shows.
 
-import type { ExtensionManifest } from "@crm/sdk";
-import { EXTENSION_ID_RE } from "@crm/sdk";
+import type { ExtensionManifest } from "@relationship-os/sdk";
+import { EXTENSION_ID_RE } from "@relationship-os/sdk";
 import { z } from "zod";
 import { capFileDiffs } from "../approvals/caps.ts";
 import {
@@ -210,7 +210,7 @@ export const extensionWrite = defineOperation({
     "extension if it is new). Nothing is installed or committed: run extension.check to see " +
     "issues, then extension.propose to send it for approval. files maps paths relative to the " +
     "extension root to their full new contents (index.ts is the entry, whose default export is " +
-    "defineExtension({...}) from @crm/sdk); null deletes a file. replace: true deletes every " +
+    "defineExtension({...}) from @relationship-os/sdk); null deletes a file. replace: true deletes every " +
     "other file. Shipped extensions cannot be written unless ejected. Returns the working copy's " +
     "paths (use extension.read for contents).",
   input: z.object({

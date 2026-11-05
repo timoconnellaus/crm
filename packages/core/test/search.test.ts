@@ -1,7 +1,7 @@
 // search.global on a 10k-record seed: correctness, prefix search, highlighting and the 200 ms
 // acceptance target (stage 1 criterion 9).
 import { env } from "cloudflare:workers";
-import { SEED_FIXTURES, seedDatabase } from "@crm/db/seed";
+import { SEED_FIXTURES, seedDatabase } from "@relationship-os/db/seed";
 import { beforeAll, describe, expect, it } from "vitest";
 import { type ActingUser, ftsQuery, highlight, invoke, searchTerms } from "../src/index.ts";
 import { insertOrganisation } from "./fixtures.ts";

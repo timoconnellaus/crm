@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@crm/ui/lib/utils";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { CircleIcon } from "lucide-react";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import type * as React from "react";

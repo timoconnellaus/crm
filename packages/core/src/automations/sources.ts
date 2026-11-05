@@ -1,10 +1,10 @@
 // Trigger sources (ADR 0130): one per queue message kind, each turning a message into run
 // candidates for the enabled automations whose trigger it fires. Matching is pure over the message
-// and the automations; the consumer (crm-runner) then applies the rails and the conditions.
+// and the automations; the consumer (ros-runner) then applies the rails and the conditions.
 //
 // Stage 6b registers a source for `integration` messages (trigger types `webhook`, `syncEvent`)
 // with `registerTriggerSource`; nothing else in the consumer changes.
-import type { ValueMatch } from "@crm/sdk";
+import type { ValueMatch } from "@relationship-os/sdk";
 import { getObject } from "../fields/index.ts";
 import type {
   ApprovalDecidedMessage,

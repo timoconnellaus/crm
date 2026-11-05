@@ -1,20 +1,20 @@
-// crm-runner: runs extension code, automations and Workflows (ADR 0004). Reached by crm-app over a
+// ros-runner: runs extension code, automations and Workflows (ADR 0004). Reached by ros-app over a
 // service binding. Self-contained and account-agnostic: no account or resource IDs are committed
 // (ADR 0012); wrangler provisions the D1 database by name on first deploy.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "crm-runner",
+  "name": "ros-runner",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat", "allow_irrevocable_stub_storage"],
-  // Internal only: crm-app reaches it through a service binding, never a public URL.
+  // Internal only: ros-app reaches it through a service binding, never a public URL.
   "workers_dev": false,
   "preview_urls": false,
   "observability": { "enabled": true },
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "crm",
+      "database_name": "ros",
       "migrations_dir": "../../packages/db/migrations",
       "migrations_table": "core_migrations"
     }
@@ -22,29 +22,29 @@
   "workflows": [
     {
       "binding": "HELLO_WORKFLOW",
-      "name": "crm-hello",
+      "name": "ros-hello",
       "class_name": "HelloWorkflow"
     },
     // Stage 5 (ADR 0130): every automation run is one instance; its id is derived from the run's
     // idempotency key, so a duplicate event never starts a second run.
     {
       "binding": "AUTOMATION_WORKFLOW",
-      "name": "crm-automation",
+      "name": "ros-automation",
       "class_name": "AutomationWorkflow"
     }
   ],
-  // Automation events (ADR 0130): crm-app and this Worker produce committed record changes and
+  // Automation events (ADR 0130): ros-app and this Worker produce committed record changes and
   // approval decisions; this Worker consumes them and starts runs. Failed batches retry, then go
   // to the dead-letter queue.
   "queues": {
-    "producers": [{ "binding": "AUTOMATION_EVENTS", "queue": "crm-automation-events" }],
+    "producers": [{ "binding": "AUTOMATION_EVENTS", "queue": "ros-automation-events" }],
     "consumers": [
       {
-        "queue": "crm-automation-events",
+        "queue": "ros-automation-events",
         "max_batch_size": 100,
         "max_batch_timeout": 5,
         "max_retries": 5,
-        "dead_letter_queue": "crm-automation-events-dlq"
+        "dead_letter_queue": "ros-automation-events-dlq"
       }
     ]
   },
@@ -95,28 +95,28 @@
     }
   ],
   // Email bodies of synced mail (ADR 0112): D1 keeps a snippet only (cost audit U1).
-  "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "crm-blobs" }],
+  "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "ros-blobs" }],
   // Gatekeepers (ADR 0007): each is a Worker's GatekeeperVendor entrypoint, enabled per
   // deployment by an admin. Deploy the gatekeeper Workers you use and add their bindings here
-  // (GATEKEEPER_GOOGLE → crm-gatekeeper-google, …); see docs/integrations.md. The fake provider
-  // is crm-runner itself and answers only when INTEGRATIONS_FAKE_PROVIDER is "true".
+  // (GATEKEEPER_GOOGLE → ros-gatekeeper-google, …); see docs/integrations.md. The fake provider
+  // is ros-runner itself and answers only when INTEGRATIONS_FAKE_PROVIDER is "true".
   "services": [
-    { "binding": "GATEKEEPER_FAKE", "service": "crm-runner", "entrypoint": "FakeGatekeeperVendor" }
+    { "binding": "GATEKEEPER_FAKE", "service": "ros-runner", "entrypoint": "FakeGatekeeperVendor" }
   ],
   "vars": {
     // Extension code calls operations here (codemode:crm), so the runner applies the same
-    // approval floor as crm-app. Keep the two in step. See docs/deploying.md.
+    // approval floor as ros-app. Keep the two in step. See docs/deploying.md.
     "APPROVAL_FLOOR": "",
-    // codemode:ai and proposal summaries use the model role registry (ADR 0150), like crm-app:
+    // codemode:ai and proposal summaries use the model role registry (ADR 0150), like ros-app:
     // keep these in step with apps/app/wrangler.jsonc. Workers AI needs an `ai` binding, added
-    // by `pnpm run deploy` (CRM_AI, docs/deploying.md).
+    // by `pnpm run deploy` (ROS_AI, docs/deploying.md).
     "AI_GATEWAY_ID": "",
     "CLOUDFLARE_ACCOUNT_ID": "",
     "AI_MODEL_ROLES": "",
     "AI_PROVIDERS": "",
     "AI_GATEWAY_BYOK": "",
     // The CRM's public origin (https://crm.example.com), where connect popups are handed back.
-    // crm-app passes the request's origin; this is the fallback.
+    // ros-app passes the request's origin; this is the fallback.
     "APP_ORIGIN": "",
     // "true" offers the fake provider (development and e2e only; never in production).
     "INTEGRATIONS_FAKE_PROVIDER": "false"

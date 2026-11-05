@@ -4,7 +4,7 @@
 //
 // Only the slice of the chat-completions wire format the agent loop uses is typed here.
 
-import { shippedModel } from "@crm/core/ai-roles";
+import { shippedModel } from "@relationship-os/core/ai-roles";
 
 /**
  * The default model: the model role registry's shipped `assistant` model (ADR 0150), a Workers AI

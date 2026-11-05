@@ -1,8 +1,8 @@
 // Gallery view (ADR 0027, ADR 0056): a responsive grid of cards showing chosen fields and an
 // image (a URL field) or initials. Rows of cards are virtualised in the page's scrolling body
 // (VirtualFeed) and the next page loads as the end comes near.
-import type { Filter, Sort } from "@crm/core/client";
-import { Skeleton } from "@crm/ui/components/skeleton";
+import type { Filter, Sort } from "@relationship-os/core/client";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { LayoutGridIcon } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";

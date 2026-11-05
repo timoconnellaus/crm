@@ -3,13 +3,13 @@
 // MCP, widget.preview through call_operation, and the whole harness in both modes driven by a
 // stand-in model that answers each prompt with its reference widget (lib/reference.ts). Every
 // prompt should pass: a failure means the reference SQL, the grader or the server is wrong.
-// Needs no model credentials, but @crm/core needs Node's type transforms:
+// Needs no model credentials, but @relationship-os/core needs Node's type transforms:
 //
 //   node --experimental-transform-types evals/dashboards/smoke.ts --base-url http://localhost:5173 [--mode agent|describe|both] [--only id,id]
 import { parseArgs } from "node:util";
-import { parseOnly } from "@crm/evals-mcp/lib/cli.ts";
-import { openMcpSession } from "@crm/evals-mcp/lib/mcp.ts";
-import { authorize, signIn } from "@crm/evals-mcp/lib/oauth.ts";
+import { parseOnly } from "@relationship-os/evals-mcp/lib/cli.ts";
+import { openMcpSession } from "@relationship-os/evals-mcp/lib/mcp.ts";
+import { authorize, signIn } from "@relationship-os/evals-mcp/lib/oauth.ts";
 import { loadCore } from "./lib/core.ts";
 import {
   dashboardFilters,

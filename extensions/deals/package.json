@@ -1,23 +1,24 @@
 {
-  "name": "@crm/extension-deals",
+  "name": "@relationship-os/extension-deals",
   "version": "1.1.0",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./index.ts"
   },
-  "description": "Deals, pipelines and stages: the first shipped extension (stage 4, ADR 0026). Bundled as source into crm-runner.",
+  "description": "Deals, pipelines and stages: the first shipped extension (stage 4, ADR 0026). Bundled as source into ros-runner.",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@crm/sdk": "workspace:*"
+    "@relationship-os/sdk": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
     "@cloudflare/workers-types": "5.20261104.1",
-    "@crm/config": "workspace:*",
+    "@relationship-os/config": "workspace:*",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
   }

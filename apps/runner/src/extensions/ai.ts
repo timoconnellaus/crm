@@ -1,5 +1,5 @@
 // codemode:ai: the model roles extensions may use (summarise, extract, classify), resolved through
-// the model role registry in @crm/core (ADR 0009, ADR 0150): shipped defaults (Workers AI) → deploy
+// the model role registry in @relationship-os/core (ADR 0009, ADR 0150): shipped defaults (Workers AI) → deploy
 // config → Settings → AI overrides, through AI Gateway when AI_GATEWAY_ID is set. Without any
 // configured model the module fails with a clear error rather than reaching any network.
 import {
@@ -8,12 +8,12 @@ import {
   loadAiSettings,
   type ModelRunner,
   modelRunnerFromEnv,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 
 export { AiNotConfiguredError };
 
-/** The registry-backed runner for crm-runner's environment, or null without AI. */
+/** The registry-backed runner for ros-runner's environment, or null without AI. */
 export function runnerModels(env: object): ModelRunner | null {
   const e = env as AiEnv & { DB?: D1Database };
   const db = e.DB ? createCrmDb(e.DB) : null;
@@ -60,7 +60,7 @@ export async function runModelRole(
   const models = runnerModels(env);
   if (!models) {
     throw new AiNotConfiguredError(
-      "AI is not configured for this deployment: add an `ai` binding to crm-runner (docs/deploying.md)",
+      "AI is not configured for this deployment: add an `ai` binding to ros-runner (docs/deploying.md)",
     );
   }
   const { text } = await models.run(role, [{ role: "user", content: prompt(role, args) }]);

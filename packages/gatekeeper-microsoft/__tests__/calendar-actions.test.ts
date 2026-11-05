@@ -3,8 +3,8 @@
 // how it is fenced against a change made since it was proposed, and what its revert does.
 
 import { describe, expect, it } from "vitest";
-import { ActionApplyError } from "@crm/gatekeeper-kit/actions";
-import { ProvisionalIds, type SimulationKv } from "@crm/gatekeeper-kit/simulation";
+import { ActionApplyError } from "@relationship-os/gatekeeper-kit/actions";
+import { ProvisionalIds, type SimulationKv } from "@relationship-os/gatekeeper-kit/simulation";
 import {
   definitions, requiredAccess, revert, type CalendarAction, type CalendarActionHost, type CalendarActions, type CalendarRef, type EventTarget, type EventVersion,
 } from "../src/calendar-actions";

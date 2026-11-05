@@ -1,11 +1,11 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-google/src/sheets.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import { DurableObject, RpcStub, RpcTarget } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
-import { ActionJournal } from "@crm/gatekeeper-kit/actions";
-import { SerialTaskQueue } from "@crm/gatekeeper-kit/serial-queue";
+import { ActionJournal } from "@relationship-os/gatekeeper-kit/actions";
+import { SerialTaskQueue } from "@relationship-os/gatekeeper-kit/serial-queue";
 import type {
   ActionKind, ApprovalQueue, Gatekeeper, GatekeeperUserVerifier, GitCache, ResourceDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { AccessTokenCache, type AccessTokenRequest } from "./auth-retry";
 import {
   boundProps, createFileOnce, isSimulated, UNCREATED_FILE_ID, type SimulatedFileProps,

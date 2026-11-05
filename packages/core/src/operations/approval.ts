@@ -1,7 +1,7 @@
 // approval.* and changeset.* operations (ADR 0022): reading the approval queue, approving and
 // rejecting pending actions (people only), and grouping an MCP session's work into titled change
 // sets. Applying re-runs each action through the pipeline as its original actor.
-import type { CoreDatabase, CrmDb, PendingActionStatus } from "@crm/db";
+import type { CoreDatabase, CrmDb, PendingActionStatus } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ApprovalStateError, objectOfId } from "../approvals/queue.ts";

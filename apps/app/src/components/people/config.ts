@@ -1,6 +1,6 @@
 // People list configuration: which person fields the list shows and offers.
-import type { PersonListItem } from "@crm/core";
-import { personObject, type Sort } from "@crm/core/client";
+import type { PersonListItem } from "@relationship-os/core";
+import { personObject, type Sort } from "@relationship-os/core/client";
 import type { ViewDefaults } from "../views/view-state.ts";
 
 /** Fields person.list returns that make sense as columns, in picker order. */

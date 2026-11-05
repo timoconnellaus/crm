@@ -2,7 +2,7 @@
 // It implements the real gatekeeper interface (vendor, account, facets, hooks, actions) so the
 // integration host, the connect flow, sync and outbound approvals can be exercised end to end in
 // tests and local development without real accounts. It is offered only when
-// INTEGRATIONS_FAKE_PROVIDER is "true" (never in a production deployment), and crm-runner binds
+// INTEGRATIONS_FAKE_PROVIDER is "true" (never in a production deployment), and ros-runner binds
 // it to itself as GATEKEEPER_FAKE.
 //
 // Not a template for production gatekeepers: no PKCE, no credentials, a trivially simple journal.
@@ -394,12 +394,12 @@ function account(env: Env, accountId: string): DurableObjectStub<FakeAccount> {
   return env.FAKE_ACCOUNT.get(env.FAKE_ACCOUNT.idFromString(accountId));
 }
 
-/** The connect page's public path; crm-app proxies /gatekeeper/fake/* to crm-runner. */
+/** The connect page's public path; ros-app proxies /gatekeeper/fake/* to ros-runner. */
 function connectPath(accountId: string, nonce: string): string {
   return `/gatekeeper/fake/connect/${accountId}/${nonce}`;
 }
 
-/** Routes the fake provider's public pages (from crm-runner's fetch). */
+/** Routes the fake provider's public pages (from ros-runner's fetch). */
 export async function fakeProviderFetch(env: Env, request: Request): Promise<Response> {
   const pathname = new URL(request.url).pathname;
   // Development and e2e only (the fake provider is off in production): put mail and events into

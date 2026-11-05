@@ -1,9 +1,9 @@
 // Saved views picker for a list: apply a view (table, board, calendar or gallery), save the
 // current state as a personal or shared view, update or delete the active one (when you may), or
 // reset to the default. Persistence is the SavedViewsAdapter (view.*).
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Checkbox } from "@crm/ui/components/checkbox";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
+} from "@relationship-os/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,9 +19,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@crm/ui/components/dropdown-menu";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
+} from "@relationship-os/ui/components/dropdown-menu";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarIcon,

@@ -15,7 +15,7 @@
 // kit's `PageHookCursor` (`./cursors`), the `RpcTarget` that runs it on each page before the
 // caller sees it.
 
-import type { GitOid } from "@crm/gatekeeper-interface/gatekeeper";
+import type { GitOid } from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 /** The author or committer of a commit, as recorded in the commit object itself. */
 export type GitCommitIdentity = {

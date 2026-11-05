@@ -3,7 +3,7 @@
 // retried, integration events are not consumed and notifications are not delivered. The work
 // waits and the first tick after release does it.
 import { env } from "cloudflare:workers";
-import { AUTOMATION_SETTINGS, automationControlFor } from "@crm/core";
+import { AUTOMATION_SETTINGS, automationControlFor } from "@relationship-os/core";
 import { describe, expect, it } from "vitest";
 import { minuteTick } from "../src/index.ts";
 import { db, unique } from "./helpers.ts";

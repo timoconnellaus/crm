@@ -6,10 +6,10 @@ import type {
   ConfiguratorUIRenderContext,
   ConfiguratorUISpec,
   ConfiguratorUIValues,
-} from "@crm/gatekeeper-configurator-ui";
-import { Button as UIButton } from "@crm/ui/components/button";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/gatekeeper-configurator-ui";
+import { Button as UIButton } from "@relationship-os/ui/components/button";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import {
   Component,
   type CSSProperties,

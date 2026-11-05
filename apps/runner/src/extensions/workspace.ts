@@ -17,7 +17,7 @@ import type {
   WorkingCopyOptions,
   WorkspaceEntry,
   WorkspaceWrite,
-} from "@crm/core";
+} from "@relationship-os/core";
 import type { BuildRecord } from "../executor/build-cache.ts";
 import { buildKey, contentHash } from "../executor/worker-code.ts";
 import { SHIPPED_EXTENSIONS } from "../generated/shipped.ts";
@@ -224,7 +224,7 @@ export class ExtensionWorkspace extends DurableObject<Env> {
   }
 
   /**
-   * Every new crm-app isolate calls this (through installShipped) on its first request. When the
+   * Every new ros-app isolate calls this (through installShipped) on its first request. When the
    * bundled source is the one already committed and the repository's HEAD is still that commit,
    * it returns at once.
    */

@@ -4,7 +4,7 @@
 // name what an action awaiting approval will create, retire applied actions too old to revert, and
 // tell a provider's refusal (to apply or undo) from a failure worth retrying.
 
-import { ActionApplyError, type ActionJournal } from "@crm/gatekeeper-kit/actions";
+import { ActionApplyError, type ActionJournal } from "@relationship-os/gatekeeper-kit/actions";
 import { GraphApiError } from "./graph-api";
 import type { StoredIdentity } from "./microsoft-credentials";
 import { VENDOR_ID } from "./microsoft-env";

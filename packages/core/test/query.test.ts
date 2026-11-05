@@ -1,6 +1,6 @@
 // query.sql: the ADR 0010 / ADR 0020 guards (stage 1 criterion 8), against real D1.
 import { env } from "cloudflare:workers";
-import { seedDatabase } from "@crm/db/seed";
+import { seedDatabase } from "@relationship-os/db/seed";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   type ActingUser,

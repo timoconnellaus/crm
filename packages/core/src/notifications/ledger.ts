@@ -3,7 +3,7 @@
 // sent, pending (an outbound action waiting for approval) or failed. A repeated cron tick or a
 // redelivered event finds the key taken and sends nothing. A crash between claim and settle
 // leaves `sending`: the send is never retried (at most once, rather than twice).
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import type { DeliveryOutcome, ExternalChannelId } from "./types.ts";
 

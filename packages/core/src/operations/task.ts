@@ -1,5 +1,5 @@
 // task.* operations: to-dos with a due date, an assignee and links to any records.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "../errors.ts";

@@ -1,7 +1,7 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-kit/src/connect-pages.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 /** Hardened HTML and browser request guards for gatekeeper connect flows. */
 
-import type { ConnectHandoff } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ConnectHandoff } from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 const HTML_ESCAPES: Readonly<Record<string, string>> = {
   "&": "&amp;",

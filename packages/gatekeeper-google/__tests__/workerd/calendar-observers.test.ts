@@ -6,7 +6,7 @@
 import {env} from "cloudflare:workers";
 import {runInDurableObject} from "cloudflare:test";
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {stageCredentials} from "@crm/gatekeeper-kit/credential-stage";
+import {stageCredentials} from "@relationship-os/gatekeeper-kit/credential-stage";
 import type {
   GoogleCalendarGatekeeperImpl, GoogleCalendarGatekeeperImplProps, UserAccount,
 } from "../../src/google";

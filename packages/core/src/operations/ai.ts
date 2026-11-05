@@ -373,7 +373,7 @@ const keyProviders = PROVIDERS.filter((p) => PROVIDER_INFO[p].needsKey) as [
 export const aiSetProviderKey = defineOperation({
   name: "ai.setProviderKey",
   description:
-    "Store a provider's API key (admins): as a Workers secret on crm-app and crm-runner through " +
+    "Store a provider's API key (admins): as a Workers secret on ros-app and ros-runner through " +
     "the Cloudflare API, or in AI Gateway (BYOK). The key goes straight to Cloudflare: it is " +
     "never written to the database, the audit log or any response.",
   input: z.object({
@@ -434,7 +434,7 @@ export const aiSetProviderKey = defineOperation({
 export const aiDeleteProviderKey = defineOperation({
   name: "ai.deleteProviderKey",
   description:
-    "Remove a provider's key (admins): deletes the Workers secret from crm-app and crm-runner, " +
+    "Remove a provider's key (admins): deletes the Workers secret from ros-app and ros-runner, " +
     "or forgets that the provider's key is held by AI Gateway (remove it there too).",
   input: z.object({ provider: z.enum(keyProviders) }),
   output: z.object({ provider: z.string() }),

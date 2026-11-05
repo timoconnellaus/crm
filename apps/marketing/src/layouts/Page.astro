@@ -1,0 +1,31 @@
+---
+// Shared shell for every page. Placeholder until the real design lands; it loads nothing from
+// another origin (no fonts, scripts, analytics or embeds), which scripts/check-static.mjs enforces.
+import "../styles.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+const {
+  title = "Relationship OS",
+  description = "The AI-native CRM that runs in your own Cloudflare account.",
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground antialiased">
+    <main class="mx-auto flex max-w-xl flex-col gap-8 px-6 py-24">
+      <slot />
+    </main>
+  </body>
+</html>

@@ -5,7 +5,7 @@
 // only to SharePoint or its conversion host, without the token. Failures map onto a credential
 // rejection (401), throttling, a refusal, and an unknown outcome (a timeout or dropped connection).
 
-import { ResponseTooLargeError, readBytesCapped, readTextCapped } from "@crm/gatekeeper-kit/response-body";
+import { ResponseTooLargeError, readBytesCapped, readTextCapped } from "@relationship-os/gatekeeper-kit/response-body";
 import { GRAPH_BASE, VENDOR_ID } from "./microsoft-env";
 import { obsContext } from "./observability";
 

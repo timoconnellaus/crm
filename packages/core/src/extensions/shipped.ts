@@ -2,7 +2,7 @@
 // through `extension.install`, the same audited path an admin uses, as a system call. An extension
 // already at the bundled commit is left alone (so an admin's disable sticks); a new release's
 // version is installed.
-import type { CrmDb } from "@crm/db";
+import type { CrmDb } from "@relationship-os/db";
 import { toOperationError } from "../errors.ts";
 import type { GateFloor } from "../gate.ts";
 import { invokeByName } from "../invoke.ts";

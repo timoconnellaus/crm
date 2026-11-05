@@ -6,7 +6,7 @@ mapping of stages 3 and 4 (`modelFor` in `packages/core/src/models.ts`, ADR 0059
 
 ## Context
 Until now each AI feature resolved its own role with a hard-coded Workers AI model:
-`codemode:ai` and proposal summaries in crm-runner, "Describe a widget" in crm-app, and a
+`codemode:ai` and proposal summaries in ros-runner, "Describe a widget" in ros-app, and a
 `DEFAULT_MODEL` constant in the eval harness. Two of those defaults
 (`@cf/meta/llama-3.1-8b-instruct-fast`) are no longer in the Workers AI catalogue: their model
 pages now redirect to "Model not available … deprecated, removed, or not found"
@@ -94,9 +94,9 @@ binding) and `@ai-sdk/openai-compatible`, rather than TanStack AI.
 `run(role, messages)`, `embed(texts)`, `roles()` (the resolved registry) and `test(role, ref?)`.
 The admin layer loads once per runner (one `core_settings` read, only when AI is used). A failure
 of the primary model tries the fallback once. `modelRunnerFromEnv` builds one when the Worker has
-an `AI` binding or another provider configured. crm-app passes it to operations as `ctx.models`;
-crm-runner uses the same registry for `codemode:ai` and proposal summaries (`runnerModels`). The
-eval harnesses take their default model from the registry (`@crm/core/ai-roles`,
+an `AI` binding or another provider configured. ros-app passes it to operations as `ctx.models`;
+ros-runner uses the same registry for `codemode:ai` and proposal summaries (`runnerModels`). The
+eval harnesses take their default model from the registry (`@relationship-os/core/ai-roles`,
 `shippedModel("assistant")`), so no harness hard-codes a vendor.
 
 ## Consequences
@@ -105,16 +105,16 @@ eval harnesses take their default model from the registry (`@crm/core/ai-roles`,
 - The summarise default changed model, so summaries cached by stage 3 code paths (proposal
   summaries are keyed by commit, not model) are unaffected; the new summary cache hashes the model
   (ADR 0153).
-- The AI SDK costs bundle size: crm-runner's main module grew from 3,368 KiB to about 4,460 KiB
+- The AI SDK costs bundle size: ros-runner's main module grew from 3,368 KiB to about 4,460 KiB
   (unminified), so its budget in `apps/runner/scripts/bundle-budget.mjs` rose from 4,096 to
   5,120 KiB. The TypeScript compiler still lives only in the checker's Text module. If cold
-  starts suffer, the runner could load the SDK lazily or call crm-app for model roles.
+  starts suffer, the runner could load the SDK lazily or call ros-app for model roles.
 - Deprecated Workers AI models are a recurring risk: the catalogue is data, and a role whose model
   disappears falls back once and shows the error in Settings → AI.
 
 > Amended 2026-11-05 ([ADR 0180](0180-ai-gateway-provisioned-per-deployment.md)): **all AI calls
 > route through AI Gateway by default; keys via BYOK.** `AI_GATEWAY_ID` is no longer optional in
-> practice: `create-crm` and the updater set it to a gateway they create (`--ai-gateway off` opts
+> practice: `create-relationship-os` and the updater set it to a gateway they create (`--ai-gateway off` opts
 > out), along with a generated `AI_GATEWAY_TOKEN`, so the "When `AI_GATEWAY_ID` is set" paths
 > above are the default. Custom providers (`custom-together` for Together AI) are created from
 > `deploy-inputs.json`. Stage 7b makes the registry gateway-first, including addressing models
@@ -126,4 +126,4 @@ eval harnesses take their default model from the registry (`@crm/core/ai-roles`,
 > JSON mode (`jsonObject`) or a schema satisfies, because no caller sends `json_schema`. The
 > `assistant` needs tool use only. `params.thinking` switches a reasoning model's thinking off.
 > **Model role presets** (`ROLE_PRESETS`) are ready deploy layers that one deployment picks
-> with `create-crm --model-roles <name>`. The shipped defaults are unchanged.
+> with `create-relationship-os --model-roles <name>`. The shipped defaults are unchanged.

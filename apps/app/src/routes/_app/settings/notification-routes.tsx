@@ -2,10 +2,10 @@
 // short message with a link to a Slack channel when a record of an object is created, updated or
 // deleted, optionally only on a field change (a value, or a move to a won / lost stage). Saved as
 // a whole list with notification.setRoutes; activities (synced email and meetings) can't be routed.
-import type { CoreInput, CoreOutput } from "@crm/core";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Card, CardContent } from "@crm/ui/components/card";
+import type { CoreInput, CoreOutput } from "@relationship-os/core";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Card, CardContent } from "@relationship-os/ui/components/card";
 import {
   Dialog,
   DialogContent,
@@ -13,18 +13,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
+} from "@relationship-os/ui/components/dialog";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { Switch } from "@crm/ui/components/switch";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { Switch } from "@relationship-os/ui/components/switch";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { HashIcon, LockIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { type FormEvent, useState } from "react";

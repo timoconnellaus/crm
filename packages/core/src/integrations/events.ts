@@ -1,7 +1,7 @@
 // Inbound events for stage 5 (ADR 0113): verified webhook deliveries and sync events. The
 // integration host records webhook events as they arrive; sync.ingest records sync events in its
 // own batch. Stage 5 turns them into automation triggers and sets `consumed_at`.
-import type { CrmDb } from "@crm/db";
+import type { CrmDb } from "@relationship-os/db";
 import type { Compilable } from "kysely";
 import { newId } from "../ids.ts";
 

@@ -17,7 +17,7 @@ describe("consent page", () => {
     const clientId = await registerClient(fetchApp, "Claude Desktop");
     const page = await openConsent(fetchApp, member, clientId, "x".repeat(43), "read write");
     expect(page.response.status).toBe(200);
-    expect(page.html).toContain("Connect Claude Desktop to the CRM?");
+    expect(page.html).toContain("Connect Claude Desktop to Relationship OS?");
     expect(page.html).toContain(member.email);
     expect(page.html).toMatch(/name="scope" value="read" checked disabled/);
     expect(page.html).toMatch(/name="scope" value="write" checked/);

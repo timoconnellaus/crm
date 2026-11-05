@@ -2,7 +2,7 @@
 // fallback and where the setting comes from, with Edit (capability-checked by ai.updateRole) and
 // Test; provider keys stored as Workers secrets or AI Gateway BYOK (never shown); usage and spend
 // per role from AI Gateway; and the semantic search index.
-import type { CoreOutput } from "@crm/core";
+import type { CoreOutput } from "@relationship-os/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,9 +12,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@crm/ui/components/alert-dialog";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
+} from "@relationship-os/ui/components/alert-dialog";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Card,
   CardAction,
@@ -22,8 +22,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@crm/ui/components/card";
-import { Checkbox } from "@crm/ui/components/checkbox";
+} from "@relationship-os/ui/components/card";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -31,17 +31,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
+} from "@relationship-os/ui/components/dialog";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -49,7 +49,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@crm/ui/components/table";
+} from "@relationship-os/ui/components/table";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   CheckCircle2Icon,
@@ -75,7 +75,8 @@ type ProviderId = Provider["id"];
 type Capabilities = Role["capabilities"];
 type TestResult = CoreOutput<"ai.testRole">;
 
-const DOCS_URL = "https://github.com/timoconnellaus/crm/blob/main/docs/deploying.md#in-app-ai";
+const DOCS_URL =
+  "https://github.com/timoconnellaus/relationship-os/blob/main/docs/deploying.md#in-app-ai";
 
 const ROLE_TITLES: Record<string, string> = {
   build: "Build",
@@ -699,7 +700,7 @@ function ProvidersSection({ settings }: { settings: Settings }) {
             <p className="font-medium">Adding keys here needs Cloudflare API access</p>
             <ul className="grid list-disc gap-1 pl-5 text-muted-foreground">
               <li>
-                Set the <code>CLOUDFLARE_ACCOUNT_ID</code> variable on crm-app.
+                Set the <code>CLOUDFLARE_ACCOUNT_ID</code> variable on ros-app.
               </li>
               <li>
                 Add the <code>CLOUDFLARE_API_TOKEN</code> secret: a token with Workers Scripts

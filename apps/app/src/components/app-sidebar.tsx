@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@crm/ui/components/sidebar";
+} from "@relationship-os/ui/components/sidebar";
 import { Link } from "@tanstack/react-router";
 import {
   ActivitySquareIcon,
@@ -105,7 +105,7 @@ export function AppSidebar() {
       className="h-dvh pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
     >
       <SidebarHeader>
-        <div className="px-2 py-1.5 text-lg font-semibold tracking-tight">CRM</div>
+        <div className="px-2 py-1.5 text-lg font-semibold tracking-tight">Relationship OS</div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

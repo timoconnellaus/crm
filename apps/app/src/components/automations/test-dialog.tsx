@@ -1,15 +1,15 @@
 // "Test on a record…": pick a record of the trigger's object, then run test mode
 // (automation.test) against it. Nothing is written; the report shows in the Test mode card.
 // Schedule triggers have no record: the test runs straight away.
-import type { AutomationTestReport } from "@crm/core";
-import { Button } from "@crm/ui/components/button";
+import type { AutomationTestReport } from "@relationship-os/core";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Command,
   CommandEmpty,
   CommandInput,
   CommandItem,
   CommandList,
-} from "@crm/ui/components/command";
+} from "@relationship-os/ui/components/command";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
+} from "@relationship-os/ui/components/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { FlaskConicalIcon } from "lucide-react";
 import { useEffect, useState } from "react";

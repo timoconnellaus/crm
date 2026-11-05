@@ -4,9 +4,9 @@
 // default Home; the shipped saved views resolve their relative values; the board groups deals by
 // stage (a relation); the default-pipeline setting places new deals.
 import { env } from "cloudflare:workers";
-import { seedDatabase } from "@crm/db/seed";
-import deals from "@crm/extension-deals";
-import { toManifest } from "@crm/sdk";
+import { seedDatabase } from "@relationship-os/db/seed";
+import deals from "@relationship-os/extension-deals";
+import { toManifest } from "@relationship-os/sdk";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   type ActingUser,

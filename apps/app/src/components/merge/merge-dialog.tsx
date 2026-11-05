@@ -2,9 +2,9 @@
 //   1. choose the duplicate (search), unless both records are given (a list's bulk action)
 //   2. pick which record survives, choose field values side by side, and see what moves
 //   3. confirm; land on the survivor, with a toast linking to the merged-away record in Trash.
-import type { CoreInput } from "@crm/core";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
+import type { CoreInput } from "@relationship-os/core";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/ui/components/dialog";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRightIcon, MergeIcon } from "lucide-react";

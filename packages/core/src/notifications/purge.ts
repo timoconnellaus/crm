@@ -1,7 +1,7 @@
 // Notification retention (ADR 0132, ADR 0090): notifications are kept 90 days, read or not. The
 // daily maintenance cron calls purgeNotifications; each statement deletes the oldest `chunk` rows
 // through core_notifications_created_idx, so no run scans the table (test/notifications.test.ts).
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 
 export const NOTIFICATION_RETENTION_DAYS = 90;

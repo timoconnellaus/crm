@@ -1,4 +1,4 @@
-// Bundles the CLI (and @crm/release, which is not published) into one dependency-free file.
+// Bundles the CLI (and @relationship-os/release, which is not published) into one dependency-free file.
 import { chmodSync } from "node:fs";
 import { build } from "esbuild";
 

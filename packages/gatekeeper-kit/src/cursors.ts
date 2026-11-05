@@ -8,7 +8,7 @@
  */
 
 import { RpcTarget, type RpcStub } from "cloudflare:workers";
-import type { ApprovalQueue, Cursor, GitCache, GitOid } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ApprovalQueue, Cursor, GitCache, GitOid } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { advertiseCommits, advertisePages, type CommitAdvertisingOptions } from "./git-objects";
 import { SerialTaskQueue } from "./serial-queue";
 import { requirePositiveInt } from "./positive-int";

@@ -1,4 +1,4 @@
-// The gatekeepers this release ships (ADR 0007, ADR 0050). Each is a Worker bound to crm-runner as
+// The gatekeepers this release ships (ADR 0007, ADR 0050). Each is a Worker bound to ros-runner as
 // `GATEKEEPER_<NAME>` (entrypoint `GatekeeperVendor`); an admin enables them per deployment. The
 // catalogue is static so Settings → Integrations can list them without waking any gatekeeper.
 
@@ -124,7 +124,7 @@ export function catalogueEntry(vendor: string): CatalogueEntry | undefined {
   return CATALOGUE.find((entry) => entry.vendor === vendor);
 }
 
-/** `GATEKEEPER_<NAME>`: the crm-runner service binding of a vendor. */
+/** `GATEKEEPER_<NAME>`: the ros-runner service binding of a vendor. */
 export function vendorBinding(vendor: string): string {
   return `GATEKEEPER_${vendor.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`;
 }

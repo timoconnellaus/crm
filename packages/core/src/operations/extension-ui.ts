@@ -1,7 +1,7 @@
 // What extensions declare for the host's UI to render (ADR 0058): record tabs and panels on any
 // object's record page (`view.recordViews`), and typed settings (`extensionSettings.*`).
 // Extensions ship no UI; these read active extensions' manifests and return plain view specs.
-import type { RecordViewManifest, SettingManifest } from "@crm/sdk";
+import type { RecordViewManifest, SettingManifest } from "@relationship-os/sdk";
 import { z } from "zod";
 import { ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
@@ -21,7 +21,7 @@ interface ActiveManifest {
 }
 
 async function activeManifests(ctx: {
-  db: import("kysely").Kysely<import("@crm/db").CoreDatabase>;
+  db: import("kysely").Kysely<import("@relationship-os/db").CoreDatabase>;
 }): Promise<ActiveManifest[]> {
   const rows = await ctx.db
     .selectFrom("core_extensions")
@@ -157,7 +157,7 @@ const extensionSettingsSchema = z.object({
 export type ExtensionSettings = z.infer<typeof extensionSettingsSchema>;
 
 async function storedSettings(
-  ctx: { db: import("kysely").Kysely<import("@crm/db").CoreDatabase> },
+  ctx: { db: import("kysely").Kysely<import("@relationship-os/db").CoreDatabase> },
   ids: string[],
 ) {
   if (!ids.length) return new Map<string, { value: Record<string, unknown>; updatedAt: string }>();

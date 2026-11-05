@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@crm/ui/lib/utils";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { Separator as SeparatorPrimitive } from "radix-ui";
 import type * as React from "react";
 

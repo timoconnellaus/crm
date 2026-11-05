@@ -3,7 +3,7 @@
 // connections email and Slack go out through, escalation of unread approvals, the digest hour) and
 // the admin channel routes (deal won → #sales). Every reader tolerates a missing or broken value:
 // it falls back to "deliver nothing externally", never to something louder.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { jsonList } from "../records/common.ts";

@@ -7,7 +7,7 @@ Status: accepted, 2026-11-05 (stage 8 build).
   **optional**. An install chooses which to deploy (`--gatekeepers google,email-send`); the choice is
   stored in `core_install` and kept by upgrades. Resources only an optional Worker uses are
   provisioned only when it is installed.
-- crm-runner's manifest entry carries `gatekeeperBindings` (`GATEKEEPER_` + the gatekeeper's id,
+- ros-runner's manifest entry carries `gatekeeperBindings` (`GATEKEEPER_` + the gatekeeper's id,
   entrypoint `GatekeeperVendor`, docs/integrations.md), expanded at deploy time for the installed
   gatekeepers, as Cloudflare OS's `gatekeeperBindingExpansion`. Each gatekeeper's `BASE_URL` is
   `https://$HOSTNAME/gatekeeper/<id>`.
@@ -18,5 +18,5 @@ Status: accepted, 2026-11-05 (stage 8 build).
 - Preflight lists gatekeepers added, removed or changed (by the sha256 of their manifest entry).
 
 ## Consequences
-- Adding a gatekeeper later is `npx create-crm --gatekeepers <id>` (a repair run), then enabling it in
+- Adding a gatekeeper later is `npx create-relationship-os --gatekeepers <id>` (a repair run), then enabling it in
   Settings → Integrations. An in-app gatekeeper installer is out of scope.

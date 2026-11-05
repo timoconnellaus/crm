@@ -1,22 +1,22 @@
-import { Button } from "@crm/ui/components/button";
-import { Input } from "@crm/ui/components/input";
-import { Separator } from "@crm/ui/components/separator";
+import { Button } from "@relationship-os/ui/components/button";
+import { Input } from "@relationship-os/ui/components/input";
+import { Separator } from "@relationship-os/ui/components/separator";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@crm/ui/components/sheet";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/sheet";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@crm/ui/components/tooltip";
-import { useIsMobile } from "@crm/ui/hooks/use-mobile";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/ui/components/tooltip";
+import { useIsMobile } from "@relationship-os/ui/hooks/use-mobile";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 import { Slot } from "radix-ui";

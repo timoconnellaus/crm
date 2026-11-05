@@ -1,9 +1,9 @@
 {
-  "name": "@crm/gatekeeper-interface",
+  "name": "@relationship-os/gatekeeper-interface",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "The Cloudflare OS gatekeeper RPC interface (vendored from workshop-shared/src/gatekeeper.ts).",
-  "license": "Apache-2.0",
   "type": "module",
   "exports": {
     "./gatekeeper": "./src/gatekeeper.ts",
@@ -16,7 +16,7 @@
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
     "@cloudflare/workers-types": "5.20261104.1",
-    "@crm/config": "workspace:*",
+    "@relationship-os/config": "workspace:*",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
   }

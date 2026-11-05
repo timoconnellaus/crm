@@ -1,7 +1,7 @@
 // TanStack Query over operations. Every read goes through `useOp` (keyed by operation name and
 // input) and every write through `useOpMutation`, so cache invalidation is by operation name:
 // `invalidateOps(client, "person.")` refetches every person.* query after a write.
-import type { CoreInput, CoreOperationName, CoreOutput } from "@crm/core";
+import type { CoreInput, CoreOperationName, CoreOutput } from "@relationship-os/core";
 import {
   QueryClient,
   type QueryKey,

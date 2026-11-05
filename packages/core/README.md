@@ -1,4 +1,4 @@
-# @crm/core
+# @relationship-os/core
 
 The operations registry and everything an operation needs: ids, the field registry, filter JSON,
 list pagination, the gate, and the invocation pipeline (validate → gate → role → handler → audit +
@@ -196,8 +196,8 @@ batch as the change. Tests: `test/approvals.test.ts`.
 - **UI**: `callOp("person.create", input)` from `apps/app/src/lib/operations.ts` — typed from the
   schemas, runs as actor `human` through one server function. In components, use `useOp` /
   `useOpMutation` from `apps/app/src/lib/query.ts` (TanStack Query keyed by operation name). UI code
-  that needs registry values (fields, filter ops, presets) imports `@crm/core/client`, the
-  browser-safe entry without handlers or `@crm/db`; type-only imports from `@crm/core` are fine.
+  that needs registry values (fields, filter ops, presets) imports `@relationship-os/core/client`, the
+  browser-safe entry without handlers or `@relationship-os/db`; type-only imports from `@relationship-os/core` are fine.
 - **Server code / tests**: `invoke(name, input, { actor, user, origin, db: createCrmDb(env.DB),
   floor })`. Add `grantedPermissions` (token scopes), `reason` and `approvalExpiryDays` for MCP
   callers. A queued call rejects with `PendingApprovalError` (`code: "pending_approval"`).

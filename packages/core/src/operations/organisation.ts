@@ -1,7 +1,7 @@
 // organisation.* operations, mirroring person.*: create/get/update/list/delete/restore, the batch
 // variants, merge and erase. Name, domains, parent and owner are timeline-worthy (the field
 // registry flags them), so updates to them post system activities automatically.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ConflictError, NotFoundError, ValidationError } from "../errors.ts";

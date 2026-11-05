@@ -5,7 +5,7 @@
 // a level of detail (calendar-events.ts), so a simulated change is redacted exactly as a real one
 // would be. It changes only events the guard already admitted, and adds only the session's own.
 
-import type { JournalEntry } from "@crm/gatekeeper-kit/actions";
+import type { JournalEntry } from "@relationship-os/gatekeeper-kit/actions";
 import type { CalendarAction, EventWrite } from "./calendar-actions";
 import type { GraphEvent, GraphResponse } from "./calendar-graph";
 import { startOfDate } from "./calendar-time";

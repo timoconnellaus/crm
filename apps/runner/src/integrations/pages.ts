@@ -23,7 +23,7 @@ export function connectHandoffPageHtml(handoff: { targetOrigin: string; ticket: 
   const literal = (s: string) => JSON.stringify(s).replace(/</g, "\\u003c");
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><title>Connected</title></head>
-<body><main><h1>Connected</h1><p>Returning to the CRM…</p></main>
+<body><main><h1>Connected</h1><p>Returning to Relationship OS…</p></main>
 <script>
 (function () {
   var ticket = ${literal(handoff.ticket)};

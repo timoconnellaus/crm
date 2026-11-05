@@ -1,5 +1,10 @@
 // The filter builder's model: draft tree → filter JSON (and back), operators by field type.
-import { filterSchema, organisationObject, personObject, taskObject } from "@crm/core/client";
+import {
+  filterSchema,
+  organisationObject,
+  personObject,
+  taskObject,
+} from "@relationship-os/core/client";
 import { describe, expect, it } from "vitest";
 import {
   appendChild,

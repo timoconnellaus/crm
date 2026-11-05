@@ -7,7 +7,7 @@ External side effects are the riskiest thing AI-written code can do. Cloudflare 
 
 ## Decision
 - **All** external access goes through gatekeeper Workers in the repo. Extension code has no network access.
-- Adopt Cloudflare OS's gatekeeper interface (`workshop-shared/gatekeeper.ts`: vendor / user account / instance, ApprovalQueue) as our integration contract. Implement its Workshop side in `crm-runner`.
+- Adopt Cloudflare OS's gatekeeper interface (`workshop-shared/gatekeeper.ts`: vendor / user account / instance, ApprovalQueue) as our integration contract. Implement its Workshop side in `ros-runner`.
 - Vendor `gatekeeper-kit` and the gatekeepers we need (Apache-2.0, not published to npm). Record the upstream commit in `UPSTREAMS.md` and port fixes deliberately.
 - Release-bundle installs get integrations from the shipped catalogue, enabled per deployment by an admin. `gatekeeper-mcp` lets an admin connect any MCP server at runtime. Custom gatekeepers go through the fork/developer path (written with Claude Code).
 

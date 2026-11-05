@@ -8,7 +8,7 @@
 // to the core tables with the queued-write pattern, like person.ts, rather than through
 // organisation.* operations, but share organisation.ts's domain normalisation, domain-owner
 // lookup and audit snapshot shape, so imported records look the same in History.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Compilable, type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { diffRecords } from "../diff.ts";

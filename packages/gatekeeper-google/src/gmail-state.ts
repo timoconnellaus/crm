@@ -4,7 +4,7 @@ import type {
 } from "./types";
 import {
   ACTION_FILE_CHUNK_BYTES, ActionFileStore, type ActionFileReference,
-} from "@crm/gatekeeper-kit/action-files";
+} from "@relationship-os/gatekeeper-kit/action-files";
 import {emailRecipientToAddress, MAX_GMAIL_FORWARD_SOURCE_BYTES} from "./google-api";
 import type {GmailLabelRaw, GmailNormalizedRecipients, GmailParsedDraft} from "./google-api";
 

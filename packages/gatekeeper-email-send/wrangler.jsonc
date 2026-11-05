@@ -1,4 +1,4 @@
-// crm-gatekeeper-email-send: our own outbound gatekeeper (not vendored). Sends email through
+// ros-gatekeeper-email-send: our own outbound gatekeeper (not vendored). Sends email through
 // Cloudflare Email Service's `send_email` binding; every send is an approval-queue action.
 // Account-agnostic: no account or resource IDs are committed (ADR 0012).
 //
@@ -6,7 +6,7 @@
 // domains must be onboarded to Email Service in the deploying account. See README.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "crm-gatekeeper-email-send",
+  "name": "ros-gatekeeper-email-send",
   "main": "src/worker.ts",
   "compatibility_date": "2026-09-04",
   "compatibility_flags": ["allow_irrevocable_stub_storage"],

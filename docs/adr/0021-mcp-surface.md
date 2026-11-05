@@ -3,7 +3,7 @@
 Status: accepted, 2026-11-04 (stage 2 interview).
 
 ## Decision
-- `/mcp` on `crm-app` uses the Cloudflare Agents SDK MCP handler (Streamable HTTP), wrapped by `workers-oauth-provider`. Login is delegated to the active identity adapter.
+- `/mcp` on `ros-app` uses the Cloudflare Agents SDK MCP handler (Streamable HTTP), wrapped by `workers-oauth-provider`. Login is delegated to the active identity adapter.
 - **Tools, the hybrid model:**
   - about 15 curated tools (registry flag `mcp: "curated"`)
   - `describe_operations` and `call_operation` for the long tail

@@ -3,9 +3,9 @@
 // scroll and virtualised when long. Dragging a card to another column (or "Move to" on a card,
 // for keyboards and touch) calls the object's update operation, so validation and stage rules
 // apply; when a rule names a missing field, a dialog asks for it and retries the move.
-import type { Filter, Sort } from "@crm/core/client";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
+import type { Filter, Sort } from "@relationship-os/core/client";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -13,17 +13,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
+} from "@relationship-os/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@crm/ui/components/dropdown-menu";
-import { Label } from "@crm/ui/components/label";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/ui/components/dropdown-menu";
+import { Label } from "@relationship-os/ui/components/label";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { MoreHorizontalIcon } from "lucide-react";

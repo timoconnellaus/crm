@@ -3,13 +3,18 @@
 // subject is "<PR title> (#<number>)" (or as merge commits "Merge pull request #<n> …" with the
 // title in the body); each release's notes list the PRs since the previous release tag on the same
 // or a more stable channel. The notes are the GitHub Release body, which is what Settings →
-// Updates and `crm status` show.
+// Updates and `ros status` show.
 //
 // Usage:
 //   node scripts/release/changelog.ts --tag v1.2.0 [--repo owner/repo]   notes for one release
 //   node scripts/release/changelog.ts --all > CHANGELOG.md               every release tag
 import { execFileSync } from "node:child_process";
-import { bareVersion, compareVersions, DEFAULT_REPOSITORY, isVersion } from "@crm/release";
+import {
+  bareVersion,
+  compareVersions,
+  DEFAULT_REPOSITORY,
+  isVersion,
+} from "@relationship-os/release";
 
 export interface Commit {
   subject: string;
@@ -54,9 +59,9 @@ export function releaseNotes(input: {
   }
   lines.push(
     "",
-    "Install with `npx create-crm --version " +
+    "Install with `npx create-relationship-os --version " +
       bareVersion(input.tag) +
-      "`, or update from Settings → Updates or with `npx create-crm upgrade`.",
+      "`, or update from Settings → Updates or with `npx create-relationship-os upgrade`.",
   );
   return `${lines.join("\n")}\n`;
 }

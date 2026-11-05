@@ -1,20 +1,20 @@
-// crm-gatekeeper-slack: the Slack gatekeeper vendored from cloudflare-os (packages/gatekeeper-slack).
+// ros-gatekeeper-slack: the Slack gatekeeper vendored from cloudflare-os (packages/gatekeeper-slack).
 // Upstream generates its wrangler.jsonc from cloudflare.config.ts; we keep this file as the source
 // of truth instead, with the same settings plus our name and no public URL. Account-agnostic: no
-// account or resource IDs are committed (ADR 0012). Not yet bound to crm-runner (stage 6).
+// account or resource IDs are committed (ADR 0012). Not yet bound to ros-runner (stage 6).
 //
 // Secrets (not committed; set with `wrangler secret put`): CLIENT_ID and CLIENT_SECRET (a Slack app
 // with token rotation on and a redirect URL of <public base>/gatekeeper/slack/oauth). Optional:
 // BASE_URL, the public base the OAuth redirect is built from. See README.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "crm-gatekeeper-slack",
+  "name": "ros-gatekeeper-slack",
   // capnweb-validate writes the validated entrypoint here (see `build`); wrangler bundles that.
   "main": ".wrangler/validate/src/slack.ts",
   "compatibility_date": "2026-09-04",
   "compatibility_flags": ["allow_irrevocable_stub_storage"],
   // Internal only for now: reached through service bindings. OAuth callbacks will be proxied to it
-  // by crm-app when stage 6 wires it in.
+  // by ros-app when stage 6 wires it in.
   "workers_dev": false,
   "preview_urls": false,
   "build": {

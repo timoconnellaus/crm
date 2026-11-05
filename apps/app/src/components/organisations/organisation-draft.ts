@@ -1,6 +1,6 @@
 // The organisation details editor's form model: a draft built from an Organisation, and the
 // minimal organisation.update input for what changed. Pure, so it is unit-tested.
-import type { CoreInput, Organisation } from "@crm/core";
+import type { CoreInput, Organisation } from "@relationship-os/core";
 
 export interface AddressDraft {
   label: string;

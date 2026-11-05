@@ -14,7 +14,7 @@ import {
   memoryEventSink,
   recordIntegrationEvents,
   retryOutbox,
-} from "@crm/core";
+} from "@relationship-os/core";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { dispatchAutomationMessages } from "../src/automations/dispatch.ts";
 import { pollIntegrationEvents } from "../src/automations/integration-events.ts";
@@ -36,7 +36,7 @@ const EMAILED = `${EXT}.emailed`;
 const ENDPOINT = "runas-billing";
 
 const FILES: Record<string, string> = {
-  "index.ts": `import { defineAutomation, defineExtension } from "@crm/sdk";
+  "index.ts": `import { defineAutomation, defineExtension } from "@relationship-os/sdk";
 
 export default defineExtension({
   id: "${EXT}",
@@ -355,8 +355,8 @@ describe("AC4: run-as bindings", () => {
     });
     expect(result.pausedAutomations).toEqual([WELCOME]);
     expect((await automationRow(WELCOME)).paused_reason).toMatch(/was deactivated/);
-    const { resolveActingUser } = await import("@crm/core");
-    const { createCrmDb } = await import("@crm/db");
+    const { resolveActingUser } = await import("@relationship-os/core");
+    const { createCrmDb } = await import("@relationship-os/db");
     await expect(
       resolveActingUser(createCrmDb(env.DB), {
         userId: leaver.id,
@@ -454,7 +454,7 @@ describe("AC5: webhook and sync-event triggers", () => {
       .where("source", "=", "webhook")
       .where("type", "=", "invoice.paid")
       .executeTakeFirstOrThrow();
-    const { integrationEventMessage } = await import("@crm/core");
+    const { integrationEventMessage } = await import("@relationship-os/core");
     const again = await dispatchAutomationMessages(env, [integrationEventMessage(row)]);
     expect(again.runIds).toEqual(polled.runIds);
     expect((await runsOf(PAID)).length).toBe(1);
@@ -486,7 +486,7 @@ describe("AC5: webhook and sync-event triggers", () => {
       payload: { activityId, direction: "inbound", personIds, organisationIds: [] },
       occurredAt: now,
     });
-    const { createCrmDb } = await import("@crm/db");
+    const { createCrmDb } = await import("@relationship-os/db");
     await recordIntegrationEvents(createCrmDb(env.DB), [
       event(shared.id, [person.id]),
       event(hidden.id, [person.id]),

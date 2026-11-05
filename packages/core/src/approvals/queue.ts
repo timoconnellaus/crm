@@ -1,7 +1,7 @@
 // Recording a pending action (ADR 0022). When the gate says `review`, the pipeline dry-runs the
 // handler (its writes are discarded), turns the result into a diff preview and simulated records,
 // finds the earlier pending actions it depends on, and queues it in the session's change set.
-import type { CrmDb } from "@crm/db";
+import type { CrmDb } from "@relationship-os/db";
 import type { Compilable } from "kysely";
 import { diffRecords, type FieldDiff } from "../diff.ts";
 import { ConflictError, NotFoundError, type PendingApproval, ValidationError } from "../errors.ts";

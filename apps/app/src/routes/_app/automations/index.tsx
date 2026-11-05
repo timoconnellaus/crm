@@ -1,8 +1,8 @@
 // Automations: every automation the installed extensions declare (automation.list), with its
 // status (Active, Disabled, Paused, Killed), trigger, last run, and runs and errors in the last 7
 // days. A banner says when the admin kill switch is engaged.
-import { Badge } from "@crm/ui/components/badge";
-import { Skeleton } from "@crm/ui/components/skeleton";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { WorkflowIcon } from "lucide-react";
 import { type AutomationItem, useAutomations } from "#/components/automations/hooks";

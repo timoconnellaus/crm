@@ -1,7 +1,7 @@
-// The three Deals automations (stage 5), run in memory with @crm/sdk/testing's automation
+// The three Deals automations (stage 5), run in memory with @relationship-os/sdk/testing's automation
 // harness: declarations pass the contract check, and each run takes exactly its declared steps,
 // writes and notifications. apps/runner tests run them through the real Workflow and pipeline.
-import { createTestHost } from "@crm/sdk/testing";
+import { createTestHost } from "@relationship-os/sdk/testing";
 import { describe, expect, it } from "vitest";
 import {
   FOLLOW_UP_PREFIX,

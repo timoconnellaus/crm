@@ -6,8 +6,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/ui/components/dialog";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { Command as CommandPrimitive } from "cmdk";
 import { SearchIcon } from "lucide-react";
 import type * as React from "react";

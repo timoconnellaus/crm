@@ -1,6 +1,6 @@
 // runDashboardTask end to end with a scripted model and an in-memory CRM (test/fake-crm.ts), in
 // both modes: the agent's tool loop and the in-app box's prompt, then the grader's own preview.
-import { reply, scriptedModel, toolCall } from "@crm/evals-mcp/test/fakes.ts";
+import { reply, scriptedModel, toolCall } from "@relationship-os/evals-mcp/test/fakes.ts";
 import { describe, expect, it } from "vitest";
 import { loadCore } from "../lib/core.ts";
 import {

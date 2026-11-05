@@ -1,4 +1,4 @@
-# ADR 0059: "Describe a widget" and the build role in crm-app
+# ADR 0059: "Describe a widget" and the build role in ros-app
 
 Status: accepted, 2026-11-05 (stage 4a build). Applies ADR 0009.
 
@@ -13,8 +13,8 @@ Status: accepted, 2026-11-05 (stage 4a build). Applies ADR 0009.
 - **Minimal role mapping, Workers AI by default.** `ModelRunner` in `packages/core/src/models.ts`
   resolves roles through the existing `modelFor` defaults (build: Llama 3.3 70B on Workers AI) via
   the `AI` binding, through AI Gateway when `AI_GATEWAY_ID` is set. Operations receive it as
-  `ctx.models` (new on `InvocationContext` / `HandlerContext`). crm-app gets the binding the same
-  optional way crm-runner does; without it the operation answers `unavailable` ("AI is not
+  `ctx.models` (new on `InvocationContext` / `HandlerContext`). ros-app gets the binding the same
+  optional way ros-runner does; without it the operation answers `unavailable` ("AI is not
   configured") and the manual editor (type, SQL with a schema sidebar, column mapping, options,
   click-through, preview) still works. No third-party or Anthropic key is ever required.
 - **A local stand-in.** `AI_FAKE_MODEL=true` (in `.dev.vars`, written by `pnpm dev`; empty in

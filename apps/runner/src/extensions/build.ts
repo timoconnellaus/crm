@@ -1,14 +1,16 @@
 // Turning extension source into sandbox modules: transpile TypeScript (sucrase: types stripped,
 // ES modules kept), then check and rewrite imports. Extension code may import only its own files
-// (relative paths that stay inside the extension) and `@crm/sdk`. Host modules are never imported
+// (relative paths that stay inside the extension) and `@relationship-os/sdk`. Host modules are never imported
 // by extension code: the fixed entry module (src/executor/worker-code.ts) wires only the declared
 // ones and hands them to tools as `ctx`, so an undeclared module cannot be reached (ADR 0025).
 // `node:*`, other packages, dynamic `import()` and `require` are refused here; the Dynamic
 // Worker's loader refuses anything unconfigured as a second line.
-import type { SourceIssue } from "@crm/core";
+import type { SourceIssue } from "@relationship-os/core";
 import { transform } from "sucrase";
 
-export const SDK_SPECIFIER = "crm-sdk";
+export const SDK_SPECIFIER = "ros-sdk";
+/** What extensions written before the rename (ADR 0190) import the SDK as. Still accepted. */
+export const LEGACY_SDK_SPECIFIER = "@crm/sdk";
 export const MAX_FILES = 100;
 export const MAX_SOURCE_BYTES = 1_000_000;
 
@@ -115,7 +117,9 @@ export function buildExtension(files: Record<string, string>): BuildResult {
       issues.push({ code: "import", path, message: "import.meta is not available in extensions" });
     }
     const rewrite = (_match: string, head: string, quote: string, specifier: string) => {
-      if (specifier === "@crm/sdk") return `${head}${quote}${SDK_SPECIFIER}${quote}`;
+      // `@crm/sdk`: extensions written before the rename to Relationship OS (ADR 0190).
+      if (specifier === "@relationship-os/sdk" || specifier === LEGACY_SDK_SPECIFIER)
+        return `${head}${quote}${SDK_SPECIFIER}${quote}`;
       if (specifier.startsWith("./") || specifier.startsWith("../")) {
         const target = resolveRelative(path, specifier, files);
         if (!target) {
@@ -137,7 +141,7 @@ export function buildExtension(files: Record<string, string>): BuildResult {
         path,
         message: specifier.startsWith("codemode:")
           ? `Extensions do not import host modules ("${specifier}"); declare it in permissions.modules and use ctx`
-          : `Cannot import "${specifier}": extensions may import only @crm/sdk and their own files`,
+          : `Cannot import "${specifier}": extensions may import only @relationship-os/sdk and their own files`,
       });
       return `${head}${quote}${specifier}${quote}`;
     };

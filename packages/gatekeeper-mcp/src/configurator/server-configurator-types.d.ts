@@ -2,7 +2,7 @@
 // Types shared between the MCP resource configurator UI module (which runs in a sandboxed iframe)
 // and the `RpcTarget` that serves it from the gatekeeper Worker.
 
-import type { ConfiguratorUIOption } from "@crm/gatekeeper-configurator-ui";
+import type { ConfiguratorUIOption } from "@relationship-os/gatekeeper-configurator-ui";
 
 /** Values collected by the configurator and turned into a resource URL. */
 export type McpServerConfiguratorValues = {

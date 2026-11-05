@@ -2,7 +2,7 @@
 // widget.preview (through call_operation) returns the columns the SELECT names and some rows, or
 // an invalid_input error for SQL the server would refuse (a parameter no filter binds, a bad
 // view); dashboard.create returns an id; dashboard.delete deletes it.
-import { fakeSession, type Handler } from "@crm/evals-mcp/test/fakes.ts";
+import { fakeSession, type Handler } from "@relationship-os/evals-mcp/test/fakes.ts";
 
 const SYSTEM = ["now", "today", "me", "record_id"];
 

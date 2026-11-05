@@ -1,7 +1,7 @@
 // Physical names for extension schema (ADR 0024). Every identifier the reconciler and the
 // registry splice into SQL comes from here, built from names the manifest check has already
 // validated (`[a-z][a-z0-9]*` ids and objects, camelCase fields) and re-checked by `ident`.
-import { EXTENSION_ID_RE, FIELD_NAME_RE, OBJECT_NAME_RE } from "@crm/sdk";
+import { EXTENSION_ID_RE, FIELD_NAME_RE, OBJECT_NAME_RE } from "@relationship-os/sdk";
 
 const IDENT_RE = /^[a-z][a-z0-9_]{0,120}$/;
 

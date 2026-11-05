@@ -1,13 +1,15 @@
 {
-  "extends": "@crm/config/tsconfig.react.json",
+  "extends": "@relationship-os/config/tsconfig.react.json",
   "compilerOptions": {
     "types": ["./worker-configuration.d.ts", "vite/client", "@cloudflare/vitest-plugin/types"],
     "paths": {
       "#/*": ["./src/*"],
       // The configurator authoring API's types; its runtime is ours (see
       // src/components/integrations/configurator/vite-plugin.ts).
-      "@crm/gatekeeper-configurator-ui": ["../../packages/gatekeeper-configurator-ui/src/index.ts"],
-      "@crm/gatekeeper-configurator-ui/options": [
+      "@relationship-os/gatekeeper-configurator-ui": [
+        "../../packages/gatekeeper-configurator-ui/src/index.ts"
+      ],
+      "@relationship-os/gatekeeper-configurator-ui/options": [
         "../../packages/gatekeeper-configurator-ui/src/runtime/options.ts"
       ]
     }

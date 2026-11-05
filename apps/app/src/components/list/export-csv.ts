@@ -1,6 +1,6 @@
 // Export a list view to CSV (export.csv): the current filter, sort and visible columns, then a
 // browser download of the file.
-import type { Filter, ObjectDefinition, Sort } from "@crm/core/client";
+import type { Filter, ObjectDefinition, Sort } from "@relationship-os/core/client";
 import { callOp } from "#/lib/operations";
 
 /** Multi-valued fields export.csv can write (joined with "; "), by object. */

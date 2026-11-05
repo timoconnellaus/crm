@@ -9,7 +9,7 @@ import {
   invokeByName,
   newId,
   PERMISSIONS,
-} from "@crm/core";
+} from "@relationship-os/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { call, context, createAdmin, db, extensionRow, host, source, unique } from "./helpers.ts";
 

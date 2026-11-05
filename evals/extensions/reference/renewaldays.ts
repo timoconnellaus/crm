@@ -1,5 +1,5 @@
 // Reference answer for the `days-until-renewal` prompt.
-import { defineExtension } from "@crm/sdk";
+import { defineExtension } from "@relationship-os/sdk";
 
 export default defineExtension({
   id: "renewaldays",

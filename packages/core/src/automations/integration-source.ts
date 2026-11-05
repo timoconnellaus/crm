@@ -1,6 +1,6 @@
 // The `integration` trigger source (ADR 0130's stage 6b seam, ADR 0173): verified webhook
 // deliveries and email/calendar sync events, which stage 6a records in core_integration_event.
-// crm-runner's minute cron polls the unconsumed rows, turns each into an IntegrationEventMessage
+// ros-runner's minute cron polls the unconsumed rows, turns each into an IntegrationEventMessage
 // (`integrationEventMessage`) and hands them to the same dispatcher the queue consumer uses.
 //
 // - `webhook { endpoint, events? }` matches a webhook event whose payload names that endpoint and
@@ -12,7 +12,7 @@
 //
 // The idempotency key is the event row id (plus the activity id), so a re-polled event starts
 // nothing twice.
-import type { AutomationEvent } from "@crm/sdk";
+import type { AutomationEvent } from "@relationship-os/sdk";
 import type { EventOrigin, IntegrationEventMessage, RunCandidate, TriggerSource } from "./types.ts";
 
 /** Sync payloads (ADR 0112): ids only. */

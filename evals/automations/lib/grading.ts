@@ -1,12 +1,12 @@
 // Grading an automation: its test-mode report against the case's expected writes, notifications
 // and waits; its host summary against the case's keyword groups; and an LLM judge (the eval's own
 // model, Workers AI by default) that rules whether the summary states the intent, by a rubric.
-import type { ModelClient, ModelParams } from "@crm/evals-mcp/lib/model.ts";
+import type { ModelClient, ModelParams } from "@relationship-os/evals-mcp/lib/model.ts";
 import type { AutomationCase } from "../prompts.ts";
 
 /**
  * The slice of AutomationTestReport (packages/core/src/automations/types.ts) graded here. Kept as
- * a structural copy so the eval stays a plain-Node package without @crm/core.
+ * a structural copy so the eval stays a plain-Node package without @relationship-os/core.
  */
 export interface TestReport {
   matched: boolean;

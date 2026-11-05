@@ -85,7 +85,7 @@ linked to that record, in the same batch.
   after earlier ones applied. The operation descriptions say so. Splitting also means each call is
   gated at its own size; that is the caller's (and, in stage 2, the reviewer's) concern, not a
   loophole in the atomic unit.
-- **Scheduled purge.** `crm-app` has a daily cron trigger (`wrangler.jsonc`, handler in
+- **Scheduled purge.** `ros-app` has a daily cron trigger (`wrangler.jsonc`, handler in
   `apps/app/src/server.ts`). It calls `runTrashPurge`, which invokes `trash.purge` through the
   pipeline in rounds of at most 100 records, as actor `automation`, origin
   `{ surface: "system", automationId: "trash.purge" }`, acting as `SYSTEM_USER` (id `system`, not a

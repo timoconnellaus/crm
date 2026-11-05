@@ -2,9 +2,9 @@
 // meets its expectations (so the predicates accept a right answer in the SDK's real manifest shape).
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { makeSuffix } from "@crm/evals-mcp/lib/harness.ts";
-import { EXTENSION_ID_RE, type Extension, toManifest } from "@crm/sdk";
-import { createTestHost } from "@crm/sdk/testing";
+import { makeSuffix } from "@relationship-os/evals-mcp/lib/harness.ts";
+import { EXTENSION_ID_RE, type Extension, toManifest } from "@relationship-os/sdk";
+import { createTestHost } from "@relationship-os/sdk/testing";
 import { describe, expect, it } from "vitest";
 import type { Manifest } from "../lib/manifest.ts";
 import { referencePath, referenceSource, rewriteId } from "../lib/reference.ts";

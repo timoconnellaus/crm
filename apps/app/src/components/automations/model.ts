@@ -11,7 +11,7 @@ import type {
   RunItem,
   RunStatus,
   RunStepRecord,
-} from "@crm/core";
+} from "@relationship-os/core";
 
 export type AutomationStatus = AutomationListItem["status"];
 

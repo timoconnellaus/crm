@@ -12,11 +12,11 @@
 
 import { DurableObject, RpcTarget, WorkerEntrypoint, type RpcStub } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
-import { HookDeliveryQueue, disposeStubs } from "@crm/gatekeeper-kit/hook-delivery-queue";
-import { SingleFlight } from "@crm/gatekeeper-kit/single-flight";
+import { HookDeliveryQueue, disposeStubs } from "@relationship-os/gatekeeper-kit/hook-delivery-queue";
+import { SingleFlight } from "@relationship-os/gatekeeper-kit/single-flight";
 import type {
   ApprovalQueue, HookController, HookInitiator, HookTargetMetadata,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { GmailApi, GmailApiError } from "./google-api";
 import { obsContext } from "./observability";
 import type { PushHooksEnv } from "./pubsub-push";

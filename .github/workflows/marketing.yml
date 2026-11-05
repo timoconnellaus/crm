@@ -1,0 +1,61 @@
+# Deploys the landing page (apps/marketing, Worker ros-marketing) to relationshiposcrm.com when
+# main changes it (ADR 0191). Needs the repository secrets MARKETING_CLOUDFLARE_API_TOKEN (Workers
+# Scripts: Edit, D1: Edit, Workers Routes / custom domains on the relationshiposcrm.com zone) and
+# MARKETING_CLOUDFLARE_ACCOUNT_ID. Without them the deploy job is skipped and the workflow passes.
+name: Marketing site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/marketing/**
+      - packages/ui/src/styles/**
+      - .github/workflows/marketing.yml
+  workflow_dispatch:
+
+concurrency:
+  group: marketing-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Deploy configured?
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          TOKEN: ${{ secrets.MARKETING_CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.MARKETING_CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$ACCOUNT" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::MARKETING_CLOUDFLARE_API_TOKEN / MARKETING_CLOUDFLARE_ACCOUNT_ID are not set; not deploying the landing page."
+          fi
+
+  deploy:
+    name: Build, test and deploy
+    needs: check
+    if: needs.check.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.MARKETING_CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.MARKETING_CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @relationship-os/marketing test
+      # Builds the site (failing on any tracker), deploys (wrangler creates the D1 database by name
+      # the first time), then applies the form's D1 migrations.
+      - run: pnpm --filter @relationship-os/marketing run deploy

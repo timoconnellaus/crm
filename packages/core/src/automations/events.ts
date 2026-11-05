@@ -3,7 +3,7 @@
 // EVENT_CHANGES_PER_MESSAGE per message and QUEUE_MESSAGE_MAX_BYTES per message), message ids
 // `<auditId>:<chunk>` so a redelivery is recognisable, and every message tagged with its origin
 // (cascade depth, chain, bulk). Reads, refusals, failures and test-mode calls emit nothing.
-import type { RecordEventType } from "@crm/sdk";
+import type { RecordEventType } from "@relationship-os/sdk";
 import { capValue } from "../approvals/caps.ts";
 import { diffRecords, type FieldDiff } from "../diff.ts";
 import type { RecordChange } from "../operation.ts";

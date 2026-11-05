@@ -1,4 +1,4 @@
-// crm-app's Worker entry. OAuth 2.1 and /mcp (src/server/mcp/handler.ts) wrap TanStack Start,
+// ros-app's Worker entry. OAuth 2.1 and /mcp (src/server/mcp/handler.ts) wrap TanStack Start,
 // which handles every other request; the cron trigger in wrangler.jsonc runs the scheduled
 // Trash purge and expires pending approvals; a 10-minute one catches up embeddings.
 

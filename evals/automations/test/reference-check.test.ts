@@ -1,8 +1,8 @@
 // Every reference answer passes the SDK contract check (validateManifest, with the automation
 // checks) against an install that has Deals, so the stand-in model's answers are ones the real
 // `extension.check` accepts.
-import deals from "@crm/extension-deals";
-import { type FieldTypeName, toManifest, validateManifest } from "@crm/sdk";
+import deals from "@relationship-os/extension-deals";
+import { type FieldTypeName, toManifest, validateManifest } from "@relationship-os/sdk";
 import { describe, expect, it } from "vitest";
 import { REFERENCES } from "../lib/reference.ts";
 

@@ -262,7 +262,7 @@ describe("erase (ADR 0019)", () => {
         .first(),
     ).not.toBeNull();
 
-    // The post-commit hook is how crm-app drains right after the erase.
+    // The post-commit hook is how ros-app drains right after the erase.
     const events: CommitEvent[] = [];
     await invoke(
       "person.erase",

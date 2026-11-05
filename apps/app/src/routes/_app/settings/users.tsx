@@ -1,16 +1,16 @@
 // Settings → Users and roles (admin): every user (user.list) and their role, changed with
 // user.updateRole. The last admin cannot be demoted; that refusal is shown inline on the row.
 
-import { Avatar, AvatarFallback, AvatarImage } from "@crm/ui/components/avatar";
-import { Badge } from "@crm/ui/components/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@relationship-os/ui/components/avatar";
+import { Badge } from "@relationship-os/ui/components/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute } from "@tanstack/react-router";
 import { LockIcon } from "lucide-react";
 import { useState } from "react";

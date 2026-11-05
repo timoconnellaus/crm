@@ -8,8 +8,8 @@ import {
   plainInline,
   quoteUntrusted,
   type RenderedDescription,
-} from "@crm/gatekeeper-kit/action-description";
-import type { ActionKind } from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-kit/action-description";
+import type { ActionKind } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import {
   clampToolSummary,
   type McpContentBlock,

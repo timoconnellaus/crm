@@ -9,8 +9,8 @@ import {
   loadEnabledAutomations,
   purgeAutomationRuns,
   recordsOnDate,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { beforeAll, describe, expect, it } from "vitest";
 import { FIXTURE_FILES, FIXTURE_ID, ITEM } from "./automation-fixture.ts";
 import { call, context, createAdmin, install } from "./helpers.ts";

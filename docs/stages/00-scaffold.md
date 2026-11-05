@@ -21,13 +21,13 @@ No CRM features yet.
   `packages/config`. Packages without stage-0 content get a README stating their purpose and an
   `index.ts` placeholder export. Don't invent APIs for later stages.
 
-### `apps/app` → Worker `crm-app`
+### `apps/app` → Worker `ros-app`
 - TanStack Start on Cloudflare Workers (Cloudflare Vite plugin), shadcn/ui via `packages/ui`.
 - App shell: sidebar layout, signed-in user menu, empty home page, light/dark theme.
 - `GET /api/health` returns version, commit and the D1 migration level.
-- Calls `crm-runner` over a service binding (a `ping` RPC shown on the health response).
+- Calls `ros-runner` over a service binding (a `ping` RPC shown on the health response).
 
-### `apps/runner` → Worker `crm-runner`
+### `apps/runner` → Worker `ros-runner`
 - `WorkerEntrypoint` with a `ping` RPC.
 - One hello-world Workflow, triggered from the app for the smoke test.
 - **Spike** (see below), behind a dev-only route.

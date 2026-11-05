@@ -31,9 +31,9 @@ import {
   triggerSourceFor,
   WORKFLOW_BATCH_MAX,
   workflowInstanceId,
-} from "@crm/core";
-import { type CrmDb, createCrmDb } from "@crm/db";
-import type { AutomationJournalEntry, AutomationTriggerType } from "@crm/sdk";
+} from "@relationship-os/core";
+import { type CrmDb, createCrmDb } from "@relationship-os/db";
+import type { AutomationJournalEntry, AutomationTriggerType } from "@relationship-os/sdk";
 import { sql } from "kysely";
 import { deliverNotificationRoutes } from "../notifications/deliver.ts";
 

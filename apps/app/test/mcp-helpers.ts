@@ -2,9 +2,9 @@
 // Better Auth session, PKCE code exchange) against createAppHandler in workerd, and the MCP
 // TypeScript client talking to /mcp through it.
 import { env } from "cloudflare:workers";
-import { createIdentityProvider } from "@crm/auth";
-import { memoryRateLimit } from "@crm/core";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import { createIdentityProvider } from "@relationship-os/auth";
+import { memoryRateLimit } from "@relationship-os/core";
 import { createAppHandler, type McpEnv } from "../src/server/mcp/handler.ts";
 
 export const ORIGIN = "https://crm.test";

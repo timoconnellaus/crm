@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Builds a release (ADR 0053, ADR 0160): every Worker bundled exactly as `wrangler deploy` would
-// upload it (`wrangler deploy --dry-run --outdir`, the repository's pinned wrangler), crm-app's
+// upload it (`wrangler deploy --dry-run --outdir`, the repository's pinned wrangler), ros-app's
 // static assets, the core migrations and the manifest, packed into one deterministic tar.gz.
 //
-//   <out>/crm-<version>.tar.gz          the bundle (manifest.json, modules/, assets/, migrations/)
-//   <out>/crm-<version>.manifest.json   the manifest alone, for preflight without the bundle
+//   <out>/relationship-os-<version>.tar.gz          the bundle (manifest.json, modules/, assets/, migrations/)
+//   <out>/relationship-os-<version>.manifest.json   the manifest alone, for preflight without the bundle
 //   <out>/SHA256SUMS                    sha256 of both
 //
 // Two builds of the same commit produce the same bytes (reproducibility is checked in CI by
@@ -38,7 +38,7 @@ import {
   sha256Hex,
   stableStringify,
   writeTar,
-} from "@crm/release";
+} from "@relationship-os/release";
 import {
   type DeployablePackage,
   generateManifest,
@@ -157,7 +157,7 @@ async function main() {
   if (!args["skip-build"]) run(ROOT, "pnpm", ["build"]);
 
   const packages = readDeployablePackages(ROOT);
-  const scratch = mkdtempSync(join(tmpdir(), "crm-release-"));
+  const scratch = mkdtempSync(join(tmpdir(), "ros-release-"));
   const builds: WorkerBuild[] = [];
   const moduleBlobs = new Map<string, Uint8Array>();
   const assetBlobs = new Map<string, Uint8Array>();

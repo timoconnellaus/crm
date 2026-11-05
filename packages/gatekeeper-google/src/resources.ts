@@ -7,7 +7,7 @@
  * `typeUrlPattern`s, and recorded grants. Never change one after deploy.
  */
 
-import type { SupportedResource } from "@crm/gatekeeper-interface/gatekeeper";
+import type { SupportedResource } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import type { CalendarAvailabilityMode } from "./calendar-types";
 import { validateChatSpaceId, validateChatThreadId } from "./chat-api";
 import { validateGmailLabelName, validateGmailQueryForGrouping } from "./gmail-validate";

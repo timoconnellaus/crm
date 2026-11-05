@@ -1,9 +1,9 @@
 {
-  "name": "@crm/gatekeeper-google",
+  "name": "@relationship-os/gatekeeper-google",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Gatekeeper Worker for Google Workspace (Gmail, Calendar, Drive, Docs, Sheets, Slides, Chat, BigQuery). Vendored from cloudflare-os.",
-  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/google.ts",
   "scripts": {
@@ -13,10 +13,10 @@
     "test": "node ../../scripts/gatekeeper-configurator-frames.mjs && vitest run && vitest run -c vitest.worker.config.ts && vitest run -c vitest.docs-worker.config.ts && vitest run -c vitest.smoke.config.ts"
   },
   "dependencies": {
-    "@crm/gatekeeper-configurator-ui": "workspace:*",
-    "@crm/gatekeeper-interface": "workspace:*",
-    "@crm/gatekeeper-kit": "workspace:*",
-    "@crm/gatekeeper-observability": "workspace:*",
+    "@relationship-os/gatekeeper-configurator-ui": "workspace:*",
+    "@relationship-os/gatekeeper-interface": "workspace:*",
+    "@relationship-os/gatekeeper-kit": "workspace:*",
+    "@relationship-os/gatekeeper-observability": "workspace:*",
     "capnweb": "0.12.0",
     "capnweb-validate": "0.3.0",
     "jose": "6.2.15",
@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
-    "@crm/config": "workspace:*",
+    "@relationship-os/config": "workspace:*",
     "@types/node": "24.19.2",
     "typescript": "6.0.3",
     "typescript6": "npm:typescript@6.0.3",

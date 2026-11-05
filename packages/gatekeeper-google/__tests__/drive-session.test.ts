@@ -1,7 +1,7 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-google/__tests__/drive-session.test.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
-import { OBSERVATION_REFUSED_CODE } from "@crm/gatekeeper-kit/observers";
+import { OBSERVATION_REFUSED_CODE } from "@relationship-os/gatekeeper-kit/observers";
 import { describe, expect, it, vi } from "vitest";
-import type { ObservationDescription } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ObservationDescription } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import type { DriveObservation } from "../src/drive-observers";
 import {
   DriveFolderSessionCore, DriveSessionCore, driveFileToEntry, requireDriveBindingScope,

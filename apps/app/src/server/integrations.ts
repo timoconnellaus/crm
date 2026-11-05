@@ -1,10 +1,10 @@
-// crm-app's side of the integration host (ADR 0050, ADR 0110). The IntegrationRuntime port is
-// crm-runner's (one integration host Durable Object per connection), reached over the RUNNER
-// service binding. crm-app adds what only it knows: the request's public origin, where connect
+// ros-app's side of the integration host (ADR 0050, ADR 0110). The IntegrationRuntime port is
+// ros-runner's (one integration host Durable Object per connection), reached over the RUNNER
+// service binding. ros-app adds what only it knows: the request's public origin, where connect
 // popups are handed back (/connect/handoff), and the public `/gatekeeper/<vendor>/*` routes
 // (OAuth redirects, connect pages, provider pushes), which it proxies to the runner.
-import type { BlobStore, IntegrationRuntime } from "@crm/core";
-import type { RunnerRpc } from "@crm/runner/rpc";
+import type { BlobStore, IntegrationRuntime } from "@relationship-os/core";
+import type { RunnerRpc } from "@relationship-os/runner/rpc";
 import { runner } from "./runner.ts";
 
 const METHODS = [
@@ -66,7 +66,7 @@ export function blobStoreFor(env: { BLOBS?: R2Bucket }): BlobStore | undefined {
 const VENDOR_RE = /^\/gatekeeper\/([a-z][a-z0-9-]{1,40})(\/|$)/;
 
 /**
- * `/gatekeeper/<vendor>/*` → the gatekeeper Worker, through crm-runner. Public (no session):
+ * `/gatekeeper/<vendor>/*` → the gatekeeper Worker, through ros-runner. Public (no session):
  * OAuth providers redirect here and push notifications arrive here; each gatekeeper
  * authenticates its own routes (nonces, signatures).
  */

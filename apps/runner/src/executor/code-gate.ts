@@ -2,7 +2,7 @@
 // (getByName(userId)) holding at most one lease. A lease expires on its own after the script's
 // timeout plus a margin, so a crashed caller cannot lock a user out. The DO does no other work and
 // is idle (hibernated) between runs. The rate limit is separate: the Workers Rate Limiting binding
-// in crm-app (CODE_MODE_RATE_LIMIT).
+// in ros-app (CODE_MODE_RATE_LIMIT).
 import { DurableObject } from "cloudflare:workers";
 
 interface Lease {

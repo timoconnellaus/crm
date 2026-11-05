@@ -1,6 +1,6 @@
 # Gatekeeper Kit contributor notes
 
-`@crm/gatekeeper-kit` is a library, not a deployable Worker. Do not add a `cloudflare.config.ts`:
+`@relationship-os/gatekeeper-kit` is a library, not a deployable Worker. Do not add a `cloudflare.config.ts`:
 the `wrangler.jsonc` generated from it is what makes release tooling treat this package as a
 gatekeeper deployment.
 
@@ -36,6 +36,6 @@ Durable Object behavior, and `crypto.subtle.timingSafeEqual`.
 From the repository root:
 
 ```sh
-pnpm --filter @crm/gatekeeper-kit test:run
-vp run -F @crm/gatekeeper-kit build
+pnpm --filter @relationship-os/gatekeeper-kit test:run
+vp run -F @relationship-os/gatekeeper-kit build
 ```

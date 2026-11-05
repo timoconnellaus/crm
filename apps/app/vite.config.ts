@@ -32,11 +32,11 @@ export default defineConfig(({ command }) => ({
     __APP_COMMIT__: JSON.stringify(gitCommit()),
   },
   plugins: [
-    // crm-runner runs in the same local runtime as an auxiliary Worker, so `pnpm dev` starts both
+    // ros-runner runs in the same local runtime as an auxiliary Worker, so `pnpm dev` starts both
     // and the RUNNER service binding resolves locally.
     cloudflare({
       // scripts/deploy.mjs builds with a generated config that adds the AI bindings (ADR 0150).
-      ...(process.env.CRM_WRANGLER_CONFIG ? { configPath: process.env.CRM_WRANGLER_CONFIG } : {}),
+      ...(process.env.ROS_WRANGLER_CONFIG ? { configPath: process.env.ROS_WRANGLER_CONFIG } : {}),
       viteEnvironment: { name: "ssr" },
       auxiliaryWorkers:
         command === "serve"
@@ -50,7 +50,7 @@ export default defineConfig(({ command }) => ({
                     ...(runner.services ?? []),
                     {
                       binding: "GATEKEEPER_WEBHOOK",
-                      service: "crm-gatekeeper-webhook",
+                      service: "ros-gatekeeper-webhook",
                       entrypoint: "GatekeeperVendor",
                     },
                   ],

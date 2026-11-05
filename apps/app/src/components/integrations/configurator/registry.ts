@@ -1,7 +1,7 @@
 // Which configurator spec renders the resource picker for a gatekeeper's resource type. Mirrors how
 // each vendored gatekeeper's `startResourceConfigurator(resourceUrlPattern)` picks its frame
 // (`packages/gatekeeper-*/src/<vendor>.ts`); the specs are loaded lazily, each in its own chunk.
-import type { ConfiguratorUISpec } from "@crm/gatekeeper-configurator-ui";
+import type { ConfiguratorUISpec } from "@relationship-os/gatekeeper-configurator-ui";
 
 /** Specs by `<vendor>/<name>`; `configurator-spec:` is resolved by vite-plugin.ts. */
 const SPECS = {

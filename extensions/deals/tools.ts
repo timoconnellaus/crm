@@ -1,6 +1,6 @@
 // The Deals tools. They become operations x.deals.<tool>, run in the sandbox, and call the CRM
 // only through ctx.crm (here read-only SQL over the crm_* views and stage history).
-import { defineTool, z } from "@crm/sdk";
+import { defineTool, z } from "@relationship-os/sdk";
 
 interface SqlResult {
   rows: Record<string, unknown>[];

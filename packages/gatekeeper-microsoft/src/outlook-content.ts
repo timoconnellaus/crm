@@ -10,7 +10,7 @@
 // For composing, `markdownToMailHtml` writes Markdown as HTML with inline styles only (Outlook
 // ignores <style>), and the parse and check functions validate what an agent passes.
 
-import { escapeHtml } from "@crm/gatekeeper-kit/connect-pages";
+import { escapeHtml } from "@relationship-os/gatekeeper-kit/connect-pages";
 import { parseMarkdown, safeHref as safeMarkdownHref, type MdBlock, type MdInline } from "./content/markdown-parse";
 import { VOID, decodeEntities, htmlToMarkdown, tokenize, trimTrailingBlanks } from "./html-markdown";
 import type { AttachmentInput, EmailAddress, MessageLink, SenderKind } from "./outlook-types";

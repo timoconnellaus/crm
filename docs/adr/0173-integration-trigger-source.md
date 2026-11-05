@@ -15,7 +15,7 @@ for the events of [ADR 0112](0112-email-calendar-sync-service.md) and
 - **Source.** `integrationTriggerSource` (kind `integration`, trigger types `webhook`, `syncEvent`)
   is registered with `registerTriggerSource`; it is pure, like the record and approval sources.
   Idempotency key: the event row id (plus the activity id for sync events).
-- **Poller.** crm-runner's minute cron reads unconsumed `core_integration_event` rows through
+- **Poller.** ros-runner's minute cron reads unconsumed `core_integration_event` rows through
   `core_integration_event_unconsumed_idx` (100 per read, at most 5 reads a tick), turns each into an
   `IntegrationEventMessage` (id = row id, origin depth 0, actor `automation`, surface `system`),
   calls `dispatchAutomationMessages`, then sets `consumed_at`. If dispatch throws, the batch stays

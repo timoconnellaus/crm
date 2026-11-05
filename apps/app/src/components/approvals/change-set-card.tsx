@@ -2,11 +2,11 @@
 // owner, counts and age/expiry plus approve/reject buttons, then its pending actions with
 // checkboxes, each showing the operation, risk, the agent's reason and a readable diff. Deciding
 // shows what happened: dependent actions rejected with it, failures and skips with reasons.
-import type { CoreOutput } from "@crm/core";
-import { Button } from "@crm/ui/components/button";
-import { Checkbox } from "@crm/ui/components/checkbox";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+import type { CoreOutput } from "@relationship-os/core";
+import { Button } from "@relationship-os/ui/components/button";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangleIcon, CheckIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { type Ref, useEffect, useMemo, useRef, useState } from "react";

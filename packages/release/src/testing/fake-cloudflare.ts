@@ -3,7 +3,7 @@
 // Worker scripts with versions and deployments, secrets, schedules, assets upload sessions,
 // Time Travel bookmarks, AI Gateways with custom providers and BYOK provider keys, Secrets Store
 // stores and account API tokens. It answers `fetch(Request)`, so it can be passed to the client directly
-// or served over HTTP (packages/create-crm/test).
+// or served over HTTP (packages/create-relationship-os/test).
 //
 // It is strict where the real API is: unknown routes 404, a Durable Object migration must carry
 // the right old_tag, a version upload cannot carry migrations, and bearer tokens must match.
