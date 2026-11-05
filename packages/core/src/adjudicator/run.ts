@@ -30,11 +30,11 @@ import {
   ADJUDICATOR_PRINCIPAL,
   type AdjudicatorMode,
   decideAction,
-  type JudgeResult,
-  judgePendingItem,
-  reviewJudge,
+  type ReviewResult,
+  reviewPendingItem,
+  reviewRoleReviewer,
   VERDICT_OPERATION,
-} from "./judge.ts";
+} from "./review.ts";
 
 // --- Settings and the written policy ----------------------------------------------------------
 
@@ -49,8 +49,30 @@ export const adjudicatorSettingsSchema = z.object({
   threshold: z.number().min(0.5).max(1),
   /** When it was last switched on from off: the sweep looks at actions queued since. */
   enabledAt: z.string().nullable().default(null),
+  /**
+   * Who reviews (ADR 0230): the `review` model role (`llm`) or Jev (`jev`). Unset: Jev when the
+   * judge has a key, else the LLM (`adjudicatorReviewer`). Stage 11's build step 5 wires the Jev
+   * reviewer; until then every verdict is the LLM's.
+   */
+  reviewer: z.enum(["llm", "jev"]).optional(),
 });
 export type AdjudicatorSettings = z.infer<typeof adjudicatorSettingsSchema>;
+
+export type AdjudicatorReviewer = "llm" | "jev";
+
+/**
+ * The adjudicator's reviewer (user decision, 5 November 2026): Jev by default when the judge has
+ * a key, the LLM otherwise; an admin's explicit choice wins, but Jev only while the judge has a
+ * key. When Jev is the reviewer and cannot answer, the action goes to a person: there is no
+ * fallback to the LLM, whose verdicts are on a different scale (fails closed).
+ */
+export function adjudicatorReviewer(
+  settings: Pick<AdjudicatorSettings, "reviewer">,
+  judgeHasKey: boolean,
+): AdjudicatorReviewer {
+  if (!judgeHasKey) return "llm";
+  return settings.reviewer ?? "jev";
+}
 
 export const ADJUDICATOR_OFF: AdjudicatorSettings = {
   mode: "off",
@@ -177,7 +199,7 @@ export type AdjudicationResult =
   | { status: "skipped"; why: "off" | "no_ai" | "no_policy" | "not_pending" | "judged" | "raced" }
   | {
       status: "judged";
-      verdict: JudgeResult["verdict"];
+      verdict: ReviewResult["verdict"];
       confidence: number;
       outcome: AdjudicationOutcome;
       note: string | null;
@@ -269,9 +291,10 @@ async function adjudicate(
 
   const op = await resolve(deps, row.operation);
   const dependsOn = parse<string[]>(row.depends_on, []);
-  // The Judge seam: the `review` role as an LLM judge today, Jev in Stage 11 (ADR 0204).
-  const judged = await judgePendingItem(
-    reviewJudge((messages, options) => models.run("review", messages, options)),
+  // The reviewer seam: the `review` role as the LLM reviewer (ADR 0204). Stage 11's build step 5
+  // adds the Jev reviewer, picked by adjudicatorReviewer (ADR 0230).
+  const judged = await reviewPendingItem(
+    reviewRoleReviewer((messages, options) => models.run("review", messages, options)),
     policy.text,
     {
       operation: row.operation,

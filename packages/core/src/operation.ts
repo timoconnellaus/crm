@@ -15,6 +15,7 @@ import type { FieldDiff } from "./diff.ts";
 import type { ExtensionHost } from "./extensions/host.ts";
 import type { GateFloor } from "./gate.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
+import type { Judge } from "./judge/types.ts";
 import type { ModelRunner } from "./models.ts";
 import {
   ACTORS,
@@ -142,6 +143,16 @@ export interface HandlerContext {
   readonly blobs?: BlobStore;
   /** Model roles (ADR 0009), when the adapter has an AI binding. Absent: AI is not configured. */
   readonly models?: ModelRunner;
+  /**
+   * The judge (ADR 0230). Absent or off (no key): every placement behaves as before stage 11.
+   * Ask it only on an explicit action, never on a read path.
+   */
+  readonly judge?: Judge;
+  /**
+   * The person's own words, passed by code (the assistant's Durable Object), never by a model:
+   * what `authoring.intent` checks an automation against.
+   */
+  readonly personsWords?: string;
   /** The dashboard widget result cache (ADR 0057). Absent: the Workers Cache API. */
   readonly widgetCache?: WidgetCache;
   /** The self-updater (ADR 0164), when the adapter provides one (update.*). */

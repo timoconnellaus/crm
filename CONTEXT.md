@@ -193,8 +193,8 @@ the adjudicator (`decided_by = adjudicator`); everything else, a `deny` included
 person. It never approves what the **floor** or an always-reviewed operation (extension installs)
 routed to review, nor outbound, schema or extension changes. Its **verdicts** are shown to human
 approvers only, never to the actor, and every one is stored (`core_adjudication`) and audited
-(`adjudicator.verdict`). Its reviewer is asked through the **Judge** seam: the LLM (model role
-`review`) today, or Jev (placement `adjudicator.policy`) from stage 11 (ADR 0204, ADR 0230).
+(`adjudicator.verdict`). Its **reviewer** is the LLM (model role `review`) today, or Jev
+through the **Judge** (placement `adjudicator.policy`) from stage 11 step 5 (ADR 0204, ADR 0230).
 _Avoid_: adjudicator alone in UI copy, AI approver
 
 **Shadow mode**
@@ -497,15 +497,20 @@ secrets, never D1 (ADR 0151). On a hosted deployment Workers AI roles run as **P
 _Avoid_: model config, LLM settings
 
 **Judge**
-The seam that asks typed questions about one piece of evidence and gets answers with
-probabilities, or "unavailable": Choice (one label from a closed set), Noul (yes / no / unknown)
-and, from stage 11, Score (an ordered scale). Code holds every threshold and decides what follows;
-an answer is a judgement, never permission, and an unavailable judge fails closed (the adjudicator
-escalates to a person). Stage 7b built it for the adjudicator (`packages/core/src/adjudicator/judges.ts`,
-ADR 0204) with one implementation, the LLM judge over the `review` role. Stage 11 adds **Jev** as
-its provider (and may move it to `packages/core/src/judge/`); Jev is off when the deployment has
-no Jev key, and then nothing changes (ADR 0230).
+The seam that asks typed questions about one piece of evidence (`state`) and gets answers with
+probabilities, or "unavailable" with a reason: Choice (one label from a closed set), Noul (the
+probability one condition holds) and Score (an ordered scale). Code holds every threshold and
+decides what follows; an answer is a judgement, never permission, and each **placement** fails open
+or closed by rule. Lives in `packages/core/src/judge/` and reaches operations as `ctx.judge`;
+its provider is **Jev**. With no Jev key it is off, makes no network call, and nothing changes
+(ADR 0230).
 _Avoid_: reviewer (that is the adjudicator's), classifier, the `review` role
+
+**Reviewer**
+Who gives the policy adjudicator its verdict: the LLM reviewer (model role `review`, through the
+`Reviewer` interface in `adjudicator/reviewers.ts`) or, from stage 11 step 5, Jev asking the
+judge about the policy's rules. Unset, it is Jev whenever the judge has a key (ADR 0232).
+_Avoid_: judge (that is the Jev seam)
 
 **Jev**
 TypeSafe AI's decision model, the judge's provider, pinned to one version in code
@@ -516,14 +521,16 @@ TypeSafe AI's decision model, the judge's provider, pinned to one version in cod
 A named place in the code that asks the judge (`authoring.intent`, `adjudicator.policy`,
 `summary.statements`, `outbound.message`, `sync.jobChange`, `widget.shape`, `eval.*`), with its own
 questions, thresholds, timeout and fail mode (open: carry on and say it was not checked; closed:
-the safe outcome, such as escalating). Code asks for a placement, never a model. Admins switch
-placements on and off in Settings → AI.
+the safe outcome, such as escalating). Code asks for a placement, never a model. A placement that
+sends record content is off by default; a deployment turns it on with the `JUDGE_PLACEMENTS` var,
+and admins switch placements in Settings → AI (`judge.update`, human admins only; ADR 0232).
 _Avoid_: check (too general), hook
 
 **Labelled set**
 Hand-written cases for one judge question, each with the side of the threshold it should fall,
 from which the threshold is set by `pnpm eval:calibrate` (three live runs per case, judged by the
-median). A question cannot ship without a calibration record for its current wording (ADR 0231).
+median; `evals/judge/sets/`). A question cannot ship without a calibration record for its current
+wording (`calibration.json`, ADR 0231), and CI replays the committed recordings.
 _Avoid_: test set, golden set
 
 **Model role preset**

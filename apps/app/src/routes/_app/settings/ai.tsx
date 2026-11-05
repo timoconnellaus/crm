@@ -100,7 +100,7 @@ const SOURCE_LABELS: Record<Role["source"], string> = {
 };
 
 /** Providers whose models are not in the catalogue: the model is typed with its capabilities. */
-const FREE_TEXT_PROVIDERS = new Set<ProviderId>(["openai-compatible", "jev", "custom"]);
+const FREE_TEXT_PROVIDERS = new Set<ProviderId>(["openai-compatible", "custom"]);
 const OTHER_MODEL = "__other__";
 const NO_FALLBACK = "__none__";
 

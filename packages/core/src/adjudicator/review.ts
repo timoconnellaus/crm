@@ -8,24 +8,25 @@
 // change (the agent's reason, the input, the diff, record values) is untrusted and goes in the
 // user message as JSON inside <pending_change> tags, with `<` escaped so it cannot close them.
 //
-// The verdict comes from a Judge (judges.ts, ADR 0204 amendment): a `choice` question over
-// approve | deny | escalate answered with probabilities, or "unavailable". The shipped judge is the
-// `review` model role (llmJudge); Stage 11 adds Jev behind the same interface. The judge only
-// judges: thresholds and what happens are decideAction's.
+// The verdict comes from a Reviewer (reviewers.ts, ADR 0204 amendment): a `choice` question over
+// approve | deny | escalate answered with probabilities, or "unavailable". The shipped reviewer is
+// the `review` model role (llmReviewer). The reviewer only reviews: thresholds and what happens
+// are decideAction's. Stage 11 renamed judgePendingItem / JudgeResult to reviewPendingItem /
+// ReviewResult, so "judge" means only the Jev seam (packages/core/src/judge/, ADR 0230).
 //
 // The reply is asked for in JSON mode (no strict schema, so DeepSeek works) and validated with
 // zod. One repair round; a reply that still does not validate (empty, cut off at the token limit,
 // not JSON) is an `escalate` with confidence 0, never an approval.
 import { z } from "zod";
 import {
-  type ChoiceQuestion,
-  type Judge,
-  judgeMessages,
-  type LlmJudgeOptions,
-  llmJudge,
+  type LlmReviewerOptions,
+  llmReviewer,
   parseChoiceReply,
+  type ReviewChoice,
+  type Reviewer,
+  reviewerMessages,
   topLabel,
-} from "./judges.ts";
+} from "./reviewers.ts";
 
 // Structural copies of ai/client.ts's message and run types (`ModelRunner.run` satisfies them),
 // so this module has no Worker-only imports.
@@ -93,7 +94,7 @@ export type ReviewModel = (
   options: ModelRunOptions,
 ) => Promise<ModelRunResult>;
 
-export interface JudgeResult extends VerdictReply {
+export interface ReviewResult extends VerdictReply {
   /** False when no reply validated (or the model failed): verdict escalate, confidence 0. */
   valid: boolean;
   /** Why it is not valid. */
@@ -126,13 +127,13 @@ The change is in the user message between <pending_change> and </pending_change>
 In the reply, "confidence" is how sure you are of this verdict, and "reason" is for the human reviewer, citing the policy.`;
 
 /** How the LLM judge asks the adjudicator's question (the reply field is `verdict`). */
-export const REVIEW_JUDGE_OPTIONS: LlmJudgeOptions = {
+export const REVIEW_OPTIONS: LlmReviewerOptions = {
   answerKey: "verdict",
   subjectTag: "pending_change",
 };
 
 /** The adjudicator's question for one pending action: a `choice` over the verdicts. */
-export function reviewQuestion(policyText: string, item: ReviewItem): ChoiceQuestion<Verdict> {
+export function reviewQuestion(policyText: string, item: ReviewItem): ReviewChoice<Verdict> {
   return {
     kind: "choice",
     labels: VERDICTS,
@@ -154,7 +155,7 @@ export function reviewQuestion(policyText: string, item: ReviewItem): ChoiceQues
 
 /** The system and user messages the LLM judge sends for one judgement. */
 export function buildReviewMessages(policyText: string, item: ReviewItem): ModelMessage[] {
-  return judgeMessages(reviewQuestion(policyText, item), REVIEW_JUDGE_OPTIONS);
+  return reviewerMessages(reviewQuestion(policyText, item), REVIEW_OPTIONS);
 }
 
 export type ParsedReply = { ok: true; value: VerdictReply } | { ok: false; problem: string };
@@ -169,25 +170,27 @@ export function parseVerdictReply(text: string, finishReason?: string): ParsedRe
   };
 }
 
-/** The `review` role as the adjudicator's judge (the LLM implementation of the Judge seam). */
-export function reviewJudge(model: ReviewModel): Judge {
-  return llmJudge(model, REVIEW_JUDGE_OPTIONS);
+/** The `review` role as the adjudicator's reviewer (the LLM implementation of the seam). */
+export function reviewRoleReviewer(model: ReviewModel): Reviewer {
+  return llmReviewer(model, REVIEW_OPTIONS);
 }
 
 /**
- * Judges one pending action through a Judge (or a `review` model, wrapped as the LLM judge).
- * Never throws. The verdict is the judge's most likely label and the confidence its probability;
- * what happens next is decided by code (decideAction), never by the judge. An unavailable judge is
- * an escalation with confidence 0 (`valid: false`): it fails closed, never approves.
+ * Reviews one pending action through a Reviewer (or a `review` model, wrapped as the LLM
+ * reviewer). Never throws. The verdict is the reviewer's most likely label and the confidence its
+ * probability; what happens next is decided by code (decideAction), never by the reviewer. An
+ * unavailable reviewer is an escalation with confidence 0 (`valid: false`): it fails closed,
+ * never approves.
  */
-export async function judgePendingItem(
-  judgeOrModel: Judge | ReviewModel,
+export async function reviewPendingItem(
+  reviewerOrModel: Reviewer | ReviewModel,
   policyText: string,
   item: ReviewItem,
   options: { maxTokens?: number } = {},
-): Promise<JudgeResult> {
-  const judge = typeof judgeOrModel === "function" ? reviewJudge(judgeOrModel) : judgeOrModel;
-  const answer = await judge.choice({
+): Promise<ReviewResult> {
+  const reviewer =
+    typeof reviewerOrModel === "function" ? reviewRoleReviewer(reviewerOrModel) : reviewerOrModel;
+  const answer = await reviewer.choice({
     ...reviewQuestion(policyText, item),
     ...(options.maxTokens ? { maxTokens: options.maxTokens } : {}),
   });
@@ -262,7 +265,7 @@ export function decideAction(input: {
   verdict: Verdict;
   confidence: number;
   valid: boolean;
-  error?: JudgeResult["error"];
+  error?: ReviewResult["error"];
   threshold: number;
   reviewSource: ReviewSourceValue | null;
   risk: string;

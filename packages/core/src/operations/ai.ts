@@ -33,7 +33,6 @@ const capabilitiesSchema = z.object({
   contextTokens: z.number().int().min(1).max(10_000_000),
   dimensions: z.number().int().min(1).max(4096).optional(),
   maxBatch: z.number().int().min(1).max(4096).optional(),
-  judgement: z.boolean().optional(),
 });
 
 const modelRefSchema = z.object({

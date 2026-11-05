@@ -11,7 +11,7 @@
 //   confusion matrix and the escalation rate.
 // - *Approve precision* is the share of decided `approve` verdicts the person also approved: the
 //   number auto-approval stakes its safety on (the eval's bar is 0.95).
-import type { Verdict } from "./judge.ts";
+import type { Verdict } from "./review.ts";
 
 export type HumanDecision = "approved" | "rejected";
 

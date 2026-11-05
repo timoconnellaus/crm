@@ -171,8 +171,7 @@ Migrations 0320–0329 (block K in `docs/parallel-work.md`). ADR 0247.
 4. The scan and `core_duplicate_pair`.
 5. The Duplicates page and bulk merge.
 
-## Open questions
-- **Same phone number** as a people rule (exact normalised number): add it? Shared office numbers
-  make it noisy; proposed: not in the first version.
-- **Survivor rule:** more activities, then older (proposed), or always the older record?
-- **Scan frequency:** nightly incremental (proposed) or after each import as well?
+## Decided (2026-11-05, user interview)
+- **Same phone number is a rule** in the first version (exact normalised number), shown as its own match reason. To keep shared office numbers from flooding suggestions, a number held by more than a small fixed number of people (an admin-adjustable count, default 3) is not used for matching. This is a plain rule, not a score.
+- **Survivor rule:** the record with more activities, then the older one. The merge screen lets you pick another.
+- **Scan frequency:** the nightly incremental scan, and also after each import (stage 12), over the imported records.

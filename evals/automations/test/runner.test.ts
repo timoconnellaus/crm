@@ -23,10 +23,20 @@ describe("runner CLI", () => {
       EVAL_API_KEY: _k,
       ...env
     } = process.env;
-    const result = spawnSync(process.execPath, [runner, "--base-url", "http://127.0.0.1:9"], {
-      env: { ...env, EVAL_ENV_FILE: "/nonexistent/.env.evals" },
-      encoding: "utf8",
-    });
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--experimental-transform-types",
+        "--no-warnings",
+        runner,
+        "--base-url",
+        "http://127.0.0.1:9",
+      ],
+      {
+        env: { ...env, EVAL_ENV_FILE: "/nonexistent/.env.evals" },
+        encoding: "utf8",
+      },
+    );
     expect(result.status).toBe(2);
     expect(result.stderr).toContain("No model credentials");
     expect(result.stderr).toContain("No report was written");
@@ -39,6 +49,7 @@ describe("runner CLI", () => {
       only: null,
       model: DEFAULT_MODEL,
       judgeModel: DEFAULT_MODEL,
+      grader: "jev",
       params: {},
       maxTurns: 30,
       approvalMinutes: 30,

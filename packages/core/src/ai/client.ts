@@ -164,7 +164,7 @@ export interface AiEnv extends PlatformAiEnv {
   AI_GATEWAY_TOKEN?: string;
   /** Deploy config: a JSON role layer (shipped defaults → this → admin overrides). */
   AI_MODEL_ROLES?: string;
-  /** Deploy config: JSON `{ "<provider>": { "baseURL": "…" } }` for jev / openai-compatible. */
+  /** Deploy config: JSON `{ "<provider>": { "baseURL": "…" } }` for openai-compatible. */
   AI_PROVIDERS?: string;
   /**
    * Deploy config: comma-separated providers whose key is stored in AI Gateway as BYOK (e.g.
@@ -181,8 +181,15 @@ export interface AiEnv extends PlatformAiEnv {
   AI_KEY_OPENROUTER?: string;
   AI_KEY_DEEPSEEK?: string;
   AI_KEY_ANTHROPIC?: string;
-  AI_KEY_JEV?: string;
   AI_KEY_CUSTOM?: string;
+  /**
+   * The judge (ADR 0230), beside the registry: TypeSafe's key as a Worker secret, "true" when
+   * AI Gateway holds it as BYOK under `custom-typesafe`, and the deploy layer of its placement
+   * switches (JSON). Operations see "set" for the key, never its value (aiEnvView).
+   */
+  TYPESAFE_API_KEY?: string;
+  JUDGE_BYOK?: string;
+  JUDGE_PLACEMENTS?: string;
 }
 
 export interface ModelRunnerOptions {
@@ -296,8 +303,8 @@ export interface ProviderRoute {
  * Gateway-first routing for a provider other than Workers AI (ADR 0203). With AI Gateway
  * configured (AI_GATEWAY_ID and CLOUDFLARE_ACCOUNT_ID), chat goes to the unified endpoint
  * `…/{gateway}/compat` with a `provider/model` id; embeddings go to the provider-native path
- * where there is one. Without a gateway, or for a provider the gateway does not know (jev,
- * openai-compatible), the provider's own base URL. A custom provider has no direct URL: null
+ * where there is one. Without a gateway, or for a provider the gateway does not know
+ * (openai-compatible), the provider's own base URL. A custom provider has no direct URL: null
  * without a gateway.
  */
 export function providerRoute(

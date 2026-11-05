@@ -1,21 +1,21 @@
-// The Judge seam (ADR 0204 amendment): the adjudicator asks a Judge a `choice` question and gets
+// The reviewer seam (ADR 0204 amendment): the adjudicator asks a Judge a `choice` question and gets
 // probabilities or "unavailable"; code applies the threshold. The LLM judge (the `review` role) is
 // the shipped implementation; a typed judge such as Jev (Stage 11) slots in behind the same
 // interface. Failing closed: an unavailable judge escalates and never approves.
 import { describe, expect, it } from "vitest";
 import {
-  type ChoiceQuestion,
   choiceProbabilities,
   decideAction,
-  type Judge,
-  type JudgeAnswer,
-  type JudgeModel,
-  judgePendingItem,
-  llmJudge,
+  llmReviewer,
   type NoulLabel,
+  type ReviewChoice,
+  type Reviewer,
+  type ReviewerAnswer,
+  type ReviewerModel,
   type ReviewItem,
+  reviewPendingItem,
   topLabel,
-  unavailableJudge,
+  unavailableReviewer,
   VERDICTS,
 } from "../src/index.ts";
 
@@ -38,12 +38,12 @@ const ITEM: ReviewItem = {
 const POLICY = "Typo fixes to job titles may be approved.";
 
 /** A typed judge answering with a fixed distribution, as Jev would. */
-function fixedJudge(probabilities: Record<string, number>): Judge & { asked: unknown[] } {
+function fixedReviewer(probabilities: Record<string, number>): Reviewer & { asked: unknown[] } {
   const asked: unknown[] = [];
   return {
     kind: "fixed",
     asked,
-    async choice<L extends string>(q: ChoiceQuestion<L>): Promise<JudgeAnswer<L>> {
+    async choice<L extends string>(q: ReviewChoice<L>): Promise<ReviewerAnswer<L>> {
       asked.push(q);
       return {
         status: "answered",
@@ -52,7 +52,7 @@ function fixedJudge(probabilities: Record<string, number>): Judge & { asked: unk
         attempts: 1,
       };
     },
-    async noul(): Promise<JudgeAnswer<NoulLabel>> {
+    async noul(): Promise<ReviewerAnswer<NoulLabel>> {
       return { status: "unavailable", code: "not_configured", reason: "n/a", attempts: 0 };
     },
   };
@@ -69,10 +69,10 @@ const decide = (verdict: (typeof VERDICTS)[number], confidence: number, valid = 
     dependenciesApplied: true,
   });
 
-describe("the Judge seam", () => {
+describe("the reviewer seam", () => {
   it("asks a choice over the verdicts; the top label and its probability become the verdict", async () => {
-    const judge = fixedJudge({ approve: 0.9, deny: 0.04, escalate: 0.06 });
-    const result = await judgePendingItem(judge, POLICY, ITEM);
+    const judge = fixedReviewer({ approve: 0.9, deny: 0.04, escalate: 0.06 });
+    const result = await reviewPendingItem(judge, POLICY, ITEM);
     expect(judge.asked[0]).toMatchObject({
       kind: "choice",
       labels: ["approve", "deny", "escalate"],
@@ -82,8 +82,8 @@ describe("the Judge seam", () => {
     expect(result.probabilities).toEqual({ approve: 0.9, deny: 0.04, escalate: 0.06 });
     // Code applies the threshold, not the judge.
     expect(decide(result.verdict, result.confidence).approve).toBe(true);
-    const unsure = await judgePendingItem(
-      fixedJudge({ approve: 0.6, deny: 0.1, escalate: 0.3 }),
+    const unsure = await reviewPendingItem(
+      fixedReviewer({ approve: 0.6, deny: 0.1, escalate: 0.3 }),
       POLICY,
       ITEM,
     );
@@ -94,18 +94,22 @@ describe("the Judge seam", () => {
   });
 
   it("fails closed: an unavailable judge escalates and never approves", async () => {
-    const result = await judgePendingItem(unavailableJudge("Jev is not configured"), POLICY, ITEM);
+    const result = await reviewPendingItem(
+      unavailableReviewer("Jev is not configured"),
+      POLICY,
+      ITEM,
+    );
     expect(result).toMatchObject({ verdict: "escalate", confidence: 0, valid: false });
     expect(decide(result.verdict, result.confidence, result.valid).approve).toBe(false);
   });
 
   it("the LLM judge: JSON mode, probabilities from its stated confidence, repair, then unavailable", async () => {
     const calls: { json?: boolean }[] = [];
-    const good: JudgeModel = async (_messages, options) => {
+    const good: ReviewerModel = async (_messages, options) => {
       calls.push(options);
       return { text: '{"choice":"yes","confidence":0.7,"reason":"Clearly."}', model: "m" };
     };
-    const answer = await llmJudge(good).noul({
+    const answer = await llmReviewer(good).noul({
       kind: "noul",
       instructions: "Is this a typo fix?",
       subject: ITEM,
@@ -117,11 +121,11 @@ describe("the Judge seam", () => {
       expect(answer.probabilities.no + answer.probabilities.unknown).toBeCloseTo(0.3);
     }
     let attempts = 0;
-    const bad: JudgeModel = async () => {
+    const bad: ReviewerModel = async () => {
       attempts += 1;
       return { text: "I think yes", model: "m" };
     };
-    const failed = await llmJudge(bad).noul({ kind: "noul", instructions: "?", subject: {} });
+    const failed = await llmReviewer(bad).noul({ kind: "noul", instructions: "?", subject: {} });
     expect(failed).toMatchObject({ status: "unavailable", code: "invalid_reply", attempts: 2 });
     expect(attempts).toBe(2);
   });

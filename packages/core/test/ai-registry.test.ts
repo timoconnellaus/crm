@@ -70,14 +70,18 @@ describe("capability checks", () => {
     );
     const unknown = { provider: "openai-compatible" as const, model: "mystery" };
     expect(capabilityProblems("summarise", unknown).join()).toMatch(/declare its capabilities/);
-    expect(
-      capabilityProblems("summarise", {
-        provider: "jev",
-        model: "j1",
-        capabilities: { ...FAKE_CAPS, judgement: true },
-      }).join(),
-    ).toMatch(/review role only/);
     expect(() => assertCapable("summarise", embedding)).toThrow(ModelCapabilityError);
+  });
+
+  it("no longer accept Jev: it is the judge, not a provider (ADR 0230)", () => {
+    const jev = { provider: "jev", model: "jev-1.14.0", capabilities: FAKE_CAPS } as never;
+    expect(capabilityProblems("review", jev).join()).toMatch(/no longer a model provider/);
+    // An admin layer naming it is dropped with a warning, and the role resolves as if unset.
+    const roles = resolveRoles({ admin: { review: jev } });
+    expect(roles.review.provider).toBe(SHIPPED_ROLES.review.provider);
+    expect(roles.review.model).toBe(SHIPPED_ROLES.review.model);
+    expect(roles.review.ignored[0]?.layer).toBe("admin");
+    expect(roles.review.ignored[0]?.problems.join()).toMatch(/Jev is the judge/);
   });
 
   it("ignore a deploy or admin layer that names an unsuitable model", () => {

@@ -6,6 +6,7 @@ import { EXTENSION_ID_RE } from "@relationship-os/sdk";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "../errors.ts";
 import { checkExtension, installExtension, requireHost } from "../extensions/install.ts";
+import { authoringIntent, intentRequestInput } from "../extensions/intent.ts";
 import { HIDDEN_RETENTION_DAYS, planDropHidden } from "../extensions/reconciler.ts";
 import { loadSchemaState } from "../extensions/schema.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
@@ -27,7 +28,9 @@ const filesSchema = z
   .describe("Source files by path relative to the extension root; index.ts is the entry");
 
 const issueSchema = z.object({
-  stage: z.enum(["typecheck", "contract", "formula", "reconcile"]),
+  stage: z.enum(["typecheck", "contract", "formula", "reconcile", "intent"]),
+  /** Absent: an error, which fails the check. Warnings and info (intent/…) never do. */
+  severity: z.enum(["error", "warning", "info"]).optional(),
   code: z.string(),
   path: z.string(),
   message: z.string(),
@@ -275,11 +278,13 @@ export const extensionCheck = defineOperation({
     "lossy type changes are refused). Pass just id to check its working copy (what " +
     "extension.write wrote), or files (path → source, entry index.ts), or a workspace commit. " +
     "Returns structured issues with stage, code, path, message and often a suggestion; fix " +
-    "them all and check again until ok is true. Changes nothing.",
+    "them all and check again until ok is true. Pass request (the user's own words) to also " +
+    "check each automation against what they asked: those findings are warnings (intent/…) " +
+    "that never fail the check. Changes nothing.",
   input: z.union([
-    z.object({ id: extensionId, files: filesSchema }),
-    z.object({ id: extensionId, commit: z.string().min(4).max(64) }),
-    z.object({ id: extensionId }),
+    z.object({ id: extensionId, files: filesSchema, request: intentRequestInput }),
+    z.object({ id: extensionId, commit: z.string().min(4).max(64), request: intentRequestInput }),
+    z.object({ id: extensionId, request: intentRequestInput }),
   ]),
   output: checkOutput,
   permission: "extensions:manage",
@@ -288,8 +293,10 @@ export const extensionCheck = defineOperation({
   async handler(input, ctx) {
     const host = requireHost(ctx);
     let target: { id: string; commit: string } | { id: string; files: Record<string, string> };
-    if ("files" in input || "commit" in input) {
-      target = input;
+    if ("files" in input) {
+      target = { id: input.id, files: input.files };
+    } else if ("commit" in input) {
+      target = { id: input.id, commit: input.commit };
     } else {
       const wc = await host.workingCopy(input.id, { status: false });
       if (!wc.exists || !Object.keys(wc.files).length) {
@@ -307,7 +314,16 @@ export const extensionCheck = defineOperation({
         manifest: result.manifest as Record<string, unknown> | null,
       };
     }
-    return { ...result, manifest: result.manifest as Record<string, unknown> | null };
+    // authoring.intent (ADR 0230): only for a version that passes, and only as warnings.
+    const intent =
+      result.ok && result.manifest
+        ? await authoringIntent(ctx, { manifest: result.manifest, request: input.request })
+        : { issues: [] };
+    return {
+      ...result,
+      issues: [...result.issues, ...intent.issues],
+      manifest: result.manifest as Record<string, unknown> | null,
+    };
   },
 });
 

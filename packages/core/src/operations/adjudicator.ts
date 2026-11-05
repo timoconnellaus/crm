@@ -5,7 +5,7 @@
 // judges by. Changes are audited like any write.
 import { z } from "zod";
 import { computeAgreement } from "../adjudicator/agreement.ts";
-import { ADJUDICATOR_MODES } from "../adjudicator/judge.ts";
+import { ADJUDICATOR_MODES } from "../adjudicator/review.ts";
 import {
   ADJUDICATOR_SETTING,
   type AdjudicatorSettings,
@@ -137,6 +137,7 @@ export const adjudicatorUpdate = defineOperation({
       mode,
       threshold: input.threshold ?? before.threshold ?? DEFAULT_THRESHOLD,
       enabledAt: before.mode === "off" && mode !== "off" ? ctx.now : before.enabledAt,
+      ...(before.reviewer ? { reviewer: before.reviewer } : {}),
     };
     const value = JSON.stringify(after);
     ctx.write(

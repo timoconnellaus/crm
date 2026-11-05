@@ -232,10 +232,14 @@ describe("release manifest", () => {
   it("carries the AI Gateway set-up from deploy-inputs.json (ADR 0180)", async () => {
     const manifest = await fixtureManifest();
     expect(manifest.aiGateway?.settings).toMatchObject({ collect_logs: true });
-    // No custom provider ships: DeepSeek is built in to AI Gateway (ADR 0192).
-    expect(manifest.aiGateway?.customProviders).toEqual([]);
-    // Per-deployment AI vars the installer sets (create-relationship-os --model-roles, --provider-key).
-    for (const name of ["AI_MODEL_ROLES", "AI_GATEWAY_BYOK"]) {
+    // One custom provider ships, the judge's (ADR 0230); DeepSeek is built in to AI Gateway
+    // (ADR 0192). It is inert in an account with no TypeSafe key.
+    expect(manifest.aiGateway?.customProviders).toEqual([
+      expect.objectContaining({ slug: "typesafe", baseUrl: "https://api.typesafe.ai" }),
+    ]);
+    // Per-deployment AI vars the installer sets (create-relationship-os --model-roles,
+    // --provider-key; typesafe=… sets JUDGE_BYOK), and the judge's placement switches.
+    for (const name of ["AI_MODEL_ROLES", "AI_GATEWAY_BYOK", "JUDGE_BYOK", "JUDGE_PLACEMENTS"]) {
       expect(manifest.inputs.find((i) => i.name === name)).toMatchObject({
         kind: "var",
         workers: ["ros-app", "ros-runner"],

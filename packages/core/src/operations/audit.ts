@@ -2,7 +2,7 @@
 // (audit.listForRecord), both views over core_audit + core_audit_changes (ADR 0017, ADR 0018).
 import { sql } from "kysely";
 import { z } from "zod";
-import { VERDICT_OPERATION } from "../adjudicator/judge.ts";
+import { VERDICT_OPERATION } from "../adjudicator/review.ts";
 import { decodeCursor, encodeCursor, pageSchema } from "../list.ts";
 import { defineOperation } from "../operation.ts";
 import { ACTORS } from "../principals.ts";

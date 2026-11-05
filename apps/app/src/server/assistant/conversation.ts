@@ -23,6 +23,7 @@ import {
   loadGeneralSettings,
   messagesForModel,
   parseFloor,
+  personsWords,
   type RateLimitBinding,
   RateLimitedError,
   ROLES,
@@ -405,6 +406,9 @@ export class AssistantConversation extends DurableObject<AssistantEnv> {
         ...(extensionHost ? { extensionHost } : {}),
         ...automationWiring(env),
         ...ai,
+        // The person's own turns, by code: what authoring.intent checks an automation against
+        // (ADR 0230). The model never writes them; a request it passes is ignored.
+        personsWords: personsWords(this.#stored(), request.text),
       };
       const caller: McpCaller = {
         context,

@@ -8,7 +8,9 @@
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
     "./ai-roles": "./src/ai/roles.ts",
-    "./adjudicator-judge": "./src/adjudicator/judge.ts",
+    "./adjudicator-review": "./src/adjudicator/review.ts",
+    "./judge": "./src/judge/index.ts",
+    "./judge-authoring-intent": "./src/judge/questions/authoring-intent.ts",
     "./adjudicator-agreement": "./src/adjudicator/agreement.ts",
     "./cron": "./src/automations/cron.ts"
   },

@@ -179,10 +179,7 @@ Migrations 0310–0319 (assignment rules only; block J in `docs/parallel-work.md
 3. Assignment rules: tables, operations, the create-path hook, round-robin state, settings UI.
 4. Import paths and `assignment.apply`.
 
-## Open questions
-- **Lead statuses and sources:** fixed in the manifest (proposed) or admin-editable options? Select
-  options are manifest-defined today, so editable options would be a contract addition.
-- **Assignment on update:** should rules also run when a record's matching fields change (for
-  example a lead's country) and it has no owner? Proposed: no, only on create and on demand.
-- **Lifecycle stage moves:** should converting a lead set the person's lifecycle stage to
-  "opportunity" when `lifecycle` is installed? Proposed: no; describe it as an automation.
+## Decided (2026-11-05, user interview)
+- **Lead statuses and sources are admin-editable,** with sensible defaults. This changes the spec's proposal: select options are manifest-defined today, so the build adds admin-editable options for these two fields (a small, general contract addition for extension select fields, recorded in ADR 0246).
+- **Assignment rules run on create only,** plus a manual "Reassign" action. Not on update.
+- **Converting a lead sets the person's lifecycle stage** (to "opportunity") when the optional `lifecycle` extension is installed. This also changes the proposal: it is part of the conversion, not a separate automation.

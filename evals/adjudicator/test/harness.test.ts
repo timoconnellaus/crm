@@ -4,7 +4,7 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ReviewModel } from "@relationship-os/core/adjudicator-judge";
+import type { ReviewModel } from "@relationship-os/core/adjudicator-review";
 import type { ChatCompletionRequest, ModelClient } from "@relationship-os/evals-mcp/lib/model.ts";
 import { describe, expect, it } from "vitest";
 import { cases, type Label, SAMPLE_POLICY } from "../fixtures.ts";
