@@ -46,7 +46,11 @@ async function startWorld(): Promise<World> {
         }),
       );
     } else if (req.url === "/api/health") {
-      const version = cf.liveBinding("ros-app", "ROS_RELEASE_VERSION")?.text;
+      // crm-app: an install from before the rename (ADR 0190).
+      const version = (
+        cf.liveBinding("ros-app", "ROS_RELEASE_VERSION") ??
+        cf.liveBinding("crm-app", "ROS_RELEASE_VERSION")
+      )?.text;
       response = Response.json({ status: "ok", version, migrations: { upToDate: true } });
     } else {
       response = await github.fetch(url);
@@ -91,7 +95,7 @@ async function cli(...argv: string[]) {
 }
 
 async function sql(query: string) {
-  const db = [...world.cf.d1.values()].find((d) => d.name === "crm");
+  const db = [...world.cf.d1.values()].find((d) => d.name === "ros");
   if (!db) throw new Error("no database");
   return db.engine.query(query, []);
 }
@@ -244,8 +248,8 @@ describe("create-relationship-os install: AI Gateway", () => {
     await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
     const { code, output } = await cli("--yes");
     expect(code, output).toBe(0);
-    expect(world.cf.gateways.get("crm")).toMatchObject({
-      id: "crm",
+    expect(world.cf.gateways.get("ros")).toMatchObject({
+      id: "ros",
       collect_logs: true,
       authentication: true,
     });
@@ -257,7 +261,7 @@ describe("create-relationship-os install: AI Gateway", () => {
       }),
     ]);
     for (const worker of ["ros-app", "ros-runner"]) {
-      expect(world.cf.liveBinding(worker, "AI_GATEWAY_ID")?.text).toBe("crm");
+      expect(world.cf.liveBinding(worker, "AI_GATEWAY_ID")?.text).toBe("ros");
     }
     // One account token with AI Gateway Run only, stored on both Workers, never printed.
     expect(world.cf.tokens.size).toBe(1);
@@ -269,10 +273,10 @@ describe("create-relationship-os install: AI Gateway", () => {
     expect(world.cf.scripts.get("ros-app")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token.value);
     expect(world.cf.scripts.get("ros-runner")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token.value);
     expect(output).not.toContain(token.value);
-    expect(output).toContain("AI Gateway crm: created");
+    expect(output).toContain("AI Gateway ros: created");
     const state = JSON.parse(String((await sql("SELECT value FROM core_install"))[0]?.value));
     expect(state).toMatchObject({
-      aiGateway: "crm",
+      aiGateway: "ros",
       aiGatewayCreated: true,
       aiGatewayTokenId: tokenId,
     });
@@ -285,7 +289,7 @@ describe("create-relationship-os install: AI Gateway", () => {
     const before = world.cf.calls.length;
     const { code, output } = await cli("--yes");
     expect(code, output).toBe(0);
-    expect(output).toContain("AI Gateway crm: exists");
+    expect(output).toContain("AI Gateway ros: exists");
     expect(output).toContain("custom provider custom-example-llm: exists");
     expect(output).toContain("AI_GATEWAY_TOKEN: set");
     const writes = world.cf.calls
@@ -300,8 +304,8 @@ describe("create-relationship-os install: AI Gateway", () => {
   });
 
   it("reuses a gateway that already exists, turning on logging and authentication", async () => {
-    world.cf.gateways.set("crm", {
-      id: "crm",
+    world.cf.gateways.set("ros", {
+      id: "ros",
       collect_logs: false,
       authentication: false,
       cache_ttl: 60,
@@ -310,7 +314,7 @@ describe("create-relationship-os install: AI Gateway", () => {
     const { code, output } = await cli("--yes");
     expect(code, output).toBe(0);
     expect(output).toContain("turned on collect_logs and authentication");
-    expect(world.cf.gateways.get("crm")).toMatchObject({
+    expect(world.cf.gateways.get("ros")).toMatchObject({
       collect_logs: true,
       authentication: true,
       cache_ttl: 60,
@@ -324,7 +328,7 @@ describe("create-relationship-os install: AI Gateway", () => {
     await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
     const { code, output } = await cli("--yes", "--provider-key", `example-llm=${KEY}`);
     expect(code, output).toBe(0);
-    expect(world.cf.providerConfigs.get("crm")).toEqual([
+    expect(world.cf.providerConfigs.get("ros")).toEqual([
       expect.objectContaining({
         provider_slug: "custom-example-llm",
         alias: "default",
@@ -332,8 +336,8 @@ describe("create-relationship-os install: AI Gateway", () => {
       }),
     ]);
     // The gateway was pointed at a Secrets Store to hold it.
-    expect(world.cf.gateways.get("crm")?.store_id).toBeTruthy();
-    expect(output).toContain("provider key custom-example-llm: stored in AI Gateway crm (BYOK)");
+    expect(world.cf.gateways.get("ros")?.store_id).toBeTruthy();
+    expect(output).toContain("provider key custom-example-llm: stored in AI Gateway ros (BYOK)");
     expect(output).not.toContain(KEY);
     // Not a Workers secret.
     for (const script of world.cf.scripts.values()) {
@@ -345,7 +349,7 @@ describe("create-relationship-os install: AI Gateway", () => {
     // Re-run with a new key: replaced, not duplicated.
     const again = await cli("--yes", "--provider-key", "example-llm=second-key-abcdef0123456");
     expect(again.code, again.output).toBe(0);
-    expect(world.cf.providerConfigs.get("crm")?.map((c) => c.secret)).toEqual([
+    expect(world.cf.providerConfigs.get("ros")?.map((c) => c.secret)).toEqual([
       "second-key-abcdef0123456",
     ]);
     expect(again.output).not.toContain("second-key-abcdef0123456");
@@ -367,7 +371,7 @@ describe("create-relationship-os install: AI Gateway", () => {
       "Model roles (AI_MODEL_ROLES on ros-app and ros-runner): deepseek-flash",
     );
     // DeepSeek is built in to AI Gateway: its key is stored under the `deepseek` slug.
-    expect(world.cf.providerConfigs.get("crm")).toEqual([
+    expect(world.cf.providerConfigs.get("ros")).toEqual([
       expect.objectContaining({ provider_slug: "deepseek", secret: KEY }),
     ]);
     const preset = modelRolesVar("deepseek-flash");
@@ -426,9 +430,9 @@ describe("create-relationship-os install: AI Gateway", () => {
     expect(world.cf.gateways.size).toBe(0);
     expect(world.cf.liveBinding("ros-app", "AI_GATEWAY_ID")?.text).toBe("");
 
-    const on = await cli("--yes", "--ai-gateway", "crm");
+    const on = await cli("--yes", "--ai-gateway", "ros");
     expect(on.code, on.output).toBe(0);
-    expect(world.cf.gateways.has("crm")).toBe(true);
+    expect(world.cf.gateways.has("ros")).toBe(true);
     const gone = await cli("uninstall", "--yes");
     expect(gone.code, gone.output).toBe(0);
     expect(world.cf.gateways.size).toBe(0);
@@ -454,7 +458,7 @@ describe("ros upgrade, rollback and status", () => {
     await world.github.publish(await buildFixtureRelease({ version: "1.2.0-beta.1" }));
     const { code, output } = await cli("upgrade", "--yes");
     expect(code, output).toBe(0);
-    expect(output).toContain("Updated to crm 1.1.0");
+    expect(output).toContain("Updated to Relationship OS 1.1.0");
     // Automations were paused with the kill switch and resumed after the smoke check.
     expect(output).toContain("pause…");
     expect(
@@ -483,14 +487,14 @@ describe("ros upgrade, rollback and status", () => {
     await world.github.publish(await buildFixtureRelease({ version: "1.1.0" }));
     const { code, output } = await cli("upgrade", "--yes");
     expect(code, output).toBe(0);
-    expect(world.cf.gateways.get("crm")).toMatchObject({
+    expect(world.cf.gateways.get("ros")).toMatchObject({
       authentication: true,
       collect_logs: true,
     });
-    expect(world.cf.liveBinding("ros-runner", "AI_GATEWAY_ID")?.text).toBe("crm");
+    expect(world.cf.liveBinding("ros-runner", "AI_GATEWAY_ID")?.text).toBe("ros");
     expect(world.cf.scripts.get("ros-runner")?.secrets.has("AI_GATEWAY_TOKEN")).toBe(true);
     const state = JSON.parse(String((await sql("SELECT value FROM core_install"))[0]?.value));
-    expect(state).toMatchObject({ version: "1.1.0", aiGateway: "crm", aiGatewayCreated: true });
+    expect(state).toMatchObject({ version: "1.1.0", aiGateway: "ros", aiGatewayCreated: true });
     for (const token of world.cf.tokens.values()) expect(output).not.toContain(token.value);
   });
 
@@ -558,7 +562,7 @@ describe("ros upgrade, rollback and status", () => {
       { kind: "rollback", status: "succeeded" },
     ]);
     const status = await cli("status");
-    expect(status.output).toContain("crm 1.0.0 (stable channel)");
+    expect(status.output).toContain("Relationship OS 1.0.0 (stable channel)");
     expect(status.output).toContain("available: 1.1.0");
   });
 
@@ -567,5 +571,40 @@ describe("ros upgrade, rollback and status", () => {
     const { code, output } = await cli("upgrade", "--yes");
     expect(code).toBe(0);
     expect(output).toContain("nothing newer");
+  });
+});
+
+describe("an install from before the rename (ADR 0190)", () => {
+  it("ros upgrade updates it in place under its crm names, reading the old CRM_* variables", async () => {
+    // A pre-rename release installed the way `create-crm` did: Workers crm-*, database crm.
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0", legacy: true }));
+    expect((await cli("--yes")).code).toBe(0);
+    expect([...world.cf.scripts.keys()].sort()).toEqual(["crm-app", "crm-runner"]);
+    const db = [...world.cf.d1.values()].find((d) => d.name === "crm");
+    await db?.engine.query("INSERT INTO core_person (id, name) VALUES ('per_1', 'Ada')", []);
+
+    await world.github.publish(await buildFixtureRelease({ version: "1.1.0" }));
+    // Scripts written for create-crm set CRM_*; they still work.
+    const legacyEnv = Object.fromEntries(
+      Object.entries(world.env).map(([k, v]) => [k.replace(/^ROS_/, "CRM_"), v]),
+    );
+    world.env = legacyEnv as Env;
+    const { code, output } = await cli("upgrade", "--yes");
+    expect(code, output).toBe(0);
+    expect(output).toContain("Updated to Relationship OS 1.1.0");
+    // No second deployment: the same Workers, database, queues and gateway, updated.
+    expect([...world.cf.scripts.keys()].sort()).toEqual(["crm-app", "crm-runner"]);
+    expect([...world.cf.d1.values()].map((d) => d.name)).toEqual(["crm"]);
+    expect([...world.cf.queues.values()].map((q) => q.name).sort()).toEqual([
+      "crm-automation-events",
+      "crm-automation-events-dlq",
+    ]);
+    expect([...world.cf.gateways.keys()]).toEqual(["crm"]);
+    expect(world.cf.liveBinding("crm-app", "ROS_RELEASE_VERSION")?.text).toBe("1.1.0");
+    expect(world.cf.liveBinding("crm-app", "RUNNER")?.service).toBe("crm-runner");
+    expect(await db?.engine.query("SELECT name FROM core_person", [])).toEqual([{ name: "Ada" }]);
+
+    const status = await cli("status");
+    expect(status.output).toContain("Relationship OS 1.1.0 (stable channel)");
   });
 });

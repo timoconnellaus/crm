@@ -4,7 +4,13 @@
 import type { Person } from "@relationship-os/core";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
 import { Input } from "@relationship-os/ui/components/input";
 import { Label } from "@relationship-os/ui/components/label";
 import {

@@ -3,6 +3,7 @@
 // D1/R2/KV resources and core migrations), with tiny module bodies.
 import { formatSums, releaseAssetNames, writeBundle } from "../bundle.ts";
 import { assetHash, sha256Hex } from "../hash.ts";
+import { legacyReleaseAssetNames } from "../legacy.ts";
 import {
   MANIFEST_VERSION,
   type ManifestModule,
@@ -56,6 +57,24 @@ export interface FixtureOptions {
   repository?: string;
   /** false: a release older than ADR 0180, with no AI Gateway set-up. */
   aiGateway?: false;
+  /**
+   * A release from before the rename to Relationship OS (ADR 0190): product `crm`, Workers and
+   * resources `crm-*`, the database `crm`, assets `crm-<version>.*`, built in timoconnellaus/crm.
+   */
+  legacy?: boolean;
+}
+
+/** The pre-rename spelling of a fixture manifest (`ros-app` → `crm-app`, `D1_ID(ros)` → …). */
+function legacyManifest(manifest: ReleaseManifest): ReleaseManifest {
+  return JSON.parse(
+    JSON.stringify(manifest)
+      .replace(/"ros-/g, '"crm-')
+      .replace(/\(ros(-|\))/g, "(crm$1")
+      .replace(/ros-runner"/g, 'crm-runner"') // the second name in AI_SECRET_SCRIPTS
+      .replace(/"name":"ros"/g, '"name":"crm"')
+      .replace(/"product":"relationship-os"/, '"product":"crm"')
+      .replace(/timoconnellaus\/relationship-os/g, "timoconnellaus/crm"),
+  ) as ReleaseManifest;
 }
 
 /** The AI Gateway set-up fixture releases carry (the shape of apps/app/deploy-inputs.json). */
@@ -90,7 +109,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
   const assetFiles: Record<string, { hash: string; size: number }> = {};
   const assets = new Map<string, Uint8Array>();
   for (const [path, body] of [
-    ["/assets/app.js", `console.log("crm ${version}")`],
+    ["/assets/app.js", `console.log("ros ${version}")`],
     ["/favicon.svg", "<svg xmlns='http://www.w3.org/2000/svg'/>"],
   ] as const) {
     const bytes = enc.encode(body);
@@ -106,7 +125,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     optional: false,
     mainModule: "index.js",
     modules: [
-      await add("index.js", `export default { fetch() { return new Response("crm ${version}") } }`),
+      await add("index.js", `export default { fetch() { return new Response("ros ${version}") } }`),
       await add("assets/chunk.js", `export const v = "${version}";`),
     ],
     compatibilityDate: "2026-10-01",
@@ -123,6 +142,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       { type: "plain_text", name: "AI_GATEWAY_ID", text: "" },
       { type: "plain_text", name: "AI_MODEL_ROLES", text: "" },
       { type: "plain_text", name: "AI_GATEWAY_BYOK", text: "" },
+      { type: "plain_text", name: "AI_SECRET_SCRIPTS", text: "ros-app,ros-runner" },
       { type: "secret_text", name: "BETTER_AUTH_SECRET", text: "$SECRET(BETTER_AUTH_SECRET)" },
       { type: "secret_text", name: "BETTER_AUTH_URL", text: "$SECRET(BETTER_AUTH_URL)" },
       ...(options.appSecrets ?? []).map((s) => ({
@@ -236,9 +256,9 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     migrations.push({ name, sha256: await sha256Hex(sql) });
   }
   const contract = options.contract ?? { version: 1, supported: [1] };
-  const manifest: ReleaseManifest = {
+  const built: ReleaseManifest = {
     manifestVersion: MANIFEST_VERSION,
-    product: "crm",
+    product: "relationship-os",
     version,
     channel: channelOf(version),
     commit: "0".repeat(40),
@@ -251,7 +271,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     resources: [
       {
         type: "d1",
-        name: "crm",
+        name: "ros",
         placeholder: "$D1_ID(ros)",
         implicit: false,
         usedBy: ["ros-app", "ros-runner"],
@@ -353,6 +373,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     assets: Object.fromEntries([...assets].map(([hash, bytes]) => [hash, { size: bytes.length }])),
     ...(options.aiGateway === false ? {} : { aiGateway: FIXTURE_AI_GATEWAY }),
   };
+  const manifest = options.legacy ? legacyManifest(built) : built;
   const { bytes, manifestText } = await writeBundle({
     manifest,
     modules,
@@ -360,7 +381,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     migrations: migrationSql,
   });
   const digest = await sha256Hex(bytes);
-  const names = releaseAssetNames(version);
+  const names = options.legacy ? legacyReleaseAssetNames(version) : releaseAssetNames(version);
   const sums = formatSums(
     new Map([
       [names.bundle, digest],

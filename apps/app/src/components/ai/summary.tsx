@@ -5,7 +5,13 @@
 import type { CoreInput, CoreOutput } from "@relationship-os/core";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { cn } from "@relationship-os/ui/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

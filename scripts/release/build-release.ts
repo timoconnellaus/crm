@@ -157,7 +157,7 @@ async function main() {
   if (!args["skip-build"]) run(ROOT, "pnpm", ["build"]);
 
   const packages = readDeployablePackages(ROOT);
-  const scratch = mkdtempSync(join(tmpdir(), "crm-release-"));
+  const scratch = mkdtempSync(join(tmpdir(), "ros-release-"));
   const builds: WorkerBuild[] = [];
   const moduleBlobs = new Map<string, Uint8Array>();
   const assetBlobs = new Map<string, Uint8Array>();

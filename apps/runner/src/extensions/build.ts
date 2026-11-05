@@ -9,6 +9,8 @@ import type { SourceIssue } from "@relationship-os/core";
 import { transform } from "sucrase";
 
 export const SDK_SPECIFIER = "ros-sdk";
+/** What extensions written before the rename (ADR 0190) import the SDK as. Still accepted. */
+export const LEGACY_SDK_SPECIFIER = "@crm/sdk";
 export const MAX_FILES = 100;
 export const MAX_SOURCE_BYTES = 1_000_000;
 
@@ -115,7 +117,9 @@ export function buildExtension(files: Record<string, string>): BuildResult {
       issues.push({ code: "import", path, message: "import.meta is not available in extensions" });
     }
     const rewrite = (_match: string, head: string, quote: string, specifier: string) => {
-      if (specifier === "@relationship-os/sdk") return `${head}${quote}${SDK_SPECIFIER}${quote}`;
+      // `@crm/sdk`: extensions written before the rename to Relationship OS (ADR 0190).
+      if (specifier === "@relationship-os/sdk" || specifier === LEGACY_SDK_SPECIFIER)
+        return `${head}${quote}${SDK_SPECIFIER}${quote}`;
       if (specifier.startsWith("./") || specifier.startsWith("../")) {
         const target = resolveRelative(path, specifier, files);
         if (!target) {

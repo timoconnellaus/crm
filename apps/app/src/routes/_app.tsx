@@ -4,7 +4,11 @@
 // sheet and create dialogs.
 import { Button } from "@relationship-os/ui/components/button";
 import { Kbd } from "@relationship-os/ui/components/kbd";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@relationship-os/ui/components/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@relationship-os/ui/components/sidebar";
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { SearchIcon } from "lucide-react";
 import { useEffect, useRef } from "react";

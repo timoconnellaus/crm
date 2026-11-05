@@ -26,7 +26,10 @@ import type {
   SupportedResource,
   VendorDescription,
 } from "@relationship-os/gatekeeper-interface/gatekeeper";
-import { stripTrailingSlashes, workerVersionTag } from "@relationship-os/gatekeeper-interface/gatekeeper";
+import {
+  stripTrailingSlashes,
+  workerVersionTag,
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import type { EndpointConfiguratorRpc } from "./configurator/endpoint-configurator-types.js";
 import { type EndpointStatus, type StoredInitiator, WebhookEndpoint } from "./endpoint.js";
 import type {

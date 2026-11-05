@@ -30,6 +30,8 @@ export interface UpdaterEnv {
   ROS_ACCOUNT_ID?: string;
   /** Optional scoped Cloudflare API token (a secret). Without it, updates use the CLI. */
   ROS_UPDATE_TOKEN?: string;
+  /** The same token on an install from before the rename (ADR 0190); read when ROS_UPDATE_TOKEN is unset. */
+  CRM_UPDATE_TOKEN?: string;
 }
 
 export interface UpdaterDeps {
@@ -78,7 +80,7 @@ export function updaterRuntimeFor(env: UpdaterEnv, deps: UpdaterDeps = {}): Upda
     ...(deps.githubApi ? { apiBase: deps.githubApi } : {}),
     ...(deps.githubFetch ? { fetch: deps.githubFetch } : {}),
   };
-  const token = env.ROS_UPDATE_TOKEN;
+  const token = env.ROS_UPDATE_TOKEN || env.CRM_UPDATE_TOKEN;
   const accountId = env.ROS_ACCOUNT_ID;
   const canUpdate = Boolean(token && accountId && currentVersion);
   const api = () => {

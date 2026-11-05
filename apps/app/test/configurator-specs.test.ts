@@ -1,7 +1,10 @@
 // The renderer handles every configurator spec the shipped gatekeepers use: each is loaded through
 // the registry, server-rendered by ConfiguratorForm with a fake `ui`, and its `resourceUrl()` of
 // minimally filled values matches the resource type's URLPattern.
-import type { ConfiguratorUISpec, ConfiguratorUIValues } from "@relationship-os/gatekeeper-configurator-ui";
+import type {
+  ConfiguratorUISpec,
+  ConfiguratorUIValues,
+} from "@relationship-os/gatekeeper-configurator-ui";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";

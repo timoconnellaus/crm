@@ -15,6 +15,7 @@
 import { parseSums, releaseAssetNames } from "./bundle.ts";
 import { type GitHubOptions, githubJson } from "./github.ts";
 import { fromBase64, sameDigest, sha256Hex } from "./hash.ts";
+import { legacyReleaseAssetNames, sameRepository } from "./legacy.ts";
 
 export const RELEASE_WORKFLOW_PATH = ".github/workflows/release.yml";
 export const SLSA_PROVENANCE_V1 = "https://slsa.dev/provenance/v1";
@@ -151,6 +152,7 @@ export async function verifyProvenance(
     );
   }
   const wantRepo = `https://github.com/${expected.repository}`;
+  // A release built before a repo rename names the old repository (legacy.ts).
   const wantRef = `refs/tags/v${expected.version}`;
   const reasons: string[] = [];
   for (const attestation of response.attestations ?? []) {
@@ -174,7 +176,7 @@ export async function verifyProvenance(
       continue;
     }
     const workflow = statement.predicate?.buildDefinition?.externalParameters?.workflow;
-    if (workflow?.repository !== wantRepo) {
+    if (!workflow || !sameRepository(workflow.repository, expected.repository)) {
       reasons.push(
         `an attestation was built in ${workflow?.repository ?? "an unknown repository"}`,
       );
@@ -191,7 +193,11 @@ export async function verifyProvenance(
     return {
       digest,
       repository: expected.repository,
-      workflow: { repository: wantRepo, path: workflow.path, ref: workflow.ref },
+      workflow: {
+        repository: workflow.repository ?? wantRepo,
+        path: workflow.path,
+        ref: workflow.ref,
+      },
     };
   }
   throw new VerificationError(
@@ -226,8 +232,10 @@ export async function verifyBundleBytes(input: {
   skipProvenance?: boolean;
 }): Promise<VerifiedArtifact> {
   const digest = await sha256Hex(input.bytes);
-  const name = releaseAssetNames(input.version).bundle;
-  const listed = parseSums(input.sums).get(name);
+  const sums = parseSums(input.sums);
+  const legacyName = legacyReleaseAssetNames(input.version).bundle;
+  const name = sums.has(legacyName) ? legacyName : releaseAssetNames(input.version).bundle;
+  const listed = sums.get(name);
   if (!listed) throw new VerificationError(`SHA256SUMS does not list ${name}`);
   if (!sameDigest(listed, digest)) {
     throw new VerificationError(

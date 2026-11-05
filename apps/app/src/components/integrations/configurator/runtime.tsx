@@ -24,7 +24,12 @@ import {
 } from "@relationship-os/gatekeeper-configurator-ui/options";
 import { Button as UIButton } from "@relationship-os/ui/components/button";
 import { Checkbox } from "@relationship-os/ui/components/checkbox";
-import { Command, CommandInput, CommandItem, CommandList } from "@relationship-os/ui/components/command";
+import {
+  Command,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@relationship-os/ui/components/command";
 import { Input } from "@relationship-os/ui/components/input";
 import { Label } from "@relationship-os/ui/components/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@relationship-os/ui/components/popover";

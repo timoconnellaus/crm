@@ -671,7 +671,7 @@ export async function generateManifest(
 
   return {
     manifestVersion: MANIFEST_VERSION,
-    product: "crm",
+    product: "relationship-os",
     version: sources.version,
     channel: channelOf(sources.version),
     commit: sources.commit,

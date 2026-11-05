@@ -2,7 +2,13 @@
 // own currency (deal values, budgets) is shown in it. Admins change it; everyone can see it.
 import { COMMON_CURRENCIES } from "@relationship-os/core/client";
 import { Button } from "@relationship-os/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
 import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,

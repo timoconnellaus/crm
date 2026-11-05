@@ -24,7 +24,10 @@ import type {
   VendorDescription,
 } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { workerVersionTag } from "@relationship-os/gatekeeper-interface/gatekeeper";
-import { buildDescription, sanitizeTitle } from "@relationship-os/gatekeeper-kit/action-description";
+import {
+  buildDescription,
+  sanitizeTitle,
+} from "@relationship-os/gatekeeper-kit/action-description";
 import {
   ActionApplyError,
   ActionJournal,

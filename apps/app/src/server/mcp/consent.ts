@@ -6,7 +6,12 @@
 
 import type { AuthRequest, OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { createIdentityProvider, type IdentityEnv, type Principal } from "@relationship-os/auth";
-import { grantableScopes, MCP_SCOPES, type McpScope, resolveActingUser } from "@relationship-os/core";
+import {
+  grantableScopes,
+  MCP_SCOPES,
+  type McpScope,
+  resolveActingUser,
+} from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { type OperationsEnv, runOperation } from "../operations.ts";
 

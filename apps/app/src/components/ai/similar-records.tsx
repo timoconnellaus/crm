@@ -1,7 +1,13 @@
 // "Similar records" on person, organisation and deal pages (ADR 0155): record.similar's nearest
 // neighbours by meaning, linked like search hits. Says so when the record is not embedded yet
 // (it is indexed a moment after each write) or semantic search is not configured.
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { useNavigate } from "@tanstack/react-router";
 import {

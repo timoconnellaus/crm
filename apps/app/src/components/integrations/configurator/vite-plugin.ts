@@ -150,10 +150,10 @@ export function configuratorSpecs(): VitePlugin {
       resolve: {
         alias: [
           {
-            find: /^@crm\/gatekeeper-configurator-ui$/,
+            find: /^@relationship-os\/gatekeeper-configurator-ui$/,
             replacement: /^\/[A-Za-z]:\//.test(runtime) ? runtime.slice(1) : runtime,
           },
-          { find: /^@crm\/gatekeeper-configurator-ui\/options$/, replacement: options },
+          { find: /^@relationship-os\/gatekeeper-configurator-ui\/options$/, replacement: options },
         ],
       },
     }),

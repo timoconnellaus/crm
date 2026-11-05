@@ -48,7 +48,7 @@ async function setup() {
 describe("AI Gateway names", () => {
   it("names the gateway after the install, unless one was chosen", async () => {
     const { manifest, state } = await setup();
-    expect(gatewayIdFor(state, manifest)).toBe("crm");
+    expect(gatewayIdFor(state, manifest)).toBe("ros");
     expect(gatewayIdFor({ ...state, workerNames: { "ros-app": "Acme_CRM-app" } }, manifest)).toBe(
       "acme-crm",
     );
@@ -99,14 +99,14 @@ describe("provisionAiGateway", () => {
     const { cf, api, manifest, state } = await setup();
     const lines: string[] = [];
     const result = await provisionAiGateway({ api, manifest, state, log: (l) => lines.push(l) });
-    expect(result.gatewayId).toBe("crm");
-    expect(cf.gateways.get("crm")).toMatchObject({ collect_logs: true, authentication: true });
+    expect(result.gatewayId).toBe("ros");
+    expect(cf.gateways.get("ros")).toMatchObject({ collect_logs: true, authentication: true });
     expect([...cf.customProviders.values()]).toEqual([
       expect.objectContaining({ slug: "example-llm", base_url: "https://llm.example.com" }),
     ]);
     expect(result.vars).toEqual({
-      "ros-app": { AI_GATEWAY_ID: "crm" },
-      "ros-runner": { AI_GATEWAY_ID: "crm" },
+      "ros-app": { AI_GATEWAY_ID: "ros" },
+      "ros-runner": { AI_GATEWAY_ID: "ros" },
     });
     const [token] = [...cf.tokens.values()];
     expect(token?.permissionGroups).toEqual(["pg-aig-run"]);
@@ -114,7 +114,7 @@ describe("provisionAiGateway", () => {
       "ros-app": { AI_GATEWAY_TOKEN: token?.value },
       "ros-runner": { AI_GATEWAY_TOKEN: token?.value },
     });
-    expect(result.state).toMatchObject({ aiGateway: "crm", aiGatewayCreated: true });
+    expect(result.state).toMatchObject({ aiGateway: "ros", aiGatewayCreated: true });
     expect(lines.join("\n")).not.toContain(token?.value);
   });
 
@@ -202,7 +202,7 @@ describe("provisionAiGateway", () => {
           )
         : undefined;
     const result = await provisionAiGateway({ api, manifest, state });
-    expect(result.gatewayId).toBe("crm");
+    expect(result.gatewayId).toBe("ros");
     expect(result.secrets).toEqual({});
     expect(result.warnings.join(" ")).toContain("Account API Tokens Edit");
   });
@@ -224,20 +224,20 @@ describe("setGatewayProviderKey", () => {
   it("stores the key as BYOK, attaching a Secrets Store, and replaces it on a re-run", async () => {
     const { cf, api, manifest, state } = await setup();
     await provisionAiGateway({ api, manifest, state });
-    await api.setGatewayProviderKey(ACCOUNT, "crm", "custom-example-llm", "key-one-0123456789");
+    await api.setGatewayProviderKey(ACCOUNT, "ros", "custom-example-llm", "key-one-0123456789");
     expect(cf.secretsStores.size).toBe(1);
-    expect(cf.gateways.get("crm")).toMatchObject({ authentication: true, collect_logs: true });
-    await api.setGatewayProviderKey(ACCOUNT, "crm", "custom-example-llm", "key-two-0123456789");
-    await api.setGatewayProviderKey(ACCOUNT, "crm", "deepseek", "sk-deepseek-0123456789");
+    expect(cf.gateways.get("ros")).toMatchObject({ authentication: true, collect_logs: true });
+    await api.setGatewayProviderKey(ACCOUNT, "ros", "custom-example-llm", "key-two-0123456789");
+    await api.setGatewayProviderKey(ACCOUNT, "ros", "deepseek", "sk-deepseek-0123456789");
     expect(cf.secretsStores.size).toBe(1);
-    expect(cf.providerConfigs.get("crm")?.map((c) => [c.provider_slug, c.alias, c.secret])).toEqual(
+    expect(cf.providerConfigs.get("ros")?.map((c) => [c.provider_slug, c.alias, c.secret])).toEqual(
       [
         ["custom-example-llm", "default", "key-two-0123456789"],
         ["deepseek", "default", "sk-deepseek-0123456789"],
       ],
     );
     // Listing shows previews only.
-    const listed = await api.listProviderConfigs(ACCOUNT, "crm");
+    const listed = await api.listProviderConfigs(ACCOUNT, "ros");
     expect(JSON.stringify(listed)).not.toContain("key-two-0123456789");
   });
 
@@ -252,7 +252,7 @@ describe("setGatewayProviderKey", () => {
           )
         : undefined;
     const error = await api
-      .setGatewayProviderKey(ACCOUNT, "crm", "custom-example-llm", "very-secret-key-42")
+      .setGatewayProviderKey(ACCOUNT, "ros", "custom-example-llm", "very-secret-key-42")
       .catch((e: Error) => e);
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toContain("invalid provider");

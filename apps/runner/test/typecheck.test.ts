@@ -4,6 +4,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { typecheck } from "../src/executor/build-cache.ts";
+import { buildExtension, SDK_SPECIFIER } from "../src/extensions/build.ts";
 import { MAX_TYPE_ISSUES, typecheckExtension } from "../src/extensions/typecheck.ts";
 import { SHIPPED_EXTENSIONS } from "../src/generated/shipped.ts";
 
@@ -117,5 +118,28 @@ describe("typecheckExtension", () => {
       "\n",
     );
     expect(typecheckExtension({ "index.ts": body })).toHaveLength(MAX_TYPE_ISSUES);
+  });
+});
+
+describe("extensions written before the rename (ADR 0190)", () => {
+  // Runtime extensions already installed import `@crm/sdk`; they keep checking and building.
+  const legacy = Object.fromEntries(
+    Object.entries(files).map(([path, text]) => [
+      path,
+      text.replaceAll("@relationship-os/sdk", "@crm/sdk"),
+    ]),
+  );
+
+  it("type-check clean against the SDK", () => {
+    expect(Object.values(legacy).join("\n")).toContain('"@crm/sdk"');
+    expect(typecheckExtension(legacy)).toEqual([]);
+  });
+
+  it("build, with their SDK imports pointed at the sandbox SDK module", () => {
+    const built = buildExtension(legacy);
+    if (!built.ok) throw new Error(JSON.stringify(built.issues));
+    const code = Object.values(built.modules).join("\n");
+    expect(code).toContain(`"${SDK_SPECIFIER}"`);
+    expect(code).not.toContain("@crm/sdk");
   });
 });

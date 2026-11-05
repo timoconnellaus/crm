@@ -54,7 +54,9 @@ export async function connectApp(
   }).toString();
 
   await page.goto(consent.toString());
-  await expect(page.getByRole("heading", { name: `Connect ${name} to Relationship OS?` })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: `Connect ${name} to Relationship OS?` }),
+  ).toBeVisible();
   await expect(page.getByRole("checkbox", { name: /Read/ })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: /Write/ })).toBeChecked();
   if (scopes.includes("admin")) {

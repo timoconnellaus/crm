@@ -10,6 +10,7 @@ import {
   getRelease,
   type ReleaseInfo,
 } from "./github.ts";
+import { sameRepository } from "./legacy.ts";
 import { parseManifest } from "./manifest.ts";
 
 export interface VerifiedRelease {
@@ -46,7 +47,7 @@ export async function fetchVerifiedRelease(
       `bundle says it is ${bundle.manifest.version}, but the release is ${info.version}`,
     );
   }
-  if (bundle.manifest.repository !== repository) {
+  if (!sameRepository(bundle.manifest.repository, repository)) {
     throw new VerificationError(
       `bundle was built for ${bundle.manifest.repository}, not ${repository}`,
     );

@@ -2,7 +2,13 @@
 // person it lists their organisations; on an organisation, its people.
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
 import {
   DropdownMenu,
   DropdownMenuContent,

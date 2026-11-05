@@ -227,12 +227,12 @@
       "sha256": "e71695935c98bcbe626271c4a9b434be6705054d7293cedd7f6157a415124d49"
     }
   ],
-  "product": "crm",
+  "product": "relationship-os",
   "repository": "timoconnellaus/relationship-os",
   "resources": [
     {
       "implicit": false,
-      "name": "crm",
+      "name": "ros",
       "optional": false,
       "placeholder": "$D1_ID(ros)",
       "type": "d1",
@@ -509,6 +509,16 @@
           "type": "plain_text"
         },
         {
+          "name": "IDENTITY_PROVIDER",
+          "text": "better-auth",
+          "type": "plain_text"
+        },
+        {
+          "name": "MCP_ACCESS_TOKEN_TTL",
+          "text": "3600",
+          "type": "plain_text"
+        },
+        {
           "name": "ROS_ACCOUNT_ID",
           "text": "$ACCOUNT_ID",
           "type": "plain_text"
@@ -521,16 +531,6 @@
         {
           "name": "ROS_RELEASE_VERSION",
           "text": "1.0.0",
-          "type": "plain_text"
-        },
-        {
-          "name": "IDENTITY_PROVIDER",
-          "text": "better-auth",
-          "type": "plain_text"
-        },
-        {
-          "name": "MCP_ACCESS_TOKEN_TTL",
-          "text": "3600",
           "type": "plain_text"
         },
         {
@@ -569,11 +569,6 @@
           "type": "secret_text"
         },
         {
-          "name": "ROS_UPDATE_TOKEN",
-          "text": "$SECRET(ROS_UPDATE_TOKEN)",
-          "type": "secret_text"
-        },
-        {
           "name": "GOOGLE_CLIENT_ID",
           "text": "$SECRET(GOOGLE_CLIENT_ID)",
           "type": "secret_text"
@@ -581,6 +576,11 @@
         {
           "name": "GOOGLE_CLIENT_SECRET",
           "text": "$SECRET(GOOGLE_CLIENT_SECRET)",
+          "type": "secret_text"
+        },
+        {
+          "name": "ROS_UPDATE_TOKEN",
+          "text": "$SECRET(ROS_UPDATE_TOKEN)",
           "type": "secret_text"
         }
       ],
@@ -652,12 +652,6 @@
           "source": "installer"
         },
         {
-          "description": "Optional. A scoped Cloudflare API token that lets Settings → Updates update this deployment itself (docs/deploying.md). Without it, updates use the `ros upgrade` CLI.",
-          "name": "ROS_UPDATE_TOKEN",
-          "required": false,
-          "source": "installer"
-        },
-        {
           "description": "Optional. Google OAuth client ID for Google sign-in.",
           "name": "GOOGLE_CLIENT_ID",
           "required": false,
@@ -668,9 +662,15 @@
           "name": "GOOGLE_CLIENT_SECRET",
           "required": false,
           "source": "user"
+        },
+        {
+          "description": "Optional. A scoped Cloudflare API token that lets Settings → Updates update this deployment itself (docs/deploying.md). Without it, updates use the `ros upgrade` CLI.",
+          "name": "ROS_UPDATE_TOKEN",
+          "required": false,
+          "source": "installer"
         }
       ],
-      "sha256": "8ec123e67e8e80583420fc048831f4ea1d94b39a192d809d43e71dd7cdded41c"
+      "sha256": "317da63e8d66ee693e66f4da698f897c9106d7f65d331d801ed632afb4884710"
     },
     {
       "bindings": [
@@ -871,7 +871,7 @@
       ],
       "role": "runner",
       "secrets": [],
-      "sha256": "66f100e943419a81f45b2ef82d1cb1d0cae10aa3a2020ee0b78c2200ba553aba"
+      "sha256": "210dd5a86c759da00736696682dae63db7fb97a8322a055f8705241f42942dae"
     },
     {
       "bindings": [],
@@ -915,7 +915,7 @@
       "queueConsumers": [],
       "role": "gatekeeper",
       "secrets": [],
-      "sha256": "29512db789f660ffbd662454d43c04549294dd3cde54b2e44d4edb9f2bb515e3",
+      "sha256": "7b41d88d6772e63cd6d3abb03088603882996d9afc230c85f6db5a76afff8815",
       "shortName": "email"
     },
     {
@@ -972,7 +972,7 @@
       "queueConsumers": [],
       "role": "gatekeeper",
       "secrets": [],
-      "sha256": "8e4daf5daaff42213d9c45555ea80f5cd0d070ac2587b8d9add5933aad382db5",
+      "sha256": "171079bd95710b1688e364c6a29559501cabe8f25365b682cf2398af49be2c25",
       "shortName": "email-send"
     },
     {
@@ -1126,7 +1126,7 @@
           "source": "user"
         }
       ],
-      "sha256": "c6578457843fda496b57cccdbed3c72e001157edf3b01bffa738b620a4bf1a11",
+      "sha256": "69bec919e3ac339051631ff46a549bc8266a04452ead47849ffba07c8b8532d6",
       "shortName": "google"
     },
     {
@@ -1176,7 +1176,7 @@
       "queueConsumers": [],
       "role": "gatekeeper",
       "secrets": [],
-      "sha256": "fcf6f683937e0fd24063289e45cf52ac4ab9c35c3285f0e301d81399c03d9417",
+      "sha256": "159fbb91feee40ed175614b4f041ccc95d785fec3721cad2073f8a71fbacf7c4",
       "shortName": "mcp"
     },
     {
@@ -1251,7 +1251,7 @@
           "source": "user"
         }
       ],
-      "sha256": "5a3a8a1e0fd92715a9b5083b4698799fc9ec43fac402086c11d7fd20ec968c19",
+      "sha256": "8fb1833637f65a487d98d78814beeb291dd8b735af2f413f154bfa57465f6cc2",
       "shortName": "microsoft"
     },
     {
@@ -1313,7 +1313,7 @@
           "source": "user"
         }
       ],
-      "sha256": "b5dd7c6077f480d475c3b00ef9ac8ae177371de277d6c889bbbfa8d867a44e8e",
+      "sha256": "b972359ca79dabd7b0c83037242b65185d64c5dd84a4fef06330ac5a778051f2",
       "shortName": "slack"
     },
     {
@@ -1395,7 +1395,7 @@
           "source": "user"
         }
       ],
-      "sha256": "1c6d3e1f449d039189ac5e7883d5deff4a1d7c8126290864aa9e8630c36e0c81",
+      "sha256": "4bcd23d0c43b71c44f9beb06ed0131e1c79883274bb3598e74d571567c2c609e",
       "shortName": "slack-post"
     },
     {
@@ -1449,7 +1449,7 @@
       "queueConsumers": [],
       "role": "gatekeeper",
       "secrets": [],
-      "sha256": "87fce2cde0107dda6fde5640c3901f12d283d8a52234ddb11eedb8314dd428e9",
+      "sha256": "8103e3e018669fc456b3942625e6a1d5bea74866bfe4af7eb023e76d34b1dc42",
       "shortName": "webhook"
     },
     {
@@ -1496,7 +1496,7 @@
       "queueConsumers": [],
       "role": "gatekeeper",
       "secrets": [],
-      "sha256": "0fb86454e09c2f2dd67c0752d9cee6e1033551ae2dd03af7905f8aed8b3529ae",
+      "sha256": "ab95443fd33a44965fb20928b9e9ce070da44cd2be2d9f1e9cd42a14f442ca67",
       "shortName": "websearch"
     },
     {
@@ -1563,7 +1563,7 @@
           "source": "user"
         }
       ],
-      "sha256": "ab5c78bc385a19cb30129fd91207c88c83b468ec90ebc73d517213ab9f299a9f",
+      "sha256": "20e058b112700358fc6c3f9a9603542a08595664f2017ff350f20526f74ce8a6",
       "shortName": "zoominfo"
     }
   ],

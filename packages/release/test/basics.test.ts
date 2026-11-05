@@ -51,7 +51,7 @@ describe("semver and channels", () => {
 describe("placeholders", () => {
   it("resolves the closed list and refuses anything else", () => {
     expect(renderString("https://$HOSTNAME/x", values)).toBe("https://crm.example.com/x");
-    expect(renderString("$D1_ID(ros)", values)).toBe("D1_ID:crm");
+    expect(renderString("$D1_ID(ros)", values)).toBe("D1_ID:ros");
     expect(renderString("$WORKER_NAME(ros-runner)", values)).toBe("x-ros-runner");
     expect(() => renderString("$PUBLIC_BASE_URL", values)).toThrow(/unknown placeholder/);
   });

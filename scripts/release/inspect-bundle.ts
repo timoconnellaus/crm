@@ -13,7 +13,9 @@ const bytes = new Uint8Array(readFileSync(path));
 const bundle = await openBundle(bytes);
 assertUnresolved(bundle.manifest);
 const m = bundle.manifest;
-console.log(`Relationship OS ${m.version} (${m.channel}) from ${m.repository}@${m.commit.slice(0, 12)}`);
+console.log(
+  `Relationship OS ${m.version} (${m.channel}) from ${m.repository}@${m.commit.slice(0, 12)}`,
+);
 console.log(`sha256 ${await sha256Hex(bytes)}`);
 console.log(
   `extension contract ${m.extensionContract.version} (supports ${m.extensionContract.supported.join(", ")})`,

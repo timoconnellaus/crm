@@ -2,7 +2,13 @@
 
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageLayout } from "#/components/layout/page-layout";

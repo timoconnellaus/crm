@@ -15,6 +15,8 @@ const MAX_MESSAGE_LENGTH = 2_000;
 /** Extension files live under this virtual directory; issue paths are relative to it. */
 const ROOT = "/ext/";
 const SDK_SPECIFIER = "@relationship-os/sdk";
+/** Extensions written before the rename to Relationship OS (ADR 0190) import `@crm/sdk`. */
+const LEGACY_SDK_SPECIFIER = "@crm/sdk";
 
 const OPTIONS: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES2022,
@@ -66,7 +68,7 @@ function resolveFromExtension(
   specifier: string,
   files: Record<string, string>,
 ): ts.ResolvedModuleFull | undefined {
-  if (specifier === SDK_SPECIFIER) {
+  if (specifier === SDK_SPECIFIER || specifier === LEGACY_SDK_SPECIFIER) {
     return { resolvedFileName: SDK_TYPES.entry, extension: ts.Extension.Dts };
   }
   if (!specifier.startsWith("./") && !specifier.startsWith("../")) return undefined;

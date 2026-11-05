@@ -11,7 +11,7 @@ const sources = import.meta.glob(["../src/**/*.{ts,tsx}", "!../src/server/**"], 
 }) as Record<string, string>;
 
 const FORBIDDEN = [
-  { pattern: /from\s+["']@crm\/db["']/, why: "imports @relationship-os/db" },
+  { pattern: /from\s+["']@relationship-os\/db["']/, why: "imports @relationship-os/db" },
   { pattern: /\benv\.DB\b/, why: "reads the DB binding" },
   { pattern: /\.prepare\(\s*["'`]/, why: "prepares SQL" },
 ];

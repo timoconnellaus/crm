@@ -2,6 +2,8 @@
 // own tools, everything else MCP may reach goes through describe_operations / call_operation,
 // and operations marked `mcp: { expose: false }` are invisible and uncallable. Every reviewable
 // (non-read) call takes a required `reason`, stored on the pending action when it is queued.
+
+import { McpServer, type StandardSchemaWithJSON } from "@modelcontextprotocol/server";
 import {
   type AnyOperation,
   coreRegistry,
@@ -22,7 +24,6 @@ import {
   ValidationError,
 } from "@relationship-os/core";
 import type { CrmDb } from "@relationship-os/db";
-import { McpServer, type StandardSchemaWithJSON } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 export const SERVER_NAME = "relationship-os";

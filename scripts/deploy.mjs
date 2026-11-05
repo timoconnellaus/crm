@@ -3,7 +3,7 @@
 // CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID point at):
 //
 //   1. the Vectorize index for semantic search (when AI is on and the index does not exist yet),
-//   2. ros-runner (wrangler provisions the `crm` D1 database by name on a fresh account),
+//   2. ros-runner (wrangler provisions the `ros` D1 database by name on a fresh account),
 //   3. core migrations on that database,
 //   4. ros-app (bound to the same database and to ros-runner).
 //
@@ -23,6 +23,13 @@
 // ros-app's secrets are read from the environment (see docs/deploying.md). They are passed with
 // --secrets-file, which a first deploy needs; later deploys keep the secrets already set.
 //
+// A deployment made from source before the rename to Relationship OS (ADR 0190) has Workers
+// `crm-app` / `crm-runner`, the D1 database `crm` and `crm-*` resources. Renaming a deployed
+// Worker would orphan its Durable Objects, so such a deployment keeps its names: set
+// ROS_LEGACY_NAMES=on and the generated configs use the `crm` names. Without it, this script
+// stops when it finds `crm-app` and no `ros-app` in the account. The old CRM_* variables are
+// still read when the ROS_* ones are unset.
+//
 // Usage: pnpm run deploy [-- --dry-run]
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -32,8 +39,15 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dryRun = process.argv.includes("--dry-run");
+for (const [name, value] of Object.entries(process.env)) {
+  if (name.startsWith("CRM_") && process.env[`ROS_${name.slice(4)}`] === undefined) {
+    process.env[`ROS_${name.slice(4)}`] = value;
+  }
+}
+const legacyNames = (process.env.ROS_LEGACY_NAMES ?? "").toLowerCase() === "on";
 const aiOn = (process.env.ROS_AI ?? "on").toLowerCase() !== "off";
-const indexName = process.env.ROS_VECTORIZE_INDEX?.trim() || "ros-records";
+const indexName =
+  process.env.ROS_VECTORIZE_INDEX?.trim() || (legacyNames ? "crm-records" : "ros-records");
 
 /** AI_MODEL_ROLES and AI_GATEWAY_BYOK for this deployment, from ROS_AI_MODEL_ROLES / _GATEWAY_BYOK. */
 async function aiVars() {
@@ -116,8 +130,18 @@ const deployInputs = (app) =>
  * AI vars. Returns its name.
  */
 function deployConfig(app) {
-  const config = parseJsonc(readFileSync(join(root, app, "wrangler.jsonc"), "utf8"));
-  const feature = deployInputs(app).features?.ai ?? {};
+  let config = parseJsonc(readFileSync(join(root, app, "wrangler.jsonc"), "utf8"));
+  if (legacyNames) {
+    // Worker, service, queue, bucket and workflow names `ros-*` → `crm-*`; the database `crm`.
+    config = JSON.parse(
+      JSON.stringify(config)
+        .replace(/"ros-/g, '"crm-')
+        .replace(/"database_name":"ros"/g, '"database_name":"crm"')
+        // AI_SECRET_SCRIPTS: "ros-app,ros-runner" became "crm-app,ros-runner" above.
+        .replace(/crm-app,ros-runner/g, "crm-app,crm-runner"),
+    );
+  }
+  const feature = aiOn ? (deployInputs(app).features?.ai ?? {}) : {};
   if (feature.ai) config.ai = feature.ai;
   if (feature.vectorize) {
     config.vectorize = feature.vectorize.map((index) => ({ ...index, index_name: indexName }));
@@ -141,6 +165,19 @@ function wranglerOk(cwd, args) {
     return true;
   } catch {
     return false;
+  }
+}
+
+// 0. A pre-rename deployment must keep its names (see the top of this file).
+if (!legacyNames && !dryRun) {
+  const exists = (name) => wranglerOk("apps/app", ["deployments", "list", "--name", name]);
+  if (exists("crm-app") && !exists("ros-app")) {
+    console.error(
+      "\nThis account has a deployment from before the rename (crm-app) and no ros-app. Deploying\n" +
+        "would create a second, empty deployment. Re-run with ROS_LEGACY_NAMES=on to update it in\n" +
+        "place under its existing names (docs/deploying.md).",
+    );
+    process.exit(1);
   }
 }
 
@@ -170,11 +207,16 @@ if (aiOn) {
       ]);
     }
   }
+} else {
+  console.log("\nROS_AI=off: deploying without Workers AI and Vectorize bindings");
+}
+let appConfig = [];
+if (aiOn || legacyNames) {
   // ros-runner's automation events consumer embeds changed records (ADR 0154 amendment).
   runnerConfig = ["--config", deployConfig("apps/runner")];
-  appConfigEnv = { ROS_WRANGLER_CONFIG: deployConfig("apps/app") };
-} else {
-  console.log("\nCRM_AI=off: deploying without Workers AI and Vectorize bindings");
+  const file = deployConfig("apps/app");
+  appConfig = ["--config", file];
+  appConfigEnv = { ROS_WRANGLER_CONFIG: file };
 }
 
 // 2. ros-runner first: ros-app's service binding needs it, and it provisions the D1 database.
@@ -182,7 +224,7 @@ wrangler("apps/runner", ["deploy", ...runnerConfig, ...(dryRun ? ["--dry-run"] :
 
 // 3. Core migrations, before ros-app serves traffic.
 if (dryRun) console.log("\n(dry run: skipping `wrangler d1 migrations apply DB --remote`)");
-else wrangler("apps/app", ["d1", "migrations", "apply", "DB", "--remote"]);
+else wrangler("apps/app", ["d1", "migrations", "apply", "DB", "--remote", ...appConfig]);
 
 // 4. ros-app. The Vite build writes the deploy config (with the AI bindings) into dist/.
 run("apps/app", "pnpm", ["exec", "vite", "build"], appConfigEnv);
@@ -195,7 +237,7 @@ const secrets = Object.fromEntries([
 const args = ["deploy", ...(dryRun ? ["--dry-run"] : [])];
 let secretsDir;
 if (Object.keys(secrets).length > 0) {
-  secretsDir = mkdtempSync(join(tmpdir(), "crm-deploy-"));
+  secretsDir = mkdtempSync(join(tmpdir(), "ros-deploy-"));
   const file = join(secretsDir, "secrets.json");
   writeFileSync(file, JSON.stringify(secrets), { mode: 0o600 });
   args.push("--secrets-file", file);

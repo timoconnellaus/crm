@@ -24,8 +24,14 @@ import type {
   SupportedResource,
   VendorDescription,
 } from "@relationship-os/gatekeeper-interface/gatekeeper";
-import { stripTrailingSlashes, workerVersionTag } from "@relationship-os/gatekeeper-interface/gatekeeper";
-import { buildDescription, sanitizeTitle } from "@relationship-os/gatekeeper-kit/action-description";
+import {
+  stripTrailingSlashes,
+  workerVersionTag,
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
+import {
+  buildDescription,
+  sanitizeTitle,
+} from "@relationship-os/gatekeeper-kit/action-description";
 import {
   ActionApplyError,
   ActionJournal,

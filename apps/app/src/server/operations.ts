@@ -47,6 +47,8 @@ export interface OperationsEnv extends AiAppEnv {
   ROS_ACCOUNT_ID?: string;
   /** Optional scoped token for in-app updates (a secret). */
   ROS_UPDATE_TOKEN?: string;
+  /** The same token on an install from before the rename (ADR 0190); read when ROS_UPDATE_TOKEN is unset. */
+  CRM_UPDATE_TOKEN?: string;
 }
 
 /**

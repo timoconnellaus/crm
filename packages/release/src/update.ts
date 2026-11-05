@@ -28,6 +28,7 @@ import {
   writeDeploymentState,
 } from "./deploy.ts";
 import { GATEWAY_TOKEN_SECRET, mergeSecrets, provisionAiGateway } from "./gateway.ts";
+import { adoptLegacyNames } from "./legacy.ts";
 
 /** Pauses and resumes automations around an update. */
 export interface AutomationControl {
@@ -159,7 +160,9 @@ function suppliedGatewayToken(secrets: UpdateInput["secrets"]): { token?: string
 export async function runUpdate(input: UpdateInput): Promise<UpdateOutcome> {
   const log = input.log ?? (() => {});
   const automations = input.automations ?? noAutomationControl;
-  const { api, state, databaseId, target } = input;
+  const { api, databaseId, target } = input;
+  // An install from before the rename keeps its deployed names (ADR 0190).
+  const state = adoptLegacyNames(input.state, target.manifest);
   const outcome: UpdateOutcome = {
     status: "failed",
     from: state.version,
@@ -196,6 +199,7 @@ export async function runUpdate(input: UpdateInput): Promise<UpdateOutcome> {
           (r) => r.placeholder && !(r.placeholder.slice(1) in state.resources),
         ),
         log,
+        state.resourceNames,
       )),
     };
     // AI Gateway (with AI on): created or checked, so an upgrade adds what an install would.

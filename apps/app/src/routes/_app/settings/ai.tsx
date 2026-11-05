@@ -75,7 +75,8 @@ type ProviderId = Provider["id"];
 type Capabilities = Role["capabilities"];
 type TestResult = CoreOutput<"ai.testRole">;
 
-const DOCS_URL = "https://github.com/timoconnellaus/relationship-os/blob/main/docs/deploying.md#in-app-ai";
+const DOCS_URL =
+  "https://github.com/timoconnellaus/relationship-os/blob/main/docs/deploying.md#in-app-ai";
 
 const ROLE_TITLES: Record<string, string> = {
   build: "Build",

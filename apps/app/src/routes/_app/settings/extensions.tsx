@@ -5,7 +5,13 @@
 
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangleIcon, PuzzleIcon } from "lucide-react";

@@ -27,12 +27,16 @@ export { SDK_BUNDLE, SDK_SPECIFIER };
 /** Pinned for every Dynamic Worker; part of each id. No flags: extension code needs no Node APIs. */
 export const COMPATIBILITY_DATE = "2026-10-01";
 export const COMPATIBILITY_FLAGS: readonly string[] = [];
-const ENTRY = "crm-entry.js";
+const ENTRY = "ros-entry.js";
 /** The SDK bundle's module name (workerd resolves bare specifiers per directory, so modules
  * import it by a relative path; see sdkImports). */
 const SDK_MODULE = "ros-sdk.js";
 const EXT_DIR = "ext";
-const SDK_IMPORT_RE = new RegExp(`(\\b(?:from|import)\\s*)(["'])${SDK_SPECIFIER}\\2`, "g");
+// `crm-sdk`: modules built before the rename (ADR 0190) and still in a build cache.
+const SDK_IMPORT_RE = new RegExp(
+  `(\\b(?:from|import)\\s*)(["'])(?:${SDK_SPECIFIER}|crm-sdk)\\2`,
+  "g",
+);
 
 /** Points a built module's `ros-sdk` imports (build.ts writes them) at the root SDK module. */
 function sdkImports(path: string, code: string): string {

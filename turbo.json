@@ -6,6 +6,7 @@
     "ROS_VECTORIZE_INDEX",
     "ROS_AI_MODEL_ROLES",
     "ROS_AI_GATEWAY_BYOK",
+    "ROS_LEGACY_NAMES",
     "RELEVANCE_REAL"
   ],
   "tasks": {

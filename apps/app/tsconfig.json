@@ -6,7 +6,9 @@
       "#/*": ["./src/*"],
       // The configurator authoring API's types; its runtime is ours (see
       // src/components/integrations/configurator/vite-plugin.ts).
-      "@relationship-os/gatekeeper-configurator-ui": ["../../packages/gatekeeper-configurator-ui/src/index.ts"],
+      "@relationship-os/gatekeeper-configurator-ui": [
+        "../../packages/gatekeeper-configurator-ui/src/index.ts"
+      ],
       "@relationship-os/gatekeeper-configurator-ui/options": [
         "../../packages/gatekeeper-configurator-ui/src/runtime/options.ts"
       ]

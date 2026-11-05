@@ -4,7 +4,7 @@
 // account-specific value in it is a placeholder that is resolved only at deploy time:
 //
 //   $ACCOUNT_ID              the Cloudflare account id
-//   $HOSTNAME                the deployment's public hostname (crm.example.com or
+//   $HOSTNAME                the deployment's public hostname (ros.example.com or
 //                            ros-app.<subdomain>.workers.dev)
 //   $SECRET(<NAME>)          a secret value, passed as a secret_text binding
 //   $WORKER_NAME(<name>)     the deployed name of another Worker of the release
@@ -16,6 +16,7 @@
 //
 // The list is closed: the renderer fails on any other `$TOKEN`, so a manifest that needs a new
 // kind of value bumps MANIFEST_VERSION and the renderer together.
+import { LEGACY_PRODUCT, PRODUCT } from "./legacy.ts";
 import type { Channel } from "./semver.ts";
 
 export const MANIFEST_VERSION = 1;
@@ -190,7 +191,8 @@ export interface AiGatewayConfig {
 
 export interface ReleaseManifest {
   manifestVersion: typeof MANIFEST_VERSION;
-  product: "crm";
+  /** `relationship-os`; releases from before the rename say `crm` (legacy.ts). */
+  product: "relationship-os" | "crm";
   version: string;
   channel: Channel;
   commit: string;
@@ -233,7 +235,7 @@ export function placeholder(kind: PlaceholderFunction, arg: string): string {
 
 const TOKEN_RE = /\$([A-Z][A-Z0-9_]*)(?:\(([^()\s]*)\))?/g;
 
-/** Every placeholder token in a string, e.g. `[{ kind: "D1_ID", arg: "crm" }]`. */
+/** Every placeholder token in a string, e.g. `[{ kind: "D1_ID", arg: "ros" }]`. */
 export function placeholdersIn(value: string): { kind: string; arg: string | null }[] {
   return [...value.matchAll(TOKEN_RE)].map((m) => ({ kind: m[1] as string, arg: m[2] ?? null }));
 }
@@ -369,7 +371,10 @@ export function assertUnresolved(manifest: ReleaseManifest): void {
 /** Parses and sanity-checks a manifest read from a bundle or a release asset. */
 export function parseManifest(text: string): ReleaseManifest {
   const manifest = JSON.parse(text) as ReleaseManifest;
-  if (manifest?.product !== "crm") throw new Error("not a CRM release manifest");
+  // A pre-rename (`crm`) manifest is read too: the installed release's, for preflight and rollback.
+  if (manifest?.product !== PRODUCT && manifest?.product !== LEGACY_PRODUCT) {
+    throw new Error("not a Relationship OS release manifest");
+  }
   if (manifest.manifestVersion !== MANIFEST_VERSION) {
     throw new Error(
       `manifest version ${manifest.manifestVersion} is not supported by this tool (expects ${MANIFEST_VERSION}); update create-relationship-os`,

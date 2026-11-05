@@ -1,6 +1,6 @@
 -- Migration 0110: integrations (stage 6a, ADRs 0050, 0051, 0110, 0111).
 --
--- The integration host (one Durable Object per connection in ros-runner) is the authority for
+-- The integration host (one Durable Object per connection in crm-runner) is the authority for
 -- gatekeeper accounts, facets and hooks: those are RPC stubs that only DO storage can hold. The
 -- tables below mirror connection state for the UI and record what the CRM itself decides:
 -- which gatekeepers an admin enabled, which outbound action kinds may auto-apply, the outbound

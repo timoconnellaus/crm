@@ -9,7 +9,12 @@
 //   node scripts/release/changelog.ts --tag v1.2.0 [--repo owner/repo]   notes for one release
 //   node scripts/release/changelog.ts --all > CHANGELOG.md               every release tag
 import { execFileSync } from "node:child_process";
-import { bareVersion, compareVersions, DEFAULT_REPOSITORY, isVersion } from "@relationship-os/release";
+import {
+  bareVersion,
+  compareVersions,
+  DEFAULT_REPOSITORY,
+  isVersion,
+} from "@relationship-os/release";
 
 export interface Commit {
   subject: string;

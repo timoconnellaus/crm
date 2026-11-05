@@ -9,6 +9,7 @@ export * from "./deploy.ts";
 export * from "./gateway.ts";
 export * from "./github.ts";
 export * from "./hash.ts";
+export * from "./legacy.ts";
 export * from "./manifest.ts";
 export * from "./operator.ts";
 export * from "./preflight.ts";

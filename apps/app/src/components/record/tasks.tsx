@@ -1,7 +1,13 @@
 // A record's tasks: the side-panel card (open tasks) and the full list for the Tasks tab. The
 // list is also used by the Tasks page.
 import { Button } from "@relationship-os/ui/components/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
 import { Checkbox } from "@relationship-os/ui/components/checkbox";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { cn } from "@relationship-os/ui/lib/utils";
