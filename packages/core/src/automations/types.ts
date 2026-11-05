@@ -291,10 +291,40 @@ export interface AutomationTestReport {
   policyPreset: string;
   ok: boolean;
   error?: { code: string; message: string };
+  /**
+   * Whether the report was stored as a test run (the automation page's latest test). False for a
+   * draft: a proposed automation has no automation page yet (ADR 0133, stage 7b).
+   */
+  stored: boolean;
+  /** Set when a proposed (not yet installed) automation was tested at its proposed commit. */
+  draft?: AutomationDraftTarget;
 }
+
+/** A proposed automation: entry `key` of extension `extensionId`'s manifest at `commit`. */
+export interface AutomationDraftTarget {
+  extensionId: string;
+  commit: string;
+  key: string;
+}
+
+/**
+ * Draft test failures that are a wrong target rather than a test result: `unknown_automation`
+ * (the proposed manifest declares no automation `key`) and `evaluate_failed` (the commit does not
+ * evaluate). The report then has `ok: false`, no steps and this code; automation.test throws.
+ */
+export const DRAFT_TARGET_ERRORS: readonly string[] = ["unknown_automation", "evaluate_failed"];
 
 // ---------------------------------------------------------------------------------------------
 // The automation host: ros-runner RPC used by automation.* operations (and the UI through them)
+
+/** What to test: an installed automation, or a proposed one (`draft`). */
+export type AutomationTestInput = (
+  | { automationId: string; draft?: undefined }
+  | { draft: AutomationDraftTarget; automationId?: undefined }
+) & {
+  record?: { object: string; id: string };
+  userId: string;
+};
 
 export interface StartRunInput {
   automationId: string;
@@ -305,12 +335,11 @@ export interface StartRunInput {
 }
 
 export interface AutomationHost {
-  /** Test mode: a dry run of `automationId` on a record through the simulation overlay. */
-  testAutomation(input: {
-    automationId: string;
-    record?: { object: string; id: string };
-    userId: string;
-  }): Promise<AutomationTestReport>;
+  /**
+   * Test mode: a dry run of `automationId` (installed) or `draft` (a proposed automation at its
+   * proposed commit) on a record through the simulation overlay.
+   */
+  testAutomation(input: AutomationTestInput): Promise<AutomationTestReport>;
   /** Manual trigger: starts one run per record (rails apply). Returns the run ids. */
   startManualRun(input: StartRunInput): Promise<{ runIds: string[]; skipped: number }>;
   /** Restarts a failed run from its failed step (Workflow restart). */

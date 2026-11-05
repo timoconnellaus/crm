@@ -297,6 +297,9 @@ export function asTestReport(value: unknown): AutomationTestReport | null {
     policyPreset: report.policyPreset ?? "",
     ok: report.ok ?? true,
     ...(report.error ? { error: report.error } : {}),
+    // Reports stored before stage 7b have no `stored`; a stored report was stored.
+    stored: report.stored ?? true,
+    ...(report.draft ? { draft: report.draft } : {}),
   };
 }
 

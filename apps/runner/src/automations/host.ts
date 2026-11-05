@@ -2,9 +2,12 @@
 // retry, replay and cancel. ros-app reaches it over RPC (the Runner entrypoint's methods).
 import {
   type AutomationDefinition,
+  type AutomationDraftTarget,
   type AutomationHost,
+  type AutomationTestInput,
   type AutomationTestReport,
   createTestSimulation,
+  extensionPrincipalId,
   idsMatchingConditions,
   loadApprovalPolicy,
   loadAutomationSettings,
@@ -22,7 +25,9 @@ import type {
   AutomationJournalEntry,
   AutomationRunValue,
   AutomationTestStep,
+  ExtensionManifest,
 } from "@relationship-os/sdk";
+import { manifestSchema } from "@relationship-os/sdk";
 import { Executor, type ExecutorOptions } from "../executor/executor.ts";
 import { type AutomationRunParams, type DispatchEnv, startRuns } from "./dispatch.ts";
 import { finishRun, stepOperations } from "./run.ts";
@@ -59,22 +64,135 @@ const TRIGGER_OBJECT_TYPES = new Set(["record", "fieldChanged", "dateRelative", 
  * operation the run calls goes through the pipeline simulated: nothing is written and no events
  * are sent. The report, and a test run row for the automation page, are the only writes.
  */
+/**
+ * A proposed automation (ADR 0133, stage 7b): evaluates the extension at the proposed commit (the
+ * evaluation extension.check and install use, cached by source hash) and takes entry `key`.
+ */
+async function loadDraftDefinition(
+  executor: Executor,
+  draft: AutomationDraftTarget,
+): Promise<
+  | { ok: true; definition: AutomationDefinition; manifest: ExtensionManifest }
+  | { ok: false; error: { code: string; message: string } }
+> {
+  const evaluated = await executor.evaluate({ id: draft.extensionId, commit: draft.commit });
+  const parsed = evaluated.ok ? manifestSchema.safeParse(evaluated.manifest) : null;
+  if (!evaluated.ok || !parsed?.success) {
+    const why = evaluated.ok
+      ? (parsed?.error?.issues[0]?.message ?? "invalid manifest")
+      : evaluated.issues.map((i) => `${i.path}: ${i.message}`).join("; ");
+    return {
+      ok: false,
+      error: {
+        code: "evaluate_failed",
+        message: `${draft.extensionId} at commit ${draft.commit} does not evaluate: ${why}`,
+      },
+    };
+  }
+  const manifest = parsed.data;
+  const spec = Object.hasOwn(manifest.automations, draft.key)
+    ? manifest.automations[draft.key]
+    : undefined;
+  if (!spec) {
+    const keys = Object.keys(manifest.automations);
+    return {
+      ok: false,
+      error: {
+        code: "unknown_automation",
+        message:
+          `The proposed ${draft.extensionId} declares no automation "${draft.key}" ` +
+          (keys.length ? `(its automations: ${keys.join(", ")})` : "(it declares no automations)"),
+      },
+    };
+  }
+  return {
+    ok: true,
+    manifest,
+    definition: {
+      id: `${draft.extensionId}.${draft.key}`,
+      extensionId: draft.extensionId,
+      key: draft.key,
+      commit: draft.commit,
+      spec,
+    },
+  };
+}
+
+/**
+ * The extension's principal user (ADR 0025), as installExtension creates it, if it does not exist
+ * yet. A draft runs as its principal like a real run, and operations check that their caller and
+ * default assignee exist (task.create assigns the caller), so a not-yet-installed extension needs
+ * the row. It is the one write a draft test makes besides test mode's own; install reuses it.
+ */
+async function ensurePrincipal(
+  db: ReturnType<typeof createCrmDb>["query"],
+  extensionId: string,
+  manifest: ExtensionManifest,
+): Promise<void> {
+  const now = new Date().toISOString();
+  await db
+    .insertInto("core_user")
+    .values({
+      id: extensionPrincipalId(extensionId),
+      name: manifest.label ?? extensionId,
+      email: `${extensionId}@extensions.crm.invalid`,
+      email_verified: 0,
+      image: null,
+      created_at: now,
+      updated_at: now,
+      role: "member",
+      kind: "extension",
+    })
+    .onConflict((oc) => oc.doNothing())
+    .execute();
+}
+
 export async function testAutomation(
   env: AutomationHostEnv,
-  input: { automationId: string; record?: { object: string; id: string }; userId: string },
+  input: AutomationTestInput,
   options: ExecutorOptions = {},
 ): Promise<AutomationTestReport> {
   const crm = createCrmDb(env.DB);
   const db = crm.query;
-  const found = await loadDefinition(env, input.automationId);
-  if (!found) throw new Error(`No automation ${input.automationId}`);
-  const { definition } = found;
+  const executor = new Executor(env, options);
+  const policy = await loadApprovalPolicy(db);
+  let definition: AutomationDefinition;
+  let draftManifest: ExtensionManifest | null = null;
+  if (input.draft) {
+    const loaded = await loadDraftDefinition(executor, input.draft);
+    if (!loaded.ok) {
+      return {
+        automationId: `${input.draft.extensionId}.${input.draft.key}`,
+        record: null,
+        matched: false,
+        matchReason: loaded.error.message,
+        steps: [],
+        writes: [],
+        notifications: [],
+        approvals: [],
+        policyPreset: policy.preset,
+        ok: false,
+        error: loaded.error,
+        stored: false,
+        draft: input.draft,
+      };
+    }
+    definition = loaded.definition;
+    draftManifest = loaded.manifest;
+    await ensurePrincipal(db, input.draft.extensionId, loaded.manifest);
+  } else {
+    const found = await loadDefinition(env, input.automationId);
+    if (!found) throw new Error(`No automation ${input.automationId}`);
+    definition = found.definition;
+  }
   const spec = definition.spec;
   const trigger = spec.trigger;
   const runId = newId("automationRun");
   const now = new Date();
   const settings = await loadAutomationSettings(db);
-  const policy = await loadApprovalPolicy(db);
+  // A draft's report is not stored: there is no automation page for it yet (and an installed
+  // older version's page must not show a test of a version that is not live).
+  const stored = !input.draft;
   const base = {
     automationId: definition.id,
     steps: [] as AutomationTestReport["steps"],
@@ -82,6 +200,8 @@ export async function testAutomation(
     notifications: [] as AutomationTestReport["notifications"],
     approvals: [] as AutomationTestReport["approvals"],
     policyPreset: policy.preset,
+    stored: false,
+    ...(input.draft ? { draft: input.draft } : {}),
   };
 
   // Does the trigger (and do the conditions) match this record?
@@ -155,7 +275,6 @@ export async function testAutomation(
   };
 
   const simulate = createTestSimulation();
-  const executor = new Executor(env, options);
   const exec = definition.commit
     ? await executor.runAutomation({
         extensionId: definition.extensionId,
@@ -169,6 +288,7 @@ export async function testAutomation(
           rootEventId: `test:${runId}`,
           simulate,
         },
+        ...(draftManifest ? { draft: { manifest: draftManifest } } : {}),
       })
     : null;
   const response = exec?.response ?? {
@@ -233,7 +353,9 @@ export async function testAutomation(
     ...(response.ok
       ? {}
       : { error: { code: response.error.code, message: response.error.message } }),
+    stored,
   };
+  if (!stored) return report;
   const at = now.toISOString();
   await db
     .insertInto("core_automation_runs")
