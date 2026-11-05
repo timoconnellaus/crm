@@ -105,7 +105,8 @@ function AdminView() {
   const data = settings.data;
   const policyChanged = policyText.trim() !== (data.policy?.text ?? "").trim();
   const thresholdValue = Number(threshold);
-  const thresholdValid = Number.isFinite(thresholdValue) && thresholdValue >= 0.5 && thresholdValue <= 1;
+  const thresholdValid =
+    Number.isFinite(thresholdValue) && thresholdValue >= 0.5 && thresholdValue <= 1;
   const thresholdChanged = thresholdValid && thresholdValue !== data.threshold;
 
   async function changeMode(mode: Mode) {
@@ -146,9 +147,9 @@ function AdminView() {
           <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>
             The reviewer runs on the same model as the assistant ({data.models.review.provider}{" "}
-            {data.models.review.model}). A reviewer is more independent on a different model, so
-            it is less likely to share the assistant's blind spots. Change the review role in
-            Settings → AI.
+            {data.models.review.model}). A reviewer is more independent on a different model, so it
+            is less likely to share the assistant's blind spots. Change the review role in Settings
+            → AI.
           </span>
         </div>
       )}
@@ -237,9 +238,9 @@ function AdminView() {
         <CardHeader>
           <CardTitle>Written policy</CardTitle>
           <CardDescription>
-            Plain-language rules the adjudicator judges each change against: what may be
-            approved, what must be denied, and what needs a person. Each save is a new version;
-            every verdict records the version it used.
+            Plain-language rules the adjudicator judges each change against: what may be approved,
+            what must be denied, and what needs a person. Each save is a new version; every verdict
+            records the version it used.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
@@ -291,8 +292,8 @@ function AgreementCard() {
           <CardTitle>Agreement with approvers</CardTitle>
           <CardDescription>
             How the adjudicator's verdicts compare with what people decided on the same changes.
-            Agreement counts approve and deny verdicts; escalations hand the change to a person
-            and count as neither.
+            Agreement counts approve and deny verdicts; escalations hand the change to a person and
+            count as neither.
           </CardDescription>
         </div>
         <Tabs value={String(days)} onValueChange={(v) => setDays(Number(v) as 7 | 30 | 90)}>

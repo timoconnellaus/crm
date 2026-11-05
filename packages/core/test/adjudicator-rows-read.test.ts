@@ -170,7 +170,7 @@ describe("rows read by the policy adjudicator", () => {
     rowsRead = 0;
     await invoke("adjudicator.agreement", { days: 7 }, { ...context(admin), db });
     // Recent verdicts only (about PENDING / 8 seeded plus the ones judged above), not the table.
-    expect(rowsRead).toBeLessThan(PENDING / 8 * 2 + 100);
+    expect(rowsRead).toBeLessThan((PENDING / 8) * 2 + 100);
   });
 
   it("the inbox reads verdicts by action id", async () => {

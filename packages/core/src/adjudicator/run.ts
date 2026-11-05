@@ -261,7 +261,7 @@ async function adjudicate(
     ])
     .where("p.id", "=", actionId)
     .executeTakeFirst();
-  if (!row || row.status !== "pending" || row.expires_at <= nowAt()) {
+  if (row?.status !== "pending" || row.expires_at <= nowAt()) {
     return { status: "skipped", why: "not_pending" };
   }
   if (row.verdict_id) return { status: "skipped", why: "judged" };
@@ -572,11 +572,16 @@ export async function sweepCandidates(
     .where("p.status", "=", "pending")
     .where("p.expires_at", ">", now.toISOString())
     .where("p.created_at", "<=", before)
-    .$if(Boolean(settings.enabledAt), (q) => q.where("p.created_at", ">=", settings.enabledAt ?? ""))
+    .$if(Boolean(settings.enabledAt), (q) =>
+      q.where("p.created_at", ">=", settings.enabledAt ?? ""),
+    )
     .where((eb) =>
       eb.not(
         eb.exists(
-          eb.selectFrom("core_adjudication as a").select("a.id").whereRef("a.action_id", "=", "p.id"),
+          eb
+            .selectFrom("core_adjudication as a")
+            .select("a.id")
+            .whereRef("a.action_id", "=", "p.id"),
         ),
       ),
     )

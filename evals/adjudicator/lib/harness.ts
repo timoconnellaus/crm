@@ -76,7 +76,8 @@ export async function runCases(
         confidence: judged.confidence,
         reason: judged.reason,
         valid: judged.valid,
-        autoApproved: judged.valid && judged.verdict === "approve" && judged.confidence >= threshold,
+        autoApproved:
+          judged.valid && judged.verdict === "approve" && judged.confidence >= threshold,
         attempts: judged.attempts,
         error: judged.error?.message ?? null,
         ms: Date.now() - started,

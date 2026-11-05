@@ -46,7 +46,10 @@ const confidence = z.preprocess(
 
 /** What the reviewer must reply. */
 export const verdictReplySchema = z.object({
-  verdict: z.preprocess((v) => (typeof v === "string" ? v.trim().toLowerCase() : v), z.enum(VERDICTS)),
+  verdict: z.preprocess(
+    (v) => (typeof v === "string" ? v.trim().toLowerCase() : v),
+    z.enum(VERDICTS),
+  ),
   confidence,
   reason: z.string().trim().min(1).max(2000),
 });

@@ -320,7 +320,9 @@ function embeddingModel(options: ModelRunnerOptions, settings: AiAdminSettings, 
 const MAX_PROMPT_CHARS = 60_000;
 
 /** JSON mode with no shape: any JSON object (see ModelRunOptions.json). */
-const JSON_OBJECT_OUTPUT = Output.object({ schema: jsonSchema<Record<string, unknown>>({ type: "object" }) });
+const JSON_OBJECT_OUTPUT = Output.object({
+  schema: jsonSchema<Record<string, unknown>>({ type: "object" }),
+});
 
 /** Is this runner backed by the deterministic stand-ins? */
 function useFakes(options: ModelRunnerOptions): boolean {

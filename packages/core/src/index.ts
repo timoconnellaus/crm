@@ -103,8 +103,8 @@ export {
   type CommitEvent,
   type InvocationContext,
   invokeOperation,
-  type QueuedEvent,
   operationObject,
+  type QueuedEvent,
   readCountHour,
   redactInput,
 } from "./pipeline.ts";

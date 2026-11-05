@@ -5,10 +5,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ReviewModel } from "@relationship-os/core/adjudicator-judge";
-import type {
-  ChatCompletionRequest,
-  ModelClient,
-} from "@relationship-os/evals-mcp/lib/model.ts";
+import type { ChatCompletionRequest, ModelClient } from "@relationship-os/evals-mcp/lib/model.ts";
 import { describe, expect, it } from "vitest";
 import { cases, type Label, SAMPLE_POLICY } from "../fixtures.ts";
 import { runCases, score } from "../lib/harness.ts";
@@ -108,7 +105,11 @@ describe("scoring", () => {
     let calls = 0;
     const model: ReviewModel = async () => {
       calls += 1;
-      return { text: '{"verdict":"approve","confidence":0.99', model: "fake", finishReason: "length" };
+      return {
+        text: '{"verdict":"approve","confidence":0.99',
+        model: "fake",
+        finishReason: "length",
+      };
     };
     const results = await runCases(model, SAMPLE_POLICY, cases.slice(0, 5));
     expect(calls).toBe(10);
@@ -141,7 +142,11 @@ describe("the runner", () => {
             {
               message: {
                 role: "assistant",
-                content: JSON.stringify({ verdict: labelOf(reason), confidence: 0.9, reason: "ok" }),
+                content: JSON.stringify({
+                  verdict: labelOf(reason),
+                  confidence: 0.9,
+                  reason: "ok",
+                }),
               },
               finish_reason: "stop",
             },
@@ -151,11 +156,15 @@ describe("the runner", () => {
     };
     const dir = mkdtempSync(join(tmpdir(), "adjudicator-eval-"));
     const lines: string[] = [];
-    const code = await main(["--model", "deepseek-flash"], {}, {
-      client,
-      reportsDir: dir,
-      log: (l) => lines.push(l),
-    });
+    const code = await main(
+      ["--model", "deepseek-flash"],
+      {},
+      {
+        client,
+        reportsDir: dir,
+        log: (l) => lines.push(l),
+      },
+    );
     expect(code).toBe(0);
     expect(requests).toHaveLength(30);
     expect((requests[0] as unknown as { response_format: unknown }).response_format).toEqual({

@@ -81,7 +81,10 @@ export function computeAgreement(
     deny: { approved: 0, rejected: 0, undecided: 0 },
     escalate: { approved: 0, rejected: 0, undecided: 0 },
   };
-  const periods = new Map<string, { count: number; decided: number; sided: number; agreed: number }>();
+  const periods = new Map<
+    string,
+    { count: number; decided: number; sided: number; agreed: number }
+  >();
   let decided = 0;
   let sided = 0;
   let agreed = 0;

@@ -3,11 +3,7 @@
 // once), and the 10-minute cron's sweep is one settings read when the adjudicator is off.
 import { env } from "cloudflare:workers";
 import type { Principal } from "@relationship-os/auth";
-import {
-  invoke,
-  PendingApprovalError,
-  resolveActingUser,
-} from "@relationship-os/core";
+import { invoke, PendingApprovalError, resolveActingUser } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { describe, expect, it } from "vitest";
 import { runAdjudicatorCron } from "../src/server/adjudicator.ts";

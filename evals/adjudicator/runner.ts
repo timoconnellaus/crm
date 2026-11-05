@@ -12,7 +12,11 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import type { ReviewModel } from "@relationship-os/core/adjudicator-judge";
 import { shippedModel } from "@relationship-os/core/ai-roles";
-import { checkCredentials, parseOnly, parsePositiveInt } from "@relationship-os/evals-mcp/lib/cli.ts";
+import {
+  checkCredentials,
+  parseOnly,
+  parsePositiveInt,
+} from "@relationship-os/evals-mcp/lib/cli.ts";
 import { loadEvalEnvFile } from "@relationship-os/evals-mcp/lib/env-file.ts";
 import {
   type ChatCompletionRequest,
