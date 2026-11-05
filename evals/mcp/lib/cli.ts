@@ -7,6 +7,7 @@ export const modelCliOptions = {
   temperature: { type: "string" },
   "max-tokens": { type: "string" },
   "reasoning-effort": { type: "string" },
+  thinking: { type: "string" },
 } as const;
 
 export interface ModelChoice {
@@ -27,6 +28,7 @@ export function parseModelArgs(
     temperature?: string | undefined;
     "max-tokens"?: string | undefined;
     "reasoning-effort"?: string | undefined;
+    thinking?: string | undefined;
   },
   env: Record<string, string | undefined>,
 ): ModelChoice {
@@ -42,6 +44,13 @@ export function parseModelArgs(
     params.maxTokens = parsePositiveInt(values["max-tokens"], "--max-tokens");
   }
   if (values["reasoning-effort"]) params.reasoningEffort = values["reasoning-effort"];
+  const thinking = (values.thinking ?? env.EVAL_THINKING)?.trim().toLowerCase();
+  if (thinking) {
+    if (thinking !== "on" && thinking !== "off") {
+      throw new Error("--thinking (EVAL_THINKING) must be on or off");
+    }
+    params.thinking = thinking;
+  }
   return { model: values.model || env.EVAL_MODEL?.trim() || DEFAULT_MODEL, params };
 }
 

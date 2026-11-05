@@ -1,7 +1,11 @@
 // Grading an automation: its test-mode report against the case's expected writes, notifications
 // and waits; its host summary against the case's keyword groups; and an LLM judge (the eval's own
 // model, Workers AI by default) that rules whether the summary states the intent, by a rubric.
-import type { ModelClient, ModelParams } from "@relationship-os/evals-mcp/lib/model.ts";
+import {
+  type ModelClient,
+  type ModelParams,
+  samplingFields,
+} from "@relationship-os/evals-mcp/lib/model.ts";
 import type { AutomationCase } from "../prompts.ts";
 
 /**
@@ -176,9 +180,9 @@ export async function judgeSummary(
         { role: "system", content: JUDGE_RUBRIC },
         { role: "user", content: user },
       ],
-      temperature: 0,
-      ...(params.maxTokens !== undefined ? { max_tokens: params.maxTokens } : {}),
-      ...(params.reasoningEffort ? { reasoning_effort: params.reasoningEffort } : {}),
+      ...samplingFields({ ...params, temperature: 0 }),
+      // A verdict is short; the cap bounds the thinking that counts against it.
+      max_tokens: params.maxTokens ?? 8000,
     });
     last = response.choices[0]?.message.content ?? "";
     const verdict = parseVerdict(last);

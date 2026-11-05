@@ -13,6 +13,8 @@ export interface AutomationsReport {
   startedAt: string;
   finishedAt: string;
   model: string;
+  /** The summary judge's model (the model under test unless --judge-model / EVAL_JUDGE_MODEL). */
+  judgeModel?: string;
   provider: string;
   params: ModelParams;
   baseUrl: string;
@@ -48,6 +50,14 @@ export function describeExpected(c: Pick<AutomationCase, "expect">): string {
   return `writes ${writes || "none"}; notify ${c.expect.notifications}${c.expect.notify ? ` (${c.expect.notify})` : ""}; waits ${c.expect.waits}`;
 }
 
+/** Which model judged the summaries, and whether that is the model under test. */
+export function judgeLine(report: Pick<AutomationsReport, "model" | "judgeModel">): string {
+  const judge = report.judgeModel ?? report.model;
+  return judge === report.model
+    ? `\`${judge}\`, the model under test: it judges its own work (EVAL_JUDGE_MODEL sets another)`
+    : `\`${judge}\`, independent of the model under test`;
+}
+
 export function renderMarkdown(report: AutomationsReport): string {
   const sum = (pick: (r: CaseResult) => number) => report.results.reduce((n, r) => n + pick(r), 0);
   const lines = [
@@ -55,7 +65,8 @@ export function renderMarkdown(report: AutomationsReport): string {
     "",
     `**${summaryLine(report)}**`,
     "",
-    `- Model: ${describeModel(report.model, report.provider, report.params)} (also the summary judge)`,
+    `- Model: ${describeModel(report.model, report.provider, report.params)}`,
+    `- Summary judge: ${judgeLine(report)}`,
     `- Deployment: ${report.baseUrl}`,
     `- Started: ${report.startedAt}`,
     `- Finished: ${report.finishedAt}`,

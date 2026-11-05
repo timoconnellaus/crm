@@ -6,10 +6,13 @@ import type { AutomationManifest } from "@relationship-os/sdk";
 import { describe, expect, it } from "vitest";
 import {
   type AutomationDefinition,
+  type AutomationHost,
   approvalTriggerSource,
   coreRegistry,
   cronMatches,
+  invoke,
   memoryEventSink,
+  OperationError,
   parseCron,
   purgeAutomationRuns,
   queueEventSink,
@@ -19,7 +22,7 @@ import {
   valueMatches,
   zonedTime,
 } from "../src/index.ts";
-import { db } from "./helpers.ts";
+import { context, createUser, db } from "./helpers.ts";
 
 describe("cron", () => {
   const at = (iso: string, tz = "UTC") => zonedTime(new Date(iso), tz);
@@ -235,6 +238,28 @@ describe("automation operations", () => {
     expect(op("automation.killSwitch")?.actors).toEqual(["human"]);
     expect(op("automation.killSwitch")?.mcp?.expose).toBe(false);
     expect(op("automation.updateSettings")?.mcp?.expose).toBe(false);
+  });
+
+  it("automation.test on an automation that is not installed is not_found, not internal", async () => {
+    const admin = await createUser("admin");
+    let asked = 0;
+    // The runner says "No automation …" with a plain Error (an internal error); the operation
+    // must answer before it is asked.
+    const automationHost = {
+      testAutomation: async () => {
+        asked += 1;
+        throw new Error("No automation pendingext.renewalTask");
+      },
+    } as unknown as AutomationHost; // only testAutomation is reachable from automation.test
+    const error = await invoke(
+      "automation.test",
+      { id: "pendingext.renewalTask" },
+      context(admin, { automationHost }),
+    ).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(OperationError);
+    expect((error as OperationError).code).toBe("not_found");
+    expect((error as OperationError).message).toMatch(/approved/);
+    expect(asked).toBe(0);
   });
 });
 

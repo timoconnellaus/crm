@@ -18,7 +18,12 @@ import { toOpenAiTools } from "@relationship-os/evals-mcp/lib/convert.ts";
 import { callLabel, callMatches } from "@relationship-os/evals-mcp/lib/grading.ts";
 import { makeSuffix, systemPrompt, todayUtc } from "@relationship-os/evals-mcp/lib/harness.ts";
 import { type McpSession, parseResult } from "@relationship-os/evals-mcp/lib/mcp.ts";
-import type { ModelParams } from "@relationship-os/evals-mcp/lib/model.ts";
+import {
+  clockMark,
+  describeError,
+  type ModelParams,
+  sleepNote,
+} from "@relationship-os/evals-mcp/lib/model.ts";
 import { type AutomationCase, extensionIdFor, promptText } from "../prompts.ts";
 import {
   type AutomationListing,
@@ -109,6 +114,8 @@ export interface AutomationsHarnessDeps {
   openSession(clientName: string): Promise<McpSession>;
   model: ModelClient;
   modelId: string;
+  /** The summary judge's model; the model under test when unset (EVAL_JUDGE_MODEL). */
+  judgeModelId?: string;
   params?: ModelParams;
   maxTurns: number;
   /** The eval user's email: seeded deals are theirs, and they are an admin. */
@@ -204,7 +211,7 @@ export async function seedCase(
       }),
     };
   } catch (error) {
-    return { seeded: null, failure: { kind: "seed", message: (error as Error).message } };
+    return { seeded: null, failure: { kind: "seed", message: describeError(error) } };
   }
 }
 
@@ -216,6 +223,7 @@ export async function authorCase(
   deps: AutomationsHarnessDeps,
 ): Promise<Authored> {
   const started = Date.now();
+  const clock = clockMark();
   const requestedId = extensionIdFor(c, run.slug);
   const request = promptText(c, requestedId);
   const failures: Failure[] = [];
@@ -260,7 +268,7 @@ export async function authorCase(
     }
   } catch (error) {
     if (deps.isFatal?.(error)) throw error;
-    failures.push({ kind: "error", message: (error as Error).message ?? String(error) });
+    failures.push({ kind: "error", message: `${describeError(error)}${sleepNote(clock)}` });
   } finally {
     await session?.close().catch(() => {});
   }
@@ -342,6 +350,7 @@ export async function gradeCase(
   deps: AutomationsHarnessDeps,
 ): Promise<CaseResult> {
   const { case: c, ...rest } = authored;
+  const clock = clockMark();
   const failures = [...authored.failures];
   const notes = [...authored.notes];
   const extensionId = authored.proposal?.extensionId ?? null;
@@ -418,20 +427,33 @@ export async function gradeCase(
           fail("summary", "automation.get returned no summary text");
         } else {
           for (const message of keywordFailures(c, summary)) fail("summary", message);
-          judge = await judgeSummary(deps.model, deps.modelId, c, summary, deps.params);
-          if (!judge.pass) fail("summary", `the judge: ${judge.reason}`);
+          // A judge that cannot be reached is a harness error, not a verdict; grading goes on.
+          const judgeClock = clockMark();
+          try {
+            judge = await judgeSummary(
+              deps.model,
+              deps.judgeModelId ?? deps.modelId,
+              c,
+              summary,
+              deps.params,
+            );
+            if (!judge.pass) fail("summary", `the judge: ${judge.reason}`);
+          } catch (error) {
+            if (deps.isFatal?.(error)) throw error;
+            fail("error", `the judge failed: ${describeError(error)}${sleepNote(judgeClock)}`);
+          }
         }
 
         // Leave nothing running in the deployment.
         await run.grader
           .call("automation.disable", { id: automationId }, { write: true })
           .catch((error: unknown) =>
-            notes.push(`could not disable ${automationId}: ${(error as Error).message}`),
+            notes.push(`could not disable ${automationId}: ${describeError(error)}`),
           );
       }
     } catch (error) {
       if (deps.isFatal?.(error)) throw error;
-      fail("error", (error as Error).message ?? String(error));
+      fail("error", `${describeError(error)}${sleepNote(clock)}`);
     }
   }
   return {

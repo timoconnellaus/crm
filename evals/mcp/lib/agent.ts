@@ -3,7 +3,13 @@
 // recorded for grading. The conversation is append-only: each assistant message goes back exactly
 // as it came (reasoning fields included), followed by one `tool` message per tool call.
 import { parseResult, type ToolCallResult } from "./mcp.ts";
-import type { ChatMessage, ChatTool, ModelClient, ModelParams } from "./model.ts";
+import {
+  type ChatMessage,
+  type ChatTool,
+  type ModelClient,
+  type ModelParams,
+  samplingFields,
+} from "./model.ts";
 
 export type { ModelClient } from "./model.ts";
 
@@ -96,8 +102,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentRun> {
         messages,
         ...(options.tools.length ? { tools: options.tools } : {}),
         max_tokens: options.maxTokens ?? 16000,
-        ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
-        ...(options.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
+        ...samplingFields(options),
       });
       run.usage.inputTokens += response.usage?.prompt_tokens ?? 0;
       run.usage.outputTokens += response.usage?.completion_tokens ?? 0;

@@ -46,6 +46,7 @@ export function describeModel(model: string, provider: string, params: ModelPara
     params.temperature !== undefined ? `temperature ${params.temperature}` : null,
     params.maxTokens !== undefined ? `max tokens ${params.maxTokens}` : null,
     params.reasoningEffort ? `reasoning effort ${params.reasoningEffort}` : null,
+    params.thinking ? `thinking ${params.thinking}` : null,
   ].filter(Boolean);
   return `\`${model}\` via ${provider}${parts.length ? ` (${parts.join(", ")})` : ""}`;
 }
