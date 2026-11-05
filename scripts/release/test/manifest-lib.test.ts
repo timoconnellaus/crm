@@ -246,6 +246,15 @@ describe("release manifest", () => {
     expect(app?.secrets.find((s) => s.name === "AI_GATEWAY_TOKEN")?.source).toBe("installer");
   });
 
+  it("carries ROS_SUPPORT_PUBLIC_KEY as an empty ros-app var (hosted support access, ADR 0212)", async () => {
+    const manifest = await fixtureManifest();
+    expect(manifest.inputs.find((i) => i.name === "ROS_SUPPORT_PUBLIC_KEY")).toMatchObject({
+      kind: "var",
+      workers: ["ros-app"],
+      default: "",
+    });
+  });
+
   it("refuses a bad AI Gateway set-up", () => {
     const provider = {
       slug: "example-llm",

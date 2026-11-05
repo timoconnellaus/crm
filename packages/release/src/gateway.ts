@@ -15,7 +15,7 @@
 // AI Gateway permissions): the deployment keeps working, with Workers AI called directly.
 // Provider keys (BYOK) are stored by CloudflareClient.setGatewayProviderKey.
 import { CloudflareApiError, type CloudflareClient, gatewaySettingsOf } from "./cloudflare.ts";
-import { type DeploymentState, featureOn, type Log } from "./deploy.ts";
+import { type DeploymentState, featureOn, type Log, scriptsApi } from "./deploy.ts";
 import type { ReleaseManifest } from "./manifest.ts";
 
 export const GATEWAY_ID_VAR = "AI_GATEWAY_ID";
@@ -255,7 +255,8 @@ export async function provisionAiGateway(
     setAll(input.token);
     log(`  ${GATEWAY_TOKEN_SECRET}: supplied`);
   } else {
-    const scripts = new Set((await api.listScripts(accountId)).map((s) => s.id));
+    const scriptApi = scriptsApi(api, state);
+    const scripts = new Set((await scriptApi.listScripts(accountId)).map((s) => s.id));
     let missing = false;
     for (const worker of workers) {
       const deployed = workerName(state, worker);
@@ -263,7 +264,7 @@ export async function provisionAiGateway(
         missing = true;
         break;
       }
-      if (!(await api.listSecrets(accountId, deployed)).includes(GATEWAY_TOKEN_SECRET)) {
+      if (!(await scriptApi.listSecrets(accountId, deployed)).includes(GATEWAY_TOKEN_SECRET)) {
         missing = true;
         break;
       }

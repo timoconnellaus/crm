@@ -106,6 +106,10 @@
     "ROS_RELEASE_REPO": "timoconnellaus/relationship-os",
     // The Cloudflare account the self-updater deploys to. Filled in by the installer from the
     // release manifest's $ACCOUNT_ID placeholder; never committed.
-    "ROS_ACCOUNT_ID": ""
+    "ROS_ACCOUNT_ID": "",
+    // Hosted SaaS only (ADR 0212): the control plane's Ed25519 public key (raw 32 bytes,
+    // base64url) that signs support-access tokens for /support/enter. Empty (self-hosted) means
+    // there is no support access at all: the route is a 404.
+    "ROS_SUPPORT_PUBLIC_KEY": ""
   }
 }

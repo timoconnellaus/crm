@@ -29,18 +29,29 @@ import { CreatePersonDialog } from "../components/people/create-person-dialog.ts
 import { ShortcutSheet } from "../components/shortcut-sheet.tsx";
 import { CreateTaskDialog } from "../components/tasks/create-task-dialog.tsx";
 import { UserMenu } from "../components/user-menu.tsx";
+import { formatDateTime } from "../lib/format.ts";
 import { useHotkey } from "../lib/hotkeys.ts";
 import { getSession } from "../server/session.public.ts";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {
-    const { principal, user, signOutUrl, setupOpen, identityProvider } = await getSession();
+    const { principal, user, signOutUrl, setupOpen, identityProvider, support } =
+      await getSession();
     if (!principal || !user) {
       throw redirect({ to: "/sign-in", search: { redirect: location.href } });
     }
     // First visit after install: the admin finishes setting up first (skippable, ADR 0167).
-    if (setupOpen && location.pathname !== "/setup") throw redirect({ to: "/setup" });
-    return { principal, user, signOutUrl, identityProvider, isAdmin: user.role === "admin" };
+    if (setupOpen && location.pathname !== "/setup" && !support) {
+      throw redirect({ to: "/setup" });
+    }
+    return {
+      principal,
+      user,
+      signOutUrl,
+      identityProvider,
+      support,
+      isAdmin: user.role === "admin",
+    };
   },
   component: AppLayout,
 });
@@ -59,6 +70,7 @@ function AppLayout() {
         <SidebarProvider className="h-dvh overflow-hidden">
           <AppSidebar />
           <SidebarInset className="min-h-0 min-w-0 overflow-hidden pr-[env(safe-area-inset-right)]">
+            <SupportBanner />
             <AppHeader />
             <div
               className="min-h-0 min-w-0 flex-1 overflow-y-auto [view-transition-name:page]"
@@ -110,6 +122,27 @@ function AssistantButton() {
       <span className="hidden sm:inline">Ask AI</span>
       <Kbd className="hidden sm:inline-flex">⌘J</Kbd>
     </Button>
+  );
+}
+
+/** Shown on every page while the signed-in user is a support user (ADR 0212). */
+function SupportBanner() {
+  const { support } = Route.useRouteContext();
+  if (!support) return null;
+  return (
+    <div
+      role="status"
+      data-testid="support-banner"
+      className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 bg-amber-500 px-4 py-1.5 text-sm font-medium text-amber-950"
+    >
+      <span>
+        Support session ({support.staffEmail}) — access expires at{" "}
+        {formatDateTime(support.expiresAt)}
+      </span>
+      <a href="/support/exit" className="underline underline-offset-2">
+        End session
+      </a>
+    </div>
   );
 }
 

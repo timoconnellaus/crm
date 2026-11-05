@@ -12,6 +12,7 @@ import type { CoreDatabase } from "@relationship-os/db";
 import { type Compilable, type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { diffRecords } from "../diff.ts";
+import { assertRecordCapacity } from "../entitlements.ts";
 import { ValidationError } from "../errors.ts";
 import { newId } from "../ids.ts";
 import type { HandlerContext } from "../operation.ts";
@@ -1421,6 +1422,12 @@ export const importCsvCommit = defineOperation({
   auditSummary: (output) => ({ counts: output.counts }),
   async handler(input, ctx) {
     const result = await plan(ctx.db, input);
+    // Plan limits (ADR 0211): every person or organisation the import would create counts.
+    const { create, organisationsCreated } = result.counts;
+    await assertRecordCapacity(
+      ctx.db,
+      input.object === "person" ? create + organisationsCreated : organisationsCreated,
+    );
     result.queue(ctx);
     return {
       counts: result.counts,

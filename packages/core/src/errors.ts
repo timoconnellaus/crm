@@ -9,6 +9,7 @@ export type OperationErrorCode =
   | "denied"
   | "pending_approval"
   | "rate_limited"
+  | "plan_limit"
   | "not_found"
   | "conflict"
   | "config"
@@ -110,6 +111,17 @@ export class RateLimitedError extends OperationError {
   }
 }
 
+/**
+ * The hosted plan's entitlements do not allow this (ADR 0211): one user or record too many, or
+ * platform AI used up. Self-hosted deployments never see it. The message says how to upgrade.
+ */
+export class PlanLimitError extends OperationError {
+  override name = "PlanLimitError";
+  constructor(message: string, details?: unknown) {
+    super("plan_limit", message, details);
+  }
+}
+
 export class NotFoundError extends OperationError {
   override name = "NotFoundError";
   constructor(object: string, id: string) {
@@ -135,6 +147,10 @@ export class ConfigError extends OperationError {
 /** Converts D1 constraint failures into typed errors; everything else becomes `internal`. */
 export function toOperationError(error: unknown): OperationError {
   if (error instanceof OperationError) return error;
+  // ai/client.ts's AiAllowanceError, matched by name so this module stays free of AI imports.
+  if (error instanceof Error && error.name === "AiAllowanceError") {
+    return new PlanLimitError(error.message, { reason: "platform_ai" });
+  }
   const message = error instanceof Error ? error.message : String(error);
   const unique = /UNIQUE constraint failed: ([\w.]+(?:, [\w.]+)*)/.exec(message);
   if (unique) {

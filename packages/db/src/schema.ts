@@ -32,6 +32,8 @@ export interface CoreUserTable {
   kind: ColumnType<UserKind, UserKind | undefined, UserKind>;
   /** Migration 0170: a deactivated person cannot sign in or act. */
   deactivated_at: ColumnType<string | null, string | null | undefined, string | null>;
+  /** Migration 0221 (ADR 0212): set on a support user, the grant it was created for. */
+  support_grant_id: ColumnType<string | null, string | null | undefined, string | null>;
 }
 
 export type UserKind = "human" | "extension";
@@ -1104,7 +1106,33 @@ export interface CoreEmbeddingQueueTable {
   attempts: Generated<number>;
 }
 
+/** Migration 0220 (ADR 0211): plan entitlements, written only by the hosted control plane. */
+export interface CoreEntitlementsTable {
+  key: string;
+  value: string;
+  updated_at: string;
+}
+
+export type SupportGrantStatus = "requested" | "approved" | "denied" | "revoked";
+
+/** Migration 0221 (ADR 0212): a customer-approved, time-limited support grant. */
+export interface CoreSupportGrantsTable {
+  id: string;
+  staff_email: string;
+  reason: string;
+  role: UserRole;
+  requested_minutes: number;
+  status: SupportGrantStatus;
+  requested_at: string;
+  decided_at: string | null;
+  decided_by: string | null;
+  expires_at: string | null;
+  user_id: string | null;
+}
+
 export interface CoreDatabase {
+  core_entitlements: CoreEntitlementsTable;
+  core_support_grants: CoreSupportGrantsTable;
   core_install: CoreInstallTable;
   core_update_runs: CoreUpdateRunsTable;
   core_release_cache: CoreReleaseCacheTable;

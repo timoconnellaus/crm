@@ -5,9 +5,11 @@ import {
   BellIcon,
   ChevronRightIcon,
   CoinsIcon,
+  CreditCardIcon,
   DatabaseIcon,
   DownloadCloudIcon,
   GavelIcon,
+  LifeBuoyIcon,
   ListOrderedIcon,
   PlugIcon,
   PlugZapIcon,
@@ -46,7 +48,9 @@ function Section({
     | "/settings/updates"
     | "/settings/ai"
     | "/settings/general"
-    | "/settings/automations";
+    | "/settings/automations"
+    | "/settings/plan"
+    | "/settings/support-access";
 }) {
   const body = (
     <Card className="h-full transition-colors hover:bg-accent/50">
@@ -221,6 +225,22 @@ function SettingsPage() {
               title="Updates"
               description="The installed version, new releases and their changelogs, update and roll back."
               to="/settings/updates"
+            />
+          )}
+          {isAdmin && (
+            <Section
+              icon={<CreditCardIcon className="size-5" />}
+              title="Plan"
+              description="Your plan's limits on users, records and AI, and how much you use."
+              to="/settings/plan"
+            />
+          )}
+          {isAdmin && (
+            <Section
+              icon={<LifeBuoyIcon className="size-5" />}
+              title="Support access"
+              description="Approve, deny or revoke our support team's time-limited access."
+              to="/settings/support-access"
             />
           )}
         </div>

@@ -24,11 +24,23 @@ describe("GET /api/health", () => {
   });
 
   it("is degraded when the database is behind", async () => {
+    // The version is the highest migration recorded (ADR 0002 amendment): forget the newest one.
+    const newest = await env.DB.prepare(
+      "SELECT id, name FROM core_migrations ORDER BY name DESC LIMIT 1",
+    ).first<{ id: number; name: string }>();
+    await env.DB.prepare("DELETE FROM core_migrations WHERE id = ?").bind(newest?.id).run();
     await env.DB.prepare("UPDATE core_meta SET value = '0' WHERE key = 'schema_version'").run();
-    const response = await healthResponse(env);
-    expect(response.status).toBe(503);
-    const body = (await response.json()) as { database: unknown };
-    expect(body.database).toMatchObject({ ok: false, schemaVersion: 0 });
+    try {
+      const response = await healthResponse(env);
+      expect(response.status).toBe(503);
+      const body = (await response.json()) as { database: { schemaVersion: number } };
+      expect(body.database).toMatchObject({ ok: false });
+      expect(body.database.schemaVersion).toBeLessThan(Number.parseInt(newest?.name ?? "0", 10));
+    } finally {
+      await env.DB.prepare("INSERT INTO core_migrations (id, name) VALUES (?, ?)")
+        .bind(newest?.id, newest?.name)
+        .run();
+    }
   });
 
   it("is degraded when the runner cannot be reached", async () => {

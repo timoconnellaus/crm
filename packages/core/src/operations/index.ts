@@ -28,6 +28,7 @@ import { notificationOperations } from "./notification.ts";
 import { notificationDeliveryOperations } from "./notification-delivery.ts";
 import { organisationOperations } from "./organisation.ts";
 import { personOperations } from "./person.ts";
+import { planOperations } from "./plan.ts";
 import { policyOperations } from "./policy.ts";
 import { queryOperations } from "./query.ts";
 import { recordOperations } from "./record.ts";
@@ -37,6 +38,7 @@ import { settingsOperations } from "./settings.ts";
 import { setupOperations } from "./setup.ts";
 import { suggestionOperations } from "./suggestions.ts";
 import { summaryOperations } from "./summary.ts";
+import { supportOperations } from "./support.ts";
 import { taskOperations } from "./task.ts";
 import { trashOperations } from "./trash.ts";
 import { updateOperations } from "./update.ts";
@@ -85,4 +87,6 @@ export const coreOperations = [
   ...notificationOperations,
   ...notificationDeliveryOperations,
   ...assistantOperations,
+  ...planOperations,
+  ...supportOperations,
 ] as const;

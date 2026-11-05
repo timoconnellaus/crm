@@ -498,12 +498,48 @@ How stage 4a built it:
   `build` role (Workers AI through the optional `AI` binding on ros-app) for a widget, validates
   and previews it; without AI it says so.
 
+### 10. Hosted SaaS (stage 10)
+
+Besides self-hosting, we run deployments for customers (ADR 0191). Each is still one isolated
+deployment with its own D1, R2, KV, queues, Vectorize index and AI Gateway: no shared database and
+no tenant id inside it. Built and tested against fakes; switched on by `docs/saas-go-live.md`.
+
+```
+ browser ─► <org>.relationshiposcrm.com ─► ros-dispatch ─(KV host:<hostname>, verified only)─► <tenant>-ros-app
+                                              │ minute cron: runs active tenants' crons     (user Workers in the
+                                              │ (paused / suspended tenants: none)           WfP dispatch namespace
+                                              ▼                                              ros-customers)
+ browser ─► app.relationshiposcrm.com ─► ros-control: sign-up, plans, Stripe, admin console, jobs queue
+                                              │ Stage 8 engine (installRelease, runUpdate, runRollback)
+                                              ▼ writes: core_entitlements, core_support_grants (customer D1)
+```
+
+- **Control plane** (`apps/control`, [ADR 0210](adr/0210-hosted-deployments-on-workers-for-platforms.md)):
+  `ros-control` with its own D1 (accounts, instances, rollouts, usage, audit; never customer data)
+  and `ros-dispatch`. Provisioning uses Stage 8 bundles and the deploy engine, which can target a
+  dispatch namespace (`dispatchNamespace` in the deployment state; per-tenant names and tags).
+  States: active, paused (idle Free, woken by the next visit), suspended (billing). Placements:
+  namespace, account (fallback), customer-account (managed enterprise, by runbook).
+- **Plans and entitlements** ([ADR 0211](adr/0211-plans-and-entitlements.md)): Free / Team /
+  Business / Enterprise. The control plane writes one `core_entitlements` row; the deployment
+  enforces users, records and platform AI (`PlanLimitError`). Self-hosted: no row, no limits.
+- **Support grants** ([ADR 0212](adr/0212-customer-approved-support-grants.md)): requested by
+  staff, approved by the customer's admin in Settings → Support access, time-limited, a dedicated
+  support user, audited on both sides; entry by an Ed25519-signed token (`/support/enter`).
+- **AI billing** ([ADR 0213](adr/0213-ai-usage-billing.md)) from each deployment's AI Gateway logs:
+  cost + 20%, allowance per plan, overage as Stripe meter events, Free credit in dollars; BYOK and
+  MCP free. **Stripe and lifecycle** ([ADR 0214](adr/0214-stripe-billing-and-account-lifecycle.md)):
+  webhooks drive suspend and resume; export and delete. **Rollouts**
+  ([ADR 0215](adr/0215-staged-rollouts.md)): canary → 10% → all, pause on failures, bookmark rollback.
+
 ## Repository layout
 
 ```
 apps/
   app/                 TanStack Start + shadcn UI, server functions, /mcp       → Worker "ros-app"
   runner/              extension runtime, automations, Workflows, Queues         → Worker "ros-runner"
+  control/             hosted SaaS control plane and dispatch Worker (stage 10)  → "ros-control", "ros-dispatch"
+  marketing/           the landing page relationshiposcrm.com                    → Worker "ros-marketing"
 packages/
   core/                operations registry, risk classes, policy types, model role registry (ai/), schema reconciler
   db/                  core D1 migrations (incl. core_base_* views), typed core schema

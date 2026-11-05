@@ -22,6 +22,7 @@ import {
   type ModelRunner,
   memoryVectorStore,
   modelRunnerFromEnv,
+  platformAiAllowed,
   type QueuedEvent,
   type VectorizeLike,
   type VectorStore,
@@ -56,6 +57,8 @@ export function modelsFor(env: AiAppEnv, db: CrmDb): ModelRunner | undefined {
   return modelRunnerFromEnv(env, {
     loadSettings: () => loadAiSettings(db.query),
     fakes: fakeModels(),
+    // Hosted plans (ADR 0211): platform AI only while the plan's allowance lasts; BYOK always.
+    platformAi: () => platformAiAllowed(db.query),
   });
 }
 
