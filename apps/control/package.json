@@ -1,0 +1,27 @@
+{
+  "name": "@relationship-os/control",
+  "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
+  "private": true,
+  "description": "The hosted SaaS control plane (app.relationshiposcrm.com) and the dispatch Worker in front of every customer deployment: sign-up, plans, Stripe billing, provisioning on Workers for Platforms, staged rollouts, support grants, export and delete (ADR 0210-0215). Runs against fakes until PLATFORM_MODE=live (docs/saas-go-live.md).",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev -c wrangler.e2e.jsonc --port 8790",
+    "types": "wrangler types --strict-vars=false && wrangler types -c dispatch.wrangler.jsonc --strict-vars=false --env-interface DispatchEnv --include-runtime=false dispatch-configuration.d.ts",
+    "typecheck": "wrangler types --strict-vars=false --check && wrangler types -c dispatch.wrangler.jsonc --strict-vars=false --env-interface DispatchEnv --include-runtime=false dispatch-configuration.d.ts --check && tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@relationship-os/core": "workspace:*",
+    "@relationship-os/release": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@playwright/test": "1.64.1",
+    "@relationship-os/config": "workspace:*",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0",
+    "wrangler": "4.157.0"
+  }
+}

@@ -1,6 +1,8 @@
 // Better Auth adapter (the default): email + password and Google sign-in, stored in core_* tables.
-import { newId } from "@relationship-os/core";
+import { assertUserCapacity, newId, PlanLimitError } from "@relationship-os/core";
+import { createDb } from "@relationship-os/db";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import type { IdentityProvider, Principal } from "./principal.ts";
 
 export interface BetterAuthOptions {
@@ -93,11 +95,21 @@ export function createBetterAuth(options: BetterAuthOptions) {
           // Closed sign-up: the first user bootstraps the deployment, later users need an invite
           // (a later stage) unless AUTH_ALLOW_SIGNUP=true.
           before: async (user) => {
-            if (allowSignUp) return { data: user };
             const row = await db
               .prepare("SELECT COUNT(*) AS n FROM core_user")
               .first<{ n: number }>();
-            if ((row?.n ?? 0) > 0) return false;
+            // The first user always gets in.
+            if ((row?.n ?? 0) === 0) return { data: user };
+            if (!allowSignUp) return false;
+            // A hosted plan's user limit (ADR 0211). No entitlements row: no limit.
+            try {
+              await assertUserCapacity(createDb(db), 1);
+            } catch (error) {
+              if (error instanceof PlanLimitError) {
+                throw new APIError("FORBIDDEN", { message: error.message, code: error.code });
+              }
+              throw error;
+            }
             return { data: user };
           },
         },

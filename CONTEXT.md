@@ -491,3 +491,34 @@ ADR 0167.
 **Stage**
 One unit of the build roadmap. Each stage has an interview, an agreed spec in `docs/stages/`, and a
 separate build session.
+
+**Hosted deployment**
+A deployment we run for a customer in our Cloudflare account (ADR 0210): user Workers in the
+Workers for Platforms dispatch namespace, reached at `<org>.relationshiposcrm.com`. Only the
+**control plane** calls it an *instance* (`cp_instances`) and knows its **tenant id** (`t…`), which
+prefixes its Worker and resource names and never appears inside the deployment.
+
+**Control plane**
+`ros-control` at app.relationshiposcrm.com (`apps/control`): sign-up, plans, billing, provisioning,
+rollouts, support grants, export and delete. It never holds customer data. The **dispatch Worker**
+(`ros-dispatch`) routes each verified hostname to its deployment and runs tenants' crons.
+
+**Plan**
+Free, Team, Business or Enterprise (ADR 0211). Its limits reach a hosted deployment as
+**entitlements**: one `core_entitlements` row the control plane writes and the deployment enforces
+(users, records, **platform AI**: models we pay for, as opposed to BYOK or MCP). A self-hosted
+deployment has no entitlements and no limits.
+
+**Paused / suspended**
+Hosted lifecycle states. *Paused*: an idle Free deployment whose crons are stopped; the next visit
+wakes it. *Suspended*: traffic stopped for billing or pending deletion; data kept.
+
+**Support grant**
+Time-limited access for our staff to a hosted deployment, requested in the admin console and
+approved by the customer's admin in Settings → Support access (ADR 0212). It acts through a
+dedicated **support user**, never as the customer.
+_Avoid_: impersonation
+
+**Rollout**
+A new release reaching hosted deployments in **waves**: the **canary** cohort, 10%, then all
+(ADR 0215).

@@ -123,6 +123,8 @@ export const userUpdateRole = defineOperation({
         .select("id")
         .where("role", "=", "admin")
         .where("id", "<>", input.id)
+        // A support user (ADR 0212) is temporary: it never counts as the remaining admin.
+        .where("support_grant_id", "is", null)
         .executeTakeFirst();
       if (!other) {
         throw new ConflictError("The last admin cannot be demoted; make someone else admin first", {
@@ -135,7 +137,7 @@ export const userUpdateRole = defineOperation({
     const role = demotingAdmin
       ? sql<
           (typeof ROLES)[number]
-        >`CASE WHEN EXISTS (SELECT 1 FROM core_user WHERE role = 'admin' AND id <> ${input.id}) THEN ${input.role} ELSE 'no-admin-left' END`
+        >`CASE WHEN EXISTS (SELECT 1 FROM core_user WHERE role = 'admin' AND id <> ${input.id} AND support_grant_id IS NULL) THEN ${input.role} ELSE 'no-admin-left' END`
       : input.role;
     ctx.write(
       ctx.db.updateTable("core_user").set({ role, updated_at: ctx.now }).where("id", "=", input.id),

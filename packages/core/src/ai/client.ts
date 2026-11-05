@@ -62,6 +62,22 @@ export class AiNotConfiguredError extends Error {
   override name = "AiNotConfiguredError";
 }
 
+/**
+ * The hosted plan's platform AI allowance is used up (ADR 0211): models paid for by the platform
+ * (Workers AI over the `AI` binding, providers keyed by a Workers secret) are refused, while
+ * BYOK providers and MCP keep working. Adapters map it to a `plan_limit` operation error.
+ */
+export class AiAllowanceError extends AiNotConfiguredError {
+  override name = "AiAllowanceError";
+  constructor() {
+    super(
+      "Your plan's AI allowance or credit is used up. AI features that use your own provider " +
+        "key (BYOK in Settings → AI) and AI apps connected over MCP still work. Add credit or " +
+        "upgrade at https://app.relationshiposcrm.com/billing",
+    );
+  }
+}
+
 /** The admin layer stored in core_settings (`ai_settings`): settings only, never keys. */
 export interface AiAdminSettings {
   roles: RoleLayer;
@@ -116,6 +132,12 @@ export interface ModelRunnerOptions {
   fetch?: typeof fetch;
   /** Stand-ins used when AI_FAKE_MODEL is "true" and there is no binding. */
   fakes?: FakeModels;
+  /**
+   * Hosted plans (ADR 0211): may calls use platform-paid models (Workers AI, Workers-secret
+   * keys)? False → those calls throw AiAllowanceError; BYOK providers still run. Absent: allowed.
+   * Asked once per call that needs a platform model (the answer is cached by the caller).
+   */
+  platformAi?: () => Promise<boolean>;
 }
 
 /** Deterministic stand-ins per role, for local dev, e2e and tests. */
@@ -306,12 +328,23 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     );
   };
 
+  // ADR 0211: platform-paid models (binding or Workers-secret key) need the plan's AI allowance.
+  // Checked before every call, fallbacks included, so a fallback never reaches a blocked model.
+  const assertPlatformAllowed = async (ref: ModelRef): Promise<void> => {
+    if (!options.platformAi) return;
+    const status = providerStatus(options.env, await settings(), ref.provider);
+    // Not ready: the call fails with its own "not configured" reason. BYOK: the customer pays.
+    if (!status.ready || status.keySource === "byok") return;
+    if (!(await options.platformAi())) throw new AiAllowanceError();
+  };
+
   const generate = async (
     role: ModelRole,
     ref: ModelRef & { capabilities?: ModelCapabilities },
     messages: readonly ModelMessage[],
     params: { maxTokens: number; temperature: number; thinking?: boolean | undefined },
   ): Promise<ModelRunResult> => {
+    await assertPlatformAllowed(ref);
     if (useFakes(options) && ref.provider === "workers-ai") {
       const text = await (options.fakes as FakeModels).run(role, messages);
       return { text: text.trim(), model: "fake", provider: "fake" };
@@ -339,6 +372,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
   };
 
   const embedWith = async (ref: ModelRef, texts: readonly string[]): Promise<EmbedResult> => {
+    await assertPlatformAllowed(ref);
     if (useFakes(options) && ref.provider === "workers-ai") {
       const vectors = (options.fakes as FakeModels).embed(texts);
       return { vectors, model: "fake", dimensions: vectors[0]?.length ?? 0 };
@@ -364,7 +398,12 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
       try {
         return await generate(role, config, messages, params);
       } catch (error) {
-        if (!config.fallback || error instanceof AiNotConfiguredError) throw error;
+        // A primary blocked by the plan (AiAllowanceError) may still fall back to a BYOK model;
+        // the fallback is checked the same way. Other "not configured" errors stop here.
+        if (!config.fallback) throw error;
+        if (error instanceof AiNotConfiguredError && !(error instanceof AiAllowanceError)) {
+          throw error;
+        }
         console.warn(`model role ${role}: ${config.model} failed, trying the fallback`, error);
         const result = await generate(role, config.fallback, messages, params);
         return { ...result, fellBack: true };

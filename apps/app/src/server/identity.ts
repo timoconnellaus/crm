@@ -2,6 +2,7 @@
 // calls `authorize()` for every route and server function; this module stays framework-free so it
 // can be tested directly in workerd.
 import { createIdentityProvider, type IdentityEnv, type Principal } from "@relationship-os/auth";
+import { type SupportEnv, supportPrincipal } from "./support.ts";
 
 /** Paths anyone may load. Everything else needs a Principal. */
 const PUBLIC_PATHS = new Set(["/sign-in", "/api/health"]);
@@ -32,9 +33,15 @@ export function isPublicPath(pathname: string): boolean {
 
 export async function authorize(
   request: Request,
-  env: IdentityEnv,
+  env: IdentityEnv & Pick<SupportEnv, "ROS_SUPPORT_PUBLIC_KEY">,
   kind: RequestKind,
 ): Promise<AuthorizeResult> {
+  // Hosted support access (ADR 0212): a valid `ros_support` cookie for a grant that is still
+  // approved and unexpired makes the request the grant's support user. Anything else about the
+  // cookie is ignored.
+  const support = await supportPrincipal(request, env);
+  if (support) return { ok: true, principal: support };
+
   const provider = createIdentityProvider(env);
   const principal = await provider.resolve(request);
   if (principal) return { ok: true, principal };

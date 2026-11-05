@@ -33,8 +33,19 @@ export interface DeploymentState {
   version: string;
   accountId: string;
   hostname: string;
-  hostnameMode: "workers.dev" | "custom";
+  /**
+   * How the app is reached: its workers.dev URL, a custom domain on a zone, or (hosted SaaS,
+   * ADR 0210) through the platform's dispatch Worker, which owns routing and Cron Triggers.
+   */
+  hostnameMode: "workers.dev" | "custom" | "dispatch";
   zoneId?: string;
+  /**
+   * Workers for Platforms (ADR 0210): the dispatch namespace this deployment's Workers are user
+   * Workers in. Absent: ordinary Workers in the account (self-hosted, enterprise dedicated).
+   */
+  dispatchNamespace?: string;
+  /** Script tags set on every Worker of a namespaced deployment (e.g. `tenant-t3kx9`). */
+  tags?: string[];
   identityProvider: "better-auth" | "cloudflare-access";
   channel: Channel;
   /** Optional Workers (gatekeepers) installed, by manifest name. */
@@ -387,7 +398,8 @@ async function uploadAssets(
   deployedName: string,
 ): Promise<string | undefined> {
   if (!worker.assets) return undefined;
-  const { api, bundle, state } = input;
+  const { bundle, state } = input;
+  const api = scriptsApi(input.api, state);
   const files = worker.assets.files;
   const session = await api.assetsUploadSession(state.accountId, deployedName, files);
   const byHash = new Map(Object.entries(files).map(([path, f]) => [f.hash, path]));
@@ -445,6 +457,16 @@ export function selectedWorkers(manifest: ReleaseManifest, state: DeploymentStat
   return deployOrder(manifest.workers).filter((w) => !w.optional || hasGatekeeper(state, w.name));
 }
 
+/** The client for this deployment's scripts: its dispatch namespace, if it has one (ADR 0210). */
+export function scriptsApi(
+  api: CloudflareClient,
+  state: Pick<DeploymentState, "dispatchNamespace">,
+): CloudflareClient {
+  return state.dispatchNamespace && api.namespace !== state.dispatchNamespace
+    ? api.forNamespace(state.dispatchNamespace)
+    : api;
+}
+
 /**
  * Stages every Worker of the bundle, then switches them all back to back (dependencies first),
  * then sets triggers and routes. Resources must already be provisioned into `state.resources`.
@@ -453,7 +475,11 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
   const { api, bundle, state } = input;
   const log = input.log ?? (() => {});
   const manifest = bundle.manifest;
-  const scripts = new Map((await api.listScripts(state.accountId)).map((s) => [s.id, s]));
+  // User Workers in a dispatch namespace (ADR 0210) have no versions API: each is uploaded
+  // whole, still back to back after everything is staged and checked.
+  const scriptApi = scriptsApi(api, state);
+  const namespaced = Boolean(state.dispatchNamespace);
+  const scripts = new Map((await scriptApi.listScripts(state.accountId)).map((s) => [s.id, s]));
   const workers = selectedWorkers(manifest, state);
 
   type Staged = {
@@ -487,13 +513,14 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
         "workers/message": `Relationship OS ${manifest.version}`,
         "workers/tag": manifest.version,
       },
+      ...(namespaced && state.tags?.length ? { tags: state.tags } : {}),
     };
     const modules: ModulePart[] = worker.modules.map((m) => ({
       name: m.name,
       type: m.type,
       bytes: bundle.module(m.sha256),
     }));
-    if (existing && !migration) {
+    if (existing && !migration && !namespaced) {
       const { annotations: _a, observability: _o, ...versionMetadata } = metadata;
       const versionId = await api.uploadVersion(
         state.accountId,
@@ -514,7 +541,7 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
   const result: DeployResult["workers"] = [];
   for (const item of staged) {
     if (item.versionId) {
-      await api.deployVersion(
+      await scriptApi.deployVersion(
         state.accountId,
         item.deployedName,
         item.versionId,
@@ -522,7 +549,7 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
       );
       result.push({ name: item.worker.name, deployedAs: item.deployedName, via: "version" });
     } else {
-      await api.putScript(state.accountId, item.deployedName, item.metadata, item.modules);
+      await scriptApi.putScript(state.accountId, item.deployedName, item.metadata, item.modules);
       result.push({ name: item.worker.name, deployedAs: item.deployedName, via: "upload" });
     }
     log(`  switched ${item.deployedName}`);
@@ -534,7 +561,8 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
     ? await api.listQueues(state.accountId)
     : [];
   for (const { worker, deployedName } of staged) {
-    await api.putSchedules(state.accountId, deployedName, worker.crons);
+    // A namespaced deployment's crons are run by the platform's dispatch Worker (ADR 0210).
+    if (!namespaced) await api.putSchedules(state.accountId, deployedName, worker.crons);
     for (const consumer of worker.queueConsumers) {
       const queueName = renderString(consumer.queue, values);
       const queue = queues.find((q) => q.queue_name === queueName);
@@ -551,6 +579,7 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
         consumer.deadLetterQueue ? renderString(consumer.deadLetterQueue, values) : undefined,
       );
     }
+    if (namespaced) continue;
     const onWorkersDev = worker.public && state.hostnameMode === "workers.dev";
     await api.setWorkersDev(state.accountId, deployedName, onWorkersDev);
     if (worker.public && state.hostnameMode === "custom" && state.zoneId) {

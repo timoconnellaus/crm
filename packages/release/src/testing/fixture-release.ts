@@ -125,7 +125,11 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     optional: false,
     mainModule: "index.js",
     modules: [
-      await add("index.js", `export default { fetch() { return new Response("ros ${version}") } }`),
+      // Answers /api/health like the real app, so a fixture deployment can be smoke-checked.
+      await add(
+        "index.js",
+        `export default { fetch(request, env) { if (new URL(request.url).pathname === "/api/health") return Response.json({ status: env.FIXTURE_HEALTH || "ok", version: "${version}", migrations: { upToDate: true } }); return new Response("ros ${version}") }, scheduled() {} }`,
+      ),
       await add("assets/chunk.js", `export const v = "${version}";`),
     ],
     compatibilityDate: "2026-10-01",

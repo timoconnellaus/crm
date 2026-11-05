@@ -105,17 +105,49 @@ export interface CloudflareClientOptions {
   token: string;
   apiBase?: string;
   fetch?: typeof fetch;
+  /**
+   * A Workers for Platforms dispatch namespace (ADR 0210): script calls then address user Workers
+   * in that namespace (`/workers/dispatch/namespaces/{ns}/scripts`) instead of the account's own
+   * scripts. Everything else (D1, R2, queues, AI Gateway…) is account-wide either way.
+   */
+  namespace?: string;
 }
 
 export class CloudflareClient {
   readonly apiBase: string;
   private readonly token: string;
   private readonly fetchImpl: typeof fetch;
+  /** The dispatch namespace script calls go to, if any (ADR 0210). */
+  readonly namespace: string | undefined;
 
   constructor(options: CloudflareClientOptions) {
     this.token = options.token;
     this.apiBase = options.apiBase ?? CLOUDFLARE_API;
     this.fetchImpl = options.fetch ?? ((input, init) => fetch(input, init));
+    this.namespace = options.namespace;
+  }
+
+  /** The same client, with script calls addressed to user Workers in a dispatch namespace. */
+  forNamespace(namespace: string): CloudflareClient {
+    return new CloudflareClient({
+      token: this.token,
+      apiBase: this.apiBase,
+      fetch: this.fetchImpl,
+      namespace,
+    });
+  }
+
+  private scripts(accountId: string): string {
+    return this.namespace
+      ? `/accounts/${accountId}/workers/dispatch/namespaces/${encodeURIComponent(this.namespace)}/scripts`
+      : `/accounts/${accountId}/workers/scripts`;
+  }
+
+  /** Workers for Platforms has no versions, deployments, schedules or workers.dev for user Workers. */
+  private accountOnly(what: string): void {
+    if (this.namespace) {
+      throw new Error(`${what} is not available for user Workers in a dispatch namespace`);
+    }
   }
 
   async request<T>(
@@ -405,8 +437,12 @@ export class CloudflareClient {
   // ---- Workers --------------------------------------------------------------------------------
 
   async listScripts(accountId: string): Promise<ScriptInfo[]> {
-    return (await this.request<ScriptInfo[]>("GET", `/accounts/${accountId}/workers/scripts`))
-      .result;
+    // A namespace lists `{ script: {…} }` entries; the account lists scripts directly.
+    const { result } = await this.request<(ScriptInfo & { script?: ScriptInfo })[]>(
+      "GET",
+      this.scripts(accountId),
+    );
+    return result.map((entry) => entry.script ?? entry);
   }
 
   private form(metadata: Record<string, unknown>, modules: ModulePart[]): FormData {
@@ -436,7 +472,7 @@ export class CloudflareClient {
     return (
       await this.request<{ id: string; migration_tag?: string }>(
         "PUT",
-        `/accounts/${accountId}/workers/scripts/${name}`,
+        `${this.scripts(accountId)}/${name}`,
         undefined,
         { raw: this.form(metadata, modules) },
       )
@@ -450,10 +486,11 @@ export class CloudflareClient {
     metadata: Record<string, unknown>,
     modules: ModulePart[],
   ): Promise<string> {
+    this.accountOnly("Worker versions");
     return (
       await this.request<{ id: string }>(
         "POST",
-        `/accounts/${accountId}/workers/scripts/${name}/versions`,
+        `${this.scripts(accountId)}/${name}/versions`,
         undefined,
         { raw: this.form(metadata, modules) },
       )
@@ -462,7 +499,8 @@ export class CloudflareClient {
 
   /** Sends 100% of traffic to a version. */
   async deployVersion(accountId: string, name: string, versionId: string, message?: string) {
-    await this.request("POST", `/accounts/${accountId}/workers/scripts/${name}/deployments`, {
+    this.accountOnly("Worker deployments");
+    await this.request("POST", `${this.scripts(accountId)}/${name}/deployments`, {
       strategy: "percentage",
       versions: [{ version_id: versionId, percentage: 100 }],
       ...(message ? { annotations: { "workers/message": message } } : {}),
@@ -471,28 +509,105 @@ export class CloudflareClient {
 
   /** The version currently taking all traffic, or null. */
   async currentVersion(accountId: string, name: string): Promise<string | null> {
+    this.accountOnly("Worker deployments");
     const { result } = await this.request<{
       deployments: { versions: { version_id: string; percentage: number }[] }[];
-    }>("GET", `/accounts/${accountId}/workers/scripts/${name}/deployments`);
+    }>("GET", `${this.scripts(accountId)}/${name}/deployments`);
     const latest = result.deployments[0];
     return latest?.versions.find((v) => v.percentage === 100)?.version_id ?? null;
   }
 
   async deleteScript(accountId: string, name: string) {
-    await this.request("DELETE", `/accounts/${accountId}/workers/scripts/${name}?force=true`);
+    await this.request("DELETE", `${this.scripts(accountId)}/${name}?force=true`);
+  }
+
+  // ---- Workers for Platforms (ADR 0210) -------------------------------------------------------
+
+  async getDispatchNamespace(accountId: string, name: string): Promise<{ name: string } | null> {
+    try {
+      return (
+        await this.request<{ namespace_name: string }>(
+          "GET",
+          `/accounts/${accountId}/workers/dispatch/namespaces/${encodeURIComponent(name)}`,
+        )
+      ).result
+        ? { name }
+        : null;
+    } catch (error) {
+      if (error instanceof CloudflareApiError && error.status === 404) return null;
+      throw error;
+    }
+  }
+
+  async createDispatchNamespace(accountId: string, name: string) {
+    await this.request("POST", `/accounts/${accountId}/workers/dispatch/namespaces`, { name });
+  }
+
+  /** Deletes every user Worker in this client's namespace carrying `tag` (one tenant's Workers). */
+  async deleteScriptsByTag(accountId: string, tag: string) {
+    if (!this.namespace) throw new Error("deleting scripts by tag needs a dispatch namespace");
+    await this.request(
+      "DELETE",
+      `${this.scripts(accountId)}?tags=${encodeURIComponent(`${tag}:yes`)}`,
+    );
+  }
+
+  // ---- Cloudflare for SaaS custom hostnames (enterprise, ADR 0210) ---------------------------
+
+  async customHostname(
+    zoneId: string,
+    hostname: string,
+  ): Promise<{ id: string; status: string } | null> {
+    const { result } = await this.request<{ id: string; hostname: string; status: string }[]>(
+      "GET",
+      `/zones/${zoneId}/custom_hostnames?hostname=${encodeURIComponent(hostname)}`,
+    );
+    const found = result.find((h) => h.hostname === hostname);
+    return found ? { id: found.id, status: found.status } : null;
+  }
+
+  async createCustomHostname(zoneId: string, hostname: string) {
+    return (
+      await this.request<{ id: string; status: string }>(
+        "POST",
+        `/zones/${zoneId}/custom_hostnames`,
+        { hostname, ssl: { method: "http", type: "dv" } },
+      )
+    ).result;
+  }
+
+  // ---- AI Gateway logs (metering, ADR 0213) --------------------------------------------------
+
+  /**
+   * One page (≤ 50) of a gateway's logs created in [from, to), oldest first, with the fields
+   * metering needs. `cost` is AI Gateway's estimate in US dollars.
+   */
+  async gatewayLogs(
+    accountId: string,
+    gatewayId: string,
+    window: { from: string; to: string; page: number },
+  ) {
+    const filters = JSON.stringify([
+      { key: "created_at", operator: "gt", value: [window.from] },
+      { key: "created_at", operator: "lt", value: [window.to] },
+    ]);
+    const { result, info } = await this.request<
+      { id: string; provider: string; model: string; cost?: number | null; cached?: boolean }[]
+    >(
+      "GET",
+      `/accounts/${accountId}/ai-gateway/gateways/${gatewayId}/logs?per_page=50&page=${window.page}&order_by=created_at&order_by_direction=asc&filters=${encodeURIComponent(filters)}`,
+    );
+    return { logs: result, totalPages: info?.total_pages ?? 1 };
   }
 
   async listSecrets(accountId: string, name: string): Promise<string[]> {
     return (
-      await this.request<{ name: string }[]>(
-        "GET",
-        `/accounts/${accountId}/workers/scripts/${name}/secrets`,
-      )
+      await this.request<{ name: string }[]>("GET", `${this.scripts(accountId)}/${name}/secrets`)
     ).result.map((s) => s.name);
   }
 
   async putSecret(accountId: string, name: string, secret: string, value: string) {
-    await this.request("PUT", `/accounts/${accountId}/workers/scripts/${name}/secrets`, {
+    await this.request("PUT", `${this.scripts(accountId)}/${name}/secrets`, {
       name: secret,
       text: value,
       type: "secret_text",
@@ -500,15 +615,17 @@ export class CloudflareClient {
   }
 
   async putSchedules(accountId: string, name: string, crons: string[]) {
+    this.accountOnly("Cron Triggers");
     await this.request(
       "PUT",
-      `/accounts/${accountId}/workers/scripts/${name}/schedules`,
+      `${this.scripts(accountId)}/${name}/schedules`,
       crons.map((cron) => ({ cron })),
     );
   }
 
   async setWorkersDev(accountId: string, name: string, enabled: boolean) {
-    await this.request("POST", `/accounts/${accountId}/workers/scripts/${name}/subdomain`, {
+    this.accountOnly("workers.dev");
+    await this.request("POST", `${this.scripts(accountId)}/${name}/subdomain`, {
       enabled,
       previews_enabled: false,
     });
@@ -675,22 +792,54 @@ export class CloudflareClient {
     accountId: string,
     name: string,
     permissionGroupIds: string[],
+    options: {
+      /** Narrower resources than the whole account (e.g. one R2 bucket). */
+      resources?: Record<string, string>;
+      /** ISO time the token stops working. */
+      expiresOn?: string;
+    } = {},
   ): Promise<{ id: string; value: string }> {
     const { result } = await this.request<{ id: string; value: string }>(
       "POST",
       `/accounts/${accountId}/tokens`,
       {
         name,
+        ...(options.expiresOn ? { expires_on: options.expiresOn } : {}),
         policies: [
           {
             effect: "allow",
-            resources: { [`com.cloudflare.api.account.${accountId}`]: "*" },
+            resources: options.resources ?? { [`com.cloudflare.api.account.${accountId}`]: "*" },
             permission_groups: permissionGroupIds.map((id) => ({ id })),
           },
         ],
       },
     );
     return { id: result.id, value: result.value };
+  }
+
+  /**
+   * A full SQL dump of a D1 database (the export API, polled until done). Returns the
+   * Cloudflare-hosted, time-limited download URL: the dump never passes through the caller.
+   */
+  async exportD1(accountId: string, databaseId: string, attempts = 30): Promise<string> {
+    let bookmark: string | undefined;
+    for (let i = 0; i < attempts; i++) {
+      const { result } = await this.request<{
+        at_bookmark?: string;
+        status?: string;
+        error?: string;
+        result?: { signed_url?: string };
+      }>("POST", `/accounts/${accountId}/d1/database/${databaseId}/export`, {
+        output_format: "polling",
+        ...(bookmark ? { current_bookmark: bookmark } : {}),
+      });
+      if (result.status === "error") throw new Error(`D1 export failed: ${result.error ?? ""}`);
+      if (result.status === "complete" && result.result?.signed_url)
+        return result.result.signed_url;
+      bookmark = result.at_bookmark ?? bookmark;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    throw new Error("D1 export did not finish in time");
   }
 
   async deleteAccountToken(accountId: string, id: string) {
@@ -708,7 +857,7 @@ export class CloudflareClient {
     return (
       await this.request<{ jwt: string; buckets?: string[][] }>(
         "POST",
-        `/accounts/${accountId}/workers/scripts/${name}/assets-upload-session`,
+        `${this.scripts(accountId)}/${name}/assets-upload-session`,
         { manifest },
       )
     ).result;

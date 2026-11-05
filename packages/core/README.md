@@ -63,6 +63,11 @@ src/
   retention.ts         the daily cron's storage retention: runAuditPurge, purgeRunHistory,
                        compactPendingActions, measureStorage (ADR 0090)
   approvals/caps.ts    size caps on what a pending action stores (input, preview, simulated)
+  entitlements.ts      hosted plan limits (ADR 0211): loadEntitlements (60 s isolate cache),
+                       assertUserCapacity / assertRecordCapacity (PlanLimitError), platformAiAllowed
+  support.ts           support grants (ADR 0212): loadSupportGrant, isGrantActive, grantExpiry;
+                       operations/support.ts has support.grant.* and support.session.start,
+                       operations/plan.ts has plan.get
   rate-limit.ts        rateLimit(binding, key) over the Workers Rate Limiting binding, and
                        memoryRateLimit for tests (ADR 0091)
   ids.ts               newId("person") → per_01J…
