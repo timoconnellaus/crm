@@ -93,6 +93,8 @@ batch that already writes its row.
 - A second judge provider. The seam allows one; none is chosen.
 - Images, Box and long-context requests.
 - Exposing the judge to extension code (`codemode:*`).
+- Later stages' uses: `import.mapping` (a new placement, stage 12, ADR 0241) and new feeds into
+  `outbound.message` (stage 13: AI drafts and the first send of a sequence version).
 
 ## Acceptance criteria
 
