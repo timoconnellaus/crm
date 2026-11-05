@@ -22,13 +22,21 @@ sitting:
 
 1. **Seed.** The grader creates each case's test record (a deal owned by the eval user in a won,
    lost or open stage, a person, an organisation). This happens before any automation exists, so
-   the eval's own automations never fire on them.
+   the eval's own automations never fire on them. Deals go in the New business pipeline (else the
+   first pipeline) and its first stage of the case's type. Any field that stage requires (its
+   stage rules) and the case left empty is filled in: an organisation (`Eval Deals Ltd <word>`,
+   one per run), a value, an expected close and so on. So the fixtures work on a fresh database
+   and on one seeded with `pnpm db:seed`.
 2. **Author.** For each case the model gets a fresh MCP connection (scopes `read write admin`),
    with the server's instructions as its system prompt. It writes the extension with
    `extension_write`, runs `extension_check` and calls `extension_propose`. The prompt names the
    extension id: the case's `idBase` plus the run's word, so runs never collide.
-3. **Approve, then grade.** The runner prints the proposals and waits (`--approval-minutes`,
-   default 30) while you approve them at `/approvals`. Then, per case, the grader:
+3. **Approve, then grade.** The runner prints the proposals and pauses (`--approval-minutes`,
+   default 30). **A person must be at the app during this wait**, signed in as an approver (an
+   admin), approving each proposal at `/approvals`. There is no auto-approve: installing an
+   extension is human-only by design (ADR 0041). A proposal still unapproved when the wait ends
+   fails its case as `install`. So start a run only when someone can watch it. Then, per case, the
+   grader:
    1. runs `extension_check` on the working copy: it must be `ok`;
    2. finds the installed automation (`automation.list { extensionId }`). Its trigger type, from
       `automation.get`, must be one that implements the request;

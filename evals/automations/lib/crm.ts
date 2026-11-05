@@ -74,17 +74,57 @@ export async function userIdByEmail(crm: CrmClient, email: string): Promise<stri
   return id;
 }
 
-/** The id of the first stage of a type (deals.stage records). */
-export async function stageOfType(crm: CrmClient, type: string): Promise<string> {
-  const page = await crm.call<{ items?: { id: string }[] }>("record.list", {
+/** The Deals extension's default pipeline (the seeded value of its Default pipeline setting). */
+export const DEFAULT_PIPELINE = "New business";
+
+type Row = { id: string; values?: Record<string, unknown> };
+
+/**
+ * The pipeline fixture deals go in: "New business" (the Deals default, whose first stage has no
+ * stage rules), else the first by order; null when there are none.
+ */
+export async function fixturePipeline(crm: CrmClient): Promise<string | null> {
+  const page = await crm.call<{ items?: Row[] }>("record.list", {
+    object: "deals.pipeline",
+    sort: { field: "position", direction: "asc" },
+    limit: 50,
+  });
+  const items = page.items ?? [];
+  return (items.find((p) => p.values?.name === DEFAULT_PIPELINE) ?? items[0])?.id ?? null;
+}
+
+export interface FixtureStage {
+  id: string;
+  /** The deal fields required to enter it (its stage rules). */
+  requiredFields: string[];
+}
+
+const fieldList = (value: unknown): string[] => {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value !== "string" || !value.startsWith("[")) return [];
+  try {
+    return fieldList(JSON.parse(value));
+  } catch {
+    return [];
+  }
+};
+
+/** The first stage of a type (deals.stage records), within `pipeline` when given. */
+export async function stageOfType(
+  crm: CrmClient,
+  type: string,
+  pipeline?: string | null,
+): Promise<FixtureStage> {
+  const byType = { field: "type", op: "eq", value: type };
+  const page = await crm.call<{ items?: Row[] }>("record.list", {
     object: "deals.stage",
-    filter: { field: "type", op: "eq", value: type },
+    filter: pipeline ? { and: [byType, { field: "pipeline", op: "eq", value: pipeline }] } : byType,
     sort: { field: "position", direction: "asc" },
     limit: 1,
   });
-  const id = page.items?.[0]?.id;
-  if (!id) throw new Error(`no deals.stage of type ${type}: is the Deals extension installed?`);
-  return id;
+  const stage = page.items?.[0];
+  if (!stage) throw new Error(`no deals.stage of type ${type}: is the Deals extension installed?`);
+  return { id: stage.id, requiredFields: fieldList(stage.values?.requiredFields) };
 }
 
 export interface SeededRecord {
@@ -92,11 +132,64 @@ export interface SeededRecord {
   id: string;
 }
 
+type SeedContext = { userId: string; today: string; suffix: string };
+
+/** One eval organisation per run (per grader client), for deals whose stage requires one. */
+const dealOrgs = new WeakMap<CrmClient, Promise<string>>();
+
+function dealOrg(crm: CrmClient, suffix: string): Promise<string> {
+  let org = dealOrgs.get(crm);
+  if (!org) {
+    org = crm
+      .call<{ id: string }>(
+        "organisation.create",
+        { name: `Eval Deals Ltd ${suffix}` },
+        {
+          write: true,
+        },
+      )
+      .then((o) => o.id);
+    dealOrgs.set(crm, org);
+  }
+  return org;
+}
+
+/**
+ * Fills the deal fields the stage requires (its stage rules) that the case left empty, so the
+ * fixture can enter it on a fresh or a seeded database. A lost stage always needs a lost reason.
+ */
+async function fillStageRules(
+  crm: CrmClient,
+  stage: FixtureStage,
+  type: string,
+  values: Record<string, unknown>,
+  context: SeedContext,
+): Promise<void> {
+  const required = new Set(stage.requiredFields);
+  if (type === "lost") required.add("lostReason");
+  const fills: Record<string, () => unknown> = {
+    organisation: () => dealOrg(crm, context.suffix),
+    owner: () => context.userId,
+    value: () => 10000,
+    expectedClose: () => addDays(context.today, 30),
+    nextStep: () => "Eval next step",
+    nextStepDate: () => addDays(context.today, 7),
+    source: () => "other",
+    lostReason: () => "other",
+  };
+  for (const field of required) {
+    const fill = fills[field];
+    if (fill && (values[field] === undefined || values[field] === null)) {
+      values[field] = await fill();
+    }
+  }
+}
+
 /** Creates a case's test record; returns its reference. */
 export async function seedRecord(
   crm: CrmClient,
   seed: SeedSpec,
-  context: { userId: string; today: string; suffix: string },
+  context: SeedContext,
 ): Promise<SeededRecord> {
   const values: Record<string, unknown> = { ...seed.values };
   for (const field of seed.self ?? []) values[field] = context.userId;
@@ -115,7 +208,14 @@ export async function seedRecord(
     return { object: "organisation", id: org.id };
   }
   values.name = label(values.name);
-  if (seed.stageType) values.stage = await stageOfType(crm, seed.stageType);
+  if (seed.stageType) {
+    // The stage and its pipeline together: a stage of another pipeline is refused.
+    const pipeline = await fixturePipeline(crm);
+    const stage = await stageOfType(crm, seed.stageType, pipeline);
+    if (pipeline) values.pipeline = pipeline;
+    values.stage = stage.id;
+    await fillStageRules(crm, stage, seed.stageType, values, context);
+  }
   const record = await crm.call<{ id: string }>(
     "record.create",
     { object: seed.object, values },
