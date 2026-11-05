@@ -191,6 +191,8 @@ describe("the Jev reviewer", () => {
     expect(JSON.parse(state)).toMatchObject({
       change: { operation: "person.create", recordsTouched: 1 },
     });
+    // Who the agent acts for (ADR 0235): the pending action's user, name and role.
+    expect(JSON.parse(state).change.actsFor).toEqual({ name: member.name, role: "member" });
     const questions = JSON.stringify(call?.questions);
     expect(questions).toContain("Never: Delete or erase any record.");
     expect(questions).not.toContain("SECRET-REASON");
@@ -216,8 +218,11 @@ describe("the Jev reviewer", () => {
       verdict: "escalate",
       reason: "No rule of the written policy clearly allows this change without a person.",
     });
-    // An approval's confidence is the weaker of the two answers.
-    expect(policyVerdict(rules, asked(0.3, 0.95)).confidence).toBeCloseTo(0.7);
+    // An approval's confidence is P(allowed): the admin's threshold raises allowed_by's only, and
+    // breaks stays at its calibrated 0.5 (ADR 0235).
+    expect(policyVerdict(rules, asked(0.3, 0.95)).confidence).toBeCloseTo(0.95);
+    expect(policyVerdict(rules, asked(0.49, 0.8)).verdict).toBe("approve");
+    expect(policyVerdict(rules, asked(0.5, 0.99)).verdict).not.toBe("approve");
   });
 
   it("active: applies an approval like the LLM's, as the original actor", async () => {

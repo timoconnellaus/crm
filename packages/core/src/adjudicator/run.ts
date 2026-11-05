@@ -303,6 +303,8 @@ async function adjudicate(
     .selectFrom("core_pending_action as p")
     .leftJoin("core_change_set as c", "c.id", "p.change_set_id")
     .leftJoin("core_adjudication as a", "a.action_id", "p.id")
+    // Who the agent acts for (ADR 0235): name and role, in this same background read.
+    .leftJoin("core_user as u", "u.id", "p.user_id")
     .select([
       "p.id",
       "p.change_set_id",
@@ -323,6 +325,8 @@ async function adjudicate(
       "p.review_source",
       "c.client_name",
       "a.id as verdict_id",
+      "u.name as user_name",
+      "u.role as user_role",
     ])
     .where("p.id", "=", actionId)
     .executeTakeFirst();
@@ -341,6 +345,8 @@ async function adjudicate(
     risk: row.risk,
     actor: row.actor,
     clientName: row.client_name,
+    actingUser:
+      row.user_name && row.user_role ? { name: row.user_name, role: row.user_role } : null,
     bulkSize: row.bulk_size,
     reason: row.reason,
     preview: parse(row.preview, []),

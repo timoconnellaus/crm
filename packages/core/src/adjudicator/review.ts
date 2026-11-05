@@ -79,6 +79,11 @@ export interface ReviewItem {
   risk: string;
   actor: string;
   clientName?: string | null | undefined;
+  /**
+   * The CRM user the agent acts for (the pending action's user): name and role, read in the
+   * adjudicator's background lookup, so rules like "tasks assigned to the requester" can be judged.
+   */
+  actingUser?: { name: string; role: string } | null | undefined;
   bulkSize: number;
   /** The agent's stated reason (untrusted). */
   reason: string;
@@ -175,6 +180,7 @@ export function reviewQuestion(policyText: string, item: ReviewItem): ReviewChoi
       ...(item.operationDescription ? { operationDescription: item.operationDescription } : {}),
       risk: item.risk,
       requestedBy: { actor: item.actor, client: item.clientName ?? null },
+      ...(item.actingUser ? { actsFor: item.actingUser } : {}),
       recordsTouched: item.bulkSize,
       ...(item.dependsOn ? { waitsOnOtherPendingChanges: item.dependsOn } : {}),
       agentReason: item.reason,
