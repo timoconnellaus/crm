@@ -16,7 +16,9 @@ import {
   parseSpec,
   type RunCandidate,
   type RunOperationRecord,
+  type SampleApproval,
   type StartRunInput,
+  sampleApproval,
   zonedTime,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
@@ -246,6 +248,23 @@ export async function testAutomation(
     matchReason = "This trigger has no record";
   }
 
+  // approvalDecided: there is no real decision to test against, so the run gets a sample one
+  // (from a recent pending action when one fits), labelled as such, and the record a real run
+  // would get with it when no record was chosen (ADR 0133 amendment).
+  let sample: SampleApproval | null = null;
+  if (trigger.type === "approvalDecided") {
+    sample = await sampleApproval(db, trigger, record);
+    if (!record) {
+      const first = trigger.object
+        ? sample.approval.records.find((r) => r.object === trigger.object)
+        : sample.approval.records[0];
+      if (first) record = await loadTriggerRecord(db, first.object, first.id);
+    }
+    matchReason = record
+      ? `${sample.label} It is about ${record.object} ${record.id}.`
+      : sample.label;
+  }
+
   // The event a real run would get. A fieldChanged trigger is simulated as the field changing to
   // the record's current value (from null), so a record already in the `to` state matches.
   const recordRef = record ? { object: record.object, id: record.id } : undefined;
@@ -271,6 +290,7 @@ export async function testAutomation(
     ...(trigger.type === "manual"
       ? { manual: { userId: input.userId, recordIds: recordRef ? [recordRef.id] : [] } }
       : {}),
+    ...(sample ? { approval: sample.approval } : {}),
     test: true,
   };
 
@@ -333,6 +353,20 @@ export async function testAutomation(
     record: record ? { object: record.object, id: record.id, title: record.title } : null,
     matched,
     matchReason,
+    ...(sample
+      ? {
+          sample: {
+            kind: "approval" as const,
+            source: sample.source,
+            label: sample.label,
+            approval: {
+              actionId: sample.approval.actionId,
+              operation: sample.approval.operation,
+              decision: sample.approval.decision,
+            },
+          },
+        }
+      : {}),
     steps,
     writes: simulate.writes.map((w) => {
       const assignee = simulate.overlay.record(w.object, w.id)?.record?.assigneeId;
