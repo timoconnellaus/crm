@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The adjudicator eval (docs/stages/07-in-app-ai.md, criterion 8): the policy adjudicator's own
-// judgement (core's judgePendingItem: prompt, JSON mode, validation, one repair) over 30 labelled
+// judgement (core's reviewPendingItem: prompt, JSON mode, validation, one repair) over 30 labelled
 // pending actions against a sample written policy, with a real `review` model. The target is
 // precision on auto-approve of at least 0.95. Writes a report to reports/. Node >= 24:
 //
@@ -10,7 +10,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import type { ReviewModel } from "@relationship-os/core/adjudicator-judge";
+import type { ReviewModel } from "@relationship-os/core/adjudicator-review";
 import { shippedModel } from "@relationship-os/core/ai-roles";
 import {
   checkCredentials,

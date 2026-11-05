@@ -18,7 +18,10 @@ import {
   drainAllEmbeddings,
   fakeModels,
   type InvocationContext,
+  type Judge,
+  judgeFor,
   loadAiSettings,
+  loadJudgeSettings,
   type ModelRunner,
   memoryVectorStore,
   modelRunnerFromEnv,
@@ -62,6 +65,15 @@ export function modelsFor(env: AiAppEnv, db: CrmDb): ModelRunner | undefined {
   });
 }
 
+/**
+ * The judge (ADR 0230): Jev when a key is reachable (BYOK in AI Gateway, or TYPESAFE_API_KEY),
+ * otherwise off with no network call. The placement switches are read from D1 at most once, and
+ * only when a placement first asks: building it costs nothing.
+ */
+export function judgeOf(env: AiAppEnv, db: CrmDb): Judge {
+  return judgeFor(env, { loadSettings: () => loadJudgeSettings(db.query) });
+}
+
 export function aiAdminFor(env: AiAppEnv): AiAdmin {
   return cloudflareAiAdmin(env);
 }
@@ -77,6 +89,10 @@ export function aiEnvView(env: AiAppEnv): AiEnv {
     ...(env.AI_GATEWAY_BYOK ? { AI_GATEWAY_BYOK: env.AI_GATEWAY_BYOK } : {}),
     ...(env.VECTORIZE_DIMENSIONS ? { VECTORIZE_DIMENSIONS: env.VECTORIZE_DIMENSIONS } : {}),
     ...(env.AI_FAKE_MODEL ? { AI_FAKE_MODEL: env.AI_FAKE_MODEL } : {}),
+    // The judge's key, as "set" only (ADR 0230, ADR 0151).
+    ...(env.TYPESAFE_API_KEY ? { TYPESAFE_API_KEY: "set" } : {}),
+    ...(env.JUDGE_BYOK ? { JUDGE_BYOK: env.JUDGE_BYOK } : {}),
+    ...(env.JUDGE_PLACEMENTS ? { JUDGE_PLACEMENTS: env.JUDGE_PLACEMENTS } : {}),
   };
   for (const [key, value] of Object.entries(env)) {
     if (key.startsWith("AI_KEY_") && value) (view as Record<string, unknown>)[key] = "set";
@@ -193,6 +209,7 @@ export function aiContextFor(env: AiAppEnv, db: CrmDb) {
   const viaEvents = Boolean(index && typeof index.query === "function" && models?.embed);
   return {
     ...(models ? { models } : {}),
+    judge: judgeOf(env, db),
     ...(vectors ? { vectors } : {}),
     ...(viaEvents ? { embedViaEvents: true } : {}),
     ...(onCommitted ? { onCommitted } : {}),

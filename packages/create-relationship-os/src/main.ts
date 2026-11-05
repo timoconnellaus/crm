@@ -40,6 +40,8 @@ import {
   getRelease,
   healthSmoke,
   installedExtensionsViaApi,
+  JUDGE_BYOK_VAR,
+  JUDGE_GATEWAY_PROVIDER,
   killSwitchControl,
   legacyName,
   legacyReleaseAssetNames,
@@ -103,7 +105,8 @@ Options
                          install, e.g. ros, created with logging and authentication on and its
                          token stored as AI_GATEWAY_TOKEN). off: call Workers AI directly
   --provider-key P=KEY   store a provider key in the gateway as BYOK (repeatable), e.g.
-                         deepseek=… or openai=… (a custom provider by its slug). Never logged.
+                         deepseek=… or openai=… (a custom provider by its slug; typesafe=… is
+                         the judge's key, Jev, and sets JUDGE_BYOK). Never logged.
                          Keys can also be added later in Settings → AI
   --model-roles <m>      this deployment's model roles (the AI_MODEL_ROLES layer): a preset
                          (${Object.keys(ROLE_PRESETS).join(", ")}), a JSON file, inline JSON, or
@@ -648,6 +651,10 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
       // Tell the model registry the gateway holds this provider's key (AI_GATEWAY_BYOK).
       const registry = registryProvider(slug);
       if (registry) state.vars = withByokProvider(state.vars, manifest, registry);
+      // TypeSafe's key is the judge's, not a model role's (ADR 0230): JUDGE_BYOK turns it on.
+      if (slug === JUDGE_GATEWAY_PROVIDER) {
+        state.vars = withDeploymentVar(state.vars, manifest, JUDGE_BYOK_VAR, "true");
+      }
     }
   }
   if (modelRoles !== undefined) {

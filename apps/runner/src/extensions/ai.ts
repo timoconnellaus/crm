@@ -5,7 +5,11 @@
 import {
   type AiEnv,
   AiNotConfiguredError,
+  type Judge,
+  type JudgeEnv,
+  judgeFor,
   loadAiSettings,
+  loadJudgeSettings,
   type ModelRunner,
   modelRunnerFromEnv,
   platformAiAllowed,
@@ -29,6 +33,17 @@ export function runnerModels(env: object): ModelRunner | null {
         : {}),
     }) ?? null
   );
+}
+
+/**
+ * The judge for ros-runner's environment (ADR 0230), as ros-app builds it: Jev when a key is
+ * reachable, otherwise off with no network call. The runner's own placement (sync.jobChange) is
+ * a later build step of stage 11; nothing in the runner asks it yet.
+ */
+export function runnerJudge(env: object): Judge {
+  const e = env as JudgeEnv & { DB?: D1Database };
+  const db = e.DB ? createCrmDb(e.DB) : null;
+  return judgeFor(e, db ? { loadSettings: () => loadJudgeSettings(db.query) } : {});
 }
 
 function prompt(role: "summarise" | "extract" | "classify", args: readonly unknown[]): string {

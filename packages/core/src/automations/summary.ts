@@ -532,6 +532,29 @@ function stepClauses(
 const clauseOf = (label: string) =>
   label.charAt(0).toLowerCase() + label.slice(1).replace(/\?\s*$/, "");
 
+/** The trigger in words, as the summary opens: "When a **Deal** is **created**". */
+export function triggerWords(trigger: Trigger, context: SummaryContext): string {
+  return triggerPhrase(trigger, new Labels(context)).text;
+}
+
+/** A condition in words, as the summary says it after "if": "its status is Open". */
+export function conditionWords(
+  filter: ViewFilter,
+  object: string,
+  context: SummaryContext,
+): string {
+  return conditionText(filter, object, new Labels(context)).text;
+}
+
+/** A recipient in words: "the deal's owner", "the owner's manager", "the admins". */
+export function recipientWords(
+  recipient: Recipient,
+  triggerObject: string | null,
+  context: SummaryContext,
+): string {
+  return recipientText(recipient, triggerObject, new Labels(context)).text;
+}
+
 export function automationSummary(
   spec: AutomationManifest,
   context: SummaryContext,

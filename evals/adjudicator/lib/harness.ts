@@ -1,12 +1,12 @@
-// The adjudicator eval harness: runs core's own judgement (judgePendingItem, the code the
+// The adjudicator eval harness: runs core's own judgement (reviewPendingItem, the code the
 // deployment runs) over the labelled cases, then scores it. The model is a seam: the real
 // `review` model through an OpenAI-compatible endpoint (runner.ts), or a deterministic fake (tests).
 import { computeAgreement } from "@relationship-os/core/adjudicator-agreement";
 import {
-  type JudgeResult,
-  judgePendingItem,
+  type ReviewResult,
+  reviewPendingItem,
   type ReviewModel,
-} from "@relationship-os/core/adjudicator-judge";
+} from "@relationship-os/core/adjudicator-review";
 import type { EvalCase, Label } from "../fixtures.ts";
 
 /** The bar (stage 7, acceptance criterion 8): precision on auto-approve of at least 0.95. */
@@ -18,7 +18,7 @@ export interface CaseResult {
   id: string;
   label: Label;
   rule: number;
-  verdict: JudgeResult["verdict"];
+  verdict: ReviewResult["verdict"];
   confidence: number;
   reason: string;
   valid: boolean;
@@ -44,7 +44,7 @@ export interface Score {
   /** Verdict equals label, escalations included. */
   accuracy: number;
   invalid: number;
-  confusion: Record<Label, Record<JudgeResult["verdict"], number>>;
+  confusion: Record<Label, Record<ReviewResult["verdict"], number>>;
   /** Precision meets the target and at least one case was auto-approved. */
   passed: boolean;
   /** Auto-approved cases whose label was not approve: the failures that matter. */
@@ -65,7 +65,7 @@ export async function runCases(
       const index = next++;
       const c = cases[index] as EvalCase;
       const started = Date.now();
-      const judged = await judgePendingItem(model, policy, c.item, {
+      const judged = await reviewPendingItem(model, policy, c.item, {
         ...(options.maxTokens ? { maxTokens: options.maxTokens } : {}),
       });
       results[index] = {

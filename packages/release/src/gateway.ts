@@ -64,6 +64,12 @@ export function gatewayWorkers(manifest: ReleaseManifest): string[] {
 export const MODEL_ROLES_VAR = "AI_MODEL_ROLES";
 /** Registry providers whose key AI Gateway holds as BYOK, comma-separated (ADR 0192). */
 export const GATEWAY_BYOK_VAR = "AI_GATEWAY_BYOK";
+/**
+ * The judge's key (ADR 0230): `--provider-key typesafe=…` stores it under the custom provider
+ * `custom-typesafe` and sets JUDGE_BYOK=true, since Jev is the judge, not a model role.
+ */
+export const JUDGE_GATEWAY_PROVIDER = "custom-typesafe";
+export const JUDGE_BYOK_VAR = "JUDGE_BYOK";
 
 /** Workers that declare a var input, by manifest name; else the gateway's Workers. */
 export function varWorkers(manifest: ReleaseManifest, name: string): string[] {

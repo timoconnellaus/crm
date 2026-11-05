@@ -1,0 +1,4 @@
+{
+  "$comment": "Written by `pnpm eval:calibrate` (evals/judge, ADR 0231). One record per calibrated question, keyed by placement/question and kept under a hash of its wording, shape and model. Do not edit by hand.",
+  "questions": {}
+}

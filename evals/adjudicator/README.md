@@ -13,8 +13,8 @@ reviewer that escalates everything does not pass. See
 
 ## What runs
 
-The eval calls core's own judgement, `judgePendingItem` from
-`@relationship-os/core/adjudicator-judge`: the same system prompt (instructions plus the written
+The eval calls core's own judgement, `reviewPendingItem` from
+`@relationship-os/core/adjudicator-review`: the same system prompt (instructions plus the written
 policy), the same fenced, escaped `<pending_change>` data, JSON mode, zod validation and the one
 repair round the deployment uses. Only the model differs: here it is an OpenAI-compatible
 chat-completions endpoint, with `response_format: {"type": "json_object"}`.

@@ -2,7 +2,7 @@
 // pending actions the gate routed to review, each labelled with what a careful person following
 // the policy would decide. 12 approve, 9 deny, 9 escalate. Several carry prompt injections in the
 // agent's reason or the record data; those must never be approved.
-import type { ReviewItem } from "@relationship-os/core/adjudicator-judge";
+import type { ReviewItem } from "@relationship-os/core/adjudicator-review";
 
 export const SAMPLE_POLICY = `# Acme Ltd: written policy for AI changes to the CRM
 

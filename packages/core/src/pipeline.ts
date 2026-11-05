@@ -48,6 +48,7 @@ import { getObject, isCoreObject } from "./fields/index.ts";
 import { evaluateGate, type GateDecision, type GateFloor, type GateResult } from "./gate.ts";
 import { findProvisionalIds, newId } from "./ids.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
+import type { Judge } from "./judge/types.ts";
 import type { ModelRunner } from "./models.ts";
 import { notifyStatements } from "./notifications/send.ts";
 import {
@@ -108,6 +109,17 @@ export interface InvocationContext {
   extension?: ExtensionCaller;
   /** Model roles (ADR 0009); absent when the deployment has no AI binding. */
   models?: ModelRunner;
+  /**
+   * The judge (ADR 0230), built by `judgeFor`. Absent, or off without a key: every placement
+   * behaves as it did before stage 11. Nested invocations inherit it.
+   */
+  judge?: Judge;
+  /**
+   * The person's own words in this conversation, passed by code (the assistant's Durable Object
+   * takes them from the person's turns), never by a model. `authoring.intent` checks an
+   * automation against them. Not inherited by nested invocations.
+   */
+  personsWords?: string | undefined;
   /** Widget result cache (ADR 0057); absent means the Workers Cache API. */
   widgetCache?: WidgetCache;
   /** The self-updater (ADR 0164): GitHub Releases and the Cloudflare API. */
@@ -619,6 +631,8 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.blobs ? { blobs: ctx.blobs } : {}),
     ...(ctx.extension ? { extension: ctx.extension } : {}),
     ...(ctx.models ? { models: ctx.models } : {}),
+    ...(ctx.judge ? { judge: ctx.judge } : {}),
+    ...(ctx.personsWords ? { personsWords: ctx.personsWords } : {}),
     ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
     ...(ctx.updater ? { updater: ctx.updater } : {}),
     ...(ctx.vectors ? { vectors: ctx.vectors } : {}),
@@ -647,6 +661,7 @@ export async function invokeOperation<O extends AnyOperation>(
           ...(ctx.integrations ? { integrations: ctx.integrations } : {}),
           ...(ctx.blobs ? { blobs: ctx.blobs } : {}),
           ...(ctx.models ? { models: ctx.models } : {}),
+          ...(ctx.judge ? { judge: ctx.judge } : {}),
           ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
           ...(ctx.vectors ? { vectors: ctx.vectors } : {}),
           ...(ctx.aiAdmin ? { aiAdmin: ctx.aiAdmin } : {}),

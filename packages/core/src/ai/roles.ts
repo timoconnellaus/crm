@@ -34,7 +34,6 @@ export const PROVIDERS = [
   "openrouter",
   "deepseek",
   "anthropic",
-  "jev",
   "openai-compatible",
   "custom",
 ] as const;
@@ -110,8 +109,6 @@ export const PROVIDER_INFO: Record<ProviderId, ProviderInfo> = {
     baseURL: "https://api.anthropic.com/v1",
     gatewaySlug: "anthropic",
   },
-  // Typed judgments for the policy adjudicator (stage 7b); its base URL comes from deploy config.
-  jev: { id: "jev", label: "Jev", needsKey: true, secretName: "AI_KEY_JEV" },
   // Any OpenAI-compatible endpoint; base URL from deploy config (AI_PROVIDERS).
   "openai-compatible": {
     id: "openai-compatible",
@@ -145,7 +142,7 @@ export function customProviderSlug(model: string): string | null {
 /**
  * A model's id on AI Gateway's unified (compat) endpoint, `{provider}/{model}` (ADR 0203):
  * `deepseek/deepseek-flash`, `google-ai-studio/gemini-2.5-flash`; a custom provider's model id is
- * already in that form. Null for a provider the gateway does not know (jev, openai-compatible).
+ * already in that form. Null for a provider the gateway does not know (openai-compatible).
  */
 export function gatewayModelId(provider: ProviderId, model: string): string | null {
   if (provider === "custom") return customProviderSlug(model) ? model.trim() : null;
@@ -173,8 +170,6 @@ export interface ModelCapabilities {
   dimensions?: number;
   /** Batch limit for embeddings (texts per call). */
   maxBatch?: number;
-  /** Typed judgments only (Jev): usable for `review` only. */
-  judgement?: boolean;
 }
 
 export interface CatalogueModel {
@@ -364,8 +359,6 @@ export interface RoleRequirements {
   embedding?: boolean;
   /** Minimum context window, in tokens. */
   minContextTokens: number;
-  /** Accept a typed-judgment model (Jev). */
-  judgement?: boolean;
 }
 
 export const ROLE_REQUIREMENTS: Record<ModelRole, RoleRequirements> = {
@@ -417,7 +410,6 @@ export const ROLE_REQUIREMENTS: Record<ModelRole, RoleRequirements> = {
     // A verdict is parsed and validated, and one that fails escalates (ADR 0192).
     json: true,
     minContextTokens: 16_000,
-    judgement: true,
   },
 };
 
@@ -524,6 +516,10 @@ export function capabilityProblems(
   options: { vectorDimensions?: number } = {},
 ): string[] {
   if (!(PROVIDERS as readonly string[]).includes(ref.provider)) {
+    // Jev was a provider here until stage 11; it is now the judge, beside the registry (ADR 0230).
+    if ((ref.provider as string) === "jev") {
+      return ['"jev" is no longer a model provider: Jev is the judge (Settings → AI, Judge)'];
+    }
     return [`unknown provider "${ref.provider}"`];
   }
   if (!ref.model?.trim()) return ["no model given"];
@@ -542,19 +538,15 @@ export function capabilityProblems(
   }
   const need = ROLE_REQUIREMENTS[role];
   const problems: string[] = [];
-  if (caps.judgement && !need.judgement) problems.push(`${name} only gives typed judgments`);
-  if (ref.provider === "jev" && role !== "review") problems.push("Jev serves the review role only");
   if (need.embedding && !caps.embedding) problems.push(`${name} is not an embedding model`);
   if (!need.embedding && caps.embedding) problems.push(`${name} is an embedding model`);
-  if (need.chat && !caps.chat && !(need.judgement && caps.judgement)) {
-    problems.push(`${name} cannot generate text`);
-  }
+  if (need.chat && !caps.chat) problems.push(`${name} cannot generate text`);
   if (need.toolUse && !caps.toolUse) problems.push(`${name} does not support tool use`);
-  if (need.jsonSchema && !caps.jsonSchema && !(need.judgement && caps.judgement)) {
+  if (need.jsonSchema && !caps.jsonSchema) {
     problems.push(`${name} does not support JSON schema output`);
   }
   const jsonOutput = caps.jsonSchema || caps.jsonObject === true;
-  if (need.json && !need.jsonSchema && !jsonOutput && !(need.judgement && caps.judgement)) {
+  if (need.json && !need.jsonSchema && !jsonOutput) {
     problems.push(`${name} does not support JSON output`);
   }
   if (need.vision && !caps.vision) problems.push(`${name} cannot read images`);
