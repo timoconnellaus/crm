@@ -1,6 +1,6 @@
 # ADR 0230: Jev as the typed judge, behind one seam, failing open or closed by placement
 
-Status: proposed, 2026-11-05 (stage 11 spec). Amends [ADR 0009](0009-model-roles.md),
+Status: accepted, 2026-11-05 (stage 11 spec; built in steps 1 to 3, see the amendment below). Amends [ADR 0009](0009-model-roles.md),
 [ADR 0031](0031-policy-adjudicator.md) and [ADR 0150](0150-model-role-registry-and-ai-sdk.md).
 Builds on [ADR 0180](0180-ai-gateway-provisioned-per-deployment.md) (AI Gateway first) and the
 stage 7b adjudicator (ADR 0204, on `stage-7b-adjudicator`). The placement guide is
@@ -158,3 +158,57 @@ shadow mode first). With Jev as its reviewer it approves only where the change b
   Worker secret is the only key path until it does; this ADR is amended with what was found.
 - Thresholds must be calibrated before a placement ships (ADR 0231). Rewording a question costs a
   calibration run, about $0.06 for every set.
+
+## Amendment, 2026-11-05: built in steps 1 to 3, and what the probes found
+
+**As built.** The seam is `packages/core/src/judge/` (`types.ts`, `questions.ts`, `jev.ts`,
+`fake.ts`, `placements.ts`, `settings.ts`, `load.ts`, `calibration.ts`, `policy-rules.ts`,
+`dev.ts`, `questions/authoring-intent.ts`). Differences from the decision above:
+- `Judge.ask` returns `answered`, `unavailable` (with the reasons above) or `fault` (HTTP 400,
+  404, 413, 415, 422) as one union; it never throws. A fault is logged with `console.error`, the
+  rest as one `judge call` JSON line (placement, model reported, input tokens, latency, source,
+  attempts, raw probabilities), never the state, the questions or a key. Error bodies are cut and
+  any credential the judge sent is removed from them before they reach a log.
+- Placement switches have a deploy layer, `JUDGE_PLACEMENTS`, between the shipped defaults and the
+  admin layer ([ADR 0232](0232-judge-defaults-and-user-decisions.md)). `judge.test` (Settings →
+  AI's Test button and the calibration preflight) and `eval.automations` are placements without a
+  switch. The settings are read from D1 at most once per judge, and only when a switchable
+  placement first asks, so building `ctx.judge` on every request costs nothing.
+- An admin layer naming `jev` for a role is dropped by `resolveRoles` (the path every unknown
+  provider takes), with the problem "jev is no longer a model provider: Jev is the judge" in the
+  role's `ignored`, which Settings → AI shows; `parseRoleLayer` itself is unchanged.
+- The 7b seam was renamed further than `judgePendingItem` / `JudgeResult`: its `Judge` interface
+  is now the adjudicator's `Reviewer` (ADR 0204 amendment), so "judge" names one thing.
+- ros-runner has `runnerJudge(env)`; no runner placement asks it until `sync.jobChange` (step 8).
+- With `AI_FAKE_MODEL=true` and no key or AI binding (local dev and e2e only), ros-app uses a
+  keyword stand-in judge for `authoring.intent` (ADR 0232).
+
+**Direct probes (live, 5 November 2026, from the developer's machine, key from `.env.evals`).**
+`evals/judge/probe.ts` calls through `judgeRoute` exactly as a Worker does; its direct run is
+committed (`evals/judge/reports/probe-2026-11-05T09-37-15-209Z.md`). Found:
+- `POST https://api.typesafe.ai/v1/systemone` with `Authorization: Bearer` answers in about 160
+  to 280 ms, reports `model: jev-1.14.0`, `usage.input_tokens`, and an `x-typesafe-request-id`
+  header (now kept in recordings).
+- A bad key is HTTP 401 with `{"detail":{"error_type":"authentication_error",…}}`; a malformed
+  question is HTTP 422 with FastAPI-style `detail[]` (field path and "Field required"); an unknown
+  model is HTTP 400 with `error_type: api_usage_error`. Each maps as decided (`key-refused`,
+  `JudgeFault`, `JudgeFault`).
+- Noul answers come rounded to two places (0.99); Choice probabilities to two places, summing
+  to 1. The validator allows a sum within 0.05 of 1.
+- The `authoring.intent` calibration made 212 live calls on the same day (ADR 0231 amendment).
+
+**Not verified: the gateway path.** No AI Gateway was reachable from the build environment (no
+Cloudflare credentials in `.env.evals`, and the build agent may not read the operator's
+Cloudflare token), so the three checks this ADR asked for are still open:
+1. that a call to `…/{account}/{gateway}/custom-typesafe/v1/systemone` reaches TypeSafe with the
+   body unchanged;
+2. that BYOK stored under `custom-typesafe` replaces our `Authorization` header (a call with
+   `JUDGE_BYOK=true` sends none);
+3. whether the gateway's logs show the call's `cf-aig-metadata` and token usage for a custom
+   provider.
+To close them: provision the `typesafe` custom provider (the installer and updater do, from
+`deploy-inputs.json`), then run `pnpm --filter @relationship-os/evals-judge probe` with
+`CLOUDFLARE_ACCOUNT_ID`, `AI_GATEWAY_ID` and `AI_GATEWAY_TOKEN` set (check 1), again with
+`JUDGE_BYOK=true` after `--provider-key typesafe=…` (check 2), and read the gateway's Logs
+filtered by metadata `judge = judge.test` (check 3); commit the probe reports and amend this ADR.
+Until check 2 passes, the Worker secret `TYPESAFE_API_KEY` is the key path to rely on.

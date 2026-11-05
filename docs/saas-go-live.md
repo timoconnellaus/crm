@@ -61,7 +61,12 @@ this runbook needs doing.
    to B6 means switching to `DEFAULT_PLACEMENT=account`.
 3. **Shared gateway:** confirm the B1 build is in the release, and that its conditions hold
    (caching off, prompt logging off, tenant tag set only by host code).
-4. **Then** turn on sign-ups and send the invites.
+4. **The judge (Jev, ADR 0232):** TypeSafe processes in the US with zero data retention only on
+   request. Ask TypeSafe for zero retention and record the answer here before any tenant can turn
+   on a judge placement that sends record content (`summary.statements`, `outbound.message`,
+   `sync.jobChange`); leave `JUDGE_PLACEMENTS` empty for tenants until then. TypeSafe becomes a
+   sub-processor: list it.
+5. **Then** turn on sign-ups and send the invites.
 
 ## 3. Stripe (live mode)
 1. **Products and prices** (USD):

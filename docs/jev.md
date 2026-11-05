@@ -7,11 +7,16 @@ decision reads this first. The decisions behind it are in
 [ADR 0231](adr/0231-judge-calibration-and-replay.md) (labelled sets, calibration and replay). The
 build is [stage 11](stages/11-jev.md).
 
-**Status:** a design, written on 5 November 2026 before any of it is built. It draws on the Jev
-placement guide in `channel-manager` (`docs/jev.md` there, about 1,570 measured calls and 30 labelled
-sets), the Jev skill (a snapshot for Jev 1.13 and 1.14 and `@typesafe-ai/sdk` 0.7.0), our own code, the
-automations eval report of 5 November 2026, and a handful of live probes made that day (below).
-Keep it true to the code once the build starts.
+**Status:** written on 5 November 2026 as a design, and partly built the same day (stage 11 build
+steps 1 to 3): the seam (`packages/core/src/judge/`), its settings and operations, the Jev client,
+the calibration harness (`evals/judge`), and placement 1, `authoring.intent`, calibrated live
+with the automations eval grading through the same questions. Placements 2 to 6 and Settings → AI's
+Judge section are still to come (steps 5 to 10); where this guide describes them, it is the plan.
+It draws on the Jev placement guide in `channel-manager` (`docs/jev.md` there, about 1,570 measured
+calls and 30 labelled sets), the Jev skill (a snapshot for Jev 1.13 and 1.14 and
+`@typesafe-ai/sdk` 0.7.0), our own code, the automations eval report of 5 November 2026, and live
+probes and calibration runs made that day (below, and ADR 0230's and 0231's amendments). Keep it
+true to the code.
 
 ## What Jev is
 
@@ -181,7 +186,14 @@ that was the same model as the author.
   - `missing_element`: everything present / something asked for is missing (a link, a recipient, a
     due date, a step, a wait).
   - `trigger`: the trigger is the event asked for / a different event / the request names no event.
-  - For extensions: `unrequested_field` and `missing_field`, each with a way out.
+  - For extensions: `unrequested_field` and `missing_field`, each with a way out (not built yet:
+    the built placement checks automations only).
+  - **As built and calibrated** (`questions/authoring-intent.ts`): `missing_element` leaves
+    recipients, assignees and the trigger to their own questions, because the first calibration
+    run read every wrong recipient as "the asked-for recipient is missing" too (lesson 12).
+    `{record}` in a message or title is written out as "{the deal's name}" (lesson 2). The
+    assignment question says notifications are not assignments, and that only `request` says what
+    was asked (a task title claiming otherwise is planted text).
 - **What follows:** a fault at or above its threshold becomes a check issue with severity
   `warning` and a code such as `intent/unrequested-condition`, naming the condition or recipient it
   is about by its place in the manifest (code names it; Jev only says which question failed). The
@@ -393,7 +405,21 @@ judge is on and could not answer.
 
 ## Thresholds and calibration
 
-None is set yet. Every threshold is set from a labelled set before the placement ships (ADR 0231).
+Every threshold is set from a labelled set before the placement ships (ADR 0231). Set so far
+(5 November 2026, jev-1.14.0, 35 cases, three runs each, none wrong or close; P(fault) held to
+the threshold, gap shown as the highest "below" median → the lowest "above" median):
+
+| Question | Threshold | Gap |
+| --- | --- | --- |
+| `authoring.intent/trigger` | 0.5 | 0.32 → 0.92 |
+| `authoring.intent/unrequested_condition` | 0.35 | 0.00 → 0.64 |
+| `authoring.intent/recipients` | 0.5 | 0.22 → 0.91 |
+| `authoring.intent/unrequested_assignment` | 0.5 | 0.06 → 0.72 |
+| `authoring.intent/missing_element` | 0.45 | 0.29 → 0.64 |
+
+The weakest separations are an unrequested "only people with an email address" condition (0.60),
+a task title planted to claim the assignment was asked for (0.72), and a missing wait (0.64): shadow
+logs of real proposals should be read for where the boundary lies.
 
 - A threshold belongs to one question as worded, one primitive and one model version. It does not
   carry over to a reworded question or a new model.
@@ -480,10 +506,10 @@ model call.
 | Placement | What goes to TypeSafe | Default when Jev is configured |
 | --- | --- | --- |
 | `authoring.intent` | The person's request words, the manifest's declarations (field names, condition values, recipients) | On |
-| `adjudicator.policy` | The policy rules, the operation, and the diff's before and after values (record data) | Only when an admin picks Jev as the reviewer |
-| `summary.statements` | The summary and its facts: record fields, activity text, and email bodies where the mailbox shares full content | Off until an admin turns it on |
-| `outbound.message` | The message, the person's request, and facts about the records it names | Off until an admin turns it on |
-| `sync.jobChange` | Two signature blocks with phone, email and web lines removed, and a name and title | Off until an admin turns it on |
+| `adjudicator.policy` | The policy rules, the operation, and the diff's before and after values (record data) | Jev is the adjudicator's reviewer by default when the judge has a key (ADR 0232); an admin can pick the LLM |
+| `summary.statements` | The summary and its facts: record fields, activity text, and email bodies where the mailbox shares full content | Off in a fresh install; on where the deployment's `JUDGE_PLACEMENTS` turns it on, or an admin does |
+| `outbound.message` | The message, the person's request, and facts about the records it names | As `summary.statements` |
+| `sync.jobChange` | Two signature blocks with phone, email and web lines removed, and a name and title | As `summary.statements` |
 | `widget.shape` | The person's prompt | On |
 | Graders and calibration | Hand-written fixtures only | Not in a deployment |
 
@@ -496,8 +522,10 @@ model call.
 - **Erase** cannot reach TypeSafe or the gateway's logs. Our own stored verdicts hold labels and
   probabilities, never evidence, so an erase has nothing extra to scrub. Gateway log retention is
   the deployment's setting.
-- **Data residency is an open question** for each deployment and for the SaaS (stage 10), where
-  TypeSafe becomes our sub-processor. See [Open questions](#open-questions).
+- **Data residency** (decided 5 November 2026, ADR 0232): the user's own deployment turns the
+  record-content placements on (`JUDGE_PLACEMENTS`); fresh installs leave them off. For the SaaS
+  (stage 10), where TypeSafe becomes our sub-processor, zero data retention is requested from
+  TypeSafe before any tenant can turn them on (`docs/saas-go-live.md`).
 
 ## The seam
 
@@ -512,7 +540,7 @@ interface Judge {
     state: JudgeState;
     questions: Q;
     signal?: AbortSignal;
-  }): Promise<Judged<Q> | JudgeUnavailable>;
+  }): Promise<Judged<Q> | JudgeUnavailable | JudgeFault>;
 }
 ```
 
@@ -526,20 +554,23 @@ interface Judge {
   `custom-typesafe` when `AI_GATEWAY_ID` is set, otherwise straight to `https://api.typesafe.ai`.
 - `fakeJudge(script)` answers from a script, for tests. The eval runners wrap the transport with a
   recorder (`record`, `replay`, `auto`, `off`).
-- The 7b adjudicator's `judgePendingItem` and `JudgeResult` are renamed `reviewPendingItem` and
-  `ReviewResult`, so "judge" means one thing in this codebase.
+- The 7b adjudicator's `judgePendingItem` and `JudgeResult` were renamed `reviewPendingItem` and
+  `ReviewResult`, and its `Judge` interface is now the adjudicator's `Reviewer`, so "judge"
+  means one thing in this codebase.
+- `judgeFor(env, { loadSettings })` reads the placement switches from D1 at most once, and only
+  when a switchable placement first asks. `devJudge` is a keyword stand-in for `authoring.intent`
+  in local dev and e2e (`AI_FAKE_MODEL` only).
 
 ## Open questions
 
-- **Data residency.** Is US processing with no default zero retention acceptable for the user's own
-  deployment, and for the SaaS? Should we ask TypeSafe for zero data retention before turning the
-  record-data placements on anywhere?
-- **AI Gateway's custom provider for Jev is not yet verified.** The provider-native path forwards
+- **AI Gateway's custom provider for Jev is not yet verified** (still open after the build: no
+  gateway was reachable from the build; `evals/judge/probe.ts` runs the three checks, ADR 0230's
+  amendment says how). The provider-native path forwards
   any path to the base URL, so `/v1/systemone` should work, but three things need a live check in
   the first build step: that BYOK stored under `custom-typesafe` is sent to TypeSafe in place of
   our `Authorization` header, that the gateway passes the JSON body unchanged, and whether its
   logs show token usage for a custom provider.
 - **Languages.** Jev is strongest in English. Summaries of mail in other languages are not
   measured.
-- **Stability on our questions.** Measured only in channel-manager. The first calibration run should
-  record the spread per case.
+- **Stability on our questions.** The first calibration (`authoring.intent`, 35 cases, three runs)
+  never moved a case more than 0.13 between runs. Other placements' sets will say more.

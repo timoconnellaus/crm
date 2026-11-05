@@ -177,3 +177,16 @@ interface** in core (`packages/core/src/adjudicator/judges.ts`):
   is the start of that).
 Tested in `packages/core/test/adjudicator-judges.test.ts` (a typed judge's distribution, the
 threshold applied by code, an unavailable judge escalating, the LLM judge's JSON mode and repair).
+
+> Amended 2026-11-05 (stage 11, [ADR 0230](0230-jev-as-the-typed-judge.md)): so that "judge" names
+> one thing (the Jev seam in `packages/core/src/judge/`), this seam is now the adjudicator's
+> **reviewer**: `adjudicator/judges.ts` → `adjudicator/reviewers.ts` (`Judge` → `Reviewer`,
+> `llmJudge` → `llmReviewer`, `unavailableJudge` → `unavailableReviewer`, `ChoiceQuestion` /
+> `NoulQuestion` → `ReviewChoice` / `ReviewNoul`), and `adjudicator/judge.ts` →
+> `adjudicator/review.ts` (`judgePendingItem` → `reviewPendingItem`, `JudgeResult` →
+> `ReviewResult`, `reviewJudge` → `reviewRoleReviewer`); the package export
+> `@relationship-os/core/adjudicator-judge` is now `…/adjudicator-review`. Behaviour is unchanged.
+> Jev is not added behind this interface: its reviewer (stage 11 step 5) asks the judge its own
+> `breaks` and `allowed_by` questions over the policy's rules. The adjudicator's settings gain an
+> optional `reviewer` (`llm` | `jev`; unset: Jev when the judge has a key, ADR 0232), which nothing
+> reads until step 5.

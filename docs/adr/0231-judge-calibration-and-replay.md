@@ -1,6 +1,6 @@
 # ADR 0231: Every judge question is calibrated from a labelled set, and tests and CI only replay
 
-Status: proposed, 2026-11-05 (stage 11 spec). Builds on [ADR 0230](0230-jev-as-the-typed-judge.md).
+Status: accepted, 2026-11-05 (stage 11 spec; built in step 3, see the amendment below). Builds on [ADR 0230](0230-jev-as-the-typed-judge.md).
 
 ## Context
 A Jev answer is a probability, and code turns it into a decision with a threshold. A threshold
@@ -68,3 +68,44 @@ A live key is available locally in the main checkout's `.env.evals`.
 - Moving `JEV_MODEL` means re-running every set first.
 - The labelled sets are small and hand-written. They show that a question separates its clear cases;
   where the real boundary lies is learned from shadow mode and logged raw probabilities.
+
+## Amendment, 2026-11-05: built in step 3, and the first calibration
+
+**As built.** `evals/judge` (`@relationship-os/evals-judge`): `calibrate.ts` (the CLI),
+`lib/calibrate.ts` (medians, close calls, gaps, records, report), `lib/recorder.ts`, `probe.ts`,
+and `sets/` (one file per placement). Differences from the decision above:
+- A placement's questions are asked together in one call, as the product asks them, so a labelled
+  case is one state with an expected side per question; each question is reported and recorded
+  on its own (`authoring.intent/recipients`, …). A case may leave a question out where its answer
+  is genuinely ambiguous (each such case says why).
+- Recordings are one JSON file per set (`evals/judge/recordings/<set>.json`, keyed by the SHA-256
+  of the canonical service, model, request body, run number and case), so a set's recordings
+  change in one reviewable file. Replay marks its responses so the call log says `replayed`.
+- The default mode is `auto` with a key and `replay` without one or in CI. Replay never retries
+  and needs no key. `calibration.json` is written only by a passing run, always in a live mode and
+  in replay only with `--write`; reports are written for live modes.
+- The calibration-record test lives in `packages/core/test/judge-calibration.test.ts`, and
+  `evals/judge/test/calibrate.test.ts` replays every set in CI with the `CI` guard on, asserting
+  no wrong or unanswered case and that `calibration.json` is that run's.
+- The CLI runs with `node --experimental-transform-types`, because the product's state builders
+  import the automation summary, which is not erasable TypeScript. The automations eval runner
+  now runs the same way.
+
+**First calibration: `authoring.intent` (5 November 2026, jev-1.14.0, three runs a case).** 35
+cases; the five real failures of the 5 November automations eval (requests verbatim) each with a
+correct twin. Two live runs, 212 calls in all, $0.011:
+- The first run (`reports/2026-11-05T09-30-04-141Z.md`) was clean for four questions but
+  `missing_element` was wrong on ten cases: every wrong recipient or trigger also read as
+  "something asked for is missing". Lesson 12 (ask each value once): the question now leaves
+  recipients, assignees and the trigger to their own questions. `{record}` in messages and titles
+  is now written out as "{the deal's name}" (lesson 2), which fixed a correct twin read as
+  missing the deal's name; and the assignment question now says that notifications are not
+  assignments, and that only `request` says what was asked.
+- The second run (`reports/2026-11-05T09-31-24-280Z.md`, recordings committed) and a replay with
+  the final thresholds (`reports/2026-11-05T09-32-04-112Z.md`): no wrong, unanswered or close
+  case. Thresholds and gaps (highest "below" median → lowest "above" median): trigger 0.5
+  (0.32 → 0.92); unrequested_condition 0.35 (0.00 → 0.64; lowered from 0.5 so the email-address
+  condition at 0.60 is not a close call); recipients 0.5 (0.22 → 0.91); unrequested_assignment
+  0.5 (0.06 → 0.72); missing_element 0.45 (0.29 → 0.64). Two trigger-fault cases leave
+  `missing_element` out (a missing "lost" or "rejected" event reads as missing too). Most spread
+  within one case: 0.13.
