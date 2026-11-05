@@ -15,6 +15,8 @@ risk for the next.
 | 6 | Integrations | Vendor `gatekeeper-kit` + gatekeepers (Google, Microsoft, email, Slack, MCP); Workshop-side interface in the runner; email/calendar sync onto the timeline | spec agreed (groundwork merged, PR #10) |
 | 7 | In-app AI | Model-role registry UI, assistant chat, summaries, embeddings search, policy adjudicator (`review` role) | 7a built (registry, Settings → AI, summaries, semantic search); 7b (assistant, adjudicator, daily digest) next |
 | 8 | Distribution | Release bundles, `create-crm` CLI, self-updater, setup wizard, real-account install test | Built (needs a human: CI test account, manual run) |
+| 9 | Rename, licence, landing page | Relationship OS rename (packages, Workers, CLI, repo), FSL-1.1-ALv2 + NOTICE + CLA, `apps/marketing` on relationshiposcrm.com | spec agreed |
+| 10 | SaaS & enterprise | Control plane on Workers for Platforms: sign-up, Stripe + usage AI billing, staged rollouts, admin console, export/delete; built ready, deployed on first sign-up | spec agreed |
 
 The approval pipeline is built up over several stages: the gate in 1, the queue and simulation in 2,
 extension diffs in 3, the adjudicator in 7.
