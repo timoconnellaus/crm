@@ -126,23 +126,41 @@ describe("billing state drives the deployment", () => {
 });
 
 describe("AI metering", () => {
-  it("bills paid-plan spend beyond the allowance at cost + 20% as a Stripe meter event, BYOK free", async () => {
+  it("bills paid-plan spend on the shared gateway, by tenant tag, beyond the allowance at cost + 20%", async () => {
     const s = services();
     const { instance, account } = await paidCustomer("aico");
-    const gateway = `${instance?.id}-ros`;
+    const gateway = "ros-platform";
+    const tag = JSON.stringify({ role: "summarise", tenant: instance?.id, plan: "team" });
     const day = "2026-11-03";
-    // $9 of Workers AI (ours), $50 of DeepSeek on the customer's own key, a cache hit.
+    // This tenant: $9 of Workers AI and a cache hit. Another tenant's $50, an untagged $20, and
+    // a log whose metadata has this tenant's id under another key: none of them billed here. (The
+    // customer's own keys never reach this gateway at all.)
     s.fake.cloudflare.addGatewayLog(gateway, {
       created_at: `${day}T09:00:00.000Z`,
       provider: "workers-ai",
       model: "llama",
       cost: 9,
+      metadata: tag,
     });
     s.fake.cloudflare.addGatewayLog(gateway, {
       created_at: `${day}T10:00:00.000Z`,
-      provider: "deepseek",
-      model: "deepseek-flash",
+      provider: "workers-ai",
+      model: "llama",
       cost: 50,
+      metadata: JSON.stringify({ role: "summarise", tenant: "tother00000", plan: "team" }),
+    });
+    s.fake.cloudflare.addGatewayLog(gateway, {
+      created_at: `${day}T10:30:00.000Z`,
+      provider: "workers-ai",
+      model: "llama",
+      cost: 20,
+    });
+    s.fake.cloudflare.addGatewayLog(gateway, {
+      created_at: `${day}T10:45:00.000Z`,
+      provider: "workers-ai",
+      model: "llama",
+      cost: 7,
+      metadata: JSON.stringify({ role: instance?.id, tenant: "tother00000", plan: "team" }),
     });
     s.fake.cloudflare.addGatewayLog(gateway, {
       created_at: `${day}T11:00:00.000Z`,
@@ -150,6 +168,7 @@ describe("AI metering", () => {
       model: "llama",
       cost: 3,
       cached: true,
+      metadata: tag,
     });
     await meterDay(s, instance?.id as string, day);
     // Charged: $9 × 1.2 = $10.80; Team includes $10 → 80 cents overage.
@@ -159,8 +178,8 @@ describe("AI metering", () => {
       .bind(instance?.id, day)
       .first<Record<string, number | string>>();
     expect(usage).toMatchObject({
-      requests: 3,
-      provider_cost_micros: 62_000_000,
+      requests: 2,
+      provider_cost_micros: 12_000_000,
       billable_cost_micros: 9_000_000,
       charged_micros: 10_800_000,
       overage_cents: 80,
@@ -179,6 +198,7 @@ describe("AI metering", () => {
       provider: "workers-ai",
       model: "llama",
       cost: 1,
+      metadata: tag,
     });
     await meterDay(s, instance?.id as string, "2026-11-04");
     expect(s.fake.stripe.meterEvents.get(`ai-${instance?.id}-2026-11-04`)?.value).toBe(120);
@@ -207,11 +227,12 @@ describe("AI metering", () => {
       );
     expect(await entitlement()).toMatchObject({ platformAi: true });
 
-    s.fake.cloudflare.addGatewayLog(`${instance?.id}-ros`, {
+    s.fake.cloudflare.addGatewayLog("ros-platform", {
       created_at: "2026-11-03T09:00:00.000Z",
       provider: "workers-ai",
       model: "llama",
       cost: 9,
+      metadata: JSON.stringify({ role: "summarise", tenant: instance?.id, plan: "free" }),
     });
     await meterDay(s, instance?.id as string, "2026-11-03");
     const account = await env.DB.prepare("SELECT ai_credit_micros FROM cp_accounts WHERE id = ?")

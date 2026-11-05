@@ -5,12 +5,15 @@
 import { z } from "zod";
 import type { AiAdminStatus } from "../ai/admin.ts";
 import { type AiAdminSettings, providerStatus, vectorDimensions } from "../ai/client.ts";
+import { isHosted } from "../ai/platform.ts";
 import {
   capabilityProblems,
   MODEL_CATALOGUE,
   MODEL_ROLES,
+  onPlatform,
   PROVIDER_INFO,
   PROVIDERS,
+  platformRef,
   ROLE_REQUIREMENTS,
   resolveRoles,
   reviewIndependence,
@@ -81,7 +84,7 @@ const settingsOutput = z.object({
       label: z.string(),
       needsKey: z.boolean(),
       ready: z.boolean(),
-      keySource: z.enum(["secret", "byok", "binding"]).nullable(),
+      keySource: z.enum(["secret", "byok", "binding", "platform"]).nullable(),
       reason: z.string().nullable(),
       secretName: z.string().nullable(),
     }),
@@ -101,6 +104,12 @@ const settingsOutput = z.object({
     keyModes: z.array(z.enum(["secret", "byok"])),
     scripts: z.array(z.string()),
     missing: z.array(z.string()),
+    /** A hosted workspace (ADR 0213 amendment): keys are workspace secrets, called directly. */
+    hosted: z.boolean().optional(),
+    customerGateway: z
+      .object({ accountId: z.string(), gatewayId: z.string(), authenticated: z.boolean() })
+      .nullable()
+      .optional(),
   }),
   semanticSearch: z.object({
     configured: z.boolean(),
@@ -111,7 +120,8 @@ const settingsOutput = z.object({
 });
 
 function modelLabel(provider: string, model: string): string {
-  return MODEL_CATALOGUE.find((m) => m.provider === provider && m.model === model)?.label ?? model;
+  const listed = provider === "platform" ? "workers-ai" : provider;
+  return MODEL_CATALOGUE.find((m) => m.provider === listed && m.model === model)?.label ?? model;
 }
 
 const NO_ADMIN: AiAdminStatus = {
@@ -138,10 +148,15 @@ export const aiSettingsGet = defineOperation({
   async handler(_input, ctx) {
     const settings = await loadAiSettings(ctx.db);
     const env = ctx.aiEnv ?? {};
-    const roles = ctx.models?.roles
+    // Hosted (ADR 0213 amendment): Workers AI's models are offered as Platform AI, and Workers AI
+    // itself is not offered; self-hosted, Platform AI is not offered.
+    const hosted = isHosted(env);
+    const offered = PROVIDERS.filter((id) => id !== (hosted ? "workers-ai" : "platform"));
+    const resolved = ctx.models?.roles
       ? await ctx.models.roles()
       : resolveRoles({ admin: settings.roles });
-    const providers = PROVIDERS.map((id) => {
+    const roles = hosted ? onPlatform(resolved) : resolved;
+    const providers = offered.map((id) => {
       const info = PROVIDER_INFO[id];
       const status = providerStatus(env, settings, id);
       return {
@@ -196,7 +211,7 @@ export const aiSettingsGet = defineOperation({
       }),
       providers,
       catalogue: MODEL_CATALOGUE.map((m) => ({
-        provider: m.provider,
+        provider: hosted ? platformRef(m).provider : m.provider,
         model: m.model,
         label: m.label,
         capabilities: m.capabilities,
@@ -420,6 +435,13 @@ export const aiSetProviderKey = defineOperation({
       );
     }
     if (!ctx.aiAdmin || !modes.includes(mode)) {
+      if (ctx.aiAdmin?.status().hosted) {
+        throw new ConfigError(
+          custom
+            ? "On a hosted workspace an AI Gateway custom provider's key is stored in your own AI Gateway, not here"
+            : "On a hosted workspace keys are stored as workspace secrets",
+        );
+      }
       throw new ConfigError(
         mode === "byok"
           ? "BYOK needs CLOUDFLARE_ACCOUNT_ID, the CLOUDFLARE_API_TOKEN secret and AI_GATEWAY_ID (docs/deploying.md)"
@@ -517,6 +539,19 @@ export const aiUsage = defineOperation({
     truncated: z.boolean(),
     sampled: z.number(),
     fetchedAt: z.string(),
+    source: z.enum(["gateway", "workspace"]).optional(),
+    providers: z
+      .array(
+        z.object({
+          provider: z.string(),
+          label: z.string(),
+          billed: z.boolean(),
+          requests: z.number(),
+          tokensIn: z.number(),
+          tokensOut: z.number(),
+        }),
+      )
+      .optional(),
   }),
   permission: "settings:manage",
   risk: "read",
@@ -539,6 +574,75 @@ export const aiUsage = defineOperation({
   },
 });
 
+export const aiConnectGateway = defineOperation({
+  name: "ai.connectGateway",
+  description:
+    "Hosted workspaces only (admins): connect the customer's own AI Gateway, so calls with their " +
+    "own provider keys go through it and they get its logs and spend. Takes the Cloudflare " +
+    "account id, the gateway id and, for an authenticated gateway, a token with AI Gateway Run. " +
+    "Stored as a secret on the workspace's Workers through the control plane, never in the " +
+    "database. Platform AI never goes through it. Pass `disconnect` to remove it.",
+  input: z.object({
+    disconnect: z.boolean().default(false),
+    accountId: z
+      .string()
+      .trim()
+      .regex(/^[a-f0-9]{32}$/, "The account id is 32 hexadecimal characters")
+      .optional(),
+    gatewayId: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9][a-z0-9-_]{0,63}$/i, "Use the gateway's id")
+      .optional(),
+    token: z.string().trim().min(8).max(4096).optional(),
+  }),
+  output: z.object({ connected: z.boolean(), gatewayId: z.string().nullable() }),
+  permission: "settings:manage",
+  risk: "write",
+  actors: ["human"],
+  redact: ["token"],
+  mcp: { expose: false },
+  auditSummary: (output) => output,
+  async handler(input, ctx) {
+    const admin = ctx.aiAdmin;
+    if (!admin?.status().hosted || !admin.setCustomerGateway) {
+      throw new ConfigError(
+        "Only hosted workspaces connect a gateway here; a self-hosted install has its own (AI_GATEWAY_ID)",
+      );
+    }
+    if (!input.disconnect && (!input.accountId || !input.gatewayId)) {
+      throw new ValidationError("Give the gateway's account id and gateway id, or disconnect it");
+    }
+    const before = admin.status().customerGateway?.gatewayId ?? null;
+    try {
+      await admin.setCustomerGateway(
+        input.disconnect
+          ? null
+          : {
+              accountId: input.accountId as string,
+              gatewayId: input.gatewayId as string,
+              ...(input.token ? { token: input.token } : {}),
+            },
+      );
+    } catch (error) {
+      throw new OperationError(
+        "config",
+        `Could not ${input.disconnect ? "disconnect" : "connect"} the gateway: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    const gatewayId = input.disconnect ? null : (input.gatewayId as string);
+    ctx.recordChange({
+      object: "ai_settings",
+      id: "customer-gateway",
+      action: "update",
+      // Which gateway, never its token.
+      before: { gatewayId: before },
+      after: { gatewayId },
+    });
+    return { connected: !input.disconnect, gatewayId };
+  },
+});
+
 export const aiOperations = [
   aiSettingsGet,
   aiUpdateRole,
@@ -546,4 +650,5 @@ export const aiOperations = [
   aiSetProviderKey,
   aiDeleteProviderKey,
   aiUsage,
+  aiConnectGateway,
 ] as const;

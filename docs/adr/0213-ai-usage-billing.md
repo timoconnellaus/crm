@@ -55,3 +55,41 @@ per deployment).
 >   (the shared gateway plus the tenant tag), switched on for hosted deployments by their
 >   entitlements. Self-hosted installs keep their own per-deployment gateway (ADR 0180). There is
 >   no hosted-only fork.
+
+> **Amended 2026-11-05: the amendment above is built.** How, and what changed in the detail:
+> - **Placement switch.** A deployment is hosted when provisioning set `AI_PLATFORM_GATEWAY_ID`
+>   (`packages/core/src/ai/platform.ts`). There, every Workers AI role, primary or fallback,
+>   resolves to the registry provider **`platform`** ("Platform AI": Workers AI's catalogue,
+>   `onPlatform`), and plain `workers-ai` is refused, so nothing calls Workers AI untagged.
+>   `platformAi: false` in the entitlements blocks it (`AiAllowanceError`); a Workers secret key is
+>   the customer's own on a hosted deployment and is never blocked (`platformPaid`).
+> - **Not the `AI` binding.** Platform AI calls Workers AI's OpenAI-compatible REST endpoint
+>   (`api.cloudflare.com/client/v4/accounts/{platform account}/ai/v1`, with
+>   `cf-aig-gateway-id: <shared gateway>`) with the shared platform token (`AI_PLATFORM_TOKEN`:
+>   Workers AI Read and AI Gateway Run). Reason: "prompt and response logging off" is the request
+>   header `cf-aig-collect-log-payload: false`; the binding's gateway options have only
+>   `collectLog`, which drops the metadata (tokens, cost) too, and AI Gateway documents no
+>   gateway-level payload switch (logging page and create-gateway API, read 2026-11-05).
+> - **The tag can't be set by a caller.** Every Platform AI request goes through `platformFetch`,
+>   which deletes any `cf-aig-*` and `Authorization` header the caller set and writes the host's:
+>   `cf-aig-metadata: {"role","tenant","plan"}` (tenant from `ROS_TENANT_ID`, plan from the
+>   entitlement row), `cf-aig-collect-log-payload: false`, `cf-aig-skip-cache: true`. Tested with
+>   hostile per-call headers, smuggled options and `codemode:ai` arguments
+>   (`packages/core/test/ai-hosted.test.ts`, `apps/runner/test/ai-hosted.test.ts`).
+> - **The shared gateway** is `PLATFORM_AI_GATEWAY` (default `ros-platform`). Every provision
+>   creates it if missing (`cache_ttl: 0`, `collect_logs: true`, `authentication: true`) and puts
+>   back any of those settings that drifted (`ensurePlatformGateway`, audited).
+> - **Metering** reads the shared gateway's logs with the filter `metadata.value eq <tenant>` and
+>   then keeps only logs whose parsed tag's `tenant` is that tenant (the API does not pair a
+>   metadata value with its key). A deployment provisioned before this keeps its own gateway's logs
+>   counted as well. The billing rules are unchanged.
+> - **The customer's own keys** go from Settings → AI to the control plane over the signed
+>   deployment channel ([ADR 0250](0250-deployment-to-control-plane-channel.md)), which sets
+>   `AI_KEY_<PROVIDER>` on the tenant's AI Workers. They are called at the provider's own URL, or
+>   through the customer's own AI Gateway when they connected one (`ai.connectGateway`, the secret
+>   `AI_CUSTOMER_GATEWAY`: account id, gateway id, optional token). An AI Gateway custom provider
+>   needs that own gateway.
+> - **Usage shown to the customer.** The customer's own calls reach no gateway we read, so a hosted
+>   deployment counts every model call in its own D1 (`core_ai_usage`, migration 0260: requests and
+>   tokens per day, role and provider, billed or not; never content). Settings → AI shows it split
+>   into "Your plan" and "Your own key". Billing still comes only from the gateway's logs.

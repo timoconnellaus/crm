@@ -7,6 +7,11 @@
 //   (`deepseek/deepseek-flash`, `custom-<slug>/<model>`); otherwise the provider's own URL.
 // Every gateway call carries `cf-aig-metadata: {"role": …}`, so usage and spend are per role.
 //
+// Hosted deployments (platform.ts, ADR 0213 amendment) differ only in placement: every Workers AI
+// role is Platform AI, called through the shared platform gateway with a tenant tag the host sets
+// (never extension code), and other providers use the customer's own key (a secret on the tenant
+// Worker), called directly, or through the customer's own gateway if they connected one.
+//
 // Provider keys come only from Workers secrets in the environment (AI_KEY_<PROVIDER>) or from
 // AI Gateway BYOK (no key sent at all). Nothing here reads or writes a key in D1 (ADR 0151).
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
@@ -16,19 +21,34 @@ import {
   generateText,
   jsonSchema,
   type LanguageModel,
+  type LanguageModelMiddleware,
   NoObjectGeneratedError,
   Output,
+  wrapLanguageModel,
 } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
+import {
+  customerGateway,
+  isHosted,
+  type PlatformAiEnv,
+  type PlatformConfig,
+  platformBaseUrl,
+  platformConfig,
+  platformFetch,
+  platformHeaders,
+  type TenantTag,
+} from "./platform.ts";
 import {
   assertCapable,
   gatewayModelId,
   type ModelCapabilities,
   type ModelRef,
   type ModelRole,
+  onPlatform,
   PROVIDER_INFO,
   type ProviderId,
   parseRoleLayer,
+  platformRef,
   type ResolvedRole,
   type RoleLayer,
   resolveRoles,
@@ -134,7 +154,7 @@ export interface WorkersAiBinding {
 }
 
 /** What the runner reads from a Worker's environment. Keys are secrets, never vars. */
-export interface AiEnv {
+export interface AiEnv extends PlatformAiEnv {
   AI?: unknown;
   /** Route every call through this AI Gateway. */
   AI_GATEWAY_ID?: string;
@@ -179,6 +199,27 @@ export interface ModelRunnerOptions {
    * Asked once per call that needs a platform model (the answer is cached by the caller).
    */
   platformAi?: () => Promise<boolean>;
+  /**
+   * Hosted deployments: the plan for the tenant tag (`cf-aig-metadata`), from the entitlement row
+   * the control plane writes. Never from a caller, an operation's input or extension code.
+   */
+  plan?: () => Promise<string | null>;
+  /**
+   * Called after every model call with its token usage (hosted deployments record it, so
+   * Settings → AI shows the customer's own keys' usage as well as Platform AI's).
+   */
+  recordUsage?: (usage: ModelUsage) => void;
+}
+
+/** One call's token usage, as recordUsage receives it. */
+export interface ModelUsage {
+  role: ModelRole;
+  provider: ProviderId;
+  model: string;
+  /** Platform AI (billed to the plan) or the customer's own key (never billed). */
+  billed: boolean;
+  tokensIn: number;
+  tokensOut: number;
 }
 
 /** Deterministic stand-ins per role, for local dev, e2e and tests. */
@@ -227,8 +268,16 @@ const GATEWAY_EMBED_PATHS: Partial<Record<ProviderId, string>> = {
   openrouter: "openrouter",
 };
 
-/** `https://gateway.ai.cloudflare.com/v1/{account}/{gateway}`, when both are configured. */
+/**
+ * `https://gateway.ai.cloudflare.com/v1/{account}/{gateway}`, when both are configured. On a
+ * hosted deployment that is the customer's own gateway, if they connected one: the platform's
+ * shared gateway is for Platform AI only, and the customer's keys never go through it.
+ */
 function gatewayBase(env: AiEnv): string | null {
+  if (isHosted(env)) {
+    const own = customerGateway(env);
+    return own ? `${AI_GATEWAY_URL}/${own.accountId}/${own.gatewayId}` : null;
+  }
   const account = env.CLOUDFLARE_ACCOUNT_ID?.trim();
   const gateway = env.AI_GATEWAY_ID?.trim();
   return account && gateway ? `${AI_GATEWAY_URL}/${account}/${gateway}` : null;
@@ -301,12 +350,44 @@ export function secretFor(provider: ProviderId): string | undefined {
   return PROVIDER_INFO[provider].secretName;
 }
 
+/**
+ * Where a provider's key comes from: the `AI` binding (self-hosted Workers AI), a Workers secret,
+ * AI Gateway BYOK, or the platform (Platform AI on a hosted deployment).
+ */
+export type KeySource = "secret" | "byok" | "binding" | "platform";
+
+/**
+ * Is a call with this key paid for by the platform, and so subject to the plan's AI allowance
+ * (ADR 0211)? Platform AI is. On a hosted deployment a Workers secret is the customer's own key
+ * (set from Settings → AI through the control plane), so it is not. Self-hosted, the binding and
+ * Workers secrets count as before (there is no entitlement row, so no limit anyway).
+ */
+export function platformPaid(env: AiEnv, keySource: KeySource | undefined): boolean {
+  if (keySource === "platform") return true;
+  if (isHosted(env)) return false;
+  return keySource === "binding" || keySource === "secret";
+}
+
 /** Is a provider usable in this environment (binding, key or BYOK, and a base URL)? */
 export function providerStatus(
   env: AiEnv,
   settings: AiAdminSettings,
   provider: ProviderId,
-): { ready: boolean; reason?: string; keySource?: "secret" | "byok" | "binding" } {
+): { ready: boolean; reason?: string; keySource?: KeySource } {
+  if (provider === "platform") {
+    if (!isHosted(env)) {
+      return { ready: false, reason: "Platform AI is only on hosted workspaces" };
+    }
+    const config = platformConfig(env);
+    if ("missing" in config) {
+      return { ready: false, reason: `Platform AI is not set up: ${config.missing.join(", ")}` };
+    }
+    return { ready: true, keySource: "platform" };
+  }
+  if (provider === "workers-ai" && isHosted(env)) {
+    // Every Workers AI role is Platform AI here (onPlatform): never called untagged.
+    return { ready: false, reason: "On a hosted workspace, Workers AI is Platform AI" };
+  }
   if (provider === "workers-ai") {
     if (env.AI) return { ready: true, keySource: "binding" };
     if (env.AI_FAKE_MODEL === "true") return { ready: true, keySource: "binding" };
@@ -344,9 +425,11 @@ export function providerStatus(
  * called directly: the gateway token is for the gateway only.
  */
 function gatewayHeaders(env: AiEnv, role: ModelRole): Record<string, string> {
+  // Hosted: the customer's own gateway and its token, never the platform's.
+  const token = isHosted(env) ? customerGateway(env)?.token : env.AI_GATEWAY_TOKEN;
   return {
     "cf-aig-metadata": JSON.stringify({ role }),
-    ...(env.AI_GATEWAY_TOKEN ? { "cf-aig-authorization": `Bearer ${env.AI_GATEWAY_TOKEN}` } : {}),
+    ...(token ? { "cf-aig-authorization": `Bearer ${token}` } : {}),
   };
 }
 
@@ -355,8 +438,13 @@ function requestHeaders(
   env: AiEnv,
   ref: ModelRef,
   role: ModelRole,
+  tag: TenantTag | null,
 ): Record<string, string> | undefined {
   if (ref.provider === "workers-ai") return undefined;
+  if (ref.provider === "platform") {
+    const config = platformConfig(env);
+    return tag && !("missing" in config) ? platformHeaders(config, role, tag) : undefined;
+  }
   return providerRoute(env, ref.provider, ref.model)?.viaGateway
     ? gatewayHeaders(env, role)
     : undefined;
@@ -375,11 +463,25 @@ function openAiCompatible(
   ref: ModelRef,
   role: ModelRole,
   purpose: "chat" | "embed",
+  tag: TenantTag | null,
 ) {
   const { env } = options;
   const info = PROVIDER_INFO[ref.provider];
   const status = providerStatus(env, settings, ref.provider);
   if (!status.ready) throw new AiNotConfiguredError(`${info.label}: ${status.reason}`);
+  if (ref.provider === "platform") {
+    const config = platformConfig(env) as PlatformConfig;
+    if (!tag) throw new AiNotConfiguredError("Platform AI: no tenant tag");
+    // The platform token and the tenant tag are forced at the fetch: nothing a caller passes can
+    // change who a Platform AI call is billed to.
+    const client = createOpenAICompatible({
+      name: "platform",
+      baseURL: platformBaseUrl(config.accountId),
+      headers: platformHeaders(config, role, tag),
+      fetch: platformFetch(config, role, tag, options.fetch),
+    });
+    return { client, modelId: ref.model };
+  }
   const route = providerRoute(env, ref.provider, ref.model, purpose);
   if (!route) throw new AiNotConfiguredError(`${info.label}: no endpoint for ${ref.model}`);
   const key =
@@ -397,6 +499,9 @@ function openAiCompatible(
 
 function workersAi(options: ModelRunnerOptions, role: ModelRole) {
   const { env } = options;
+  if (isHosted(env)) {
+    throw new AiNotConfiguredError("On a hosted workspace, Workers AI is Platform AI");
+  }
   if (!env.AI) throw new AiNotConfiguredError("AI is not configured: no `ai` binding");
   return createWorkersAI({
     binding: env.AI as Ai,
@@ -409,15 +514,76 @@ function languageModel(
   settings: AiAdminSettings,
   role: ModelRole,
   ref: ModelRef,
+  tag: TenantTag | null,
 ): LanguageModel {
-  if (ref.provider === "workers-ai") return workersAi(options, role)(ref.model);
-  const { client, modelId } = openAiCompatible(options, settings, ref, role, "chat");
-  return client.chatModel(modelId);
+  let model: Exclude<LanguageModel, string>;
+  if (ref.provider === "workers-ai") {
+    model = workersAi(options, role)(ref.model);
+  } else {
+    const { client, modelId } = openAiCompatible(options, settings, ref, role, "chat", tag);
+    model = client.chatModel(modelId);
+  }
+  const record = options.recordUsage;
+  if (!record) return model;
+  const billed = platformPaid(
+    options.env,
+    providerStatus(options.env, settings, ref.provider).keySource,
+  );
+  return wrapLanguageModel({
+    model,
+    middleware: usageMiddleware((tokensIn, tokensOut) =>
+      record({ role, provider: ref.provider, model: ref.model, billed, tokensIn, tokensOut }),
+    ),
+  });
 }
 
-function embeddingModel(options: ModelRunnerOptions, settings: AiAdminSettings, ref: ModelRef) {
+/** Reports each call's token usage, generated or streamed. Never fails the call. */
+function usageMiddleware(report: (tokensIn: number, tokensOut: number) => void) {
+  const safe = (usage: unknown) => {
+    try {
+      const u = usage as {
+        inputTokens?: number | { total?: number | undefined };
+        outputTokens?: number | { total?: number | undefined };
+      } | null;
+      const count = (v: number | { total?: number | undefined } | undefined) =>
+        (typeof v === "number" ? v : v?.total) ?? 0;
+      report(count(u?.inputTokens), count(u?.outputTokens));
+    } catch (error) {
+      console.warn("AI usage could not be recorded", error);
+    }
+  };
+  const middleware: LanguageModelMiddleware = {
+    async wrapGenerate({ doGenerate }) {
+      const result = await doGenerate();
+      safe(result.usage);
+      return result;
+    },
+    async wrapStream({ doStream }) {
+      const { stream, ...rest } = await doStream();
+      return {
+        ...rest,
+        stream: stream.pipeThrough(
+          new TransformStream({
+            transform(chunk, controller) {
+              if (chunk.type === "finish") safe(chunk.usage);
+              controller.enqueue(chunk);
+            },
+          }),
+        ),
+      };
+    },
+  };
+  return middleware;
+}
+
+function embeddingModel(
+  options: ModelRunnerOptions,
+  settings: AiAdminSettings,
+  ref: ModelRef,
+  tag: TenantTag | null,
+) {
   if (ref.provider === "workers-ai") return workersAi(options, "embed").textEmbedding(ref.model);
-  const { client, modelId } = openAiCompatible(options, settings, ref, "embed", "embed");
+  const { client, modelId } = openAiCompatible(options, settings, ref, "embed", "embed", tag);
   return client.textEmbeddingModel(modelId);
 }
 
@@ -433,6 +599,9 @@ function useFakes(options: ModelRunnerOptions): boolean {
   return !options.env.AI && options.env.AI_FAKE_MODEL === "true" && Boolean(options.fakes);
 }
 
+/** The stand-ins answer Workers AI's roles, hosted (Platform AI) or not. */
+const fakeable = (provider: ProviderId) => provider === "workers-ai" || provider === "platform";
+
 /**
  * The registry-backed model runner. Roles resolve lazily (deploy config from env, the admin layer
  * from `loadSettings`, once). A call tries the role's model, then its fallback once.
@@ -446,21 +615,35 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     return settingsPromise;
   };
   const dims = vectorDimensions(options.env);
+  const hosted = isHosted(options.env);
   const resolved = async () => {
     const s = await settings();
-    return resolveRoles(
+    const roles = resolveRoles(
       { deploy: parseRoleLayer(options.env.AI_MODEL_ROLES), admin: s.roles },
       dims ? { vectorDimensions: dims } : {},
     );
+    // Hosted: every Workers AI model is Platform AI (the shared gateway, tagged).
+    return hosted ? onPlatform(roles) : roles;
   };
 
-  // ADR 0211: platform-paid models (binding or Workers-secret key) need the plan's AI allowance.
-  // Checked before every call, fallbacks included, so a fallback never reaches a blocked model.
+  // The tenant tag for Platform AI: the tenant from the deployment's env (set by provisioning)
+  // and the plan from the entitlement row (written by the control plane). Built only here.
+  const tagFor = async (ref: ModelRef): Promise<TenantTag | null> => {
+    if (ref.provider !== "platform") return null;
+    const config = platformConfig(options.env);
+    if ("missing" in config) return null;
+    const plan = (await options.plan?.().catch(() => null)) ?? null;
+    return { tenant: config.tenant, plan: plan ?? "unknown" };
+  };
+
+  // ADR 0211: platform-paid models (Platform AI; self-hosted, the binding or a Workers-secret key)
+  // need the plan's AI allowance. Checked before every call, fallbacks included, so a fallback
+  // never reaches a blocked model. The customer's own keys are never blocked.
   const assertPlatformAllowed = async (ref: ModelRef): Promise<void> => {
     if (!options.platformAi) return;
     const status = providerStatus(options.env, await settings(), ref.provider);
-    // Not ready: the call fails with its own "not configured" reason. BYOK: the customer pays.
-    if (!status.ready || status.keySource === "byok") return;
+    // Not ready: the call fails with its own "not configured" reason.
+    if (!status.ready || !platformPaid(options.env, status.keySource)) return;
     if (!(await options.platformAi())) throw new AiAllowanceError();
   };
 
@@ -472,7 +655,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     json = false,
   ): Promise<ModelRunResult> => {
     await assertPlatformAllowed(ref);
-    if (useFakes(options) && ref.provider === "workers-ai") {
+    if (useFakes(options) && fakeable(ref.provider)) {
       const text = await (options.fakes as FakeModels).run(role, messages);
       return { text: text.trim(), model: "fake", provider: "fake" };
     }
@@ -480,8 +663,9 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     // AI SDK 7 takes system text as `instructions`, the rest as messages.
     const system = messages.filter((m) => m.role === "system").map((m) => m.content);
     const providerOptions = providerBody(ref.provider, params);
+    const tag = await tagFor(ref);
     const call = generateText({
-      model: languageModel(options, s, role, ref),
+      model: languageModel(options, s, role, ref, tag),
       ...(system.length ? { instructions: system.join("\n\n").slice(0, MAX_PROMPT_CHARS) } : {}),
       messages: messages
         .filter((m) => m.role !== "system")
@@ -493,7 +677,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
       temperature: params.temperature,
       maxRetries: 1,
       ...(providerOptions ? { providerOptions } : {}),
-      ...withHeaders(requestHeaders(options.env, ref, role)),
+      ...withHeaders(requestHeaders(options.env, ref, role, tag)),
       ...(json ? { output: JSON_OBJECT_OUTPUT } : {}),
     });
     try {
@@ -519,17 +703,32 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
 
   const embedWith = async (ref: ModelRef, texts: readonly string[]): Promise<EmbedResult> => {
     await assertPlatformAllowed(ref);
-    if (useFakes(options) && ref.provider === "workers-ai") {
+    if (useFakes(options) && fakeable(ref.provider)) {
       const vectors = (options.fakes as FakeModels).embed(texts);
       return { vectors, model: "fake", dimensions: vectors[0]?.length ?? 0 };
     }
     const s = await settings();
-    const { embeddings } = await embedMany({
-      model: embeddingModel(options, s, ref),
+    const { embeddings, usage } = await embedMany({
+      model: embeddingModel(options, s, ref, await tagFor(ref)),
       values: [...texts],
       maxRetries: 1,
       maxParallelCalls: 2,
     });
+    if (options.recordUsage) {
+      const status = providerStatus(options.env, s, ref.provider);
+      try {
+        options.recordUsage({
+          role: "embed",
+          provider: ref.provider,
+          model: ref.model,
+          billed: platformPaid(options.env, status.keySource),
+          tokensIn: usage?.tokens ?? 0,
+          tokensOut: 0,
+        });
+      } catch (error) {
+        console.warn("AI usage could not be recorded", error);
+      }
+    }
     return { vectors: embeddings, model: ref.model, dimensions: embeddings[0]?.length ?? 0 };
   };
 
@@ -538,19 +737,20 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     ref: ModelRef,
     params: { maxTokens: number; temperature: number; thinking?: boolean | undefined },
   ): Promise<ChatModel | null> => {
-    if (useFakes(options) && ref.provider === "workers-ai") {
+    if (useFakes(options) && fakeable(ref.provider)) {
       const fake = options.fakes?.chat?.(role);
       return fake ? { model: fake, provider: "fake", modelId: "fake", params } : null;
     }
     const s = await settings();
     const providerOptions = providerBody(ref.provider, params);
+    const tag = await tagFor(ref);
     return {
-      model: languageModel(options, s, role, ref),
+      model: languageModel(options, s, role, ref, tag),
       provider: ref.provider,
       modelId: ref.model,
       params,
       ...(providerOptions ? { providerOptions } : {}),
-      ...withHeaders(requestHeaders(options.env, ref, role)),
+      ...withHeaders(requestHeaders(options.env, ref, role, tag)),
     };
   };
 
@@ -599,7 +799,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     },
     async test(role, ref) {
       const config = (await resolved())[role];
-      const target = ref ?? config;
+      const target = ref ? (hosted ? platformRef(ref) : ref) : config;
       assertCapable(role, target, dims ? { vectorDimensions: dims } : {});
       if (role === "embed") {
         const result = await embedWith(target, ["Connection test"]);
@@ -631,6 +831,7 @@ export function modelRunnerFromEnv(
   const hasBinding = Boolean(env.AI && typeof (env.AI as WorkersAiBinding).run === "function");
   const configured =
     hasBinding ||
+    isHosted(env) ||
     Boolean(env.AI_MODEL_ROLES?.trim()) ||
     Object.values(PROVIDER_INFO).some((p) => keyFromEnv(env, p.secretName));
   if (hasBinding || (env.AI_FAKE_MODEL === "true" && options.fakes) || configured) {

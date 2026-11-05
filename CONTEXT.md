@@ -479,7 +479,7 @@ output" is met by JSON mode (`json_object`) or a JSON schema; no role sends a sc
 (ADR 0192). Calls run through the AI SDK and AI Gateway: Workers AI over the binding, other
 providers through the unified endpoint as `provider/model`, custom providers as
 `custom-<slug>/<model>` (ADR 0150, ADR 0203). Provider keys are AI Gateway BYOK or Workers
-secrets, never D1 (ADR 0151).
+secrets, never D1 (ADR 0151). On a hosted deployment Workers AI roles run as **Platform AI**.
 _Avoid_: model config, LLM settings
 
 **Judge**
@@ -574,7 +574,9 @@ separate build session.
 A deployment we run for a customer in our Cloudflare account (ADR 0210): user Workers in the
 Workers for Platforms dispatch namespace, reached at `<org>.relationshiposcrm.com`. Only the
 **control plane** calls it an *instance* (`cp_instances`) and knows its **tenant id** (`t…`), which
-prefixes its Worker and resource names and never appears inside the deployment.
+prefixes its Worker and resource names and never appears in the deployment's data. The deployment
+sees it only as a deploy var (`ROS_TENANT_ID`), for the **tenant tag** on Platform AI calls and
+for signing its calls back to the control plane.
 
 **Control plane**
 `ros-control` at app.relationshiposcrm.com (`apps/control`): sign-up, plans, billing, provisioning,
@@ -584,8 +586,25 @@ rollouts, support grants, export and delete. It never holds customer data. The *
 **Plan**
 Free, Team, Business or Enterprise (ADR 0211). Its limits reach a hosted deployment as
 **entitlements**: one `core_entitlements` row the control plane writes and the deployment enforces
-(users, records, **platform AI**: models we pay for, as opposed to BYOK or MCP). A self-hosted
-deployment has no entitlements and no limits.
+(users, records, **Platform AI**: models we pay for, as opposed to the customer's own keys or MCP).
+A self-hosted deployment has no entitlements and no limits.
+
+**Platform AI**
+The AI a hosted deployment's plan pays for and we bill (ADR 0213 and its amendment): Workers AI's
+models, as the registry provider `platform`, called through the **one shared platform gateway** in
+our account. On a hosted deployment every Workers AI role is Platform AI. Each call carries the
+**tenant tag** (`cf-aig-metadata`: role, tenant, plan), set only by host code in the model client,
+never by extension code; the gateway keeps metadata, tokens and cost, never prompts or replies,
+and caches nothing. Metering filters the gateway's logs by the tag. Self-hosted installs have no
+Platform AI: Workers AI runs through their own gateway (ADR 0180).
+_Avoid_: built-in AI, credits
+
+**Own key (hosted BYOK)**
+On a hosted deployment, a provider key the customer adds in Settings → AI. The control plane sets
+it as a secret on the tenant's Workers over the signed **deployment channel** (ADR 0250); calls
+with it go directly to the provider (or through the customer's own AI Gateway, if connected),
+never through the platform gateway. Shown in the workspace's usage, never billed, never in D1.
+On a self-hosted install "BYOK" means keys stored in its own AI Gateway (ADR 0151, ADR 0180).
 
 **Paused / suspended**
 Hosted lifecycle states. *Paused*: an idle Free deployment whose crons are stopped; the next visit

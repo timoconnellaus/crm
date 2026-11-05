@@ -15,9 +15,14 @@ import {
   backfillEmbeddingQueue,
   type CommitEvent,
   cloudflareAiAdmin,
+  customerGateway,
   drainAllEmbeddings,
   fakeModels,
+  type HostedAiAdminEnv,
+  hostedAiAdmin,
+  hostedModelOptions,
   type InvocationContext,
+  isHosted,
   loadAiSettings,
   type ModelRunner,
   memoryVectorStore,
@@ -30,7 +35,7 @@ import {
 } from "@relationship-os/core";
 import { type CrmDb, createCrmDb } from "@relationship-os/db";
 
-export interface AiAppEnv extends AiEnv {
+export interface AiAppEnv extends AiEnv, HostedAiAdminEnv {
   /** Vectorize index for record embeddings (optional; docs/deploying.md). */
   VECTORIZE?: unknown;
   /** Secret: Cloudflare API token for Settings → AI (keys, usage). */
@@ -59,10 +64,26 @@ export function modelsFor(env: AiAppEnv, db: CrmDb): ModelRunner | undefined {
     fakes: fakeModels(),
     // Hosted plans (ADR 0211): platform AI only while the plan's allowance lasts; BYOK always.
     platformAi: () => platformAiAllowed(db.query),
+    // Hosted (ADR 0213 amendment): the plan for the tenant tag, and usage counted in D1.
+    ...hostedModelOptions(env, db.query, schedule),
   });
 }
 
-export function aiAdminFor(env: AiAppEnv): AiAdmin {
+/** waitUntil when inside a request; outside one (tests, crons) the promise just runs. */
+function schedule(work: Promise<unknown>) {
+  try {
+    waitUntil(work);
+  } catch {
+    // Outside a request: the promise still runs.
+  }
+}
+
+/**
+ * Settings → AI's reach: the Cloudflare API (self-hosted), or the control plane over the signed
+ * deployment channel (hosted, ADR 0250).
+ */
+export function aiAdminFor(env: AiAppEnv, db?: CrmDb): AiAdmin {
+  if (isHosted(env)) return hostedAiAdmin(env, db ? { db: db.query } : {});
   return cloudflareAiAdmin(env);
 }
 
@@ -77,6 +98,13 @@ export function aiEnvView(env: AiAppEnv): AiEnv {
     ...(env.AI_GATEWAY_BYOK ? { AI_GATEWAY_BYOK: env.AI_GATEWAY_BYOK } : {}),
     ...(env.VECTORIZE_DIMENSIONS ? { VECTORIZE_DIMENSIONS: env.VECTORIZE_DIMENSIONS } : {}),
     ...(env.AI_FAKE_MODEL ? { AI_FAKE_MODEL: env.AI_FAKE_MODEL } : {}),
+    // Hosted placement (ADR 0213 amendment): ids only; the platform token and the customer's
+    // gateway token are shown as "set" (their values never reach an operation).
+    ...(env.AI_PLATFORM_GATEWAY_ID ? { AI_PLATFORM_GATEWAY_ID: env.AI_PLATFORM_GATEWAY_ID } : {}),
+    ...(env.AI_PLATFORM_ACCOUNT_ID ? { AI_PLATFORM_ACCOUNT_ID: env.AI_PLATFORM_ACCOUNT_ID } : {}),
+    ...(env.AI_PLATFORM_TOKEN ? { AI_PLATFORM_TOKEN: "set" } : {}),
+    ...(env.ROS_TENANT_ID ? { ROS_TENANT_ID: env.ROS_TENANT_ID } : {}),
+    ...(customerGatewayView(env) ? { AI_CUSTOMER_GATEWAY: customerGatewayView(env) } : {}),
   };
   for (const [key, value] of Object.entries(env)) {
     if (key.startsWith("AI_KEY_") && value) (view as Record<string, unknown>)[key] = "set";
@@ -197,7 +225,18 @@ export function aiContextFor(env: AiAppEnv, db: CrmDb) {
     ...(viaEvents ? { embedViaEvents: true } : {}),
     ...(onCommitted ? { onCommitted } : {}),
     ...(models ? { onQueued: adjudicationHook() } : {}),
-    aiAdmin: aiAdminFor(env),
+    aiAdmin: aiAdminFor(env, db),
     aiEnv: aiEnvView(env),
   };
+}
+
+/** The customer's own gateway for operations: ids, and the token only as "set". */
+function customerGatewayView(env: AiAppEnv): string | undefined {
+  const own = customerGateway(env);
+  if (!own) return undefined;
+  return JSON.stringify({
+    accountId: own.accountId,
+    gatewayId: own.gatewayId,
+    ...(own.token ? { token: "set" } : {}),
+  });
 }

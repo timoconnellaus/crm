@@ -394,6 +394,10 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
                                        └─ @ai-sdk/openai-compatible ── …/{gateway}/compat, model "provider/model" ─► AI Gateway ─► provider
                                             (cf-aig-metadata: role, cf-aig-authorization; BYOK: no Authorization)
                                           no gateway (--ai-gateway off): binding without the option; provider's own URL
+ hosted (AI_PLATFORM_GATEWAY_ID set):
+   Workers AI roles = Platform AI ── @ai-sdk/openai-compatible ── api.cloudflare.com/…/ai/v1 + cf-aig-gateway-id ─► shared platform gateway ─► Workers AI
+                                       (cf-aig-metadata: role, tenant, plan; cf-aig-collect-log-payload: false; cf-aig-skip-cache)
+   own keys (AI_KEY_<P> secrets) ─────── provider's own URL, or the customer's own gateway (AI_CUSTOMER_GATEWAY)
 ```
 
 - **The registry** resolves each role through shipped defaults (every role on Workers AI),
@@ -420,6 +424,17 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   `CloudflareClient.setGatewayProviderKey`) or as Workers secrets, **never in D1** ([ADR 0151](adr/0151-provider-keys-as-workers-secrets-or-byok.md));
   usage and spend per role from AI Gateway's logs, cached 10 minutes
   ([ADR 0152](adr/0152-usage-and-spend-per-role.md)).
+- **Hosted placement** ([ADR 0213 amendment](adr/0213-ai-usage-billing.md),
+  `packages/core/src/ai/platform.ts`): the same code, switched by deploy vars the control plane
+  sets. Every Workers AI role becomes **Platform AI** (registry provider `platform`), called over
+  Workers AI's REST endpoint through the one shared platform gateway; the model client forces the
+  tenant tag, payload-logging off and cache-skip onto every such request at the fetch, so nothing
+  a caller passes (extension code through `codemode:ai` included) can re-tag it. `platformAi`
+  entitlements gate it. The customer's own keys are Workers secrets on the tenant Workers, set
+  through the control plane over the signed deployment channel
+  ([ADR 0250](adr/0250-deployment-to-control-plane-channel.md)), called directly (or through
+  their own connected gateway), never billed. Usage is counted in `core_ai_usage` and shown in
+  Settings → AI, split into billed and own-key.
 - **Summaries** (`summary.*`, [ADR 0153](adr/0153-ai-summaries.md)): record summaries (people,
   organisations, deals), meeting prep, one-liners for long emails and notes, and change-set
   summaries for approvers. Cached in `core_ai_summary` by a SHA-256 of their facts and the model,
@@ -525,8 +540,9 @@ How stage 4a built it:
 ### 10. Hosted SaaS (stage 10)
 
 Besides self-hosting, we run deployments for customers (ADR 0191). Each is still one isolated
-deployment with its own D1, R2, KV, queues, Vectorize index and AI Gateway: no shared database and
-no tenant id inside it. Built and tested against fakes; switched on by `docs/saas-go-live.md`.
+deployment with its own D1, R2, KV, queues and Vectorize index: no shared database and no tenant id
+in its data. The one shared piece is the Platform AI gateway (below). Built and tested against
+fakes; switched on by `docs/saas-go-live.md`.
 
 ```
  browser ─► <org>.relationshiposcrm.com ─► ros-dispatch ─(KV host:<hostname>, verified only)─► <tenant>-ros-app
@@ -536,6 +552,8 @@ no tenant id inside it. Built and tested against fakes; switched on by `docs/saa
  browser ─► app.relationshiposcrm.com ─► ros-control: sign-up, plans, Stripe, admin console, jobs queue
                                               │ Stage 8 engine (installRelease, runUpdate, runRollback)
                                               ▼ writes: core_entitlements, core_support_grants (customer D1)
+ <tenant>-ros-app ─(signed: x-ros-tenant/timestamp/signature)─► ros-control /api/deployment/ai-secret
+                                              └─► WfP script secrets AI_KEY_<P> / AI_CUSTOMER_GATEWAY on the tenant's AI Workers
 ```
 
 - **Control plane** (`apps/control`, [ADR 0210](adr/0210-hosted-deployments-on-workers-for-platforms.md)):
@@ -550,9 +568,14 @@ no tenant id inside it. Built and tested against fakes; switched on by `docs/saa
 - **Support grants** ([ADR 0212](adr/0212-customer-approved-support-grants.md)): requested by
   staff, approved by the customer's admin in Settings → Support access, time-limited, a dedicated
   support user, audited on both sides; entry by an Ed25519-signed token (`/support/enter`).
-- **AI billing** ([ADR 0213](adr/0213-ai-usage-billing.md)) from each deployment's AI Gateway logs:
-  cost + 20%, allowance per plan, overage as Stripe meter events, Free credit in dollars; BYOK and
-  MCP free. **Stripe and lifecycle** ([ADR 0214](adr/0214-stripe-billing-and-account-lifecycle.md)):
+- **AI billing** ([ADR 0213](adr/0213-ai-usage-billing.md) and its amendment) from the shared
+  platform gateway's logs, filtered by tenant tag (`ros-platform`, created by provisioning with
+  caching off and logs on, checked on every provision): cost + 20%, allowance per plan, overage as
+  Stripe meter events, Free credit in dollars; the customer's own keys and MCP free. Hosted
+  deployments get no gateway or gateway token of their own (`aiGateway: false`), only
+  `AI_PLATFORM_GATEWAY_ID`, `AI_PLATFORM_ACCOUNT_ID`, `ROS_TENANT_ID`, the shared
+  `AI_PLATFORM_TOKEN` and, on ros-app, `ROS_CONTROL_URL` and `ROS_CONTROL_KEY`.
+  **Stripe and lifecycle** ([ADR 0214](adr/0214-stripe-billing-and-account-lifecycle.md)):
   webhooks drive suspend and resume; export and delete. **Rollouts**
   ([ADR 0215](adr/0215-staged-rollouts.md)): canary → 10% → all, pause on failures, bookmark rollback.
 

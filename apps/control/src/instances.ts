@@ -7,12 +7,16 @@
 //   placement "customer-account"  managed enterprise in the customer's own account: operated by
 //                          runbook with `create-relationship-os`, recorded here, never provisioned here
 //
-// Resources are per tenant (`ros-<tenant>`, `ros-files-<tenant>`…): nothing is shared, no D1 is
-// shared, and no tenant id exists inside a deployment (ADR 0001).
+// Resources are per tenant (`ros-<tenant>`, `ros-files-<tenant>`…): no D1 is shared, and no tenant
+// id exists in a deployment's data (ADR 0001). The one shared thing is the Platform AI gateway
+// (ADR 0213 amendment): a hosted deployment gets no gateway or gateway token of its own, only the
+// shared gateway's id, its tenant id (a var, for the tenant tag) and the platform token.
 import {
   CloudflareApiError,
   type DeploymentState,
+  gatewayWorkers,
   installRelease,
+  mergeSecrets,
   type ReleaseManifest,
   scriptsApi,
   selectedWorkers,
@@ -29,6 +33,12 @@ import {
 } from "./db.ts";
 import { intVar } from "./env.ts";
 import { type Entitlements, entitlementsFor } from "./plans.ts";
+import {
+  aiWorkers,
+  ensurePlatformGateway,
+  platformAiSecrets,
+  platformAiVars,
+} from "./platform-ai.ts";
 import {
   deleteRoute,
   type RouteStatus,
@@ -56,12 +66,18 @@ export function initialState(input: {
   accountId: string;
   supportPublicKey: string;
   zoneId?: string | undefined;
+  /** Platform AI's vars per manifest Worker (platformAiVars). */
+  platformVars?: DeploymentState["vars"];
   now: Date;
 }): DeploymentState {
   const { instance, manifest } = input;
   const { workerNames, resourceNames } = tenantNames(manifest, instance.id);
   const app = manifest.workers.find((w) => w.role === "app")?.name ?? "ros-app";
   const namespaced = instance.placement === "namespace";
+  const vars: DeploymentState["vars"] = { ...input.platformVars };
+  if (input.supportPublicKey) {
+    vars[app] = { ...vars[app], ROS_SUPPORT_PUBLIC_KEY: input.supportPublicKey };
+  }
   return {
     version: manifest.version,
     accountId: input.accountId,
@@ -74,11 +90,12 @@ export function initialState(input: {
     channel: manifest.channel,
     gatekeepers: [],
     ai: true,
+    // No AI Gateway or gateway token per hosted deployment: Platform AI goes through the shared
+    // gateway, the customer's own keys go to the provider directly (ADR 0210 amendment).
+    aiGateway: false,
     workerNames,
     resourceNames,
-    vars: input.supportPublicKey
-      ? { [app]: { ROS_SUPPORT_PUBLIC_KEY: input.supportPublicKey } }
-      : {},
+    vars,
     resources: {},
     installedAt: input.now.toISOString(),
   };
@@ -118,25 +135,33 @@ export async function provisionInstance(s: Services, instanceId: string): Promis
     if (instance.placement === "namespace" && instance.namespace) {
       await ensureNamespace(s, instance.namespace);
     }
-    const app = release.bundle.manifest.workers.find((w) => w.role === "app")?.name ?? "ros-app";
+    // The shared Platform AI gateway: created once, its safety settings checked every time.
+    await ensurePlatformGateway(s);
+    const manifest = release.bundle.manifest;
+    const app = manifest.workers.find((w) => w.role === "app")?.name ?? "ros-app";
+    const ai = { tenant: instance.id, workers: aiWorkers(gatewayWorkers(manifest)), app };
     const base = initialState({
       instance,
-      manifest: release.bundle.manifest,
+      manifest,
       accountId: s.accountId,
       supportPublicKey: s.env.SUPPORT_PUBLIC_KEY ?? "",
       zoneId: s.env.SAAS_ZONE_ID,
+      platformVars: platformAiVars(s, ai),
       now,
     });
     const result = await installRelease({
       api: s.cf,
       bundle: release.bundle,
       state: { ...base, bundleDigest: release.digest },
-      secrets: {
-        [app]: {
-          BETTER_AUTH_SECRET: randomToken() + randomToken(),
-          BETTER_AUTH_URL: `https://${base.hostname}`,
+      secrets: mergeSecrets(
+        {
+          [app]: {
+            BETTER_AUTH_SECRET: randomToken() + randomToken(),
+            BETTER_AUTH_URL: `https://${base.hostname}`,
+          },
         },
-      },
+        await platformAiSecrets(s, ai),
+      ),
     });
     await writeEntitlements(s, result.databaseId, entitlementsFor(account.plan, account, now));
     const crons = cronsOf(release.bundle.manifest, result.state);
@@ -358,8 +383,10 @@ export async function pauseIdle(s: Services): Promise<string[]> {
 
 /**
  * Deletes everything a deployment had: its Workers (by tenant tag in the namespace), D1, R2, KV,
- * queues, Vectorize, AI Gateway and gateway token, and its routes. Each step tolerates "already
- * gone", so a retry finishes a partial deletion.
+ * queues, Vectorize, and its routes; and, for a deployment provisioned before the shared Platform
+ * AI gateway, its own AI Gateway and gateway token. The shared gateway is never deleted (its logs
+ * for a deleted tenant age out). Each step tolerates "already gone", so a retry finishes a partial
+ * deletion.
  */
 export async function destroyInstance(s: Services, instance: InstanceRow): Promise<void> {
   const state = instanceState(instance);
