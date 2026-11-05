@@ -1,7 +1,8 @@
 // A fake Cloudflare REST API for tests of the CLI and the self-updater (ADR 0163). It keeps
 // in-memory accounts, D1 databases (SQL runs on an injected engine), R2, KV, queues, Vectorize,
-// Worker scripts with versions and deployments, secrets, schedules, assets upload sessions and
-// Time Travel bookmarks. It answers `fetch(Request)`, so it can be passed to the client directly
+// Worker scripts with versions and deployments, secrets, schedules, assets upload sessions,
+// Time Travel bookmarks, AI Gateways with custom providers and BYOK provider keys, Secrets Store
+// stores and account API tokens. It answers `fetch(Request)`, so it can be passed to the client directly
 // or served over HTTP (packages/create-crm/test).
 //
 // It is strict where the real API is: unknown routes 404, a Durable Object migration must carry
@@ -73,6 +74,18 @@ export class FakeCloudflare {
   readonly scripts = new Map<string, FakeScript>();
   readonly domains: { hostname: string; service: string; zone_id: string }[] = [];
   readonly uploadedAssets = new Set<string>();
+  /** AI Gateways by id, with their settings. */
+  readonly gateways = new Map<string, Record<string, unknown>>();
+  /** Account-wide custom providers by id. */
+  readonly customProviders = new Map<string, Record<string, unknown>>();
+  /** BYOK provider keys per gateway; `secret` holds the stored key (tests check it). */
+  readonly providerConfigs = new Map<
+    string,
+    { id: string; provider_slug: string; alias: string; default_config: boolean; secret: string }[]
+  >();
+  readonly secretsStores = new Map<string, string>();
+  /** Account API tokens created through the API, by id. */
+  readonly tokens = new Map<string, { name: string; value: string; permissionGroups: string[] }>();
   /** Return a Response to fail a call (failure injection), or undefined to let it through. */
   failOn: ((method: string, path: string, body: unknown) => Response | undefined) | null = null;
   subdomain: string | null;
@@ -232,6 +245,17 @@ export class FakeCloudflare {
         { page: 1, total_pages: 1 },
       );
     }
+    m = new RegExp(`^${a}/queues/([^/]+)$`).exec(path);
+    if (m && method === "DELETE") {
+      if (!this.queues.delete(m[1] as string)) return fail(404, 11000, "queue not found");
+      return ok(null);
+    }
+    m = new RegExp(`^${a}/vectorize/v2/indexes/([^/]+)$`).exec(path);
+    if (m && method === "DELETE") {
+      if (!this.vectorize.delete(m[1] as string)) return fail(404, 40002, "index not found");
+      this.vectorizeMetadata.delete(m[1] as string);
+      return ok(null);
+    }
     m = new RegExp(`^${a}/queues/([^/]+)/consumers(?:/([^/]+))?$`).exec(path);
     if (m) {
       const queue = this.queues.get(m[1] as string);
@@ -280,6 +304,126 @@ export class FakeCloudflare {
         return ok({ mutationId: this.id("mut") });
       }
       return ok({ metadataIndexes: list });
+    }
+
+    // AI Gateway, custom providers, BYOK, Secrets Store, account tokens
+    if (path === `${a}/ai-gateway/gateways`) {
+      if (method === "POST") {
+        const id = String(b.id);
+        if (this.gateways.has(id)) return fail(400, 7001, "gateway already exists");
+        if (b.authentication === false) return fail(400, 7002, "new gateways need authentication");
+        const gateway = { authentication: true, ...b, id, store_id: b.store_id ?? null };
+        this.gateways.set(id, gateway);
+        return ok(gateway);
+      }
+      return ok([...this.gateways.values()]);
+    }
+    m = new RegExp(`^${a}/ai-gateway/gateways/([^/]+)(/provider_configs(?:/([^/]+))?)?$`).exec(
+      path,
+    );
+    if (m) {
+      const id = m[1] as string;
+      const gateway = this.gateways.get(id);
+      if (!gateway) return fail(404, 7002, "gateway not found");
+      if (m[2]) {
+        const configs = this.providerConfigs.get(id) ?? [];
+        this.providerConfigs.set(id, configs);
+        if (m[3] && method === "DELETE") {
+          const index = configs.findIndex((c) => c.id === m?.[3]);
+          if (index === -1) return fail(404, 7003, "provider config not found");
+          configs.splice(index, 1);
+          return ok(null);
+        }
+        if (method === "POST") {
+          if (!gateway.store_id) return fail(400, 7010, "the gateway has no Secrets Store");
+          if (configs.some((c) => c.provider_slug === b.provider_slug && c.alias === b.alias)) {
+            return fail(400, 7011, "a key for this provider and alias exists");
+          }
+          const config = {
+            id: this.id("pc"),
+            provider_slug: String(b.provider_slug),
+            alias: String(b.alias),
+            default_config: Boolean(b.default_config),
+            secret: String(b.secret),
+          };
+          configs.push(config);
+          const { secret, ...shown } = config;
+          return ok({ ...shown, secret_preview: `${secret.slice(0, 2)}…` });
+        }
+        return ok(
+          configs.map(({ secret, ...shown }) => ({
+            ...shown,
+            secret_preview: `${secret.slice(0, 2)}…`,
+          })),
+        );
+      }
+      if (method === "DELETE") {
+        this.gateways.delete(id);
+        return ok(null);
+      }
+      if (method === "PUT") {
+        if (gateway.authentication === true && b.authentication === false) {
+          return fail(400, 7004, "Authentication cannot be disabled once enabled.");
+        }
+        const updated = { ...b, id, store_id: b.store_id ?? gateway.store_id ?? null };
+        this.gateways.set(id, updated);
+        return ok(updated);
+      }
+      return ok(gateway);
+    }
+    if (path === `${a}/ai-gateway/custom-providers`) {
+      if (method === "POST") {
+        if (!String(b.base_url).startsWith("https://")) return fail(400, 7020, "base_url");
+        if ([...this.customProviders.values()].some((p) => p.slug === b.slug)) {
+          return fail(400, 7021, "slug exists");
+        }
+        const provider = { ...b, id: this.id("cp") };
+        this.customProviders.set(provider.id, provider);
+        return ok(provider);
+      }
+      return ok([...this.customProviders.values()], { page: 1, total_pages: 1 });
+    }
+    m = new RegExp(`^${a}/ai-gateway/custom-providers/([^/]+)$`).exec(path);
+    if (m) {
+      const provider = this.customProviders.get(m[1] as string);
+      if (!provider) return fail(404, 7022, "custom provider not found");
+      if (method === "PATCH") Object.assign(provider, b);
+      return ok(provider);
+    }
+    if (path === `${a}/secrets_store/stores`) {
+      if (method === "POST") {
+        const id = this.id("store");
+        this.secretsStores.set(id, String(b.name));
+        return ok({ id, name: b.name });
+      }
+      return ok(
+        [...this.secretsStores].map(([id, name]) => ({ id, name })),
+        { page: 1, total_pages: 1 },
+      );
+    }
+    if (path === `${a}/tokens/permission_groups`) {
+      const groups = [
+        { id: "pg-aig-run", name: "AI Gateway Run" },
+        { id: "pg-aig-edit", name: "AI Gateway Write" },
+      ];
+      const name = url.searchParams.get("name");
+      return ok(groups.filter((g) => !name || g.name === name));
+    }
+    if (path === `${a}/tokens` && method === "POST") {
+      const id = this.id("token");
+      const value = `cf-token-${id}-${"v".repeat(32)}`;
+      const policies = b.policies as { permission_groups: { id: string }[] }[];
+      this.tokens.set(id, {
+        name: String(b.name),
+        value,
+        permissionGroups: policies.flatMap((p) => p.permission_groups.map((g) => g.id)),
+      });
+      return ok({ id, name: b.name, status: "active", value });
+    }
+    m = new RegExp(`^${a}/tokens/([^/]+)$`).exec(path);
+    if (m && method === "DELETE") {
+      if (!this.tokens.delete(m[1] as string)) return fail(404, 1003, "token not found");
+      return ok(null);
     }
 
     // Workers

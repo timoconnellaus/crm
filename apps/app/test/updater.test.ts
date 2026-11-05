@@ -218,5 +218,12 @@ describe("self-updater runtime", () => {
     expect(cf.liveBinding("crm-app", "CRM_RELEASE_VERSION")?.text).toBe("1.1.0");
     expect(cf.liveBinding("crm-runner", "DB")).toBeTruthy();
     expect(cf.scripts.get("crm-app")?.secrets.get("BETTER_AUTH_SECRET")).toHaveLength(64);
+    // AI is on, so the update set up the AI Gateway the install lacked (ADR 0180).
+    expect(cf.gateways.get("crm")).toMatchObject({ authentication: true, collect_logs: true });
+    expect([...cf.customProviders.values()].map((p) => p.slug)).toEqual(["together"]);
+    expect(cf.liveBinding("crm-app", "AI_GATEWAY_ID")?.text).toBe("crm");
+    const token = [...cf.tokens.values()][0]?.value;
+    expect(token).toBeTruthy();
+    expect(cf.scripts.get("crm-runner")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token);
   });
 });

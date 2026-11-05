@@ -148,7 +148,10 @@ describe("create-crm install", () => {
     expect(world.cf.liveBinding("crm-runner", "VECTORIZE")).toBeUndefined();
     const state = JSON.parse(String((await sql("SELECT value FROM core_install"))[0]?.value));
     expect(state.ai).toBe(false);
-    expect(state.vars["crm-app"]).toMatchObject({ AI_GATEWAY_ID: "crm-gw" });
+    // The chosen gateway is remembered, but with AI off none is created or wired.
+    expect(state.aiGateway).toBe("crm-gw");
+    expect(world.cf.gateways.size).toBe(0);
+    expect(state.vars["crm-app"]?.AI_GATEWAY_ID).toBeUndefined();
 
     const again = await cli("--yes");
     expect(again.code, again.output).toBe(0);
@@ -166,6 +169,9 @@ describe("create-crm install", () => {
       "ai-admin-token-secret-1",
     );
     expect(on.output).not.toContain("ai-admin-token-secret-1");
+    // ...and so is the gateway chosen at install.
+    expect(world.cf.gateways.has("crm-gw")).toBe(true);
+    expect(world.cf.liveBinding("crm-app", "AI_GATEWAY_ID")?.text).toBe("crm-gw");
   });
 
   it("is idempotent: a re-run creates nothing new and keeps secrets", async () => {
@@ -221,6 +227,150 @@ describe("create-crm install", () => {
   });
 });
 
+const denyAiGateway = (_method: string, path: string) =>
+  /\/ai-gateway\//.test(path)
+    ? new Response(
+        JSON.stringify({
+          success: false,
+          errors: [{ code: 10000, message: "Authentication error" }],
+        }),
+        { status: 403, headers: { "content-type": "application/json" } },
+      )
+    : undefined;
+
+describe("create-crm install: AI Gateway", () => {
+  it("creates the gateway, the custom provider and the gateway token, and wires them", async () => {
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    const { code, output } = await cli("--yes");
+    expect(code, output).toBe(0);
+    expect(world.cf.gateways.get("crm")).toMatchObject({
+      id: "crm",
+      collect_logs: true,
+      authentication: true,
+    });
+    expect([...world.cf.customProviders.values()]).toEqual([
+      expect.objectContaining({
+        slug: "together",
+        base_url: "https://api.together.xyz",
+        enable: true,
+      }),
+    ]);
+    for (const worker of ["crm-app", "crm-runner"]) {
+      expect(world.cf.liveBinding(worker, "AI_GATEWAY_ID")?.text).toBe("crm");
+    }
+    // One account token with AI Gateway Run only, stored on both Workers, never printed.
+    expect(world.cf.tokens.size).toBe(1);
+    const [tokenId, token] = [...world.cf.tokens][0] as [
+      string,
+      { value: string; permissionGroups: string[] },
+    ];
+    expect(token.permissionGroups).toEqual(["pg-aig-run"]);
+    expect(world.cf.scripts.get("crm-app")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token.value);
+    expect(world.cf.scripts.get("crm-runner")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token.value);
+    expect(output).not.toContain(token.value);
+    expect(output).toContain("AI Gateway crm: created");
+    const state = JSON.parse(String((await sql("SELECT value FROM core_install"))[0]?.value));
+    expect(state).toMatchObject({
+      aiGateway: "crm",
+      aiGatewayCreated: true,
+      aiGatewayTokenId: tokenId,
+    });
+  });
+
+  it("re-runs reuse everything: no second gateway, provider or token", async () => {
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    expect((await cli("--yes")).code).toBe(0);
+    const token = world.cf.scripts.get("crm-app")?.secrets.get("AI_GATEWAY_TOKEN");
+    const before = world.cf.calls.length;
+    const { code, output } = await cli("--yes");
+    expect(code, output).toBe(0);
+    expect(output).toContain("AI Gateway crm: exists");
+    expect(output).toContain("custom provider custom-together: exists");
+    expect(output).toContain("AI_GATEWAY_TOKEN: set");
+    const writes = world.cf.calls
+      .slice(before)
+      .filter(
+        (c) => c.method !== "GET" && /\/(ai-gateway|tokens|secrets_store)(\/|$)/.test(c.path),
+      );
+    expect(writes).toEqual([]);
+    expect(world.cf.tokens.size).toBe(1);
+    expect(world.cf.customProviders.size).toBe(1);
+    expect(world.cf.scripts.get("crm-app")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token);
+  });
+
+  it("reuses a gateway that already exists, turning on logging and authentication", async () => {
+    world.cf.gateways.set("crm", {
+      id: "crm",
+      collect_logs: false,
+      authentication: false,
+      cache_ttl: 60,
+    });
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    const { code, output } = await cli("--yes");
+    expect(code, output).toBe(0);
+    expect(output).toContain("turned on collect_logs and authentication");
+    expect(world.cf.gateways.get("crm")).toMatchObject({
+      collect_logs: true,
+      authentication: true,
+      cache_ttl: 60,
+    });
+    const state = JSON.parse(String((await sql("SELECT value FROM core_install"))[0]?.value));
+    expect(state.aiGatewayCreated).toBeUndefined();
+  });
+
+  it("--provider-key stores the key as BYOK in the gateway and never prints it", async () => {
+    const KEY = "together-key-0123456789abcdef";
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    const { code, output } = await cli("--yes", "--provider-key", `together=${KEY}`);
+    expect(code, output).toBe(0);
+    expect(world.cf.providerConfigs.get("crm")).toEqual([
+      expect.objectContaining({ provider_slug: "custom-together", alias: "default", secret: KEY }),
+    ]);
+    // The gateway was pointed at a Secrets Store to hold it.
+    expect(world.cf.gateways.get("crm")?.store_id).toBeTruthy();
+    expect(output).toContain("provider key custom-together: stored in AI Gateway crm (BYOK)");
+    expect(output).not.toContain(KEY);
+    // Not a Workers secret.
+    for (const script of world.cf.scripts.values()) {
+      expect([...script.secrets.values()]).not.toContain(KEY);
+    }
+
+    // Re-run with a new key: replaced, not duplicated.
+    const again = await cli("--yes", "--provider-key", "together=second-key-abcdef0123456");
+    expect(again.code, again.output).toBe(0);
+    expect(world.cf.providerConfigs.get("crm")?.map((c) => c.secret)).toEqual([
+      "second-key-abcdef0123456",
+    ]);
+    expect(again.output).not.toContain("second-key-abcdef0123456");
+  });
+
+  it("without AI Gateway permissions, installs anyway and says so", async () => {
+    world.cf.failOn = denyAiGateway;
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    const { code, output } = await cli("--yes");
+    expect(code, output).toBe(0);
+    expect(output).toContain("needs AI Gateway Edit");
+    expect(world.cf.liveBinding("crm-app", "AI_GATEWAY_ID")?.text).toBe("");
+    expect(world.cf.tokens.size).toBe(0);
+  });
+
+  it("--ai-gateway off installs without a gateway; uninstall removes what install created", async () => {
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    const off = await cli("--yes", "--ai-gateway", "off");
+    expect(off.code, off.output).toBe(0);
+    expect(world.cf.gateways.size).toBe(0);
+    expect(world.cf.liveBinding("crm-app", "AI_GATEWAY_ID")?.text).toBe("");
+
+    const on = await cli("--yes", "--ai-gateway", "crm");
+    expect(on.code, on.output).toBe(0);
+    expect(world.cf.gateways.has("crm")).toBe(true);
+    const gone = await cli("uninstall", "--yes");
+    expect(gone.code, gone.output).toBe(0);
+    expect(world.cf.gateways.size).toBe(0);
+    expect(world.cf.tokens.size).toBe(0);
+  });
+});
+
 describe("crm upgrade, rollback and status", () => {
   async function installed() {
     await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
@@ -259,6 +409,34 @@ describe("crm upgrade, rollback and status", () => {
     ]);
     expect(runs[0]?.bookmark).toBeTruthy();
     expect(await sql("SELECT name, note FROM core_person")).toEqual([{ name: "Ada", note: null }]);
+  });
+
+  it("an upgrade from a release without AI Gateway creates the gateway", async () => {
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0", aiGateway: false }));
+    expect((await cli("--yes")).code).toBe(0);
+    expect(world.cf.gateways.size).toBe(0);
+    await world.github.publish(await buildFixtureRelease({ version: "1.1.0" }));
+    const { code, output } = await cli("upgrade", "--yes");
+    expect(code, output).toBe(0);
+    expect(world.cf.gateways.get("crm")).toMatchObject({
+      authentication: true,
+      collect_logs: true,
+    });
+    expect(world.cf.liveBinding("crm-runner", "AI_GATEWAY_ID")?.text).toBe("crm");
+    expect(world.cf.scripts.get("crm-runner")?.secrets.has("AI_GATEWAY_TOKEN")).toBe(true);
+    const state = JSON.parse(String((await sql("SELECT value FROM core_install"))[0]?.value));
+    expect(state).toMatchObject({ version: "1.1.0", aiGateway: "crm", aiGatewayCreated: true });
+    for (const token of world.cf.tokens.values()) expect(output).not.toContain(token.value);
+  });
+
+  it("an upgrade whose token cannot manage AI Gateway still succeeds", async () => {
+    await installed();
+    await world.github.publish(await buildFixtureRelease({ version: "1.1.0" }));
+    world.cf.failOn = denyAiGateway;
+    const { code, output } = await cli("upgrade", "--yes");
+    expect(code, output).toBe(0);
+    expect(output).toContain("needs AI Gateway Edit");
+    expect(world.cf.liveBinding("crm-app", "CRM_RELEASE_VERSION")?.text).toBe("1.1.0");
   });
 
   it("preflight blocks an update that would break a runtime extension", async () => {

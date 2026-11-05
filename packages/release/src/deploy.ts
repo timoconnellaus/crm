@@ -43,6 +43,15 @@ export interface DeploymentState {
    * `--ai off`. Absent means on.
    */
   ai?: boolean;
+  /**
+   * The AI Gateway every model call goes through (ADR 0180): its id, or false when installed
+   * with `--ai-gateway off`. Absent means the default, named after the install.
+   */
+  aiGateway?: string | false;
+  /** The gateway was created by this deployment (so `crm uninstall` deletes it). */
+  aiGatewayCreated?: boolean;
+  /** The id of the generated AI Gateway Run token stored as AI_GATEWAY_TOKEN. */
+  aiGatewayTokenId?: string;
   /** Deployed names, when they differ from the manifest's. */
   workerNames: Record<string, string>;
   /** Plain var overrides per Worker (e.g. IDENTITY_PROVIDER, APPROVAL_FLOOR). */

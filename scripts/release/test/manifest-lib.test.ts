@@ -19,6 +19,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { collectAssets } from "../build-release.ts";
 import {
+  checkAiGateway,
   generateManifest,
   parseJsonc,
   readDeployablePackages,
@@ -226,6 +227,34 @@ describe("release manifest", () => {
     expect(manifest.workers.filter((w) => w.optional).every((w) => w.role === "gatekeeper")).toBe(
       true,
     );
+  });
+
+  it("carries the AI Gateway set-up from deploy-inputs.json (ADR 0180)", async () => {
+    const manifest = await fixtureManifest();
+    expect(manifest.aiGateway?.settings).toMatchObject({ collect_logs: true });
+    expect(manifest.aiGateway?.customProviders).toEqual([
+      expect.objectContaining({ slug: "together", baseUrl: "https://api.together.xyz" }),
+    ]);
+    const app = manifest.workers.find((w) => w.role === "app");
+    expect(app?.secrets.find((s) => s.name === "AI_GATEWAY_TOKEN")?.source).toBe("installer");
+  });
+
+  it("refuses a bad AI Gateway set-up", () => {
+    const provider = { slug: "together", name: "Together", baseUrl: "https://api.together.xyz" };
+    expect(() => checkAiGateway("apps/app", { customProviders: [provider] })).not.toThrow();
+    expect(() =>
+      checkAiGateway("apps/app", { customProviders: [{ ...provider, baseUrl: "http://x" }] }),
+    ).toThrow(/https/);
+    expect(() =>
+      checkAiGateway("apps/app", { customProviders: [{ ...provider, slug: "custom-together" }] }),
+    ).toThrow(/bad slug/);
+    expect(() => checkAiGateway("apps/app", { customProviders: [provider, provider] })).toThrow(
+      /twice/,
+    );
+    expect(() => checkAiGateway("apps/app", { settings: { authentication: false } })).toThrow(
+      /always on/,
+    );
+    expect(() => checkAiGateway("apps/app", { other: 1 })).toThrow(/unknown key/);
   });
 
   it("parses JSONC with comments and trailing commas but leaves strings alone", () => {

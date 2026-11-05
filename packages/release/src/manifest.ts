@@ -161,6 +161,33 @@ export interface ManifestInput {
   default?: string;
 }
 
+/**
+ * A custom provider AI Gateway proxies to (ADR 0180): created account-wide with slug `slug` and
+ * called through the gateway as `custom-<slug>`, e.g. `custom-together/<model>` on the unified
+ * OpenAI-compatible endpoint.
+ */
+export interface AiGatewayCustomProvider {
+  slug: string;
+  name: string;
+  /** The provider's API root, `https://` only; the request path is appended to it. */
+  baseUrl: string;
+  description?: string;
+  link?: string;
+}
+
+/**
+ * How installs set up AI Gateway when the `ai` feature is on (ADR 0180), from the app's
+ * deploy-inputs.json `aiGateway`. Absent in releases older than it.
+ */
+export interface AiGatewayConfig {
+  /**
+   * Settings a gateway is created with, as the AI Gateway create API takes them (`collect_logs`,
+   * `cache_ttl`, `rate_limiting_*`, …). Authentication is always turned on, whatever this says.
+   */
+  settings: Record<string, unknown>;
+  customProviders: AiGatewayCustomProvider[];
+}
+
 export interface ReleaseManifest {
   manifestVersion: typeof MANIFEST_VERSION;
   product: "crm";
@@ -181,6 +208,8 @@ export interface ReleaseManifest {
   inputs: ManifestInput[];
   /** Every unique static-asset blob, by asset hash; the bundle stores each at `assets/<hash>`. */
   assets: Record<string, { size: number }>;
+  /** AI Gateway set up with the `ai` feature (ADR 0180). Optional: older releases lack it. */
+  aiGateway?: AiGatewayConfig;
 }
 
 // ---- Placeholders -------------------------------------------------------------------------------

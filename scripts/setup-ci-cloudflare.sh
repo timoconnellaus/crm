@@ -232,6 +232,9 @@ note "    Workers KV Storage        Edit"
 note "    Queues                    Edit"
 note "    Vectorize                 Edit"
 note "    Account Settings          Read"
+note "    AI Gateway                Edit   (the install creates an AI Gateway, ADR 0180)"
+note "    Account API Tokens        Edit   (the install generates the gateway's token)"
+note "    Secrets Store             Edit   (optional; for --provider-key)"
 note "    Workers AI                Read   (optional; for model roles once installed)"
 step "Account Resources: Include → only this test account."
 step "No zone permissions are needed: the test uses workers.dev."
@@ -247,7 +250,7 @@ if api "/accounts/${CF_TEST_ACCOUNT_ID}/tokens/verify" >/dev/null 2>&1 || api "/
 else
   warn "the token did not verify"; ok=false
 fi
-for check in "workers/scripts:Workers Scripts" "d1/database:D1" "r2/buckets:R2" "storage/kv/namespaces:KV" "queues:Queues" "vectorize/v2/indexes:Vectorize"; do
+for check in "workers/scripts:Workers Scripts" "d1/database:D1" "r2/buckets:R2" "storage/kv/namespaces:KV" "queues:Queues" "vectorize/v2/indexes:Vectorize" "ai-gateway/gateways:AI Gateway"; do
   path="${check%%:*}"; label="${check#*:}"
   if api "/accounts/${CF_TEST_ACCOUNT_ID}/${path}" >/dev/null 2>&1; then say "✓ $label"; else warn "$label: no access"; ok=false; fi
 done
