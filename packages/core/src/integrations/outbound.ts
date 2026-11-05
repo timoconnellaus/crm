@@ -10,16 +10,29 @@ import { addDays, DEFAULT_APPROVAL_EXPIRY_DAYS, targetChangeSet } from "../appro
 import type { PendingApproval } from "../errors.ts";
 import { evaluateGate, type GateDecision, type GateFloor } from "../gate.ts";
 import { findIds, findProvisionalIds, newId } from "../ids.ts";
+import { holdsForReview, type OutboundCheck } from "../judge/questions/outbound-message.ts";
+import type { Judge } from "../judge/types.ts";
 import { type ActingUser, type Actor, type Origin, originSchema } from "../principals.ts";
 import { jsonList } from "../records/common.ts";
 import { loadApprovalPolicy } from "../settings.ts";
+import { checkOutbound, textFromAi } from "./outbound-check.ts";
 
 /** The parts of a gatekeeper `ActionDescription` the CRM stores and shows. */
 export interface OutboundDescription {
   title: string;
   /** Markdown. */
   description: string;
-  fields?: { label: string; value: string; syntax?: string; truncated?: unknown }[] | undefined;
+  fields?:
+    | {
+        label: string;
+        /** inline, text and json fields. */
+        value?: string;
+        /** list fields (`To`, `Cc`): one value per row. */
+        items?: string[];
+        syntax?: string;
+        truncated?: unknown;
+      }[]
+    | undefined;
   descriptionIsComplete?: boolean | undefined;
   implementsRevert?: boolean | undefined;
   awaitDecision?: boolean | undefined;
@@ -42,6 +55,13 @@ export interface OutboundSubmission {
   floor?: GateFloor | undefined;
   expiryDays?: number | undefined;
   now?: string | undefined;
+  /**
+   * The judge, for `outbound.message` (ADR 0238): a message an AI actor wrote is checked before it
+   * leaves. Absent or off: decided exactly as before.
+   */
+  judge?: Judge | undefined;
+  /** The person's own words the message was written for, passed by code (never a model). */
+  asked?: string | undefined;
 }
 
 export type OutboundDecision =
@@ -88,7 +108,8 @@ export function outboundInput(s: OutboundSubmission): OutboundInput {
     description: cap(d.description, 20_000),
     fields: (d.fields ?? []).slice(0, 50).map((f) => ({
       label: cap(f.label, 200),
-      value: cap(f.value, 50_000),
+      // A list field (`To`) keeps one value per line.
+      value: cap(f.value ?? (Array.isArray(f.items) ? f.items.join("\n") : ""), 50_000),
       ...(f.syntax ? { syntax: cap(f.syntax, 20) } : {}),
     })),
     actionKind: d.actionKind
@@ -205,6 +226,24 @@ export async function submitOutbound(db: CrmDb, s: OutboundSubmission): Promise<
   let decision = gate.decision;
   if (decision === "auto" && provisional.length) decision = "review";
 
+  // outbound.message (ADR 0238): a message an AI actor wrote is read before it leaves. A finding,
+  // or no answer, turns an automatic send into a review; Jev never lets one through.
+  let check: OutboundCheck | null = null;
+  if (decision !== "deny" && s.judge && textFromAi(s.actor, s.origin)) {
+    const checked = await checkOutbound({
+      judge: s.judge,
+      db: db.query,
+      outbound: input,
+      asked: s.asked,
+      now,
+    });
+    if (checked.status !== "off") {
+      const hold = decision === "auto" && holdsForReview(checked);
+      if (hold) decision = "review";
+      check = { ...checked.check, turnedToReview: hold };
+    }
+  }
+
   if (decision === "deny") {
     await db.batch([
       ...(kindRow ? [kindRow] : []),
@@ -256,6 +295,7 @@ export async function submitOutbound(db: CrmDb, s: OutboundSubmission): Promise<
       facet_key: s.facetKey,
       gk_action: s.action,
       action_kind: input.actionKind?.tag ?? null,
+      outbound_check: check ? JSON.stringify(check) : null,
     }),
     auditRow(db, s, input, now, "review", "review", { pendingActionId: actionId }),
   ];

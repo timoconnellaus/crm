@@ -15,6 +15,16 @@ import {
   questionHash,
 } from "../src/index.ts";
 
+/** Fewest cases a question's labelled set may have (docs/jev.md, "Thresholds and calibration"). */
+const MIN_CASES: Record<string, number> = {
+  "summary.statements/statement": 40,
+  "outbound.message/part": 30,
+  "outbound.message/recipients": 10,
+  "adjudicator.policy/breaks": 30,
+  "adjudicator.policy/allowed_by": 30,
+};
+const minCases = (key: string) => MIN_CASES[key] ?? (key.startsWith("widget.shape/") ? 24 : 25);
+
 describe("calibration records", () => {
   it.each(Object.keys(CALIBRATED))(
     "%s has a record for its current wording and threshold",
@@ -29,7 +39,7 @@ describe("calibration records", () => {
       expect(record?.threshold).toBe(entry.threshold);
       expect(record?.wrong).toBe(0);
       expect(record?.unanswered).toBe(0);
-      expect(record?.cases).toBeGreaterThanOrEqual(25);
+      expect(record?.cases).toBeGreaterThanOrEqual(minCases(key));
     },
   );
 

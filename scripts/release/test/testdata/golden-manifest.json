@@ -308,6 +308,14 @@
       "sha256": "4d55e06d974be73e9e821cdbaf1d97671af573e22e063f71218dc40fd599710f"
     },
     {
+      "name": "0255_summary_checks.sql",
+      "sha256": "37e85fb896430b3ad69fe0da925010c822f9ea319d1e08c8f88652c03448b708"
+    },
+    {
+      "name": "0256_outbound_check.sql",
+      "sha256": "3e531fc5a3db69c307850d4156d46a0918d23b5f6c00afd4b5159f8594c69ed2"
+    },
+    {
       "name": "0260_ai_usage.sql",
       "sha256": "6712bf72e8050cdfb8fe30cf46bee9796c23251fc04797589af1a79605ea5684"
     },

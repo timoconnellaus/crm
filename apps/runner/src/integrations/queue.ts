@@ -22,6 +22,7 @@ import {
   submitOutbound,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
+import { runnerJudge } from "../extensions/ai.ts";
 
 export type QueueCaller =
   | { kind: "actor"; caller: IntegrationCaller; user: ActingUser }
@@ -154,6 +155,11 @@ export class HostQueue extends RpcTarget {
       origin: caller.origin,
       reason: caller.reason,
       floor: parseFloor(host.env.APPROVAL_FLOOR),
+      // outbound.message (ADR 0238): a message an AI actor wrote is checked before it leaves.
+      judge: runnerJudge(host.env),
+      ...(this.#caller.kind === "actor" && this.#caller.caller.request
+        ? { asked: this.#caller.caller.request }
+        : {}),
     };
     const db = createCrmDb(host.env.DB);
     const decision = await submitOutbound(db, submission);

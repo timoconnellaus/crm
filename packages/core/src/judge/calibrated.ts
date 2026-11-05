@@ -8,6 +8,9 @@ import {
   INTENT_THRESHOLDS,
   type IntentQuestionId,
 } from "./questions/authoring-intent.ts";
+import { OUTBOUND_CALIBRATED } from "./questions/outbound-message.ts";
+import { STATEMENTS_CALIBRATED } from "./questions/summary-statements.ts";
+import { SHAPE_CALIBRATED } from "./questions/widget-shape.ts";
 import type { Question } from "./types.ts";
 
 export const CALIBRATED: Record<string, { question: Question; threshold: number }> = {
@@ -18,4 +21,7 @@ export const CALIBRATED: Record<string, { question: Question; threshold: number 
     ]),
   ),
   ...POLICY_CALIBRATED,
+  ...STATEMENTS_CALIBRATED,
+  ...OUTBOUND_CALIBRATED,
+  ...SHAPE_CALIBRATED,
 };

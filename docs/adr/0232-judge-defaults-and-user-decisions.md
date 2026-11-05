@@ -84,6 +84,16 @@ fresh install" could only be done by an admin clicking after every install.
 - Turning a fail-closed placement off loosens approval, so `judge.update` is human-admin-only,
   not on MCP, and audited.
 
+> Amended 2026-11-05 (stage 11 steps 6, 7 and 9): the first record-content placements
+> (`summary.statements`, ADR 0237; `outbound.message`, ADR 0238) are built, so the hosted rule is
+> now code: `resolvePlacements(…, { hosted })` keeps every switchable placement that sends record
+> content off (source `fixed`) where `AI_PLATFORM_GATEWAY_ID` is set, whatever the deploy and admin
+> layers say, until `HOSTED_RECORD_CONTENT_ALLOWED` in `judge/settings.ts` is flipped with the zero
+> retention record in `docs/saas-go-live.md`. The user's deployment value is unchanged:
+> `JUDGE_PLACEMENTS='{"summary.statements":true,"outbound.message":true,"sync.jobChange":true}'`
+> on both ros-app (summaries) and ros-runner (outbound messages); `sync.jobChange` is inert until
+> step 8 is built.
+
 > Amended 2026-11-05 (stage 11 steps 5 and 10, [ADR 0233](0233-jev-policy-reviewer.md),
 > [ADR 0234](0234-judge-settings-spend-and-key.md)): the Jev reviewer is built, and the reviewer
 > setting is read. `policyRules` now lets a section heading qualify the rules beneath it ("Never:

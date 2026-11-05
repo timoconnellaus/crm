@@ -502,8 +502,8 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
 
 - **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
   [ADR 0232](adr/0232-judge-defaults-and-user-decisions.md), [`docs/jev.md`](jev.md); stage 11,
-  the seam, `authoring.intent`, `adjudicator.policy` and the settings built, the other
-  placements to come): a seam beside the
+  the seam, `authoring.intent`, `adjudicator.policy`, `summary.statements`, `outbound.message`,
+  `widget.shape` and the settings built, `sync.jobChange` to come): a seam beside the
   registry, not a model role (`packages/core/src/judge/`, `ctx.judge` built by `judgeFor`).
   Code asks it typed questions (Choice, Noul, Score) at a named **placement** and gets
   probabilities; code holds the thresholds and decides. Its provider is **Jev**, pinned in code,
@@ -520,7 +520,16 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   the person's own words (`personsWords`, set by its Durable Object). Thresholds come from
   labelled sets (`pnpm eval:calibrate`, `evals/judge`), and tests and CI only replay committed
   recordings ([ADR 0231](adr/0231-judge-calibration-and-replay.md)). The automations eval grades
-  intent with the same questions. `adjudicator.policy` ([ADR 0233](adr/0233-jev-policy-reviewer.md))
+  intent with the same questions. `summary.generate` checks each statement of a new summary and
+  removes what the facts do not say, storing the verdicts with the cached row (`checks`); a
+  change-set summary the judge could not read is withheld ([ADR 0237](adr/0237-summary-statements-placement.md)).
+  `submitOutbound` (ros-runner's integration queue) reads a message an AI actor wrote: a finding
+  or no answer turns an automatic send into a review, with the findings on the pending action
+  (`outbound_check`) for human approvers ([ADR 0238](adr/0238-outbound-message-placement.md)).
+  `widget.describe` asks which shape the prompt wants before generation and sends a widget of a
+  type that cannot show it back once ([ADR 0239](adr/0239-widget-shape-placement.md)). On a hosted
+  deployment the placements that send record content stay off in code.
+  `adjudicator.policy` ([ADR 0233](adr/0233-jev-policy-reviewer.md))
   is the adjudicator's default reviewer while the judge has a key: two Choices over the written
   policy's rules (which rule stops the change, which allows it), never the agent's reason; approve
   only where nothing stops it and a rule allows it; if Jev cannot answer, a person decides. Its raw

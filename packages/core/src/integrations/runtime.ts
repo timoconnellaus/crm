@@ -29,6 +29,11 @@ export interface IntegrationCaller {
   origin: Origin;
   grantedPermissions?: readonly Permission[] | undefined;
   reason?: string | undefined;
+  /**
+   * The person's own words this call was made for (the assistant's Durable Object passes them;
+   * never a model). `outbound.message` checks a message's recipients against them (ADR 0238).
+   */
+  request?: string | undefined;
 }
 
 /** The result of a session call made through `integration.call`. */
