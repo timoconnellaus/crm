@@ -39,6 +39,7 @@
     "STAFF_EMAILS": "staff@relationshiposcrm.com",
     "AI_MARKUP_PERCENT": "20",
     "PLATFORM_AI_PROVIDERS": "workers-ai",
+    "PLATFORM_AI_GATEWAY": "ros-platform",
     "IDLE_PAUSE_DAYS": "60",
     "DELETE_GRACE_DAYS": "30",
     "TRIAL_DAYS": "14",

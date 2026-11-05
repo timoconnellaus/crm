@@ -4,6 +4,7 @@
 export * from "./archive.ts";
 export * from "./attestation.ts";
 export * from "./bundle.ts";
+export * from "./channel.ts";
 export * from "./cloudflare.ts";
 export * from "./deploy.ts";
 export * from "./gateway.ts";

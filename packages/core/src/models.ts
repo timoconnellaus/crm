@@ -3,4 +3,5 @@
 // through the AI SDK and AI Gateway); this module is the stable import path for the rest of core.
 export * from "./ai/client.ts";
 export * from "./ai/fake.ts";
+export * from "./ai/platform.ts";
 export * from "./ai/roles.ts";

@@ -139,3 +139,9 @@ review model, and warning about that would be noise.
 - `ProviderId` gains `custom`; zod enums follow `PROVIDERS`, so `ai.updateRole` and
   `ai.setProviderKey` accept it. `ai.setProviderKey` gains an optional `customProvider` slug, and
   its `mode` is now optional (defaulted as above).
+
+> **Amended 2026-11-05 (hosted AI, ADR 0213 amendment):** `PROVIDERS` gains `platform` (Platform
+> AI: Workers AI's models through the shared platform gateway with the tenant tag), reachable only
+> on a hosted deployment, where every `workers-ai` role resolves to it. `providerRoute` is unchanged
+> for self-hosted installs; on a hosted one the "gateway" for the customer's own keys is their own
+> connected gateway, if any, else none (direct calls).

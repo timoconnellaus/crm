@@ -20,7 +20,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 221,
+  "coreSchemaVersion": 260,
   "extensionContract": {
     "supported": [
       1
@@ -266,6 +266,10 @@
     {
       "name": "0221_support_grants.sql",
       "sha256": "8e1824e45475d2e1831cdaff758c04a90557fa4ba23afdbe15906910885c8fbc"
+    },
+    {
+      "name": "0260_ai_usage.sql",
+      "sha256": "6712bf72e8050cdfb8fe30cf46bee9796c23251fc04797589af1a79605ea5684"
     }
   ],
   "product": "relationship-os",
@@ -534,6 +538,16 @@
           "type": "plain_text"
         },
         {
+          "name": "AI_PLATFORM_ACCOUNT_ID",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "AI_PLATFORM_GATEWAY_ID",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "AI_PROVIDERS",
           "text": "",
           "type": "plain_text"
@@ -579,6 +593,11 @@
           "type": "plain_text"
         },
         {
+          "name": "ROS_CONTROL_URL",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "ROS_RELEASE_REPO",
           "text": "timoconnellaus/relationship-os",
           "type": "plain_text"
@@ -590,6 +609,11 @@
         },
         {
           "name": "ROS_SUPPORT_PUBLIC_KEY",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "ROS_TENANT_ID",
           "text": "",
           "type": "plain_text"
         },
@@ -737,7 +761,7 @@
           "source": "installer"
         }
       ],
-      "sha256": "071424883e3f32e434ce22eaaec4193265c91b532508708502648f8bf8a2812c"
+      "sha256": "54a1d7adb29b3dfbb7c79059d50d3d29dc63b12a843293bfde0abe003bc1cb59"
     },
     {
       "bindings": [
@@ -839,6 +863,16 @@
           "type": "plain_text"
         },
         {
+          "name": "AI_PLATFORM_ACCOUNT_ID",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
+          "name": "AI_PLATFORM_GATEWAY_ID",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "AI_PROVIDERS",
           "text": "",
           "type": "plain_text"
@@ -861,6 +895,11 @@
         {
           "name": "INTEGRATIONS_FAKE_PROVIDER",
           "text": "false",
+          "type": "plain_text"
+        },
+        {
+          "name": "ROS_TENANT_ID",
+          "text": "",
           "type": "plain_text"
         }
       ],
@@ -938,7 +977,7 @@
       ],
       "role": "runner",
       "secrets": [],
-      "sha256": "210dd5a86c759da00736696682dae63db7fb97a8322a055f8705241f42942dae"
+      "sha256": "d9f0be8b6bc30fe9228c2c45fe5aeae9d71ba9c726c9387f9338c89f44a574e7"
     },
     {
       "bindings": [],
