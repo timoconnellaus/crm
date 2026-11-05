@@ -210,6 +210,28 @@ importers:
         specifier: 4.157.0
         version: 4.157.0(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)
 
+  evals/adjudicator:
+    dependencies:
+      '@relationship-os/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@relationship-os/evals-mcp':
+        specifier: workspace:*
+        version: link:../mcp
+    devDependencies:
+      '@relationship-os/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
   evals/automations:
     dependencies:
       '@relationship-os/evals-mcp':

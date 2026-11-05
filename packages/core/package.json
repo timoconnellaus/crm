@@ -7,7 +7,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
-    "./ai-roles": "./src/ai/roles.ts"
+    "./ai-roles": "./src/ai/roles.ts",
+    "./adjudicator-judge": "./src/adjudicator/judge.ts",
+    "./adjudicator-agreement": "./src/adjudicator/agreement.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

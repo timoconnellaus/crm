@@ -12,7 +12,24 @@
 // zod. One repair round; a reply that still does not validate (empty, cut off at the token limit,
 // not JSON) is an `escalate` with confidence 0, never an approval.
 import { z } from "zod";
-import type { ModelMessage, ModelRunOptions, ModelRunResult } from "../ai/client.ts";
+
+// Structural copies of ai/client.ts's message and run types (`ModelRunner.run` satisfies them),
+// so this module has no Worker-only imports.
+interface ModelMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+interface ModelRunOptions {
+  maxTokens?: number;
+  json?: boolean;
+}
+interface ModelRunResult {
+  text: string;
+  model: string;
+  provider?: string | undefined;
+  finishReason?: string | undefined;
+}
+export type ReviewMessage = ModelMessage;
 
 export const VERDICTS = ["approve", "deny", "escalate"] as const;
 
