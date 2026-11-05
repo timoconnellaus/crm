@@ -7,6 +7,7 @@
 // Provider keys come only from Workers secrets in the environment (AI_KEY_<PROVIDER>) or from
 // AI Gateway BYOK (no key sent at all). Nothing here reads or writes a key in D1 (ADR 0151).
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import type { JSONObject } from "@ai-sdk/provider";
 import { embedMany, generateText, type LanguageModel } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import {
@@ -88,6 +89,11 @@ export interface AiEnv {
   AI_MODEL_ROLES?: string;
   /** Deploy config: JSON `{ "<provider>": { "baseURL": "…" } }` for jev / openai-compatible. */
   AI_PROVIDERS?: string;
+  /**
+   * Deploy config: comma-separated providers whose key is stored in AI Gateway as BYOK (e.g.
+   * `deepseek`), set by `create-crm --provider-key` (ADR 0192). Joins the admin layer's `byok`.
+   */
+  AI_GATEWAY_BYOK?: string;
   /** Size of the Vectorize index; the embed role must match it. */
   VECTORIZE_DIMENSIONS?: string;
   /** "true": deterministic stand-ins for every role when there is no AI binding (dev / e2e). */
@@ -96,6 +102,7 @@ export interface AiEnv {
   AI_KEY_OPENAI?: string;
   AI_KEY_GOOGLE?: string;
   AI_KEY_OPENROUTER?: string;
+  AI_KEY_DEEPSEEK?: string;
   AI_KEY_ANTHROPIC?: string;
   AI_KEY_JEV?: string;
   AI_KEY_CUSTOM?: string;
@@ -147,8 +154,37 @@ const GATEWAY_PATHS: Partial<Record<ProviderId, string>> = {
   openai: "openai",
   google: "google-ai-studio/v1beta/openai",
   openrouter: "openrouter",
+  // …/{gateway}/deepseek/chat/completions
+  // (https://developers.cloudflare.com/ai-gateway/usage/providers/deepseek/).
+  deepseek: "deepseek",
   anthropic: "anthropic/v1",
 };
+
+/** Providers whose key is held by AI Gateway (BYOK): the admin layer's, plus deploy config's. */
+function byokProviders(env: AiEnv, settings: AiAdminSettings): ProviderId[] {
+  const fromEnv = (env.AI_GATEWAY_BYOK ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter((p): p is ProviderId => p in PROVIDER_INFO);
+  return [...new Set([...settings.byok, ...fromEnv])];
+}
+
+/**
+ * Request body fields for a role's params that the AI SDK has no option for, per provider:
+ * DeepSeek's thinking switch. The OpenAI-compatible provider copies unknown provider options
+ * into the body.
+ */
+function providerBody(
+  provider: ProviderId,
+  params: { thinking?: boolean | undefined },
+): Record<string, JSONObject> | undefined {
+  if (provider === "deepseek" && params.thinking !== undefined) {
+    return {
+      [provider]: { thinking: { type: params.thinking ? "enabled" : "disabled" } },
+    };
+  }
+  return undefined;
+}
 
 export function secretFor(provider: ProviderId): string | undefined {
   return PROVIDER_INFO[provider].secretName;
@@ -173,7 +209,7 @@ export function providerStatus(
   if (!base && !viaGateway) {
     return { ready: false, reason: `No base URL: set AI_PROVIDERS.${provider}.baseURL` };
   }
-  if (settings.byok.includes(provider)) {
+  if (byokProviders(env, settings).includes(provider)) {
     if (!viaGateway)
       return { ready: false, reason: "BYOK needs AI_GATEWAY_ID and CLOUDFLARE_ACCOUNT_ID" };
     return { ready: true, keySource: "byok" };
@@ -274,8 +310,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     role: ModelRole,
     ref: ModelRef & { capabilities?: ModelCapabilities },
     messages: readonly ModelMessage[],
-    maxTokens: number,
-    temperature: number,
+    params: { maxTokens: number; temperature: number; thinking?: boolean | undefined },
   ): Promise<ModelRunResult> => {
     if (useFakes(options) && ref.provider === "workers-ai") {
       const text = await (options.fakes as FakeModels).run(role, messages);
@@ -284,6 +319,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     const s = await settings();
     // AI SDK 7 takes system text as `instructions`, the rest as messages.
     const system = messages.filter((m) => m.role === "system").map((m) => m.content);
+    const providerOptions = providerBody(ref.provider, params);
     const result = await generateText({
       model: languageModel(options, s, role, ref),
       ...(system.length ? { instructions: system.join("\n\n").slice(0, MAX_PROMPT_CHARS) } : {}),
@@ -293,9 +329,10 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
           role: m.role as "user" | "assistant",
           content: m.content.slice(0, MAX_PROMPT_CHARS),
         })),
-      maxOutputTokens: maxTokens,
-      temperature,
+      maxOutputTokens: params.maxTokens,
+      temperature: params.temperature,
       maxRetries: 1,
+      ...(providerOptions ? { providerOptions } : {}),
       ...(ref.provider !== "workers-ai" ? { headers: gatewayHeaders(options.env, role) } : {}),
     });
     return { text: result.text.trim(), model: ref.model, provider: ref.provider };
@@ -320,19 +357,16 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     roles: resolved,
     async run(role, messages, runOptions = {}) {
       const config = (await resolved())[role];
-      const maxTokens = runOptions.maxTokens ?? config.params.maxTokens;
+      const params = {
+        ...config.params,
+        maxTokens: runOptions.maxTokens ?? config.params.maxTokens,
+      };
       try {
-        return await generate(role, config, messages, maxTokens, config.params.temperature);
+        return await generate(role, config, messages, params);
       } catch (error) {
         if (!config.fallback || error instanceof AiNotConfiguredError) throw error;
         console.warn(`model role ${role}: ${config.model} failed, trying the fallback`, error);
-        const result = await generate(
-          role,
-          config.fallback,
-          messages,
-          maxTokens,
-          config.params.temperature,
-        );
+        const result = await generate(role, config.fallback, messages, params);
         return { ...result, fellBack: true };
       }
     },
@@ -352,13 +386,12 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
           provider: target.provider,
         };
       }
-      return generate(
-        role,
-        target,
-        [{ role: "user", content: "Reply with the single word OK." }],
-        16,
-        0,
-      );
+      // Thinking off: a reasoning model would spend the 16 tokens before answering.
+      return generate(role, target, [{ role: "user", content: "Reply with the single word OK." }], {
+        maxTokens: 16,
+        temperature: 0,
+        thinking: false,
+      });
     },
   };
 }

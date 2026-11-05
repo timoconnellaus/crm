@@ -124,3 +124,12 @@ All pages read 2026-11-05.
   `AI_GATEWAY_ID` and `AI_GATEWAY_TOKEN` by hand there.
 - The manifest gains an optional `aiGateway` block. `MANIFEST_VERSION` stays 1: older CLIs ignore
   the block, and the new code treats a release without it as before.
+
+> Amended 2026-11-05 ([ADR 0192](0192-deepseek-provider-and-model-role-presets.md)): **the
+> Together custom provider no longer ships.** It existed only for the user's plan of DeepSeek on
+> Together, which DeepSeek on its own platform replaces. DeepSeek is a **built-in** AI Gateway
+> provider (slug `deepseek`), so it needs no custom provider. `aiGateway.customProviders` in
+> `apps/app/deploy-inputs.json` is now empty. The mechanism above is unchanged and is tested with
+> a fixture provider. An account that already has `custom-together` keeps it. `--provider-key`
+> also records built-in providers in a new `AI_GATEWAY_BYOK` var, so the model registry knows
+> the gateway holds their key, and `--model-roles` sets a deployment's `AI_MODEL_ROLES`.

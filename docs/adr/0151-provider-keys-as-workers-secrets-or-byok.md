@@ -57,3 +57,8 @@ written to D1, where `query.sql`, backups, Time Travel and the audit log would a
 > `create-crm --provider-key <provider>=<key>` stores a key there with
 > `CloudflareClient.setGatewayProviderKey` (from `@crm/release`, which Settings → AI can use too).
 > Workers secrets remain possible, but they are no longer the recommended path.
+
+> Amended 2026-11-05 ([ADR 0192](0192-deepseek-provider-and-model-role-presets.md)): BYOK can
+> also be declared in deploy config. `AI_GATEWAY_BYOK` (comma-separated providers, set by
+> `create-crm --provider-key`) joins `ai_settings.byok`, so a key the installer stored in the
+> gateway is used without a Settings → AI step. The var names providers only, never keys.

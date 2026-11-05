@@ -5,11 +5,16 @@ import { describe, expect, it } from "vitest";
 import {
   CloudflareClient,
   type DeploymentState,
+  GATEWAY_BYOK_VAR,
   gatewayIdFor,
   gatewayProviderSlug,
+  MODEL_ROLES_VAR,
   openBundle,
   provisionAiGateway,
   type ReleaseManifest,
+  varWorkers,
+  withByokProvider,
+  withDeploymentVar,
 } from "../src/index.ts";
 import { buildFixtureRelease, FakeCloudflare } from "../src/testing/index.ts";
 import { nodeSqliteEngine } from "../src/testing/node-sqlite.ts";
@@ -52,9 +57,40 @@ describe("AI Gateway names", () => {
 
   it("maps --provider-key names to gateway provider slugs", async () => {
     const { manifest } = await setup();
-    expect(gatewayProviderSlug(manifest, "together")).toBe("custom-together");
-    expect(gatewayProviderSlug(manifest, "custom-together")).toBe("custom-together");
+    expect(gatewayProviderSlug(manifest, "example-llm")).toBe("custom-example-llm");
+    expect(gatewayProviderSlug(manifest, "custom-example-llm")).toBe("custom-example-llm");
     expect(gatewayProviderSlug(manifest, "openai")).toBe("openai");
+    // DeepSeek is built in to AI Gateway: no custom provider (ADR 0192).
+    expect(gatewayProviderSlug(manifest, "deepseek")).toBe("deepseek");
+  });
+});
+
+describe("per-deployment vars (ADR 0192)", () => {
+  it("sets AI_MODEL_ROLES on the Workers that declare it, and clears it with an empty value", async () => {
+    const { manifest } = await setup();
+    expect(varWorkers(manifest, MODEL_ROLES_VAR)).toEqual(["crm-app", "crm-runner"]);
+    const start = { "crm-app": { IDENTITY_PROVIDER: "cloudflare-access" } };
+    const set = withDeploymentVar(start, manifest, MODEL_ROLES_VAR, '{"summarise":{}}');
+    expect(set).toEqual({
+      "crm-app": { IDENTITY_PROVIDER: "cloudflare-access", AI_MODEL_ROLES: '{"summarise":{}}' },
+      "crm-runner": { AI_MODEL_ROLES: '{"summarise":{}}' },
+    });
+    expect(withDeploymentVar(set, manifest, MODEL_ROLES_VAR, "")).toEqual({
+      "crm-app": { IDENTITY_PROVIDER: "cloudflare-access" },
+      "crm-runner": {},
+    });
+    expect(start).toEqual({ "crm-app": { IDENTITY_PROVIDER: "cloudflare-access" } });
+  });
+
+  it("adds BYOK providers to AI_GATEWAY_BYOK once each, on the gateway's Workers", async () => {
+    const { manifest } = await setup();
+    let vars = withByokProvider({}, manifest, "deepseek");
+    vars = withByokProvider(vars, manifest, "openai");
+    vars = withByokProvider(vars, manifest, "deepseek");
+    expect(vars).toEqual({
+      "crm-app": { [GATEWAY_BYOK_VAR]: "deepseek,openai" },
+      "crm-runner": { [GATEWAY_BYOK_VAR]: "deepseek,openai" },
+    });
   });
 });
 
@@ -66,7 +102,7 @@ describe("provisionAiGateway", () => {
     expect(result.gatewayId).toBe("crm");
     expect(cf.gateways.get("crm")).toMatchObject({ collect_logs: true, authentication: true });
     expect([...cf.customProviders.values()]).toEqual([
-      expect.objectContaining({ slug: "together", base_url: "https://api.together.xyz" }),
+      expect.objectContaining({ slug: "example-llm", base_url: "https://llm.example.com" }),
     ]);
     expect(result.vars).toEqual({
       "crm-app": { AI_GATEWAY_ID: "crm" },
@@ -116,14 +152,14 @@ describe("provisionAiGateway", () => {
     const { cf, api, manifest, state } = await setup();
     cf.customProviders.set("cp-1", {
       id: "cp-1",
-      slug: "together",
-      name: "Together",
+      slug: "example-llm",
+      name: "Example LLM",
       base_url: "https://old.example",
       enable: false,
     });
     await provisionAiGateway({ api, manifest, state });
     expect(cf.customProviders.get("cp-1")).toMatchObject({
-      base_url: "https://api.together.xyz",
+      base_url: "https://llm.example.com",
       enable: true,
     });
     expect(cf.customProviders.size).toBe(1);
@@ -188,16 +224,16 @@ describe("setGatewayProviderKey", () => {
   it("stores the key as BYOK, attaching a Secrets Store, and replaces it on a re-run", async () => {
     const { cf, api, manifest, state } = await setup();
     await provisionAiGateway({ api, manifest, state });
-    await api.setGatewayProviderKey(ACCOUNT, "crm", "custom-together", "key-one-0123456789");
+    await api.setGatewayProviderKey(ACCOUNT, "crm", "custom-example-llm", "key-one-0123456789");
     expect(cf.secretsStores.size).toBe(1);
     expect(cf.gateways.get("crm")).toMatchObject({ authentication: true, collect_logs: true });
-    await api.setGatewayProviderKey(ACCOUNT, "crm", "custom-together", "key-two-0123456789");
-    await api.setGatewayProviderKey(ACCOUNT, "crm", "openai", "sk-openai-0123456789");
+    await api.setGatewayProviderKey(ACCOUNT, "crm", "custom-example-llm", "key-two-0123456789");
+    await api.setGatewayProviderKey(ACCOUNT, "crm", "deepseek", "sk-deepseek-0123456789");
     expect(cf.secretsStores.size).toBe(1);
     expect(cf.providerConfigs.get("crm")?.map((c) => [c.provider_slug, c.alias, c.secret])).toEqual(
       [
-        ["custom-together", "default", "key-two-0123456789"],
-        ["openai", "default", "sk-openai-0123456789"],
+        ["custom-example-llm", "default", "key-two-0123456789"],
+        ["deepseek", "default", "sk-deepseek-0123456789"],
       ],
     );
     // Listing shows previews only.
@@ -216,7 +252,7 @@ describe("setGatewayProviderKey", () => {
           )
         : undefined;
     const error = await api
-      .setGatewayProviderKey(ACCOUNT, "crm", "custom-together", "very-secret-key-42")
+      .setGatewayProviderKey(ACCOUNT, "crm", "custom-example-llm", "very-secret-key-42")
       .catch((e: Error) => e);
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toContain("invalid provider");

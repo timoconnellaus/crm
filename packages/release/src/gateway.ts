@@ -60,9 +60,55 @@ export function gatewayWorkers(manifest: ReleaseManifest): string[] {
   return app ? [app] : [];
 }
 
+/** The deploy-config layer of the model registry (ADR 0150), set per deployment (ADR 0192). */
+export const MODEL_ROLES_VAR = "AI_MODEL_ROLES";
+/** Registry providers whose key AI Gateway holds as BYOK, comma-separated (ADR 0192). */
+export const GATEWAY_BYOK_VAR = "AI_GATEWAY_BYOK";
+
+/** Workers that declare a var input, by manifest name; else the gateway's Workers. */
+export function varWorkers(manifest: ReleaseManifest, name: string): string[] {
+  const declared = manifest.inputs.find((i) => i.kind === "var" && i.name === name)?.workers;
+  return declared?.length ? declared : gatewayWorkers(manifest);
+}
+
+/**
+ * The deployment's vars with `name` set to `value` on every Worker that declares it. An empty
+ * value removes the override, so the release's default applies again. The vars are kept in the
+ * deployment state, so upgrades and the self-updater keep them.
+ */
+export function withDeploymentVar(
+  vars: DeploymentState["vars"],
+  manifest: ReleaseManifest,
+  name: string,
+  value: string,
+): DeploymentState["vars"] {
+  const out = { ...vars };
+  for (const worker of varWorkers(manifest, name)) {
+    const { [name]: _old, ...rest } = out[worker] ?? {};
+    out[worker] = value ? { ...rest, [name]: value } : rest;
+  }
+  return out;
+}
+
+/** The deployment's vars with `provider` added to AI_GATEWAY_BYOK on the gateway's Workers. */
+export function withByokProvider(
+  vars: DeploymentState["vars"],
+  manifest: ReleaseManifest,
+  provider: string,
+): DeploymentState["vars"] {
+  const out = { ...vars };
+  for (const worker of varWorkers(manifest, GATEWAY_BYOK_VAR)) {
+    const current = (out[worker]?.[GATEWAY_BYOK_VAR] ?? "").split(",").map((p) => p.trim());
+    const list = [...new Set([...current, provider])].filter(Boolean).sort();
+    out[worker] = { ...out[worker], [GATEWAY_BYOK_VAR]: list.join(",") };
+  }
+  return out;
+}
+
 /**
  * A provider name as `--provider-key` takes it → the gateway's provider slug: a custom provider
- * of the release (`together`) becomes `custom-together`; a built-in one (`openai`) is kept.
+ * of the release (`example-llm`) becomes `custom-example-llm`; a built-in one (`deepseek`,
+ * `openai`) is kept.
  */
 export function gatewayProviderSlug(manifest: ReleaseManifest, name: string): string {
   const slug = name.trim().toLowerCase();

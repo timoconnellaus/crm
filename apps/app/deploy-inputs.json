@@ -1,5 +1,5 @@
 {
-  "$comment": "Deploy inputs wrangler.jsonc cannot hold, read by scripts/release/manifest-lib.ts (the release manifest, ADR 0160) and scripts/deploy.mjs. `features.ai`: Workers AI and Vectorize, remote-only so left out of wrangler.jsonc (ADR 0156); turned off with CRM_AI=off or `create-crm --ai off`. `vectorize`: how each index is created. `aiGateway`: the AI Gateway installs create with AI on (ADR 0180): its settings (authentication is always on) and the custom providers to create, called as custom-<slug>. `secrets`: optional secrets beyond package.json's. Values are never committed.",
+  "$comment": "Deploy inputs wrangler.jsonc cannot hold, read by scripts/release/manifest-lib.ts (the release manifest, ADR 0160) and scripts/deploy.mjs. `features.ai`: Workers AI and Vectorize, remote-only so left out of wrangler.jsonc (ADR 0156); turned off with CRM_AI=off or `create-crm --ai off`. `vectorize`: how each index is created. `aiGateway`: the AI Gateway installs create with AI on (ADR 0180): its settings (authentication is always on) and the custom providers to create, called as custom-<slug> (none ship: built-in gateway providers such as deepseek need none, ADR 0192). `secrets`: optional secrets beyond package.json's. Values are never committed.",
   "features": {
     "ai": {
       "ai": {
@@ -34,15 +34,7 @@
       "rate_limiting_limit": 0,
       "rate_limiting_technique": "fixed"
     },
-    "customProviders": [
-      {
-        "slug": "together",
-        "name": "Together AI",
-        "baseUrl": "https://api.together.xyz",
-        "description": "Together AI (OpenAI-compatible), e.g. custom-together/deepseek-ai/DeepSeek-V4.1-Flash-1017",
-        "link": "https://www.together.ai"
-      }
-    ]
+    "customProviders": []
   },
   "secrets": [
     {

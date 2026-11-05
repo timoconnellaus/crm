@@ -3,6 +3,7 @@
 // extension, a failing migration rolled back, rollback and status. Output never contains a secret.
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { modelRolesVar } from "@crm/core/ai-roles";
 import { buildFixtureRelease, FakeCloudflare, FakeGitHub } from "@crm/release/testing";
 import { nodeSqliteEngine } from "@crm/release/testing/node";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -250,8 +251,8 @@ describe("create-crm install: AI Gateway", () => {
     });
     expect([...world.cf.customProviders.values()]).toEqual([
       expect.objectContaining({
-        slug: "together",
-        base_url: "https://api.together.xyz",
+        slug: "example-llm",
+        base_url: "https://llm.example.com",
         enable: true,
       }),
     ]);
@@ -285,7 +286,7 @@ describe("create-crm install: AI Gateway", () => {
     const { code, output } = await cli("--yes");
     expect(code, output).toBe(0);
     expect(output).toContain("AI Gateway crm: exists");
-    expect(output).toContain("custom provider custom-together: exists");
+    expect(output).toContain("custom provider custom-example-llm: exists");
     expect(output).toContain("AI_GATEWAY_TOKEN: set");
     const writes = world.cf.calls
       .slice(before)
@@ -319,29 +320,93 @@ describe("create-crm install: AI Gateway", () => {
   });
 
   it("--provider-key stores the key as BYOK in the gateway and never prints it", async () => {
-    const KEY = "together-key-0123456789abcdef";
+    const KEY = "example-key-0123456789abcdef";
     await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
-    const { code, output } = await cli("--yes", "--provider-key", `together=${KEY}`);
+    const { code, output } = await cli("--yes", "--provider-key", `example-llm=${KEY}`);
     expect(code, output).toBe(0);
     expect(world.cf.providerConfigs.get("crm")).toEqual([
-      expect.objectContaining({ provider_slug: "custom-together", alias: "default", secret: KEY }),
+      expect.objectContaining({
+        provider_slug: "custom-example-llm",
+        alias: "default",
+        secret: KEY,
+      }),
     ]);
     // The gateway was pointed at a Secrets Store to hold it.
     expect(world.cf.gateways.get("crm")?.store_id).toBeTruthy();
-    expect(output).toContain("provider key custom-together: stored in AI Gateway crm (BYOK)");
+    expect(output).toContain("provider key custom-example-llm: stored in AI Gateway crm (BYOK)");
     expect(output).not.toContain(KEY);
     // Not a Workers secret.
     for (const script of world.cf.scripts.values()) {
       expect([...script.secrets.values()]).not.toContain(KEY);
     }
+    // A custom provider is not a model registry provider: AI_GATEWAY_BYOK is left alone.
+    expect(world.cf.liveBinding("crm-app", "AI_GATEWAY_BYOK")?.text).toBe("");
 
     // Re-run with a new key: replaced, not duplicated.
-    const again = await cli("--yes", "--provider-key", "together=second-key-abcdef0123456");
+    const again = await cli("--yes", "--provider-key", "example-llm=second-key-abcdef0123456");
     expect(again.code, again.output).toBe(0);
     expect(world.cf.providerConfigs.get("crm")?.map((c) => c.secret)).toEqual([
       "second-key-abcdef0123456",
     ]);
     expect(again.output).not.toContain("second-key-abcdef0123456");
+  });
+
+  it("--model-roles deepseek-flash with a deepseek key: per deployment, kept by upgrades (ADR 0192)", async () => {
+    const KEY = "sk-deepseek-0123456789abcdef";
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    const { code, output } = await cli(
+      "--yes",
+      "--model-roles",
+      "deepseek-flash",
+      "--provider-key",
+      `deepseek=${KEY}`,
+    );
+    expect(code, output).toBe(0);
+    expect(output).not.toContain(KEY);
+    expect(output).toContain(
+      "Model roles (AI_MODEL_ROLES on crm-app and crm-runner): deepseek-flash",
+    );
+    // DeepSeek is built in to AI Gateway: its key is stored under the `deepseek` slug.
+    expect(world.cf.providerConfigs.get("crm")).toEqual([
+      expect.objectContaining({ provider_slug: "deepseek", secret: KEY }),
+    ]);
+    const preset = modelRolesVar("deepseek-flash");
+    for (const worker of ["crm-app", "crm-runner"]) {
+      expect(world.cf.liveBinding(worker, "AI_MODEL_ROLES")?.text).toBe(preset);
+      expect(world.cf.liveBinding(worker, "AI_GATEWAY_BYOK")?.text).toBe("deepseek");
+    }
+    const state = JSON.parse(String((await sql("SELECT value FROM core_install"))[0]?.value));
+    expect(state.vars["crm-runner"]).toMatchObject({ AI_MODEL_ROLES: preset });
+
+    // A plain re-run and an upgrade keep the choice.
+    expect((await cli("--yes")).code).toBe(0);
+    await world.github.publish(await buildFixtureRelease({ version: "1.1.0" }));
+    const upgraded = await cli("upgrade", "--yes");
+    expect(upgraded.code, upgraded.output).toBe(0);
+    for (const worker of ["crm-app", "crm-runner"]) {
+      expect(world.cf.liveBinding(worker, "AI_MODEL_ROLES")?.text).toBe(preset);
+      expect(world.cf.liveBinding(worker, "AI_GATEWAY_BYOK")?.text).toBe("deepseek");
+    }
+
+    // `default` goes back to the shipped (Workers AI) roles.
+    const reset = await cli("--yes", "--model-roles", "default", "--version", "1.1.0");
+    expect(reset.code, reset.output).toBe(0);
+    expect(world.cf.liveBinding("crm-app", "AI_MODEL_ROLES")?.text).toBe("");
+  });
+
+  it("--model-roles refuses an unknown preset or a model the role cannot use", async () => {
+    await world.github.publish(await buildFixtureRelease({ version: "1.0.0" }));
+    const unknown = await cli("--yes", "--model-roles", "deepseek-pro");
+    expect(unknown.code).not.toBe(0);
+    expect(unknown.output).toContain('no preset or file "deepseek-pro"');
+    const bad = await cli(
+      "--yes",
+      "--model-roles",
+      '{"embed":{"provider":"deepseek","model":"deepseek-flash"}}',
+    );
+    expect(bad.code).not.toBe(0);
+    expect(bad.output).toContain("not an embedding model");
+    expect(world.cf.scripts.size).toBe(0);
   });
 
   it("without AI Gateway permissions, installs anyway and says so", async () => {

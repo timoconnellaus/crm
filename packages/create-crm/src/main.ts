@@ -10,6 +10,8 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+// Pure data and functions (no Worker imports), bundled into the CLI by esbuild.
+import { modelRolesVar, PROVIDER_INFO, ROLE_PRESETS, RoleLayerError } from "@crm/core/ai-roles";
 import {
   apiKillSwitchStore,
   appliedMigrationsViaApi,
@@ -35,6 +37,7 @@ import {
   killSwitchControl,
   listReleases,
   locateDeployment,
+  MODEL_ROLES_VAR,
   mergeSecrets,
   neededResources,
   newRunId,
@@ -52,7 +55,10 @@ import {
   runUpdate,
   saveRunViaApi,
   toHex,
+  varWorkers,
   verifyBundleBytes,
+  withByokProvider,
+  withDeploymentVar,
   workersDevHostname,
   writeDeploymentState,
 } from "@crm/release";
@@ -89,8 +95,12 @@ Options
                          install, e.g. crm, created with logging and authentication on and its
                          token stored as AI_GATEWAY_TOKEN). off: call Workers AI directly
   --provider-key P=KEY   store a provider key in the gateway as BYOK (repeatable), e.g.
-                         together=… (the custom-together provider) or openai=…. Never logged.
+                         deepseek=… or openai=… (a custom provider by its slug). Never logged.
                          Keys can also be added later in Settings → AI
+  --model-roles <m>      this deployment's model roles (the AI_MODEL_ROLES layer): a preset
+                         (${Object.keys(ROLE_PRESETS).join(", ")}), a JSON file, inline JSON, or
+                         default (the shipped Workers AI roles). Kept by upgrades; Settings → AI
+                         overrides still win
   --ai-admin-token <t>   Settings → AI's token (or CRM_AI_ADMIN_TOKEN), stored on crm-app as
                          CLOUDFLARE_API_TOKEN; permissions in docs/deploying.md "In-app AI"
   --secret NAME=VALUE    a secret to set (repeatable); WORKER:NAME=VALUE for a gatekeeper's
@@ -306,10 +316,37 @@ function parseProviderKeys(flags: Flags, redactor: Redactor): { provider: string
   for (const entry of (flags["provider-key"] as string[] | undefined) ?? []) {
     const match = /^([a-z0-9][a-z0-9-]*)=(.+)$/is.exec(entry);
     if (match?.[2]) redactor.add(match[2]);
-    if (!match) throw new CliError("--provider-key expects PROVIDER=KEY, e.g. together=…");
+    if (!match) throw new CliError("--provider-key expects PROVIDER=KEY, e.g. deepseek=…");
     out.push({ provider: (match[1] as string).toLowerCase(), key: match[2] as string });
   }
   return out;
+}
+
+/**
+ * `--model-roles`: the AI_MODEL_ROLES value ("" for the shipped defaults), or undefined when not
+ * given. A preset name, `default`, inline JSON, or a path to a JSON file. Checked against the
+ * model registry here, so a typo fails the install instead of being ignored at run time.
+ */
+function modelRolesChoice(flags: Flags): string | undefined {
+  const raw = str(flags, "model-roles")?.trim();
+  if (raw === undefined) return undefined;
+  const isFile = raw !== "default" && !ROLE_PRESETS[raw] && !/^[[{]/.test(raw);
+  if (isFile && !existsSync(raw)) {
+    throw new CliError(
+      `--model-roles: no preset or file "${raw}" (presets: ${Object.keys(ROLE_PRESETS).join(", ")}, or default)`,
+    );
+  }
+  try {
+    return modelRolesVar(isFile ? readFileSync(raw, "utf8") : raw);
+  } catch (error) {
+    if (error instanceof RoleLayerError) throw new CliError(`--model-roles: ${error.message}`);
+    throw error;
+  }
+}
+
+/** The registry provider a gateway provider slug stores a key for (`deepseek` → deepseek). */
+function registryProvider(slug: string): string | undefined {
+  return Object.values(PROVIDER_INFO).find((p) => p.gatewaySlug === slug && p.needsKey)?.id;
 }
 
 /** `--ai` / CRM_AI: true, false, or undefined when neither says. */
@@ -437,6 +474,8 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
   if (providerKeys.length && (!ai || aiGateway === false)) {
     throw new CliError("--provider-key stores keys in AI Gateway: it needs AI and a gateway on");
   }
+  const modelRoles = modelRolesChoice(flags);
+  if (modelRoles && !ai) throw new CliError("--model-roles needs in-app AI on (--ai on)");
 
   // Secrets: values only for what this run sets; stored ones are kept.
   const secrets = parseSecrets(flags, deps.redactor);
@@ -492,9 +531,13 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
     }
   }
 
-  const vars: DeploymentState["vars"] = { ...(previous?.vars ?? {}) };
+  let vars: DeploymentState["vars"] = { ...(previous?.vars ?? {}) };
   if (identity !== "better-auth")
     vars[app.name] = { ...vars[app.name], IDENTITY_PROVIDER: identity };
+  if (modelRoles !== undefined) {
+    // Per deployment, in the deployment state: upgrades keep it (ADR 0192).
+    vars = withDeploymentVar(vars, manifest, MODEL_ROLES_VAR, modelRoles);
+  }
   if (aiGateway === false) {
     // Turned off: clear a gateway an earlier install set.
     for (const [worker, values] of Object.entries(vars)) {
@@ -560,7 +603,16 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
       const slug = gatewayProviderSlug(manifest, provider);
       await s.api.setGatewayProviderKey(s.accountId, gateway.gatewayId, slug, key);
       io.out(`  provider key ${slug}: stored in AI Gateway ${gateway.gatewayId} (BYOK)`);
+      // Tell the model registry the gateway holds this provider's key (AI_GATEWAY_BYOK).
+      const registry = registryProvider(slug);
+      if (registry) state.vars = withByokProvider(state.vars, manifest, registry);
     }
+  }
+  if (modelRoles !== undefined) {
+    const name = str(flags, "model-roles")?.trim() ?? "";
+    const what = !modelRoles ? "the shipped defaults" : ROLE_PRESETS[name] ? name : "custom JSON";
+    const on = varWorkers(manifest, MODEL_ROLES_VAR).join(" and ");
+    io.out(`Model roles (${MODEL_ROLES_VAR} on ${on}): ${what}`);
   }
   const databaseId = databaseIdOf(manifest, resources);
   io.out("Core migrations:");

@@ -245,6 +245,13 @@ const INPUT_VARS: Record<string, { description: string; options?: string[] }> = 
   AI_GATEWAY_ID: {
     description: "AI Gateway every model call goes through (usage and spend per role, BYOK)",
   },
+  AI_MODEL_ROLES: {
+    description:
+      "Deploy-config layer of the model registry: a preset (create-crm --model-roles) or JSON (ADR 0150, ADR 0192)",
+  },
+  AI_GATEWAY_BYOK: {
+    description: "Providers whose key AI Gateway holds as BYOK, comma-separated (ADR 0192)",
+  },
 };
 
 const kebab = (s: string) => s.toLowerCase().replace(/_/g, "-");

@@ -1,7 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "stream",
-  "globalPassThroughEnv": ["CRM_AI", "CRM_VECTORIZE_INDEX", "RELEVANCE_REAL"],
+  "globalPassThroughEnv": [
+    "CRM_AI",
+    "CRM_VECTORIZE_INDEX",
+    "CRM_AI_MODEL_ROLES",
+    "CRM_AI_GATEWAY_BYOK",
+    "RELEVANCE_REAL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

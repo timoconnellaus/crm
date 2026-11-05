@@ -386,6 +386,9 @@ importers:
       '@crm/config':
         specifier: workspace:*
         version: link:../config
+      '@crm/core':
+        specifier: workspace:*
+        version: link:../core
       '@crm/release':
         specifier: workspace:*
         version: link:../release

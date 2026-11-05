@@ -25,3 +25,8 @@ Status: accepted, 2026-11-04 (stage 0 architecture interview).
 > `AI_GATEWAY_TOKEN`. Default models stay on Workers AI, reached through the gateway. Provider keys
 > are stored in the gateway as BYOK rather than as Workers secrets. Providers the gateway does not
 > have built in are custom providers (the first is `custom-together`).
+
+> Amended 2026-11-05 ([ADR 0192](0192-deepseek-provider-and-model-role-presets.md)): DeepSeek
+> is an optional provider, built in to AI Gateway, so no custom provider ships (`custom-together`
+> is gone). A deployment can choose a **model role preset**, such as `deepseek-flash` for every
+> role but `embed`. The shipped defaults are still Workers AI for every role.

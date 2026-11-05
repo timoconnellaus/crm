@@ -22,6 +22,8 @@ const capabilitiesSchema = z.object({
   chat: z.boolean(),
   toolUse: z.boolean(),
   jsonSchema: z.boolean(),
+  /** JSON mode without a schema (ADR 0192). */
+  jsonObject: z.boolean().optional(),
   vision: z.boolean(),
   embedding: z.boolean(),
   contextTokens: z.number().int().min(1).max(10_000_000),
@@ -44,13 +46,19 @@ const resolvedRoleSchema = z.object({
   model: z.string(),
   label: z.string(),
   capabilities: capabilitiesSchema,
-  params: z.object({ maxTokens: z.number(), temperature: z.number() }),
+  params: z.object({
+    maxTokens: z.number(),
+    temperature: z.number(),
+    thinking: z.boolean().optional(),
+  }),
   fallback: z.object({ provider: z.enum(PROVIDERS), model: z.string() }).nullable(),
   source: z.enum(["shipped", "deploy", "admin"]),
   ignored: z.array(z.object({ layer: z.string(), problems: z.array(z.string()) })),
   requirements: z.object({
     description: z.string(),
     toolUse: z.boolean(),
+    /** JSON output, JSON mode or schema (ADR 0192). */
+    json: z.boolean(),
     jsonSchema: z.boolean(),
     vision: z.boolean(),
     embedding: z.boolean(),
@@ -171,6 +179,7 @@ export const aiSettingsGet = defineOperation({
           requirements: {
             description: need.description,
             toolUse: Boolean(need.toolUse),
+            json: Boolean(need.json),
             jsonSchema: Boolean(need.jsonSchema),
             vision: Boolean(need.vision),
             embedding: Boolean(need.embedding),
@@ -231,6 +240,7 @@ export const aiUpdateRole = defineOperation({
       .object({
         maxTokens: z.number().int().min(16).max(32_000).optional(),
         temperature: z.number().min(0).max(2).optional(),
+        thinking: z.boolean().optional(),
       })
       .optional(),
     fallback: modelRefSchema.nullable().optional(),
