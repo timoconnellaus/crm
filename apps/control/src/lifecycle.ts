@@ -64,7 +64,7 @@ export async function requestExport(s: Services, instance: InstanceRow, actor: s
   return id;
 }
 
-/** Runs an export. Returns the R2 token value, shown once to the requester by email. */
+/** Runs an export; the links and the R2 read token go to the requester by email only. */
 export async function runExport(s: Services, exportId: string): Promise<void> {
   const row = await s.db
     .prepare("SELECT * FROM cp_exports WHERE id = ?")
