@@ -101,6 +101,31 @@ describe("with the local stand-ins", () => {
     expect(similar.hits[0]?.id).toBe(b.id);
   });
 
+  it("Settings → AI lists the custom provider as gateway-only and warns on a shared review model", async () => {
+    await ensureAdmin();
+    type S = {
+      roles: { role: string; warnings: string[] }[];
+      providers: { id: string; ready: boolean; reason: string | null }[];
+    };
+    const plain = await op<S>("ai.settings", {}, fakeEnv);
+    expect(plain.roles.find((r) => r.role === "review")?.warnings).toEqual([]);
+    expect(plain.providers.find((p) => p.id === "custom")).toMatchObject({
+      ready: false,
+      reason: expect.stringMatching(/need AI Gateway/),
+    });
+    const shared = await op<S>(
+      "ai.settings",
+      {},
+      {
+        ...fakeEnv,
+        AI_MODEL_ROLES: JSON.stringify({
+          review: { provider: "workers-ai", model: "@cf/moonshotai/kimi-k2.6" },
+        }),
+      },
+    );
+    expect(shared.roles.find((r) => r.role === "review")?.warnings[0]).toMatch(/not independent/);
+  });
+
   it("shows which provider keys exist without exposing their values", () => {
     const view = aiEnvView({ AI_KEY_OPENAI: "sk-secret-value", AI_GATEWAY_ID: "gw" });
     expect(view).toEqual({ AI_KEY_OPENAI: "set", AI_GATEWAY_ID: "gw" });

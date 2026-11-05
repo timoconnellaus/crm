@@ -1,8 +1,11 @@
-// Running model roles (ADR 0009, ADR 0150). The registry (roles.ts) says which provider and model
-// serve a role; this turns that into a call through the AI SDK (`ai`), with Workers AI over the
-// `AI` binding (workers-ai-provider) and every other provider over its OpenAI-compatible API
-// (@ai-sdk/openai-compatible). When AI Gateway is configured every call goes through it, tagged
-// with `cf-aig-metadata: {"role": …}` so usage and spend can be attributed per role.
+// Running model roles (ADR 0009, ADR 0150, ADR 0203). The registry (roles.ts) says which provider
+// and model serve a role; this turns that into a call through the AI SDK (`ai`). Gateway-first:
+// - Workers AI: the `AI` binding (workers-ai-provider), with the binding's `gateway` option when
+//   AI_GATEWAY_ID is set (in-account, no token).
+// - Every other provider: OpenAI-compatible (@ai-sdk/openai-compatible). With AI Gateway
+//   configured, chat goes to its unified endpoint `…/{gateway}/compat` with `provider/model` ids
+//   (`deepseek/deepseek-flash`, `custom-<slug>/<model>`); otherwise the provider's own URL.
+// Every gateway call carries `cf-aig-metadata: {"role": …}`, so usage and spend are per role.
 //
 // Provider keys come only from Workers secrets in the environment (AI_KEY_<PROVIDER>) or from
 // AI Gateway BYOK (no key sent at all). Nothing here reads or writes a key in D1 (ADR 0151).
@@ -12,6 +15,7 @@ import { embedMany, generateText, type LanguageModel } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import {
   assertCapable,
+  gatewayModelId,
   type ModelCapabilities,
   type ModelRef,
   type ModelRole,
@@ -169,16 +173,62 @@ function providerConfig(env: AiEnv): Partial<Record<ProviderId, ProviderConfig>>
   }
 }
 
-/** The path under an AI Gateway for a provider's OpenAI-compatible API. */
-const GATEWAY_PATHS: Partial<Record<ProviderId, string>> = {
+/** Base URL of AI Gateway's endpoints. */
+export const AI_GATEWAY_URL = "https://gateway.ai.cloudflare.com/v1";
+
+/**
+ * Provider-native paths under the gateway, used only for embeddings: the unified (compat)
+ * endpoint documents chat completions, not embeddings (ADR 0203).
+ */
+const GATEWAY_EMBED_PATHS: Partial<Record<ProviderId, string>> = {
   openai: "openai",
   google: "google-ai-studio/v1beta/openai",
   openrouter: "openrouter",
-  // …/{gateway}/deepseek/chat/completions
-  // (https://developers.cloudflare.com/ai-gateway/usage/providers/deepseek/).
-  deepseek: "deepseek",
-  anthropic: "anthropic/v1",
 };
+
+/** `https://gateway.ai.cloudflare.com/v1/{account}/{gateway}`, when both are configured. */
+function gatewayBase(env: AiEnv): string | null {
+  const account = env.CLOUDFLARE_ACCOUNT_ID?.trim();
+  const gateway = env.AI_GATEWAY_ID?.trim();
+  return account && gateway ? `${AI_GATEWAY_URL}/${account}/${gateway}` : null;
+}
+
+/** Where one call to a third-party provider goes (ADR 0203). */
+export interface ProviderRoute {
+  baseURL: string;
+  /** The model id sent in the request body. */
+  modelId: string;
+  /** Through AI Gateway: the gateway headers are sent, and BYOK is possible. */
+  viaGateway: boolean;
+}
+
+/**
+ * Gateway-first routing for a provider other than Workers AI (ADR 0203). With AI Gateway
+ * configured (AI_GATEWAY_ID and CLOUDFLARE_ACCOUNT_ID), chat goes to the unified endpoint
+ * `…/{gateway}/compat` with a `provider/model` id; embeddings go to the provider-native path
+ * where there is one. Without a gateway, or for a provider the gateway does not know (jev,
+ * openai-compatible), the provider's own base URL. A custom provider has no direct URL: null
+ * without a gateway.
+ */
+export function providerRoute(
+  env: AiEnv,
+  provider: ProviderId,
+  model: string,
+  purpose: "chat" | "embed" = "chat",
+): ProviderRoute | null {
+  const base = gatewayBase(env);
+  const compatId = gatewayModelId(provider, model);
+  if (base && compatId) {
+    const nativePath = GATEWAY_EMBED_PATHS[provider];
+    if (purpose === "embed" && nativePath) {
+      return { baseURL: `${base}/${nativePath}`, modelId: model, viaGateway: true };
+    }
+    return { baseURL: `${base}/compat`, modelId: compatId, viaGateway: true };
+  }
+  if (PROVIDER_INFO[provider].gatewayOnly) return null;
+  const direct = providerConfig(env)[provider]?.baseURL ?? PROVIDER_INFO[provider].baseURL;
+  return direct ? { baseURL: direct, modelId: model, viaGateway: false } : null;
+}
 
 /** Providers whose key is held by AI Gateway (BYOK): the admin layer's, plus deploy config's. */
 function byokProviders(env: AiEnv, settings: AiAdminSettings): ProviderId[] {
@@ -222,10 +272,18 @@ export function providerStatus(
     return { ready: false, reason: "No `ai` binding on this Worker (docs/deploying.md)" };
   }
   const info = PROVIDER_INFO[provider];
+  const viaGateway = Boolean(gatewayBase(env) && info.gatewaySlug);
+  if (info.gatewayOnly) {
+    // A custom provider exists only in the gateway, and its key is BYOK there (ADR 0203).
+    if (!gatewayBase(env)) {
+      return {
+        ready: false,
+        reason: "Custom providers need AI Gateway (AI_GATEWAY_ID and CLOUDFLARE_ACCOUNT_ID)",
+      };
+    }
+    return { ready: true, keySource: "byok" };
+  }
   const base = providerConfig(env)[provider]?.baseURL ?? info.baseURL;
-  const viaGateway = Boolean(
-    env.AI_GATEWAY_ID && env.CLOUDFLARE_ACCOUNT_ID && GATEWAY_PATHS[provider],
-  );
   if (!base && !viaGateway) {
     return { ready: false, reason: `No base URL: set AI_PROVIDERS.${provider}.baseURL` };
   }
@@ -239,39 +297,61 @@ export function providerStatus(
   return { ready: false, reason: `No key: add one in Settings → AI (secret ${info.secretName})` };
 }
 
+/**
+ * Headers for a call through AI Gateway: `cf-aig-metadata` with the role (usage per role, ADR
+ * 0152) and, for an authenticated gateway, `cf-aig-authorization`. Never sent to a provider
+ * called directly: the gateway token is for the gateway only.
+ */
 function gatewayHeaders(env: AiEnv, role: ModelRole): Record<string, string> {
-  if (!env.AI_GATEWAY_ID) return {};
   return {
     "cf-aig-metadata": JSON.stringify({ role }),
     ...(env.AI_GATEWAY_TOKEN ? { "cf-aig-authorization": `Bearer ${env.AI_GATEWAY_TOKEN}` } : {}),
   };
 }
 
-/** An OpenAI-compatible client for a third-party provider, through AI Gateway when configured. */
+/** The extra request headers for one call to a provider (none for Workers AI's binding). */
+function requestHeaders(
+  env: AiEnv,
+  ref: ModelRef,
+  role: ModelRole,
+): Record<string, string> | undefined {
+  if (ref.provider === "workers-ai") return undefined;
+  return providerRoute(env, ref.provider, ref.model)?.viaGateway
+    ? gatewayHeaders(env, role)
+    : undefined;
+}
+
+const withHeaders = (headers: Record<string, string> | undefined) => (headers ? { headers } : {});
+
+/**
+ * An OpenAI-compatible client for a third-party provider, routed by providerRoute. With a key in
+ * a Workers secret it sends `Authorization: Bearer <key>`; with BYOK it sends no Authorization
+ * header, so the gateway adds the stored key.
+ */
 function openAiCompatible(
   options: ModelRunnerOptions,
   settings: AiAdminSettings,
-  provider: ProviderId,
+  ref: ModelRef,
   role: ModelRole,
+  purpose: "chat" | "embed",
 ) {
   const { env } = options;
-  const info = PROVIDER_INFO[provider];
-  const status = providerStatus(env, settings, provider);
+  const info = PROVIDER_INFO[ref.provider];
+  const status = providerStatus(env, settings, ref.provider);
   if (!status.ready) throw new AiNotConfiguredError(`${info.label}: ${status.reason}`);
-  const gatewayPath = GATEWAY_PATHS[provider];
-  const baseURL =
-    env.AI_GATEWAY_ID && env.CLOUDFLARE_ACCOUNT_ID && gatewayPath
-      ? `https://gateway.ai.cloudflare.com/v1/${env.CLOUDFLARE_ACCOUNT_ID}/${env.AI_GATEWAY_ID}/${gatewayPath}`
-      : ((providerConfig(env)[provider]?.baseURL ?? info.baseURL) as string);
+  const route = providerRoute(env, ref.provider, ref.model, purpose);
+  if (!route) throw new AiNotConfiguredError(`${info.label}: no endpoint for ${ref.model}`);
   const key =
     status.keySource === "secret" && info.secretName ? keyFromEnv(env, info.secretName) : undefined;
-  return createOpenAICompatible({
-    name: provider,
-    baseURL: baseURL.replace(/\/+$/, ""),
+  const client = createOpenAICompatible({
+    // The name is also the provider-options key that body fields come from (providerBody).
+    name: ref.provider,
+    baseURL: route.baseURL.replace(/\/+$/, ""),
     ...(key ? { apiKey: key } : {}),
-    headers: gatewayHeaders(env, role),
+    ...(route.viaGateway ? { headers: gatewayHeaders(env, role) } : {}),
     ...(options.fetch ? { fetch: options.fetch } : {}),
   });
+  return { client, modelId: route.modelId };
 }
 
 function workersAi(options: ModelRunnerOptions, role: ModelRole) {
@@ -290,12 +370,14 @@ function languageModel(
   ref: ModelRef,
 ): LanguageModel {
   if (ref.provider === "workers-ai") return workersAi(options, role)(ref.model);
-  return openAiCompatible(options, settings, ref.provider, role).chatModel(ref.model);
+  const { client, modelId } = openAiCompatible(options, settings, ref, role, "chat");
+  return client.chatModel(modelId);
 }
 
 function embeddingModel(options: ModelRunnerOptions, settings: AiAdminSettings, ref: ModelRef) {
   if (ref.provider === "workers-ai") return workersAi(options, "embed").textEmbedding(ref.model);
-  return openAiCompatible(options, settings, ref.provider, "embed").textEmbeddingModel(ref.model);
+  const { client, modelId } = openAiCompatible(options, settings, ref, "embed", "embed");
+  return client.textEmbeddingModel(modelId);
 }
 
 const MAX_PROMPT_CHARS = 60_000;
@@ -353,7 +435,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
       temperature: params.temperature,
       maxRetries: 1,
       ...(providerOptions ? { providerOptions } : {}),
-      ...(ref.provider !== "workers-ai" ? { headers: gatewayHeaders(options.env, role) } : {}),
+      ...withHeaders(requestHeaders(options.env, ref, role)),
     });
     return { text: result.text.trim(), model: ref.model, provider: ref.provider };
   };
@@ -390,7 +472,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
       modelId: ref.model,
       params,
       ...(providerOptions ? { providerOptions } : {}),
-      ...(ref.provider !== "workers-ai" ? { headers: gatewayHeaders(options.env, role) } : {}),
+      ...withHeaders(requestHeaders(options.env, ref, role)),
     };
   };
 

@@ -364,8 +364,10 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
  operation ── ctx.models.run("summarise", …) ──► registry: shipped (Workers AI) → AI_MODEL_ROLES → Settings → AI
                                                     │ capability check (tools, JSON, context, vision, embeddings)
                                                     ▼
-                                AI SDK ── workers-ai-provider (AI binding) ─┐
-                                       └─ @ai-sdk/openai-compatible ────────┴─► AI Gateway (cf-aig-metadata: role) ─► provider
+                                AI SDK ── workers-ai-provider ── AI binding, gateway: { id, metadata: { role } } ──► AI Gateway ─► Workers AI
+                                       └─ @ai-sdk/openai-compatible ── …/{gateway}/compat, model "provider/model" ─► AI Gateway ─► provider
+                                            (cf-aig-metadata: role, cf-aig-authorization; BYOK: no Authorization)
+                                          no gateway (--ai-gateway off): binding without the option; provider's own URL
 ```
 
 - **The registry** resolves each role through shipped defaults (every role on Workers AI),
@@ -375,16 +377,21 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   summaries. Every call goes through AI Gateway when `AI_GATEWAY_ID` is set, tagged with its role;
   the installer and the updater create a gateway per deployment and set it
   ([ADR 0180](adr/0180-ai-gateway-provisioned-per-deployment.md)).
-- **Providers**: Workers AI (the binding) and, optionally, OpenAI, Google AI Studio, OpenRouter,
-  DeepSeek, Anthropic, Jev and any OpenAI-compatible endpoint, each through the gateway's
-  provider path (`…/{gateway}/deepseek/…`). A deployment can pick a **model role preset**
+- **Providers** (gateway-first, [ADR 0203](adr/0203-gateway-first-model-registry.md)):
+  Workers AI (the binding, with its `gateway` option) and, optionally, OpenAI, Google AI Studio,
+  OpenRouter, DeepSeek, Anthropic and AI Gateway **custom providers**, called through the
+  gateway's unified endpoint (`…/{gateway}/compat`) with `provider/model` ids
+  (`deepseek/deepseek-flash`, `custom-<slug>/<model>`). Embeddings use the provider-native path.
+  Jev and other OpenAI-compatible endpoints are called directly. With no gateway every provider
+  is called at its own URL. A deployment can pick a **model role preset**
   (`create-relationship-os --model-roles deepseek-flash`), stored as its `AI_MODEL_ROLES` in the deployment
   state, and `AI_GATEWAY_BYOK` says which providers' keys the gateway holds
   ([ADR 0192](adr/0192-deepseek-provider-and-model-role-presets.md)). The shipped defaults stay
   on Workers AI.
 - **Settings → AI** (`ai.*` operations, admins): per role provider, model, fallback, capability
-  badges and a Test button; provider keys stored as Workers secrets through the Cloudflare API or
-  as AI Gateway BYOK, **never in D1** ([ADR 0151](adr/0151-provider-keys-as-workers-secrets-or-byok.md));
+  badges, a Test button and a warning when `review` shares the assistant's model (ADR 0031);
+  provider keys stored as AI Gateway BYOK (the default with a gateway, through
+  `CloudflareClient.setGatewayProviderKey`) or as Workers secrets, **never in D1** ([ADR 0151](adr/0151-provider-keys-as-workers-secrets-or-byok.md));
   usage and spend per role from AI Gateway's logs, cached 10 minutes
   ([ADR 0152](adr/0152-usage-and-spend-per-role.md)).
 - **Summaries** (`summary.*`, [ADR 0153](adr/0153-ai-summaries.md)): record summaries (people,
