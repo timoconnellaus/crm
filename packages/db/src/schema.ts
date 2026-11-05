@@ -638,6 +638,19 @@ export interface CoreNotificationPreferenceTable {
   updated_at: string;
 }
 
+/** Migration 0200: the in-app assistant's conversation list (ADR 0200). */
+export interface CoreAssistantConversationTable {
+  id: string;
+  user_id: string;
+  title: string;
+  context: string | null;
+  turns: ColumnType<number, number | undefined, number>;
+  preview: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: ColumnType<string | null, string | null | undefined, string | null>;
+}
+
 /** Migration 0172: one external delivery (email / Slack), keyed for exactly-once sending. */
 export interface CoreNotificationDeliveryTable {
   key: string;
@@ -1117,6 +1130,7 @@ export interface CoreDatabase {
   core_automation_outbox: CoreAutomationOutboxTable;
   core_notification_preference: CoreNotificationPreferenceTable;
   core_notification_delivery: CoreNotificationDeliveryTable;
+  core_assistant_conversation: CoreAssistantConversationTable;
   crm_stage_history: CrmStageHistoryView;
   crm_users: CrmUsersView;
   crm_people: CrmPeopleView;

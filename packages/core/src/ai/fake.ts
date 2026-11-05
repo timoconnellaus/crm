@@ -1,5 +1,6 @@
 // Deterministic stand-ins for the model roles (ADR 0150): local development and e2e without an
 // `AI` binding (AI_FAKE_MODEL=true), and tests. Never used when a binding exists.
+import { fakeAssistantModel } from "../assistant/fake.ts";
 import { fakeBuildModel } from "../dashboards/describe.ts";
 import type { FakeModels, ModelMessage } from "./client.ts";
 import type { ModelRole } from "./roles.ts";
@@ -115,5 +116,7 @@ export function fakeModels(): FakeModels {
     embed(texts) {
       return texts.map((t) => fakeEmbed(t));
     },
+    // The scripted assistant (ADR 0200): the tool loop runs end to end without a model.
+    chat: (role: ModelRole) => (role === "assistant" ? fakeAssistantModel() : undefined),
   };
 }

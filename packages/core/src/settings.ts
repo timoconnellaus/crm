@@ -39,6 +39,9 @@ export const ORG_NAME_SETTING = "org_name";
 export const ORG_LOGO_SETTING = "org_logo";
 export const ORG_TIMEZONE_SETTING = "org_timezone";
 export const AI_MODE_SETTING = "ai_mode";
+/** Stage 7b (ADR 0200): the in-app assistant's display name. Never "Claude"; default "Assistant". */
+export const ASSISTANT_NAME_SETTING = "assistant_name";
+export const DEFAULT_ASSISTANT_NAME = "Assistant";
 
 /** "workers-ai": every model role uses Workers AI (the default until per-role providers, 7a). */
 export const AI_MODES = ["workers-ai"] as const;
@@ -52,6 +55,8 @@ export interface GeneralSettings {
   /** IANA timezone, e.g. Europe/London. */
   timezone: string;
   aiMode: AiMode;
+  /** The in-app assistant's display name (ADR 0200). */
+  assistantName: string;
 }
 
 function parseJson(value: string | undefined): unknown {
@@ -86,6 +91,7 @@ export async function loadGeneralSettings(db: Kysely<CoreDatabase>): Promise<Gen
       ORG_LOGO_SETTING,
       ORG_TIMEZONE_SETTING,
       AI_MODE_SETTING,
+      ASSISTANT_NAME_SETTING,
     ])
     .execute();
   const get = (key: string) => parseJson(rows.find((r) => r.key === key)?.value);
@@ -94,12 +100,17 @@ export async function loadGeneralSettings(db: Kysely<CoreDatabase>): Promise<Gen
   const logo = get(ORG_LOGO_SETTING);
   const timezone = get(ORG_TIMEZONE_SETTING);
   const aiMode = get(AI_MODE_SETTING);
+  const assistantName = get(ASSISTANT_NAME_SETTING);
   return {
     baseCurrency: typeof currency === "string" && /^[A-Z]{3}$/.test(currency) ? currency : "USD",
     orgName: typeof name === "string" && name.trim() ? name : null,
     logo: typeof logo === "string" && logo.startsWith("data:image/") ? logo : null,
     timezone: typeof timezone === "string" && isTimezone(timezone) ? timezone : "UTC",
     aiMode: (AI_MODES as readonly unknown[]).includes(aiMode) ? (aiMode as AiMode) : "workers-ai",
+    assistantName:
+      typeof assistantName === "string" && assistantName.trim()
+        ? assistantName.trim()
+        : DEFAULT_ASSISTANT_NAME,
   };
 }
 

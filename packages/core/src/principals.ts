@@ -20,7 +20,7 @@ export type Actor = (typeof ACTORS)[number];
 
 /** Where a call came from, recorded in the audit log. */
 export const originSchema = z.object({
-  surface: z.enum(["ui", "mcp", "automation", "system", "extension"]),
+  surface: z.enum(["ui", "mcp", "automation", "system", "extension", "assistant"]),
   /** The MCP client id (OAuth client_id). */
   clientId: z.string().optional(),
   /** The MCP client's display name, as registered (self-asserted). */
@@ -29,6 +29,7 @@ export const originSchema = z.object({
    * The MCP session: the connected app (cap_…) the token belongs to (ADR 0032). Pending actions
    * group by it, and only it sees their simulated state.
    */
+  // For the in-app assistant (surface `assistant`, ADR 0200) the session is the conversation (asc_…).
   sessionId: z.string().optional(),
   /** The automation id (`<extension>.<key>`, or a system job such as `trash.purge`). */
   automationId: z.string().optional(),

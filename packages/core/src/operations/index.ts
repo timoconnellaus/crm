@@ -7,6 +7,7 @@ import { activityOperations } from "./activity.ts";
 import { affiliationOperations } from "./affiliation.ts";
 import { aiOperations } from "./ai.ts";
 import { approvalOperations } from "./approval.ts";
+import { assistantOperations } from "./assistant.ts";
 import { auditOperations } from "./audit.ts";
 import { automationOperations } from "./automation.ts";
 import { automationBindingOperations } from "./automation-binding.ts";
@@ -81,4 +82,5 @@ export const coreOperations = [
   ...automationBindingOperations,
   ...notificationOperations,
   ...notificationDeliveryOperations,
+  ...assistantOperations,
 ] as const;
