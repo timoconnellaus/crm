@@ -27,6 +27,7 @@ export * from "./dashboards/params.ts";
 export * from "./dashboards/run.ts";
 export * from "./dashboards/spec.ts";
 export * from "./diff.ts";
+export * from "./entitlements.ts";
 export * from "./errors.ts";
 export * from "./extensions/host.ts";
 export * from "./extensions/install.ts";
@@ -81,6 +82,7 @@ export * from "./operations/notification.ts";
 export * from "./operations/notification-delivery.ts";
 export * from "./operations/organisation.ts";
 export * from "./operations/person.ts";
+export * from "./operations/plan.ts";
 export * from "./operations/policy.ts";
 export * from "./operations/query.ts";
 export * from "./operations/record.ts";
@@ -90,6 +92,7 @@ export { COMMON_CURRENCIES, MAX_LOGO_LENGTH } from "./operations/settings.ts";
 export * from "./operations/setup.ts";
 export * from "./operations/suggestions.ts";
 export * from "./operations/summary.ts";
+export * from "./operations/support.ts";
 export * from "./operations/task.ts";
 export * from "./operations/trash.ts";
 export * from "./operations/update.ts";
@@ -132,6 +135,7 @@ export {
   loadApprovalPolicy,
   loadGeneralSettings,
 } from "./settings.ts";
+export * from "./support.ts";
 export * from "./sync/ingest.ts";
 export * from "./sync/signals.ts";
 export * from "./updates.ts";

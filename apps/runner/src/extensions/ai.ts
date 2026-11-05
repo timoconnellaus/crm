@@ -8,6 +8,7 @@ import {
   loadAiSettings,
   type ModelRunner,
   modelRunnerFromEnv,
+  platformAiAllowed,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 
@@ -19,7 +20,13 @@ export function runnerModels(env: object): ModelRunner | null {
   const db = e.DB ? createCrmDb(e.DB) : null;
   return (
     modelRunnerFromEnv(e, {
-      ...(db ? { loadSettings: () => loadAiSettings(db.query) } : {}),
+      ...(db
+        ? {
+            loadSettings: () => loadAiSettings(db.query),
+            // Hosted plans (ADR 0211): platform AI only while the allowance lasts; BYOK always.
+            platformAi: () => platformAiAllowed(db.query),
+          }
+        : {}),
     }) ?? null
   );
 }

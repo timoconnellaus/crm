@@ -4,6 +4,7 @@
 import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
+import { assertRecordCapacity } from "../entitlements.ts";
 import { ConflictError, NotFoundError, ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
 import { personObject } from "../fields/person.ts";
@@ -391,6 +392,7 @@ export const personCreate = defineOperation({
       emails.map((e) => e.email),
     );
     await assertUserExists(ctx.db, input.ownerId);
+    await assertRecordCapacity(ctx.db, 1);
 
     const id = newId("person");
     const row = {
@@ -624,6 +626,7 @@ export const personRestore = defineOperation({
   async handler(input, ctx) {
     const person = await requirePerson(ctx.db, input.id, { includeDeleted: true });
     if (!person.deletedAt) throw new ValidationError("This person is not in Trash");
+    await assertRecordCapacity(ctx.db, 1);
     await assertEmailsFree(
       ctx.db,
       person.emails.map((e) => e.email),

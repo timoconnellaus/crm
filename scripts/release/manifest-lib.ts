@@ -259,6 +259,10 @@ const INPUT_VARS: Record<string, { description: string; options?: string[] }> = 
   AI_GATEWAY_BYOK: {
     description: "Providers whose key AI Gateway holds as BYOK, comma-separated (ADR 0192)",
   },
+  ROS_SUPPORT_PUBLIC_KEY: {
+    description:
+      "Hosted SaaS only: the control plane's Ed25519 public key (raw, base64url) for support-access tokens; empty means no support access (ADR 0212)",
+  },
 };
 
 const kebab = (s: string) => s.toLowerCase().replace(/_/g, "-");

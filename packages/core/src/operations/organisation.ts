@@ -4,6 +4,7 @@
 import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
+import { assertRecordCapacity } from "../entitlements.ts";
 import { ConflictError, NotFoundError, ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
 import { organisationObject } from "../fields/organisation.ts";
@@ -461,6 +462,7 @@ export const organisationCreate = defineOperation({
       domains.map((d) => d.domain),
     );
     await assertUserExists(ctx.db, input.ownerId);
+    await assertRecordCapacity(ctx.db, 1);
     const id = newId("organisation");
     const parentName = await assertParentAllowed(ctx.db, input.parentId, [id]);
 
@@ -697,6 +699,7 @@ export const organisationRestore = defineOperation({
   async handler(input, ctx) {
     const org = await requireOrganisation(ctx.db, input.id, { includeDeleted: true });
     if (!org.deletedAt) throw new ValidationError("This organisation is not in Trash");
+    await assertRecordCapacity(ctx.db, 1);
     await assertDomainsFree(
       ctx.db,
       org.domains.map((d) => d.domain),
