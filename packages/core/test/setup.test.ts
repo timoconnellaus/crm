@@ -75,6 +75,7 @@ describe("setup wizard", () => {
       timezone: "Europe/London",
       aiMode: "workers-ai",
       baseCurrency: "GBP",
+      assistantName: "Assistant",
     });
     await expect(
       invokeByName("settings.update", { timezone: "Mars/Olympus" }, context(admin)),
