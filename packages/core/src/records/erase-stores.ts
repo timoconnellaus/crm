@@ -19,6 +19,7 @@ import {
   scrubJson,
   scrubJsonText,
   subjectMatcher,
+  mentionsSql as termsMentioned,
 } from "./erase-subject.ts";
 
 export interface StoreSubject {
@@ -38,10 +39,9 @@ export interface StoreCounts {
   notifications: number;
 }
 
-/** `EXISTS` over the terms: does `text` (an SQL expression) contain one, case-insensitively? */
+/** Does `text` (an SQL expression) contain one of the terms, case-insensitively? */
 function mentionsSql(termsJson: string, text: ReturnType<typeof sql>) {
-  return sql<SqlBool>`EXISTS (SELECT 1 FROM json_each(${termsJson}) t
-    WHERE instr(lower(${text}), t.value) > 0)`;
+  return termsMentioned(JSON.parse(termsJson) as string[], text);
 }
 
 const DROP = Symbol("drop");
@@ -359,12 +359,15 @@ export async function queueEraseExtensions(ctx: HandlerContext, s: StoreSubject)
       }
     }
     // Extension records' search entries (titles) follow their scrubbed text.
-    const docs = await ctx.db
-      .selectFrom("core_search_docs")
-      .select(["object_type", "record_id", "title", "body"])
-      .where(sql<SqlBool>`object_type GLOB '*.*'`)
-      .where(mentionsSql(termsJson, sql`title || ' ' || body`))
-      .execute();
+    // Looked up per extension object (the index's leading column), not across core records.
+    const docs = objects.length
+      ? await ctx.db
+          .selectFrom("core_search_docs")
+          .select(["object_type", "record_id", "title", "body"])
+          .where("object_type", "in", jsonList(objects.map((o) => o.name)))
+          .where(mentionsSql(termsJson, sql`title || ' ' || body`))
+          .execute()
+      : [];
     for (const doc of docs) {
       ctx.write(
         ctx.db

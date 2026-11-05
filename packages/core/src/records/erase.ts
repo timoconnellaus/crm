@@ -10,7 +10,13 @@ import type { HandlerContext } from "../operation.ts";
 import { chunk, jsonList } from "./common.ts";
 import { drainAllBlobDeletions, writeEraseLog } from "./erase-log.ts";
 import { queueEraseExtensions, queueEraseRuns, queueEraseSync } from "./erase-stores.ts";
-import { ERASED, MIN_TERM_LENGTH, scrubJson, subjectMatcher } from "./erase-subject.ts";
+import {
+  ERASED,
+  MIN_TERM_LENGTH,
+  mentionsSql,
+  scrubJson,
+  subjectMatcher,
+} from "./erase-subject.ts";
 import { findOwnedActivitiesAndTasks } from "./links.ts";
 
 export interface EraseRequest {
@@ -102,7 +108,6 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
   const terms = [...new Set([...recordIds, ...request.terms].map((t) => t.trim().toLowerCase()))]
     .filter((t) => t.length >= MIN_TERM_LENGTH)
     .slice(0, 200);
-  const termsJson = JSON.stringify(terms);
   const marker = {
     object_type: sql<string>`${object}`.as("object_type"),
     record_id: sql<string>`${recordId}`.as("record_id"),
@@ -140,8 +145,7 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
           ])
           .where(
             sql<SqlBool>`(c.object_type = ${object} AND c.record_id IN (${sql.join(recordIds)}))
-              OR EXISTS (SELECT 1 FROM json_each(${termsJson}) t
-                WHERE instr(lower(c.diff), t.value) > 0)`,
+              OR ${mentionsSql(terms, sql`c.diff`)}`,
           ),
       ),
   );
@@ -167,10 +171,10 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
             sql<SqlBool>`a.id IN (SELECT c.audit_id FROM core_audit_changes c
                 JOIN core_audit_redactions r ON r.change_id = c.id
                 WHERE r.object_type = ${object} AND r.record_id = ${recordId})
-              OR EXISTS (SELECT 1 FROM json_each(${termsJson}) t
-                WHERE instr(lower(a.input), t.value) > 0
-                  OR instr(lower(coalesce(a.result, '')), t.value) > 0
-                  OR instr(lower(coalesce(a.error, '')), t.value) > 0)`,
+              OR ${mentionsSql(
+                terms,
+                sql`a.input || ' ' || coalesce(a.result, '') || ' ' || coalesce(a.error, '')`,
+              )}`,
           ),
       ),
   );
@@ -319,10 +323,7 @@ async function queueScrubShared(
 ): Promise<void> {
   if (!terms.length) return;
   const m = subjectMatcher(terms);
-  const termsJson = JSON.stringify(terms);
-  const mentions = (text: ReturnType<typeof sql>) =>
-    sql<SqlBool>`EXISTS (SELECT 1 FROM json_each(${termsJson}) t
-      WHERE instr(lower(${text}), t.value) > 0)`;
+  const mentions = (text: ReturnType<typeof sql>) => mentionsSql(terms, text);
 
   const activities = await ctx.db
     .selectFrom("core_activity as a")
@@ -385,17 +386,18 @@ async function queueRedactPending(
   recordIds: readonly string[],
   terms: readonly string[],
 ): Promise<void> {
-  const termsJson = JSON.stringify(terms);
   const matched = await ctx.db
     .selectFrom("core_pending_action as p")
     .select(["p.id", "p.status", "p.expires_at", "p.error", "p.status_reason", "p.result"])
     .where(
       sql<SqlBool>`p.id IN (SELECT r.action_id FROM core_pending_action_records r
           WHERE r.object_type = ${object} AND r.record_id IN ${jsonList(recordIds)})
-        OR EXISTS (SELECT 1 FROM json_each(${termsJson}) t
-          WHERE instr(lower(p.input || ' ' || p.reason || ' ' || p.preview || ' ' || p.simulated
+        OR ${mentionsSql(
+          terms,
+          sql`p.input || ' ' || p.reason || ' ' || p.preview || ' ' || p.simulated
             || ' ' || coalesce(p.error, '') || ' ' || coalesce(p.status_reason, '')
-            || ' ' || coalesce(p.result, '')), t.value) > 0)`,
+            || ' ' || coalesce(p.result, '')`,
+        )}`,
     )
     .execute();
   // (An empty pattern would match everywhere: with no terms, leave free text alone.)
@@ -505,10 +507,7 @@ async function queueRedactPending(
     const sets = await ctx.db
       .selectFrom("core_change_set")
       .select(["id", "title"])
-      .where(
-        sql<SqlBool>`title IS NOT NULL AND EXISTS (SELECT 1 FROM json_each(${termsJson}) t
-          WHERE instr(lower(title), t.value) > 0)`,
-      )
+      .where(sql<SqlBool>`title IS NOT NULL AND ${mentionsSql(terms, sql`title`)}`)
       .execute();
     for (const set of sets) {
       ctx.write(

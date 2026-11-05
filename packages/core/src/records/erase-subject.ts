@@ -10,7 +10,7 @@
 //   them, an assistant conversation that looked them up). Never across the database.
 
 import type { CoreDatabase } from "@relationship-os/db";
-import type { Kysely } from "kysely";
+import { type Kysely, type RawBuilder, type SqlBool, sql } from "kysely";
 import { scrubPattern } from "../assistant/scrub.ts";
 import { sha256Ref } from "./erase-log.ts";
 
@@ -260,6 +260,29 @@ export function scrubJsonText(text: string, m: SubjectMatcher): string {
 /** The pattern for contexts about the subject: terms anywhere, names as whole words. */
 export function aboutPattern(terms: readonly string[], names: readonly string[]): RegExp | null {
   return scrubPattern({ terms: [...terms], names: [...names] });
+}
+
+/** Terms bound one by one; past this many, one json_each parameter (D1 binds 100 per query). */
+const INLINE_TERMS = 60;
+
+/**
+ * Does `text` (an SQL expression) contain one of the lower-cased terms? Bound as
+ * `instr(lower(text), ?) > 0 OR …`, not a json_each join, because D1 counts every json_each row
+ * it walks as a row read: a join would bill each scanned row once per term.
+ */
+export function mentionsSql(
+  terms: readonly string[],
+  text: RawBuilder<unknown> | ReturnType<typeof sql>,
+): RawBuilder<SqlBool> {
+  if (!terms.length) return sql<SqlBool>`0`;
+  if (terms.length > INLINE_TERMS) {
+    return sql<SqlBool>`EXISTS (SELECT 1 FROM json_each(${JSON.stringify(terms)}) t
+      WHERE instr(lower(${text}), t.value) > 0)`;
+  }
+  return sql<SqlBool>`(${sql.join(
+    terms.map((t) => sql`instr(lower(${text}), ${t}) > 0`),
+    sql` OR `,
+  )})`;
 }
 
 /** A SQL-ready JSON array of terms, for `json_each` matching with `instr(lower(text), value)`. */

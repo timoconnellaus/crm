@@ -45,5 +45,10 @@ CREATE INDEX core_suggested_contact_person_idx ON core_suggested_contact (person
   WHERE person_id IS NOT NULL;
 CREATE INDEX core_automation_runs_record_idx ON core_automation_runs (record_object, record_id)
   WHERE record_id IS NOT NULL;
+-- An erase takes everything merged into the record with it; merges are rare, so these stay small.
+CREATE INDEX core_person_merged_into_idx ON core_person (merged_into_id)
+  WHERE merged_into_id IS NOT NULL;
+CREATE INDEX core_organisation_merged_into_idx ON core_organisation (merged_into_id)
+  WHERE merged_into_id IS NOT NULL;
 
 UPDATE core_meta SET value = '330' WHERE key = 'schema_version';
