@@ -552,6 +552,30 @@ export class CloudflareClient {
     );
   }
 
+  // ---- Cloudflare for SaaS custom hostnames (enterprise, ADR 0210) ---------------------------
+
+  async customHostname(
+    zoneId: string,
+    hostname: string,
+  ): Promise<{ id: string; status: string } | null> {
+    const { result } = await this.request<{ id: string; hostname: string; status: string }[]>(
+      "GET",
+      `/zones/${zoneId}/custom_hostnames?hostname=${encodeURIComponent(hostname)}`,
+    );
+    const found = result.find((h) => h.hostname === hostname);
+    return found ? { id: found.id, status: found.status } : null;
+  }
+
+  async createCustomHostname(zoneId: string, hostname: string) {
+    return (
+      await this.request<{ id: string; status: string }>(
+        "POST",
+        `/zones/${zoneId}/custom_hostnames`,
+        { hostname, ssl: { method: "http", type: "dv" } },
+      )
+    ).result;
+  }
+
   // ---- AI Gateway logs (metering, ADR 0213) --------------------------------------------------
 
   /**
@@ -768,22 +792,54 @@ export class CloudflareClient {
     accountId: string,
     name: string,
     permissionGroupIds: string[],
+    options: {
+      /** Narrower resources than the whole account (e.g. one R2 bucket). */
+      resources?: Record<string, string>;
+      /** ISO time the token stops working. */
+      expiresOn?: string;
+    } = {},
   ): Promise<{ id: string; value: string }> {
     const { result } = await this.request<{ id: string; value: string }>(
       "POST",
       `/accounts/${accountId}/tokens`,
       {
         name,
+        ...(options.expiresOn ? { expires_on: options.expiresOn } : {}),
         policies: [
           {
             effect: "allow",
-            resources: { [`com.cloudflare.api.account.${accountId}`]: "*" },
+            resources: options.resources ?? { [`com.cloudflare.api.account.${accountId}`]: "*" },
             permission_groups: permissionGroupIds.map((id) => ({ id })),
           },
         ],
       },
     );
     return { id: result.id, value: result.value };
+  }
+
+  /**
+   * A full SQL dump of a D1 database (the export API, polled until done). Returns the
+   * Cloudflare-hosted, time-limited download URL: the dump never passes through the caller.
+   */
+  async exportD1(accountId: string, databaseId: string, attempts = 30): Promise<string> {
+    let bookmark: string | undefined;
+    for (let i = 0; i < attempts; i++) {
+      const { result } = await this.request<{
+        at_bookmark?: string;
+        status?: string;
+        error?: string;
+        result?: { signed_url?: string };
+      }>("POST", `/accounts/${accountId}/d1/database/${databaseId}/export`, {
+        output_format: "polling",
+        ...(bookmark ? { current_bookmark: bookmark } : {}),
+      });
+      if (result.status === "error") throw new Error(`D1 export failed: ${result.error ?? ""}`);
+      if (result.status === "complete" && result.result?.signed_url)
+        return result.result.signed_url;
+      bookmark = result.at_bookmark ?? bookmark;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    throw new Error("D1 export did not finish in time");
   }
 
   async deleteAccountToken(accountId: string, id: string) {

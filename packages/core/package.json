@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
-    "./ai-roles": "./src/ai/roles.ts"
+    "./ai-roles": "./src/ai/roles.ts",
+    "./cron": "./src/automations/cron.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -1,0 +1,31 @@
+// ros-dispatch: the only way into a hosted customer deployment (ADR 0210). Every request to
+// <org>.relationshiposcrm.com (and to an enterprise custom hostname) lands here; the hostname is
+// looked up in the routing table the control plane writes (verified hostnames only) and the
+// request goes to that tenant's app Worker in the dispatch namespace. It also runs every active
+// tenant's Cron Triggers, which user Workers do not have, so paused tenants cost nothing.
+//
+// Not deployed yet (docs/saas-go-live.md). The ROUTES id is the KV namespace ros-control writes;
+// replace it at go-live (it is a resource id, not a secret).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ros-dispatch",
+  "main": "./src/dispatch/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 },
+  // Every hostname on the zone; the apex (marketing) and app. (control) are Custom Domains,
+  // which take precedence over routes.
+  "routes": [{ "pattern": "*/*", "zone_name": "relationshiposcrm.com" }],
+  "workers_dev": false,
+  "preview_urls": false,
+  "dispatch_namespaces": [{ "binding": "DISPATCHER", "namespace": "ros-customers" }],
+  "kv_namespaces": [{ "binding": "ROUTES", "id": "ros-routes-kv-id-set-at-go-live" }],
+  "services": [{ "binding": "CONTROL", "service": "ros-control", "entrypoint": "ControlRpc" }],
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": {
+    "SAAS_DOMAIN": "relationshiposcrm.com",
+    "CONTROL_ORIGIN": "https://app.relationshiposcrm.com",
+    // Per-request limits for a tenant's app Worker (custom limits, Workers for Platforms).
+    "TENANT_CPU_MS": "30000",
+    "TENANT_SUBREQUESTS": "1000"
+  }
+}

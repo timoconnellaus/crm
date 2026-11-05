@@ -1,0 +1,77 @@
+// ros-control: the hosted SaaS control plane at app.relationshiposcrm.com (ADR 0210). Sign-up,
+// plans and Stripe billing, provisioning customer deployments into the Workers for Platforms
+// dispatch namespace, staged rollouts, support grants, export and delete.
+//
+// It is built and tested against fakes and is NOT deployed yet: PLATFORM_MODE stays "fake" until
+// docs/saas-go-live.md switches it to "live". No account or resource IDs are committed; wrangler
+// provisions D1, KV and the queues by name on the first deploy, and the secrets listed in
+// src/env.ts are set with `wrangler secret put`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ros-control",
+  "main": "./src/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "routes": [{ "pattern": "app.relationshiposcrm.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ros-control",
+      "migrations_dir": "./migrations",
+      "migrations_table": "control_migrations"
+    }
+  ],
+  // Hostname → tenant routing and the schedule the dispatch Worker reads. Shared with ros-dispatch:
+  // docs/saas-go-live.md creates the namespace and sets the same id in dispatch.wrangler.jsonc.
+  "kv_namespaces": [{ "binding": "ROUTES" }],
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "ros-control-jobs" }],
+    "consumers": [
+      {
+        "queue": "ros-control-jobs",
+        "max_batch_size": 1,
+        "max_retries": 3,
+        "dead_letter_queue": "ros-control-jobs-dlq"
+      }
+    ]
+  },
+  // Daily: AI metering into Stripe, idle-pause sweep, deletion after the grace period, grant sync.
+  "triggers": { "crons": ["30 2 * * *"] },
+  "send_email": [{ "name": "EMAIL" }],
+  "ratelimits": [
+    { "name": "SIGNUP_RATE_LIMIT", "namespace_id": "4310", "simple": { "limit": 5, "period": 60 } }
+  ],
+  "vars": {
+    // "fake": every external system is an in-memory fake (dev, tests, e2e). "live": real
+    // Cloudflare, Stripe and email. Never switch without docs/saas-go-live.md.
+    "PLATFORM_MODE": "fake",
+    // "on": jobs run inline in the request (dev and tests); otherwise on the JOBS queue.
+    "JOBS_INLINE": "off",
+    "SAAS_DOMAIN": "relationshiposcrm.com",
+    "CONTROL_ORIGIN": "https://app.relationshiposcrm.com",
+    "MAIL_FROM": "Relationship OS <hello@relationshiposcrm.com>",
+    "DISPATCH_NAMESPACE": "ros-customers",
+    // "namespace" (Workers for Platforms) or "account" (ordinary Workers in our account, the
+    // fallback in docs/saas-go-live.md if a Workers for Platforms check fails).
+    "DEFAULT_PLACEMENT": "namespace",
+    "RELEASE_CHANNEL": "stable",
+    // Comma-separated emails of our staff (admin console). Identity is never AI-configurable.
+    "STAFF_EMAILS": "",
+    "AI_MARKUP_PERCENT": "20",
+    // AI providers we pay for; spend on any other provider is the customer's own key (free).
+    "PLATFORM_AI_PROVIDERS": "workers-ai",
+    "IDLE_PAUSE_DAYS": "60",
+    "DELETE_GRACE_DAYS": "30",
+    "TRIAL_DAYS": "14",
+    "ROLLOUT_SOAK_SECONDS": "3600",
+    // The Ed25519 public key (raw, base64url) matching the SUPPORT_SIGNING_KEY secret; set on every
+    // customer deployment as ROS_SUPPORT_PUBLIC_KEY.
+    "SUPPORT_PUBLIC_KEY": "",
+    "STRIPE_PRICE_TEAM": "",
+    "STRIPE_PRICE_BUSINESS": "",
+    "STRIPE_PRICE_AI_OVERAGE": "",
+    "STRIPE_METER_EVENT": "ai_overage_cents"
+  }
+}

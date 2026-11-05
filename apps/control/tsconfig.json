@@ -1,0 +1,12 @@
+{
+  "extends": "@relationship-os/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "types": [
+      "./worker-configuration.d.ts",
+      "./dispatch-configuration.d.ts",
+      "@cloudflare/vitest-plugin/types"
+    ]
+  },
+  "include": ["src/**/*.ts", "test", "worker-configuration.d.ts", "dispatch-configuration.d.ts"]
+}

@@ -19,7 +19,13 @@ export interface SqlEngine {
 interface FakeScript {
   name: string;
   migrationTag?: string;
-  versions: { id: string; metadata: Record<string, unknown>; modules: string[] }[];
+  versions: {
+    id: string;
+    metadata: Record<string, unknown>;
+    modules: string[];
+    /** Module source text by name, so a fake dispatch namespace can run the Worker. */
+    sources: Record<string, string>;
+  }[];
   current?: string;
   secrets: Map<string, string>;
   schedules: string[];
@@ -89,6 +95,7 @@ export class FakeCloudflare {
    * real API, user Workers have no versions, deployments, schedules or workers.dev.
    */
   readonly namespaces = new Map<string, Map<string, FakeScript>>();
+  readonly customHostnames: { id: string; hostname: string; status: string }[] = [];
   /** AI Gateway logs per gateway id, for metering tests (`addGatewayLog`). */
   readonly gatewayLogs = new Map<string, FakeGatewayLog[]>();
   readonly domains: { hostname: string; service: string; zone_id: string }[] = [];
@@ -104,7 +111,16 @@ export class FakeCloudflare {
   >();
   readonly secretsStores = new Map<string, string>();
   /** Account API tokens created through the API, by id. */
-  readonly tokens = new Map<string, { name: string; value: string; permissionGroups: string[] }>();
+  readonly tokens = new Map<
+    string,
+    {
+      name: string;
+      value: string;
+      permissionGroups: string[];
+      resources?: Record<string, string>;
+      expiresOn?: string;
+    }
+  >();
   /** Return a Response to fail a call (failure injection), or undefined to let it through. */
   failOn: ((method: string, path: string, body: unknown) => Response | undefined) | null = null;
   subdomain: string | null;
@@ -191,6 +207,21 @@ export class FakeCloudflare {
     if (path.startsWith("/accounts/") && !path.startsWith(a))
       return fail(403, 9109, "no access to account");
     if (path === "/zones") return ok(this.options.zones ?? [], { page: 1, total_pages: 1 });
+    // Cloudflare for SaaS: a new custom hostname is pending until its owner's DNS verifies it;
+    // the fake verifies it on the next read.
+    const ch = /^\/zones\/([^/]+)\/custom_hostnames$/.exec(path);
+    if (ch) {
+      if (method === "POST") {
+        const entry = { id: this.id("ch"), hostname: String(b.hostname), status: "pending" };
+        this.customHostnames.push(entry);
+        return ok(entry);
+      }
+      const wanted = url.searchParams.get("hostname");
+      const found = this.customHostnames.filter((h) => !wanted || h.hostname === wanted);
+      const shown = found.map((h) => ({ ...h }));
+      for (const h of found) h.status = "active";
+      return ok(shown);
+    }
     if (path === `${a}/workers/subdomain`) {
       if (method === "PUT") {
         this.subdomain = String(b.subdomain);
@@ -222,6 +253,14 @@ export class FakeCloudflare {
       if (rest === "/query") {
         const rows = await db.engine.query(String(b.sql), (b.params as unknown[]) ?? []);
         return ok([{ results: rows, success: true, meta: {} }]);
+      }
+      if (rest === "/export" && method === "POST") {
+        // Completes at once: a dump URL on a Cloudflare-hosted, signed location.
+        return ok({
+          status: "complete",
+          at_bookmark: await db.engine.bookmark(),
+          result: { signed_url: `https://d1-exports.example/${m[1]}.sql?sig=fake` },
+        });
       }
       if (rest === "/time_travel/bookmark") return ok({ bookmark: await db.engine.bookmark() });
       if (rest === "/time_travel/restore") {
@@ -460,6 +499,7 @@ export class FakeCloudflare {
       const groups = [
         { id: "pg-aig-run", name: "AI Gateway Run" },
         { id: "pg-aig-edit", name: "AI Gateway Write" },
+        { id: "pg-r2-read", name: "Workers R2 Storage Bucket Item Read" },
       ];
       const name = url.searchParams.get("name");
       return ok(groups.filter((g) => !name || g.name === name));
@@ -472,6 +512,8 @@ export class FakeCloudflare {
         name: String(b.name),
         value,
         permissionGroups: policies.flatMap((p) => p.permission_groups.map((g) => g.id)),
+        resources: (policies[0] as { resources?: Record<string, string> } | undefined)?.resources,
+        ...(b.expires_on ? { expiresOn: String(b.expires_on) } : {}),
       });
       return ok({ id, name: b.name, status: "active", value });
     }
@@ -561,7 +603,7 @@ export class FakeCloudflare {
     }
     if (rest === "" && method === "PUT") {
       if (!form) return fail(400, 10021, "expected multipart");
-      const { metadata, modules } = await this.readUpload(form);
+      const { metadata, modules, sources } = await this.readUpload(form);
       const migrations = metadata.migrations as { old_tag?: string; new_tag?: string } | undefined;
       if (migrations) {
         if ((migrations.old_tag ?? undefined) !== script?.migrationTag) {
@@ -587,7 +629,7 @@ export class FakeCloudflare {
       this.registerWorkflows(name, metadata);
       this.applySecrets(target, metadata);
       const versionId = this.id("ver");
-      target.versions.push({ id: versionId, metadata, modules });
+      target.versions.push({ id: versionId, metadata, modules, sources });
       target.current = versionId;
       if (migrations?.new_tag) target.migrationTag = migrations.new_tag;
       store.set(name, target);
@@ -612,13 +654,13 @@ export class FakeCloudflare {
     }
     if (rest === "/versions" && method === "POST") {
       if (!form) return fail(400, 10021, "expected multipart");
-      const { metadata, modules } = await this.readUpload(form);
+      const { metadata, modules, sources } = await this.readUpload(form);
       if (metadata.migrations)
         return fail(400, 10211, "migrations are not supported with versions");
       this.registerWorkflows(name, metadata);
       this.applySecrets(script, metadata);
       const id = this.id("ver");
-      script.versions.push({ id, metadata, modules });
+      script.versions.push({ id, metadata, modules, sources });
       return ok({ id });
     }
     if (rest === "/deployments") {
@@ -700,6 +742,11 @@ export class FakeCloudflare {
       if (!session || session.pending.size > 0)
         throw new Error("assets completion token is not valid");
     }
-    return { metadata, modules };
+    const sources: Record<string, string> = {};
+    for (const name of modules) {
+      const part = form.get(name);
+      if (part && typeof part !== "string") sources[name] = await part.text();
+    }
+    return { metadata, modules, sources };
   }
 }
