@@ -14,8 +14,7 @@
   },
   "dependencies": {
     "@relationship-os/core": "workspace:*",
-    "@relationship-os/release": "workspace:*",
-    "zod": "4.6.7"
+    "@relationship-os/release": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",

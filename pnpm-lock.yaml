@@ -141,9 +141,6 @@ importers:
       '@relationship-os/release':
         specifier: workspace:*
         version: link:../../packages/release
-      zod:
-        specifier: 4.6.7
-        version: 4.6.7
     devDependencies:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1

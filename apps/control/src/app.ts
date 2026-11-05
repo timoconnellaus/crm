@@ -676,6 +676,14 @@ async function devRoutes(s: Services, request: Request, url: URL): Promise<Respo
       html`<h1>Mail to ${to}</h1>${results.map((m) => html`<div class="card"><strong>${m.subject}</strong> <span class="muted">${m.created_at}</span><pre style="white-space:pre-wrap">${m.body}</pre></div>`)}`,
     );
   }
+  if (url.pathname === "/dev/tenant") {
+    // A request to a tenant hostname, through the dispatch logic and the fake namespace (the
+    // browser cannot resolve <org>.relationshiposcrm.com locally).
+    const host = url.searchParams.get("host") ?? "";
+    const path = url.searchParams.get("path") ?? "/";
+    if (!/^[a-z0-9.-]+$/.test(host) || !path.startsWith("/")) return new Response("Bad request", { status: 400 });
+    return s.healthFetch(`https://${host}${path}`);
+  }
   let m = /^\/dev\/stripe\/checkout\/([\w-]+)$/.exec(url.pathname);
   if (m) {
     const id = m[1] as string;

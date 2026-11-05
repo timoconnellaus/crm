@@ -98,7 +98,7 @@ export async function tenantQuery<T = Record<string, unknown>>(
   s: Services,
   slug: string,
   sql: string,
-  params: unknown[] = [],
+  params: (string | number | null)[] = [],
 ): Promise<T[]> {
   const instance = await instanceFor(slug);
   const [first] = await s.cf.queryD1<T>(s.accountId, instance?.database_id as string, sql, params);
