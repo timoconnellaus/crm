@@ -3,21 +3,27 @@
 // notices escalate and on which channels, and the hour of the daily digest. Each send is an
 // outbound action, so under Balanced it waits in Approvals until the internal kinds are set to
 // auto-approve on Settings → Integrations: the page says so.
-import type { CoreOutput } from "@crm/core";
-import { CHANNEL_RESOURCE_PATTERNS, CHANNEL_VENDORS } from "@crm/core/client";
-import { Button } from "@crm/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
-import { Checkbox } from "@crm/ui/components/checkbox";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
+import type { CoreOutput } from "@relationship-os/core";
+import { CHANNEL_RESOURCE_PATTERNS, CHANNEL_VENDORS } from "@relationship-os/core/client";
+import { Button } from "@relationship-os/ui/components/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { InfoIcon, LockIcon, TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
@@ -120,7 +126,7 @@ function DeliverySettingsForm() {
       title="Notification delivery"
       width="md"
       back={{ to: "/settings/notifications", label: "Notifications" }}
-      description="How notifications leave the CRM: the org connections email and Slack go out through, escalation of unread approvals and the daily digest."
+      description="How notifications leave Relationship OS: the org connections email and Slack go out through, escalation of unread approvals and the daily digest."
       footer={
         <SaveBar dirty={dirty || save.isPending}>
           <Button variant="ghost" onClick={reset}>

@@ -11,7 +11,7 @@ import {
   invokeByName,
   notifyStatements,
   seedRecordId,
-} from "@crm/core";
+} from "@relationship-os/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { fakeProviderStub } from "../src/integrations/fake.ts";
 import { blobStore, integrationRuntime } from "../src/integrations/runtime.ts";
@@ -158,8 +158,8 @@ describe("email through the email-send gatekeeper", () => {
     expect(next.notifications).toEqual([{ key: `n:${second}:email`, status: "sent" }]);
     const sent = await env.TEST_EMAIL_OUTBOX.list();
     expect(sent).toHaveLength(2);
-    expect(sent[1]?.subject).toMatch(/^\[CRM\] Second notice/);
-    expect(sent[1]?.text).toContain(`Open in the CRM: http://crm.test/people/${personId}`);
+    expect(sent[1]?.subject).toMatch(/^\[Relationship OS\] Second notice/);
+    expect(sent[1]?.text).toContain(`Open in Relationship OS: http://crm.test/people/${personId}`);
     // Exactly once across repeated ticks.
     await tick();
     await tick();

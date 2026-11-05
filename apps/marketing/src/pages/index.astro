@@ -1,0 +1,57 @@
+---
+// Placeholder landing page (Stage 9 scaffold): the product name, one line, and the working
+// waitlist / contact-sales form. The real design, copy and sections come in a follow-up.
+import Page from "../layouts/Page.astro";
+---
+
+<Page>
+  <header class="flex flex-col gap-3">
+    <h1 class="text-4xl font-semibold tracking-tight">Relationship OS</h1>
+    <p class="text-lg text-muted-foreground">
+      The AI-native CRM that runs in your own Cloudflare account.
+    </p>
+  </header>
+
+  <form
+    id="signup"
+    method="post"
+    action="/api/signup"
+    class="flex flex-col gap-4 rounded-lg border border-border p-6"
+  >
+    <fieldset class="flex flex-col gap-2">
+      <legend class="mb-2 font-medium">I'd like to</legend>
+      <label class="flex items-center gap-2">
+        <input type="radio" name="kind" value="waitlist" checked />
+        join the waitlist
+      </label>
+      <label class="flex items-center gap-2">
+        <input type="radio" name="kind" value="sales" />
+        talk to sales
+      </label>
+    </fieldset>
+    <label class="flex flex-col gap-1">
+      <span class="text-sm font-medium">Email</span>
+      <input
+        type="email"
+        name="email"
+        required
+        maxlength="254"
+        autocomplete="email"
+        class="rounded-md border border-input bg-background px-3 py-2"
+      />
+    </label>
+    <!-- Honeypot: hidden from people, ignored when filled. -->
+    <label class="hidden" aria-hidden="true">
+      Website <input type="text" name="website" tabindex="-1" autocomplete="off" />
+    </label>
+    <button
+      type="submit"
+      class="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground"
+    >
+      Send
+    </button>
+    <p class="text-sm text-muted-foreground">
+      We store your email only to reply. No trackers, no third parties.
+    </p>
+  </form>
+</Page>

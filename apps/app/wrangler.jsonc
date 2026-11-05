@@ -1,9 +1,9 @@
-// crm-app: TanStack Start UI and server functions (ADR 0004). Self-contained and account-agnostic:
+// ros-app: TanStack Start UI and server functions (ADR 0004). Self-contained and account-agnostic:
 // no account or resource IDs are committed (ADR 0012); wrangler provisions the D1 database by name
 // on first deploy. Secrets are listed in .dev.vars.example and docs/deploying.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "crm-app",
+  "name": "ros-app",
   // TanStack Start's entry plus a `scheduled` handler (src/server.ts).
   "main": "./src/server.ts",
   // Daily maintenance: Trash purge (ADR 0018), approvals, storage retention (ADR 0090). Every 10
@@ -16,7 +16,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "crm",
+      "database_name": "ros",
       "migrations_dir": "../../packages/db/migrations",
       "migrations_table": "core_migrations"
     }
@@ -25,14 +25,14 @@
   // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, CF_ACCESS_TEAM_DOMAIN, CF_ACCESS_AUD) are listed in
   // .dev.vars.example and docs/deploying.md.
   "secrets": { "required": ["BETTER_AUTH_SECRET"] },
-  "services": [{ "binding": "RUNNER", "service": "crm-runner" }],
+  "services": [{ "binding": "RUNNER", "service": "ros-runner" }],
   // Automation events (ADR 0130): committed record changes and approval decisions go to this
-  // queue; crm-runner consumes it and starts automation runs.
+  // queue; ros-runner consumes it and starts automation runs.
   "queues": {
-    "producers": [{ "binding": "AUTOMATION_EVENTS", "queue": "crm-automation-events" }]
+    "producers": [{ "binding": "AUTOMATION_EVENTS", "queue": "ros-automation-events" }]
   },
-  // Synced email bodies (ADR 0112), shared with crm-runner: D1 keeps a snippet only.
-  "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "crm-blobs" }],
+  // Synced email bodies (ADR 0112), shared with ros-runner: D1 keeps a snippet only.
+  "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "ros-blobs" }],
   // OAuth 2.1 for /mcp (ADR 0021): clients, grants and hashed tokens. Provisioned by name on
   // first deploy, like the D1 database.
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
@@ -69,7 +69,7 @@
     // MCP access token lifetime in seconds; refresh tokens last 30 days.
     "MCP_ACCESS_TOKEN_TTL": "3600",
     // In-app AI (ADRs 0009, 0150-0155). Model roles need an `ai` binding and semantic search a
-    // `vectorize` binding; both are optional and added by `pnpm run deploy` (CRM_AI, see
+    // `vectorize` binding; both are optional and added by `pnpm run deploy` (ROS_AI, see
     // docs/deploying.md). Without them AI features say AI is not configured.
     // AI Gateway id: every model call goes through it when set (usage and spend per role).
     "AI_GATEWAY_ID": "",
@@ -78,28 +78,28 @@
     "CLOUDFLARE_ACCOUNT_ID": "",
     // Deploy-config layer of the model registry: JSON role → { provider, model, params, fallback }.
     // Empty means the shipped defaults (all Workers AI). A deployment sets it, e.g. with
-    // `create-crm --model-roles deepseek-flash` (ADR 0192); never commit a choice here.
+    // `create-relationship-os --model-roles deepseek-flash` (ADR 0192); never commit a choice here.
     "AI_MODEL_ROLES": "",
     // Base URLs for the `jev` and `openai-compatible` providers: JSON { "<provider>": { "baseURL" } }.
     "AI_PROVIDERS": "",
     // Providers whose key is stored in AI Gateway as BYOK, comma-separated (e.g. "deepseek").
-    // Set by `create-crm --provider-key` (ADR 0192).
+    // Set by `create-relationship-os --provider-key` (ADR 0192).
     "AI_GATEWAY_BYOK": "",
-    // Size of the Vectorize index (`crm-records`); the embed role must produce this many dims.
+    // Size of the Vectorize index (`ros-records`); the embed role must produce this many dims.
     "VECTORIZE_DIMENSIONS": "384",
     // Worker scripts Settings → AI stores provider keys on (as Workers secrets).
-    "AI_SECRET_SCRIPTS": "crm-app,crm-runner",
+    "AI_SECRET_SCRIPTS": "ros-app,ros-runner",
     // Local dev and e2e only (.dev.vars sets it): "true" answers the build role with a
     // deterministic stand-in when there is no `ai` binding. Never set it in production.
     "AI_FAKE_MODEL": "",
     // Release (stage 8, ADR 0160): the installed release's version, set by the release manifest.
     // Empty means a source deploy (`pnpm run deploy`), which the self-updater cannot update.
-    "CRM_RELEASE_VERSION": "",
+    "ROS_RELEASE_VERSION": "",
     // Where Settings → Updates reads releases from (public GitHub Releases, no telemetry).
     // Forks that publish their own releases change it.
-    "CRM_RELEASE_REPO": "timoconnellaus/crm",
+    "ROS_RELEASE_REPO": "timoconnellaus/relationship-os",
     // The Cloudflare account the self-updater deploys to. Filled in by the installer from the
     // release manifest's $ACCOUNT_ID placeholder; never committed.
-    "CRM_ACCOUNT_ID": ""
+    "ROS_ACCOUNT_ID": ""
   }
 }

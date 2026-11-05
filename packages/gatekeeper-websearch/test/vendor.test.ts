@@ -4,7 +4,7 @@
 import { exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 
-describe("crm-gatekeeper-websearch vendor entrypoint", () => {
+describe("ros-gatekeeper-websearch vendor entrypoint", () => {
   const vendor = exports.GatekeeperVendor;
 
   it("describes itself as auto-provisioned", async () => {

@@ -1,8 +1,8 @@
 // The grader's view of the CRM over MCP: calling operations (as their curated tool when the server
 // lists one, else through call_operation), seeding the test records, and reading automations.
-import { toolNameFor } from "@crm/evals-mcp/lib/grading.ts";
-import { addDays } from "@crm/evals-mcp/lib/harness.ts";
-import { isPending, type McpSession, parseResult } from "@crm/evals-mcp/lib/mcp.ts";
+import { toolNameFor } from "@relationship-os/evals-mcp/lib/grading.ts";
+import { addDays } from "@relationship-os/evals-mcp/lib/harness.ts";
+import { isPending, type McpSession, parseResult } from "@relationship-os/evals-mcp/lib/mcp.ts";
 import type { SeedSpec } from "../prompts.ts";
 
 export const GRADER_REASON = "Automations eval grader";

@@ -1,20 +1,20 @@
 // The view-type switcher (Table, Board, Calendar, Gallery) for any object's list page, its
 // settings (group by, sum, date field, card fields, image), and the body that renders the
 // chosen non-table view. The table itself stays the page's own DataTable.
-import type { ObjectViewType } from "@crm/core/client";
-import { Button } from "@crm/ui/components/button";
-import { Checkbox } from "@crm/ui/components/checkbox";
-import { Label } from "@crm/ui/components/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@crm/ui/components/popover";
+import type { ObjectViewType } from "@relationship-os/core/client";
+import { Button } from "@relationship-os/ui/components/button";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
+import { Label } from "@relationship-os/ui/components/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@relationship-os/ui/components/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@crm/ui/components/tooltip";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/ui/components/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@relationship-os/ui/components/tooltip";
+import { cn } from "@relationship-os/ui/lib/utils";
 import {
   CalendarIcon,
   KanbanIcon,

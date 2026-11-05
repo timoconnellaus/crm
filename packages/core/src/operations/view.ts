@@ -2,7 +2,7 @@
 // name plus a view spec: `table`, `board`, `calendar` or `gallery` (views/spec.ts), validated
 // against the field registry. Views are personal unless shared: everyone who can read records
 // sees shared views; the owner and admins edit them. Stored stage-1 table specs stay valid.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ForbiddenError, NotFoundError } from "../errors.ts";

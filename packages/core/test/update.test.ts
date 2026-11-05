@@ -1,7 +1,7 @@
 // update.* operations (ADR 0164) with a fake UpdaterRuntime: preflight blocking an incompatible
 // runtime extension (AC5), channels (AC7), human-admin-only apply and rollback with history and
 // audit, the release cache, and the CLI fallback without a token. The real runtime (download,
-// verification, Cloudflare API) is tested in crm-app and packages/release.
+// verification, Cloudflare API) is tested in ros-app and packages/release.
 import { env } from "cloudflare:workers";
 import type {
   Channel,
@@ -9,9 +9,9 @@ import type {
   ReleaseManifest,
   RunRecord,
   UpdateOutcome,
-} from "@crm/release";
-import { KILL_SWITCH_SETTING } from "@crm/release";
-import { buildFixtureRelease } from "@crm/release/testing";
+} from "@relationship-os/release";
+import { KILL_SWITCH_SETTING } from "@relationship-os/release";
+import { buildFixtureRelease } from "@relationship-os/release/testing";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   type ActingUser,
@@ -36,13 +36,13 @@ const STATE: DeploymentState = {
   gatekeepers: [],
   workerNames: {},
   vars: {},
-  resources: { "D1_ID(crm)": "db" },
+  resources: { "D1_ID(ros)": "db" },
 };
 
 function runtime(overrides: Partial<UpdaterRuntime> = {}): UpdaterRuntime {
   return {
     currentVersion: "1.0.0",
-    repository: "timoconnellaus/crm",
+    repository: "timoconnellaus/relationship-os",
     canUpdate: true,
     async listReleases(channel: Channel) {
       calls.push(`list:${channel}`);
@@ -55,7 +55,7 @@ function runtime(overrides: Partial<UpdaterRuntime> = {}): UpdaterRuntime {
           name: `v${m.version}`,
           notes: `## What's changed\n- things in ${m.version}`,
           publishedAt: "2026-11-01T00:00:00Z",
-          url: `https://github.com/timoconnellaus/crm/releases/tag/v${m.version}`,
+          url: `https://github.com/timoconnellaus/relationship-os/releases/tag/v${m.version}`,
           assets: {},
         }))
         .reverse();
@@ -64,7 +64,7 @@ function runtime(overrides: Partial<UpdaterRuntime> = {}): UpdaterRuntime {
       return manifests.get(version) ?? null;
     },
     async secretsSet() {
-      return { "crm-app": ["BETTER_AUTH_SECRET"] };
+      return { "ros-app": ["BETTER_AUTH_SECRET"] };
     },
     async apply({ version, run, record }): Promise<UpdateOutcome> {
       calls.push(`apply:${version}`);
@@ -134,7 +134,7 @@ describe("update.status and channels", () => {
       channel: "stable",
       canUpdateInApp: true,
       installedFromRelease: true,
-      cliCommand: "npx create-crm upgrade",
+      cliCommand: "npx create-relationship-os upgrade",
     });
   });
 
@@ -301,7 +301,7 @@ describe("preflight and apply", () => {
     const ctx = context(admin, { updater: runtime({ canUpdate: false }) });
     await expect(invokeByName("update.apply", { version: "1.1.0" }, ctx)).rejects.toMatchObject({
       code: "invalid_input",
-      message: expect.stringContaining("npx create-crm upgrade --version 1.1.0"),
+      message: expect.stringContaining("npx create-relationship-os upgrade --version 1.1.0"),
     });
     const status = await invokeByName("update.status", {}, ctx);
     expect(status).toMatchObject({ canUpdateInApp: false });

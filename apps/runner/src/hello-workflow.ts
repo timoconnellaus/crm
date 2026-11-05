@@ -1,4 +1,4 @@
-// The stage 0 hello-world Workflow. It proves Workflows deploy and run from crm-app's smoke test;
+// The stage 0 hello-world Workflow. It proves Workflows deploy and run from ros-app's smoke test;
 // real automations replace it in stage 5.
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 

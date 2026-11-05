@@ -10,7 +10,7 @@ import type {
   GatekeeperUser,
   ObservationDescription,
   ResourceDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import type { SlackPostSession } from "../src/types";
 import type { SlackPostGatekeeper } from "../src/worker";
 import { callbackLog, nextHandoff } from "./fake-slack";

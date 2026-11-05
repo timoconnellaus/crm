@@ -2,7 +2,7 @@ import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import capnwebValidate from "capnweb-validate/vite";
 import { defineConfig } from "vitest/config";
 
-// Upstream's config. Local change: `assert-workerd` below comes from @crm/gatekeeper-interface
+// Upstream's config. Local change: `assert-workerd` below comes from @relationship-os/gatekeeper-interface
 // instead of upstream's ../../scripts/assert-workerd.ts.
 
 /**
@@ -41,6 +41,6 @@ export default defineConfig({
   test: {
     include: ["__tests__/workerd/*.test.ts"],
     // Asserts the pool actually started, rather than trusting a green run to mean workerd.
-    setupFiles: ["@crm/gatekeeper-interface/testing/assert-workerd"],
+    setupFiles: ["@relationship-os/gatekeeper-interface/testing/assert-workerd"],
   },
 });

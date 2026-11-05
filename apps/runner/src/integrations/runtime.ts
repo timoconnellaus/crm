@@ -1,7 +1,12 @@
-// The IntegrationRuntime port (packages/core integrations/runtime.ts) as crm-runner implements it:
-// every call goes to the connection's own integration host Durable Object (ADR 0110). crm-app
+// The IntegrationRuntime port (packages/core integrations/runtime.ts) as ros-runner implements it:
+// every call goes to the connection's own integration host Durable Object (ADR 0110). ros-app
 // reaches the same methods over RPC (the Runner entrypoint).
-import { CATALOGUE, type IntegrationRuntime, OperationError, vendorBinding } from "@crm/core";
+import {
+  CATALOGUE,
+  type IntegrationRuntime,
+  OperationError,
+  vendorBinding,
+} from "@relationship-os/core";
 
 export function hostFor(env: Env, connectionId: string) {
   return env.INTEGRATION_HOST.getByName(connectionId);

@@ -1,7 +1,7 @@
 // "New task" quick-add, from anywhere: `c` on Tasks, "+ Task" on a record page, the record's
 // Tasks card, or the command palette. Creates via task.create, linked to the record it was
 // opened from (if any), assigned to the chosen user (default: you).
-import { Button } from "@crm/ui/components/button";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -9,17 +9,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
+} from "@relationship-os/ui/components/dialog";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Textarea } from "@crm/ui/components/textarea";
+} from "@relationship-os/ui/components/select";
+import { Textarea } from "@relationship-os/ui/components/textarea";
 import { useRouteContext } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";

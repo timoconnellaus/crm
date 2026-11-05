@@ -3,8 +3,8 @@
 // summary), what the test run did against what was expected, and the judge's reasons.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ModelParams } from "@crm/evals-mcp/lib/model.ts";
-import { cell, describeModel, summaryLine } from "@crm/evals-mcp/lib/report.ts";
+import type { ModelParams } from "@relationship-os/evals-mcp/lib/model.ts";
+import { cell, describeModel, summaryLine } from "@relationship-os/evals-mcp/lib/report.ts";
 import type { AutomationCase } from "../prompts.ts";
 import type { TestOutcome } from "./grading.ts";
 import type { CaseResult, FailureKind } from "./harness.ts";

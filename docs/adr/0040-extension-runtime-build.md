@@ -16,7 +16,7 @@ can name it. Migration 0020 adds `core_user.kind`; extension rows never sign in
 (`resolveActingUser` ignores them), are never the first admin, and `crm_users` lists only humans.
 `Actor` gains `extension` (core_audit was rebuilt to allow it). The gate treats it like an
 automation (schema and extension risk denied; bulk and destructive work reviewed), and the
-pipeline enforces the declared permissions (`checkGrant` in `@crm/sdk`) before the role check, so
+pipeline enforces the declared permissions (`checkGrant` in `@relationship-os/sdk`) before the role check, so
 refusals are audited as actor `extension`. `core_activity.author_actor` was not widened (a rebuild
 would cascade through activity links); extension-authored timeline posts are `system`.
 
@@ -42,15 +42,15 @@ batch, so a failure rolls everything back. The data of removed fields and object
 30 days; `extension.dropHidden` (destructive, human admin) drops it afterwards. Side tables have no
 foreign keys to core tables (a core table rebuild would cascade into them).
 
-**Runtime.** One `ExtensionWorkspace` Durable Object in crm-runner holds the
+**Runtime.** One `ExtensionWorkspace` Durable Object in ros-runner holds the
 `@cloudflare/computer` Workspace; each extension is its own git repository at `/extensions/<id>/`.
-Source is transpiled with sucrase and import-checked (only own files and `@crm/sdk`); the build is
+Source is transpiled with sucrase and import-checked (only own files and `@relationship-os/sdk`); the build is
 cached per commit under `/build/<id>/<commit>/`. A per-run entry module imports the build, the SDK
-bundle (`crm-sdk`) and only the declared `codemode:*` modules, and hands them to tools as `ctx`.
+bundle (`ros-sdk`) and only the declared `codemode:*` modules, and hands them to tools as `ctx`.
 Host modules are configured once on the backend and find the running extension through the DO's
 current-run context; executions are serialised so that context is unambiguous. The Dynamic Worker
 has `globalOutbound: null` and read-only filesystem access. `codemode:crm` invokes operations in
-crm-runner against the shared D1 database (the runner applies the same `APPROVAL_FLOOR`).
+ros-runner against the shared D1 database (the runner applies the same `APPROVAL_FLOOR`).
 `codemode:ai` maps the summarise/extract/classify roles to Workers AI (through AI Gateway when
 `AI_GATEWAY_ID` is set) and fails clearly without an `ai` binding.
 
@@ -78,8 +78,8 @@ together.
 **Shipped extensions.** `apps/runner/scripts/bundle.mjs` bundles the SDK (with zod) as one module
 and every `extensions/<id>/` as source at build time. `installShippedExtensions` runs
 `extension.install` for each one whose bundled commit is not installed, as a system call (actor
-`human`, user `system`, origin `system`); crm-app runs it once per isolate before the first
-operation, and crm-runner exposes it as `installShipped()` for deploy scripts.
+`human`, user `system`, origin `system`); ros-app runs it once per isolate before the first
+operation, and ros-runner exposes it as `installShipped()` for deploy scripts.
 
 ## Consequences
 - `extension.check` "typecheck" means transpile (syntax) plus import rules plus the zod contract
@@ -94,7 +94,7 @@ operation, and crm-runner exposes it as `installShipped()` for deploy scripts.
 
 ## Amendment, 2026-11-04 (stage 3b build)
 - **Full TypeScript checking.** `extension.check` (and every build) now type-checks extension
-  source against `@crm/sdk`'s declarations with the TypeScript compiler API over an in-memory host,
+  source against `@relationship-os/sdk`'s declarations with the TypeScript compiler API over an in-memory host,
   in the workspace DO (`apps/runner/src/extensions/typecheck.ts`), after the sucrase build and
   import rules pass. Issues are stage `typecheck`, code `type`, path the file and message
   `line:col message (TSnnnn)`. Options: strict, ES2022 libs without DOM, `isolatedModules`, no
@@ -123,7 +123,7 @@ operation, and crm-runner exposes it as `installShipped()` for deploy scripts.
 - **Builds.** Builds are no longer cached as files under `/build/<id>/<commit>/`. They are cached
   in the workspace DO's storage by a content hash of the source (plus the runtime and checker
   hashes), so a working-copy check and the proposal of the same files share one build.
-- **Type checking** moved out of the workspace DO and out of crm-runner's main bundle.
+- **Type checking** moved out of the workspace DO and out of ros-runner's main bundle.
   - **Where it runs:** its own Dynamic Worker, `tsc@<version>+<hash>`, loaded with `get()`. The
     compiler, its declarations and the SDK bundle ship as Text modules.
   - **Main module size:** 10,348 KiB before, 3,368 KiB after.

@@ -18,7 +18,7 @@ bulk.
 ## Scope
 
 ### MCP server (ADR 0021)
-- `/mcp` on `crm-app`: Cloudflare Agents SDK MCP handler, Streamable HTTP transport, wrapped by
+- `/mcp` on `ros-app`: Cloudflare Agents SDK MCP handler, Streamable HTTP transport, wrapped by
   `workers-oauth-provider`.
 - **Tools, the hybrid model:**
   - **Curated tools** (about 15): registry operations flagged `mcp: "curated"`. Search,

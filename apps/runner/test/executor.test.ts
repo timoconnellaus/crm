@@ -10,7 +10,7 @@ import {
   memoryRateLimit,
   PERMISSIONS,
   withCodeModeRateLimit,
-} from "@crm/core";
+} from "@relationship-os/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Executor } from "../src/executor/executor.ts";
 import { checkerWorkerId, manifestWorkerId, toolWorkerId } from "../src/executor/worker-code.ts";

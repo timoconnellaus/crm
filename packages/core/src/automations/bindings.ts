@@ -8,8 +8,8 @@
 // unbound slot, and binding the last slot lifts that pause. When a bound connection is
 // disconnected or expires, or its owner is deactivated, the bindings on it are revoked, the
 // automations using it pause and the admins get one `automation.paused` notice each.
-import type { CoreDatabase, CrmDb } from "@crm/db";
-import type { AutomationConnection, AutomationManifest } from "@crm/sdk";
+import type { CoreDatabase, CrmDb } from "@relationship-os/db";
+import type { AutomationConnection, AutomationManifest } from "@relationship-os/sdk";
 import { type Compilable, type Kysely, sql } from "kysely";
 import { catalogueEntry } from "../integrations/catalogue.ts";
 import { notifyStatements } from "../notifications/send.ts";

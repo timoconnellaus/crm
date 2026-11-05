@@ -15,7 +15,7 @@ export interface AiAdminEnv {
   /** Secret. A Cloudflare API token; see docs/deploying.md for the permissions it needs. */
   CLOUDFLARE_API_TOKEN?: string;
   AI_GATEWAY_ID?: string;
-  /** Worker scripts that get provider secrets (comma-separated). Default crm-app,crm-runner. */
+  /** Worker scripts that get provider secrets (comma-separated). Default ros-app,ros-runner. */
   AI_SECRET_SCRIPTS?: string;
 }
 
@@ -94,7 +94,7 @@ export function cloudflareAiAdmin(
   const account = env.CLOUDFLARE_ACCOUNT_ID?.trim();
   const token = env.CLOUDFLARE_API_TOKEN?.trim();
   const gateway = env.AI_GATEWAY_ID?.trim() || null;
-  const scripts = (env.AI_SECRET_SCRIPTS?.trim() || "crm-app,crm-runner")
+  const scripts = (env.AI_SECRET_SCRIPTS?.trim() || "ros-app,ros-runner")
     .split(",")
     .map((s) => s.trim())
     .filter((s) => /^[a-z0-9-_]{1,63}$/i.test(s));

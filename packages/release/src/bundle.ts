@@ -105,8 +105,8 @@ export async function openBundle(bytes: Uint8Array): Promise<ReleaseBundle> {
 /** The release asset names for a version. */
 export function releaseAssetNames(version: string) {
   return {
-    bundle: `crm-${version}.tar.gz`,
-    manifest: `crm-${version}.manifest.json`,
+    bundle: `relationship-os-${version}.tar.gz`,
+    manifest: `relationship-os-${version}.manifest.json`,
     sums: "SHA256SUMS",
   };
 }

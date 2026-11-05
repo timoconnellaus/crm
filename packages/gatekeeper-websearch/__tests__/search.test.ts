@@ -1,6 +1,6 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-websearch/__tests__/search.test.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import { describe, expect, it, vi } from "vitest";
-import type { ObservationDescription } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ObservationDescription } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { search } from "../src/search.js";
 
 type WebSearch = Ai["websearch"];

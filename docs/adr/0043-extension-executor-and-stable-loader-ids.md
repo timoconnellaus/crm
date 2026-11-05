@@ -68,7 +68,7 @@ build produces changes every id.
 
 **Execution out of the workspace DO (D2).**
 
-- Tool runs, manifest evaluation, type checks and Code Mode run in the caller's isolate: crm-runner's
+- Tool runs, manifest evaluation, type checks and Code Mode run in the caller's isolate: ros-runner's
   stateless entrypoint, and from stage 5 a Workflow step.
 - The DO keeps git, working copies and two caches. Only git mutations are serialised.
 - A tool run reads its `core_extensions` row from D1 and calls `LOADER.get`. It touches the DO only
@@ -86,7 +86,7 @@ build produces changes every id.
 **The type checker** runs in its own Dynamic Worker:
 
 - The compiler, the SDK declarations and `src/checker/entry.ts` are bundled into `checker.txt`.
-- crm-runner ships `checker.txt` as a Text module, so it never parses the 3.5 MB compiler.
+- ros-runner ships `checker.txt` as a Text module, so it never parses the 3.5 MB compiler.
 - The SDK bundle is a Text module too.
 
 **Code Mode** (ADR 0042) runs in the stateless entrypoint with `LOADER.load()`, and the script
@@ -95,8 +95,8 @@ source goes straight into the worker (no more `/code/<uuid>` directories). Its l
 - **Permission:** `code.run` needs `records:write`.
 - **Concurrency:** one script per user at a time. A `CodeModeGate` DO per user (`getByName(userId)`)
   holds a lease that expires after the timeout plus 5 s. A second run fails with `rate_limited`.
-- **Rate limit:** the `CODE_MODE_RATE_LIMIT` Workers Rate Limiting binding in crm-app, keyed per
-  user. `withCodeModeRateLimit` wraps crm-app's host.
+- **Rate limit:** the `CODE_MODE_RATE_LIMIT` Workers Rate Limiting binding in ros-app, keyed per
+  user. `withCodeModeRateLimit` wraps ros-app's host.
 
 **Smaller audit fixes in the same change:**
 
@@ -117,8 +117,8 @@ source goes straight into the worker (no more `/code/<uuid>` directories). Its l
 | Code Mode | 1 `load()`, plus a directory written and deleted in the DO | 1 `load()`, with no DO |
 | 20 concurrent tool runs (each one `crm.call` and a 50 ms wait) | 1,452 ms (13.8 runs/s), serialised | 82 ms (244 runs/s) |
 | One warm tool run | 71 ms | 55 ms |
-| crm-runner main module | 10,348 KiB (2,069 KiB gzip for the whole upload) | 3,368 KiB. The whole upload is 7,768 KiB (1,772 KiB gzip), with the compiler and the SDK in Text modules |
-| Type check of the example, cold | 203 ms, plus about 130 ms to load the compiler in crm-runner | 281 ms in the checker worker, including loading the compiler |
+| ros-runner main module | 10,348 KiB (2,069 KiB gzip for the whole upload) | 3,368 KiB. The whole upload is 7,768 KiB (1,772 KiB gzip), with the compiler and the SDK in Text modules |
+| Type check of the example, cold | 203 ms, plus about 130 ms to load the compiler in ros-runner | 281 ms in the checker worker, including loading the compiler |
 | Type check of the example, warm | about 110 ms | 97–121 ms |
 | `extension.check` again on unchanged source | a full build and type check | 2 ms (cache hit) |
 | `check` then `propose` of the same files | 2 builds and 2 type checks | 1 |
@@ -137,4 +137,4 @@ source goes straight into the worker (no more `/code/<uuid>` directories). Its l
 - Upstreaming a reuse-safe mode (a `loaderId` option) to `cloudflare/computer` remains a possible
   follow-up (audit D1, option a). Nothing here depends on it.
 
-> Amended 2026-11-05: the crm-runner main-module budget is raised from 4,096 to 5,120 KiB (stage 5's automation engine reached 4,221 KiB; stage 7a's AI SDK adds about 1.1 MB). The rule that the TypeScript compiler must not be in the main module is unchanged.
+> Amended 2026-11-05: the ros-runner main-module budget is raised from 4,096 to 5,120 KiB (stage 5's automation engine reached 4,221 KiB; stage 7a's AI SDK adds about 1.1 MB). The rule that the TypeScript compiler must not be in the main module is unchanged.

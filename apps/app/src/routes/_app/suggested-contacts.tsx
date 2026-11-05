@@ -5,10 +5,10 @@
 //
 // Both lists are bounded by their operations (at most 100 domains, 200 job changes per page), so
 // they render as plain lists rather than virtualised feeds.
-import type { CoreOutput } from "@crm/core";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Checkbox } from "@crm/ui/components/checkbox";
+import type { CoreOutput } from "@relationship-os/core";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -16,10 +16,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/dialog";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BriefcaseIcon, Building2Icon, UserPlusIcon, XIcon } from "lucide-react";
 import { type FormEvent, useId, useMemo, useState } from "react";

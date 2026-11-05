@@ -17,7 +17,7 @@ export function extensionId(prefix = "prj"): string {
  * currency and a formula field. `extraField` adds a field (v2).
  */
 export function projectsSource(id: string, version = "1.0.0", extraField = ""): string {
-  return `import { defineExtension } from "@crm/sdk";
+  return `import { defineExtension } from "@relationship-os/sdk";
 
 // Projects for organisations, written over MCP by the stage 3b end-to-end spec.
 export default defineExtension({

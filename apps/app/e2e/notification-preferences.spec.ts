@@ -106,8 +106,10 @@ test("a notification preference is honoured", async ({ page, request, baseURL })
     await expect(set.getByTestId("decision-result")).toContainText("Applied 1 change");
     await expect
       .poll(async () => (await sentMail(request, address)).map((m) => m.subject))
-      .toContain(`[CRM] ${subject}`);
-    const sent = (await sentMail(request, address)).find((m) => m.subject === `[CRM] ${subject}`);
+      .toContain(`[Relationship OS] ${subject}`);
+    const sent = (await sentMail(request, address)).find(
+      (m) => m.subject === `[Relationship OS] ${subject}`,
+    );
     expect(sent?.to).toEqual([TEST_USER.email]);
 
     // Email off again: the next notice stays in-app.
@@ -122,7 +124,7 @@ test("a notification preference is honoured", async ({ page, request, baseURL })
     await expect(page.getByTestId("change-set").first()).toBeVisible();
     await expect(outboundEmail(page, quiet)).toHaveCount(0);
     expect((await sentMail(request, address)).map((m) => m.subject)).not.toContain(
-      `[CRM] ${quiet}`,
+      `[Relationship OS] ${quiet}`,
     );
   } finally {
     // Leave delivery off for the other specs.

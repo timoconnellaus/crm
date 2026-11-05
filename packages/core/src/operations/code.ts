@@ -6,7 +6,7 @@
 //
 // Limits (ADR 0043): it needs `records:write` (a script can change records); one script per user at
 // a time (the runner's per-user gate answers `concurrency_limit`); and a per-user rate limit, which
-// crm-app applies by wrapping its host with `withCodeModeRateLimit`.
+// ros-app applies by wrapping its host with `withCodeModeRateLimit`.
 import { z } from "zod";
 import { ForbiddenError, RateLimitedError } from "../errors.ts";
 import type { ExtensionHost } from "../extensions/host.ts";
@@ -116,7 +116,7 @@ export const codeRun = defineOperation({
 
 /**
  * The host with Code Mode's per-user rate limit (the Workers Rate Limiting binding
- * CODE_MODE_RATE_LIMIT in crm-app). Over the limit, `runCode` throws RateLimitedError before
+ * CODE_MODE_RATE_LIMIT in ros-app). Over the limit, `runCode` throws RateLimitedError before
  * anything reaches the runner. A missing binding allows the call (see rateLimit).
  */
 export function withCodeModeRateLimit(

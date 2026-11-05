@@ -2,9 +2,9 @@
 // its status, sharing level, resources and sync; the integrations this deployment offers, with
 // Connect (and, for admins, enable switches); and for admins the internal domains sync excludes
 // and which outbound action kinds may auto-apply.
-import { Checkbox } from "@crm/ui/components/checkbox";
-import { Label } from "@crm/ui/components/label";
-import { Skeleton } from "@crm/ui/components/skeleton";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
+import { Label } from "@relationship-os/ui/components/label";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute } from "@tanstack/react-router";
 import { Building2Icon, PlugZapIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";

@@ -5,7 +5,7 @@
 // simulated change only relabels what the guard already admitted: a message a pending action moves
 // into the listed folder is fetched by ID and guarded like any other.
 
-import type { JournalEntry } from "@crm/gatekeeper-kit/actions";
+import type { JournalEntry } from "@relationship-os/gatekeeper-kit/actions";
 import type { MessageInfo } from "./outlook-types";
 import type { Composed, OutlookAction, OutlookActions } from "./outlook-actions";
 

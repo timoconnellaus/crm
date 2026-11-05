@@ -68,7 +68,7 @@ only check what the user actually asked for.
    ```sh
    export CLOUDFLARE_ACCOUNT_ID=…  CLOUDFLARE_API_TOKEN=…
    node evals/extensions/runner.ts --base-url http://localhost:5173
-   # or: pnpm --filter @crm/evals-extensions eval -- --base-url http://localhost:5173
+   # or: pnpm --filter @relationship-os/evals-extensions eval -- --base-url http://localhost:5173
    ```
 
    Options: `--only id,id` (all of them must pass), `--model`, `--temperature`, `--max-tokens`,
@@ -108,4 +108,4 @@ The model client, provider selection and the default model are shared with the M
   manifests, the harness flow against a scripted model and a fake workspace, the CLI and report.
 
 Sign-in, OAuth, the MCP session, the OpenAI-compatible model client, tool conversion and the
-tool-use loop come from `@crm/evals-mcp/lib/*`.
+tool-use loop come from `@relationship-os/evals-mcp/lib/*`.

@@ -1,10 +1,10 @@
 // Cards that show and edit extension fields with the field widgets: one card of fields with an
 // Edit mode (saved through record.update), the details cards of extension records, and the
 // "extension fields on a core record" cards, one per extension.
-import { Button } from "@crm/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@crm/ui/components/card";
-import { Label } from "@crm/ui/components/label";
-import { Skeleton } from "@crm/ui/components/skeleton";
+import { Button } from "@relationship-os/ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import { Label } from "@relationship-os/ui/components/label";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { PencilIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";

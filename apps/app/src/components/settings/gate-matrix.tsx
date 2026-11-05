@@ -6,8 +6,8 @@ import {
   type GateMatrix,
   type GateRule,
   RISK_CLASSES,
-} from "@crm/core/client";
-import { Badge } from "@crm/ui/components/badge";
+} from "@relationship-os/core/client";
+import { Badge } from "@relationship-os/ui/components/badge";
 import {
   Table,
   TableBody,
@@ -15,7 +15,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@crm/ui/components/table";
+} from "@relationship-os/ui/components/table";
 
 export const ACTOR_LABELS: Record<Actor | "*", string> = {
   human: "People (in the app)",

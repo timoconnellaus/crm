@@ -1,7 +1,7 @@
 // Column picker: toggles which registry fields a DataTable shows. Order follows `available`.
-import type { ObjectDefinition } from "@crm/core/client";
-import { getField } from "@crm/core/client";
-import { Button } from "@crm/ui/components/button";
+import type { ObjectDefinition } from "@relationship-os/core/client";
+import { getField } from "@relationship-os/core/client";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -9,7 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@crm/ui/components/dropdown-menu";
+} from "@relationship-os/ui/components/dropdown-menu";
 import { Columns3Icon } from "lucide-react";
 
 export interface ColumnPickerProps {

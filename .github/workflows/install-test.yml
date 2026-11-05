@@ -1,10 +1,10 @@
 # Real install, upgrade and rollback in a dedicated Cloudflare test account (stage 8, AC3/AC4).
 #
-#   1. install release N with `create-crm` (storing an update token)
+#   1. install release N with `create-relationship-os` (storing an update token)
 #   2. smoke test it: sign-in, create a person, MCP handshake, a runtime extension (Playwright)
-#   3. a forced failing migration: `crm upgrade` to a local bundle whose last migration fails;
+#   3. a forced failing migration: `ros upgrade` to a local bundle whose last migration fails;
 #      it must roll back to N with the data restored
-#   4. upgrade N → N+1 through the self-updater (Settings → Updates), or with `crm upgrade` when
+#   4. upgrade N → N+1 through the self-updater (Settings → Updates), or with `ros upgrade` when
 #      N+1 is the release being built (not published yet); data and the extension must survive
 #   5. tear everything down
 #
@@ -29,7 +29,7 @@ on:
         type: string
         required: true
       bundle_artifact:
-        description: "An artifact holding crm-<to_version>.tar.gz and SHA256SUMS (an unpublished release)"
+        description: "An artifact holding relationship-os-<to_version>.tar.gz and SHA256SUMS (an unpublished release)"
         type: string
         required: false
     secrets:
@@ -86,9 +86,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @crm/app exec playwright install --with-deps chromium
+      - run: pnpm --filter @relationship-os/app exec playwright install --with-deps chromium
       - name: Build the CLI
-        run: pnpm --filter create-crm build
+        run: pnpm --filter create-relationship-os build
 
       - name: Get the unpublished release bundle
         if: inputs.bundle_artifact != ''
@@ -112,7 +112,7 @@ jobs:
 
       - name: Clean the test account (an earlier run may have failed)
         if: steps.versions.outputs.to != ''
-        run: node packages/create-crm/dist/cli.js uninstall --yes || true
+        run: node packages/create-relationship-os/dist/cli.js uninstall --yes || true
 
       - name: Install N (or N+1 when there is no N)
         if: steps.versions.outputs.to != ''
@@ -121,8 +121,8 @@ jobs:
           version="${{ steps.versions.outputs.from || steps.versions.outputs.to }}"
           extra=()
           if [[ -z "${{ steps.versions.outputs.from }}" && -d release-bundle ]]; then extra+=(--bundle-dir release-bundle); fi
-          node packages/create-crm/dist/cli.js --yes --version "$version" --store-update-token --wait "${extra[@]}"
-          host=$(node packages/create-crm/dist/cli.js status --json | jq -r .state.hostname)
+          node packages/create-relationship-os/dist/cli.js --yes --version "$version" --store-update-token --wait "${extra[@]}"
+          host=$(node packages/create-relationship-os/dist/cli.js status --json | jq -r .state.hostname)
           echo "url=https://$host" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -148,7 +148,7 @@ jobs:
           git checkout -- packages/db/src/migrate.ts
           rm packages/db/migrations/9998_install_test_wipe.sql packages/db/migrations/9999_install_test_fail.sql
           set +e
-          node packages/create-crm/dist/cli.js upgrade --yes --version "$broken" --bundle-dir broken-release --unverified | tee upgrade.log
+          node packages/create-relationship-os/dist/cli.js upgrade --yes --version "$broken" --bundle-dir broken-release --unverified | tee upgrade.log
           code=${PIPESTATUS[0]}
           set -e
           if [[ "$code" == "0" ]]; then echo "::error::the broken release was not refused"; exit 1; fi
@@ -173,10 +173,10 @@ jobs:
           LIVE_EXPECT_VERSION: ${{ steps.versions.outputs.to }}
         run: pnpm exec playwright test -c playwright.live.config.ts
 
-      - name: Upgrade N → N+1 (unpublished release) with crm upgrade
+      - name: Upgrade N → N+1 (unpublished release) with ros upgrade
         if: steps.versions.outputs.from != '' && inputs.bundle_artifact != ''
         run: |
-          node packages/create-crm/dist/cli.js upgrade --yes --version "${{ steps.versions.outputs.to }}" --bundle-dir release-bundle
+          node packages/create-relationship-os/dist/cli.js upgrade --yes --version "${{ steps.versions.outputs.to }}" --bundle-dir release-bundle
 
       - name: Data and the runtime extension survived
         if: steps.versions.outputs.from != ''
@@ -189,7 +189,7 @@ jobs:
 
       - name: Tear down
         if: always() && steps.versions.outputs.to != ''
-        run: node packages/create-crm/dist/cli.js uninstall --yes
+        run: node packages/create-relationship-os/dist/cli.js uninstall --yes
 
       - uses: actions/upload-artifact@v4
         if: failure()

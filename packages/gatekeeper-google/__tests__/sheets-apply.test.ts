@@ -1,7 +1,7 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-google/__tests__/sheets-apply.test.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import {
   ActionApplyError, ActionJournal, ActionOutcomeUnknownError, APPLY_OUTCOME_UNKNOWN_MESSAGE,
-} from "@crm/gatekeeper-kit/actions";
+} from "@relationship-os/gatekeeper-kit/actions";
 import { describe, expect, it } from "vitest";
 import { MARKER_RETENTION_MS, SHEETS_ACTIONS, type MarkerEntry, type SheetsHost } from "../src/sheets-actions";
 import { SheetsWriteRefused, type GoogleSheetsApi, type SheetArea } from "../src/sheets-api";

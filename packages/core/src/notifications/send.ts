@@ -15,7 +15,7 @@
 //
 // The field registry must be current (the pipeline refreshes it at the start of every
 // invocation); callers outside the pipeline call refreshSchemaRegistry first.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Compilable, type Kysely, sql } from "kysely";
 import type { z } from "zod";
 import type { recipientInputSchema } from "../automations/schemas.ts";

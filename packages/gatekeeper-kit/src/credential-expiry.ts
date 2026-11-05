@@ -1,8 +1,8 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-kit/src/credential-expiry.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 /** Durable, deduplicated Workshop notification for expired credentials. */
 
-import { createLogger } from "@crm/gatekeeper-observability/logger";
-import type { GatekeeperConnectCallback } from "@crm/gatekeeper-interface/gatekeeper";
+import { createLogger } from "@relationship-os/gatekeeper-observability/logger";
+import type { GatekeeperConnectCallback } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { generateNonce } from "./connect-nonce";
 import type { KvReadWrite } from "./kv";
 import { perStorage } from "./per-storage";

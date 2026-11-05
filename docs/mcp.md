@@ -123,7 +123,7 @@ The sections below give the details for each client and each step.
 
 ## Connecting
 
-You need the deployment's public URL, for example `https://crm-app.<your-subdomain>.workers.dev`.
+You need the deployment's public URL, for example `https://ros-app.<your-subdomain>.workers.dev`.
 The MCP URL is that plus `/mcp`.
 
 claude.ai and Claude Desktop connect from Anthropic's cloud, not from your computer, so the

@@ -30,7 +30,7 @@ retrieval API is stage 7b.
 tasks) and 20 queries, each with the record it must find in the top 5, phrased mostly without the
 record's own words. `ai-relevance.test.ts` runs it with the deterministic fake embedder (word stems
 and character trigrams): 19 of 20 in the top 5, against fewer than 17 for full-text alone, which
-the same test asserts. `pnpm --filter @crm/core relevance:real` runs the set with the real
+the same test asserts. `pnpm --filter @relationship-os/core relevance:real` runs the set with the real
 Workers AI embedding model (needs `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`) and prints
 the report.
 

@@ -4,7 +4,7 @@
 // small wrapper over the per-run host RpcTarget so `crm.call` returns values and throws errors.
 // The entry captures console output and returns the script's default export. Patching console is
 // fine here: the worker runs once and is thrown away.
-import { GATEKEEPER_MODULES } from "@crm/sdk";
+import { GATEKEEPER_MODULES } from "@relationship-os/sdk";
 import { transform } from "sucrase";
 
 export const CODE_TIMEOUT_MS = 30_000;

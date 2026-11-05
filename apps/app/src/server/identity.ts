@@ -1,7 +1,7 @@
 // Identity enforcement for every request. The TanStack Start request middleware (src/start.ts)
 // calls `authorize()` for every route and server function; this module stays framework-free so it
 // can be tested directly in workerd.
-import { createIdentityProvider, type IdentityEnv, type Principal } from "@crm/auth";
+import { createIdentityProvider, type IdentityEnv, type Principal } from "@relationship-os/auth";
 
 /** Paths anyone may load. Everything else needs a Principal. */
 const PUBLIC_PATHS = new Set(["/sign-in", "/api/health"]);

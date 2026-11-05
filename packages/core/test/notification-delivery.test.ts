@@ -4,7 +4,7 @@
 // sends, private activities that never leave the CRM, escalation of unread approvals, the daily
 // digest, channel route matching, and that every query keeps to its index.
 import { env } from "cloudflare:workers";
-import { createCrmDb } from "@crm/db";
+import { createCrmDb } from "@relationship-os/db";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   type ActingUser,
@@ -354,13 +354,13 @@ describe("delivery per preference", () => {
     expect(email).toMatchObject({ connectionId: emailConnection, resource: "k1", method: "send" });
     expect(email?.args[0]).toEqual({
       to: [member.email],
-      subject: "[CRM] Grace needs you",
-      text: `Grace needs you\n\nBody text\n\nOpen in the CRM: https://crm.test/people/${personId}`,
+      subject: "[Relationship OS] Grace needs you",
+      text: `Grace needs you\n\nBody text\n\nOpen in Relationship OS: https://crm.test/people/${personId}`,
     });
     expect(slack).toMatchObject({ connectionId: slackConnection, method: "dm" });
     expect(slack?.args[0]).toMatchObject({ user: member.email });
     expect(String(textOf(slack))).toContain(
-      `<https://crm.test/people/${personId}|Open in the CRM>`,
+      `<https://crm.test/people/${personId}|Open in Relationship OS>`,
     );
     expect(await ledger(`n:${forAdmin}:email`)).toBeNull();
     // Repeated ticks send nothing again.
@@ -519,11 +519,11 @@ describe("the daily digest", () => {
     const email = calls.find(
       (c) =>
         c.method === "send" &&
-        (c.args[0] as { subject: string }).subject.startsWith("[CRM] Daily digest"),
+        (c.args[0] as { subject: string }).subject.startsWith("[Relationship OS] Daily digest"),
     );
     expect(email?.args[0]).toMatchObject({ to: [member.email] });
     const text = textOf(email);
-    expect(text).toContain(`Your CRM digest for ${date}`);
+    expect(text).toContain(`Your Relationship OS digest for ${date}`);
     expect(text).toContain("Fresh for the digest");
     expect(text).toContain("Review approvals: https://crm.test/approvals");
     expect(text).not.toContain("Private board email");
@@ -634,7 +634,7 @@ describe("channel routes", () => {
     expect(calls[0]?.args[0]).toMatchObject({ channel: "#people" });
     expect(textOf(calls[0])).toMatch(
       new RegExp(
-        `^\\*New person\\*: Person "Linus T"\\n<https://crm.test/people/${person.id}\\|Open in the CRM>$`,
+        `^\\*New person\\*: Person "Linus T"\\n<https://crm.test/people/${person.id}\\|Open in Relationship OS>$`,
       ),
     );
   });

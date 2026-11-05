@@ -10,17 +10,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@crm/ui/components/alert-dialog";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
+} from "@relationship-os/ui/components/alert-dialog";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { HistoryIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";

@@ -1,4 +1,4 @@
-# @crm/auth
+# @relationship-os/auth
 
 Deploy-time identity (ADR 0008).
 

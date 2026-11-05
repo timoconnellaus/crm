@@ -8,10 +8,10 @@
 //   (c) mapping:  the chart mapping names columns the preview returned, and sets the ones the
 //                 type needs (kpi → value, bar/line → x and y, …);
 //   plus the task's own expectations (a top-5 shows five rows, horizontal bars are horizontal).
-import type { RecordedCall } from "@crm/evals-mcp/lib/agent.ts";
-import { callMatches } from "@crm/evals-mcp/lib/grading.ts";
-import type { McpSession } from "@crm/evals-mcp/lib/mcp.ts";
-import { parseResult } from "@crm/evals-mcp/lib/mcp.ts";
+import type { RecordedCall } from "@relationship-os/evals-mcp/lib/agent.ts";
+import { callMatches } from "@relationship-os/evals-mcp/lib/grading.ts";
+import type { McpSession } from "@relationship-os/evals-mcp/lib/mcp.ts";
+import { parseResult } from "@relationship-os/evals-mcp/lib/mcp.ts";
 import type { DashboardTask, PreviewResult } from "../prompts.ts";
 import type { DashboardFilter, WidgetMapping, WidgetSpec } from "./core.ts";
 

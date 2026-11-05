@@ -1,5 +1,5 @@
 // The person details editor: draft → minimal person.update input.
-import type { Person } from "@crm/core";
+import type { Person } from "@relationship-os/core";
 import { describe, expect, it } from "vitest";
 import {
   draftToUpdate,

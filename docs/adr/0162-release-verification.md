@@ -33,7 +33,7 @@ Sigstore libraries' trust-root fetching is untested, so it relies on checks 1–
 ## Consequences
 - The Workers-side check trusts GitHub's API over TLS rather than verifying signatures itself. A
   compromise of GitHub's attestation store is outside this threat model; operators who want the
-  cryptographic check update with `crm upgrade --require-gh`.
+  cryptographic check update with `ros upgrade --require-gh`.
 - Tests: fake GitHub serving genuine and tampered releases; the CLI and the updater both refuse a
   tampered bundle, with and without rewritten SHA256SUMS, and attestations from another workflow,
   ref or repository.

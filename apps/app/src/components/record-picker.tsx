@@ -1,16 +1,16 @@
 // Pick a person or an organisation by searching for it: `RecordSearch` is the inline search list
 // (used in the merge dialog), `RecordPicker` the same list in a popover behind a button (the
 // parent-organisation field). Searches the object's list operation by name, email or domain.
-import type { Filter } from "@crm/core/client";
-import { Button } from "@crm/ui/components/button";
+import type { Filter } from "@relationship-os/core/client";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Command,
   CommandEmpty,
   CommandInput,
   CommandItem,
   CommandList,
-} from "@crm/ui/components/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@crm/ui/components/popover";
+} from "@relationship-os/ui/components/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@relationship-os/ui/components/popover";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronsUpDownIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";

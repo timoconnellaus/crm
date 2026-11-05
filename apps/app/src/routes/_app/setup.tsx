@@ -2,21 +2,27 @@
 // until they finish or skip it. Every step saves as it goes (setup.save), so it can be left and
 // resumed; each real change goes through its own operation (settings.update, policy.update,
 // sample.install / sample.remove).
-import { COMMON_CURRENCIES, POLICY_PRESETS, type PolicyPreset } from "@crm/core/client";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
-import { RadioGroup, RadioGroupItem } from "@crm/ui/components/radio-group";
+import { COMMON_CURRENCIES, POLICY_PRESETS, type PolicyPreset } from "@relationship-os/core/client";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
+import { RadioGroup, RadioGroupItem } from "@relationship-os/ui/components/radio-group";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CheckCircle2Icon, CpuIcon, FileUpIcon, PlugZapIcon } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
@@ -97,7 +103,7 @@ function SetupPage() {
   }
   if (status.isPending || step === null) {
     return (
-      <PageLayout title="Set up your CRM" width="md">
+      <PageLayout title="Set up Relationship OS" width="md">
         <Skeleton className="h-64 w-full" />
       </PageLayout>
     );
@@ -133,7 +139,7 @@ function SetupPage() {
 
   return (
     <PageLayout
-      title="Set up your CRM"
+      title="Set up Relationship OS"
       width="md"
       description={`Step ${index + 1} of ${STEPS.length}: ${STEP_TITLES[step]}`}
       actions={

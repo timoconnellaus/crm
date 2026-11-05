@@ -22,6 +22,6 @@ export default defineConfig({
     include: ["test/**/*.test.ts"],
     // The first call loads the whole Worker; allow for a cold start under a parallel `pnpm test`.
     testTimeout: 20_000,
-    setupFiles: ["@crm/gatekeeper-interface/testing/assert-workerd"],
+    setupFiles: ["@relationship-os/gatekeeper-interface/testing/assert-workerd"],
   },
 });

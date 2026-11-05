@@ -2,7 +2,7 @@
 
 declare namespace Cloudflare {
   interface Env {
-    // The Slack app shared with crm-gatekeeper-slack: the same secret names it uses.
+    // The Slack app shared with ros-gatekeeper-slack: the same secret names it uses.
     CLIENT_ID?: string;
     CLIENT_SECRET?: string;
   }

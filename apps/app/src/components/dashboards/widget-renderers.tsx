@@ -3,7 +3,7 @@
 // chart mapping. Charts use the shadcn chart components (Recharts) and the --chart-N colours,
 // which are redefined for dark mode. Clicking a KPI, a bar, a point, a segment or a row calls
 // `onSelect` with the result row behind it (the click-through).
-import type { WidgetSpec } from "@crm/core/client";
+import type { WidgetSpec } from "@relationship-os/core/client";
 import {
   type ChartConfig,
   ChartContainer,
@@ -11,8 +11,8 @@ import {
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
-} from "@crm/ui/components/chart";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/ui/components/chart";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { ArrowDownRightIcon, ArrowUpRightIcon, MinusIcon } from "lucide-react";
 import { useMemo } from "react";
 import {

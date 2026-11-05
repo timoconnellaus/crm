@@ -1,6 +1,6 @@
 // The identity middleware's decisions (src/server/identity.ts), run in workerd against real D1.
 import { env } from "cloudflare:workers";
-import { ACCESS_JWT_HEADER, type IdentityEnv } from "@crm/auth";
+import { ACCESS_JWT_HEADER, type IdentityEnv } from "@relationship-os/auth";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { authorize } from "../src/server/identity.ts";
 import { AUD, createAccessKeys, TEAM } from "./access-jwt.ts";
@@ -124,7 +124,7 @@ describe("with IDENTITY_PROVIDER=better-auth", () => {
 });
 
 async function fetchAuth(identityEnv: IdentityEnv, path: string, body: unknown) {
-  const { createIdentityProvider } = await import("@crm/auth");
+  const { createIdentityProvider } = await import("@relationship-os/auth");
   const provider = createIdentityProvider(identityEnv);
   const response = await provider.handle?.(
     new Request(`${ORIGIN}${path}`, {

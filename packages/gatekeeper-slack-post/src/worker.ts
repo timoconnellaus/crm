@@ -1,4 +1,4 @@
-// crm-gatekeeper-slack-post: posts Slack messages and DMs with a bot token. It complements the
+// ros-gatekeeper-slack-post: posts Slack messages and DMs with a bot token. It complements the
 // vendored read-only Slack gatekeeper and uses the same Slack app (CLIENT_ID / CLIENT_SECRET).
 // A workspace is the resource; its facet turns every `post()` and `dm()` into an approval-queue
 // action and only calls Slack once the action is applied. README.md explains the design.
@@ -23,9 +23,15 @@ import type {
   ResourceDescription,
   SupportedResource,
   VendorDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
-import { stripTrailingSlashes, workerVersionTag } from "@crm/gatekeeper-interface/gatekeeper";
-import { buildDescription, sanitizeTitle } from "@crm/gatekeeper-kit/action-description";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
+import {
+  stripTrailingSlashes,
+  workerVersionTag,
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
+import {
+  buildDescription,
+  sanitizeTitle,
+} from "@relationship-os/gatekeeper-kit/action-description";
 import {
   ActionApplyError,
   type ActionDefinition,
@@ -33,8 +39,8 @@ import {
   ActionOutcomeUnknownError,
   defineActions,
   type TaggedAction,
-} from "@crm/gatekeeper-kit/actions";
-import { withAuthRetry } from "@crm/gatekeeper-kit/auth-retry";
+} from "@relationship-os/gatekeeper-kit/actions";
+import { withAuthRetry } from "@relationship-os/gatekeeper-kit/auth-retry";
 import {
   advanceToOAuth,
   claimOAuth,
@@ -43,27 +49,27 @@ import {
   NONCE_KEY,
   putInitiation,
   type StoredNonce,
-} from "@crm/gatekeeper-kit/connect-handshake";
-import { generateNonce } from "@crm/gatekeeper-kit/connect-nonce";
+} from "@relationship-os/gatekeeper-kit/connect-handshake";
+import { generateNonce } from "@relationship-os/gatekeeper-kit/connect-nonce";
 import {
   connectHandoffPageHtml,
   errorPageHtml,
   htmlResponse,
   INVALID_LINK_HTML,
-} from "@crm/gatekeeper-kit/connect-pages";
-import { notifyCredentialsExpiredOnce } from "@crm/gatekeeper-kit/credential-expiry";
+} from "@relationship-os/gatekeeper-kit/connect-pages";
+import { notifyCredentialsExpiredOnce } from "@relationship-os/gatekeeper-kit/credential-expiry";
 import {
   commitStagedCredentials,
   discardStagedCredentials,
   stageCredentials,
-} from "@crm/gatekeeper-kit/credential-stage";
+} from "@relationship-os/gatekeeper-kit/credential-stage";
 import {
   CredentialCoordinator,
   CredentialsExpiredError,
   type CredentialsWithIdentity,
   isConnectionSuperseded,
   type RejectionVerdict,
-} from "@crm/gatekeeper-kit/credentials";
+} from "@relationship-os/gatekeeper-kit/credentials";
 import {
   BOT_SCOPES,
   callSlack,
@@ -175,7 +181,7 @@ function clientOf(env: Env): { id: string; secret: string } | null {
 
 const NOT_CONFIGURED_HTML = errorPageHtml(
   "Slack posting is not configured",
-  "An administrator must set the Slack app's CLIENT_ID and CLIENT_SECRET on crm-gatekeeper-slack-post.",
+  "An administrator must set the Slack app's CLIENT_ID and CLIENT_SECRET on ros-gatekeeper-slack-post.",
 );
 
 const HEX_ID = /^[0-9a-f]{64}$/;
@@ -1122,7 +1128,7 @@ export class SlackPostGatekeeper
 
 export class GatekeeperVendor extends WorkerEntrypoint<Env> {
   /**
-   * The public connect routes, proxied by crm-app from https://<crm-origin>/gatekeeper/slack-post/*:
+   * The public connect routes, proxied by ros-app from https://<crm-origin>/gatekeeper/slack-post/*:
    * `GET {BASE_URL}/connect/<account>/<nonce>` redirects to Slack's consent page, and
    * `GET {BASE_URL}/oauth` is Slack's redirect back, ending on the Workshop handoff page.
    */

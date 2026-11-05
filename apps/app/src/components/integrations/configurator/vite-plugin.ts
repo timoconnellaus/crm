@@ -2,12 +2,12 @@
 // Used by vite.config.ts and vitest.config.ts; never imported by app code.
 //
 // The specs (`packages/gatekeeper-*/src/configurator/*-configurator-ui.tsx`) are written against
-// the authoring API in `@crm/gatekeeper-configurator-ui` and compiled with `jsxFactory: "h"`.
+// the authoring API in `@relationship-os/gatekeeper-configurator-ui` and compiled with `jsxFactory: "h"`.
 // Upstream bundles each into its own sandboxed frame; we render them in the app with React, so
 // this plugin:
 //
-//  1. aliases `@crm/gatekeeper-configurator-ui` (exactly; not `/options`) to our React runtime,
-//     and `@crm/gatekeeper-configurator-ui/options` to the vendored helpers, which the app does
+//  1. aliases `@relationship-os/gatekeeper-configurator-ui` (exactly; not `/options`) to our React runtime,
+//     and `@relationship-os/gatekeeper-configurator-ui/options` to the vendored helpers, which the app does
 //     not depend on directly;
 //  2. resolves `configurator-spec:<vendor>/<name>` (what `registry.ts` imports) to the spec file,
 //     so `tsc` never follows the app into vendored sources (their types come from `specs.d.ts`);
@@ -65,7 +65,7 @@ const SPEC_FILE = /\/packages\/gatekeeper-[^/]+\/src\/configurator\/[^/]+-ui\.ts
 
 const PRAGMA =
   "/** @jsxRuntime classic */ /** @jsx __crmConfiguratorH */ /** @jsxFrag __crmConfiguratorFragment */ " +
-  'import { h as __crmConfiguratorH, Fragment as __crmConfiguratorFragment } from "@crm/gatekeeper-configurator-ui"; ';
+  'import { h as __crmConfiguratorH, Fragment as __crmConfiguratorFragment } from "@relationship-os/gatekeeper-configurator-ui"; ';
 
 const SPACE_OR_COMMENT = /(?:\s+|\/\/[^\n]*|\/\*[\s\S]*?\*\/)+/y;
 const WORD = /[\w$]+/y;
@@ -150,10 +150,10 @@ export function configuratorSpecs(): VitePlugin {
       resolve: {
         alias: [
           {
-            find: /^@crm\/gatekeeper-configurator-ui$/,
+            find: /^@relationship-os\/gatekeeper-configurator-ui$/,
             replacement: /^\/[A-Za-z]:\//.test(runtime) ? runtime.slice(1) : runtime,
           },
-          { find: /^@crm\/gatekeeper-configurator-ui\/options$/, replacement: options },
+          { find: /^@relationship-os\/gatekeeper-configurator-ui\/options$/, replacement: options },
         ],
       },
     }),

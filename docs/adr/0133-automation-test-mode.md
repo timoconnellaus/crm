@@ -12,7 +12,7 @@ match what the real run then does.
 
 ## Decision
 
-- `automation.test` (risk `read`, `records:read`, curated MCP tool) calls crm-runner's
+- `automation.test` (risk `read`, `records:read`, curated MCP tool) calls ros-runner's
   `testAutomation`, which makes **one executor call in `test` mode**: the SDK runtime runs `run` to
   the end, runs every `step.do`, and skips sleeps and waits (recording how long they would have
   been; waits return null).

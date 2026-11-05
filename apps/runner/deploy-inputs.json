@@ -1,9 +1,9 @@
 {
-  "$comment": "Deploy inputs wrangler.jsonc cannot hold, read by scripts/release/manifest-lib.ts (the release manifest, ADR 0160) and scripts/deploy.mjs. `features.ai`: Workers AI and Vectorize (the automation events consumer embeds changed records), remote-only so left out of wrangler.jsonc (ADR 0156); turned off with CRM_AI=off or `create-crm --ai off`. The crm-records index is described in apps/app/deploy-inputs.json.",
+  "$comment": "Deploy inputs wrangler.jsonc cannot hold, read by scripts/release/manifest-lib.ts (the release manifest, ADR 0160) and scripts/deploy.mjs. `features.ai`: Workers AI and Vectorize (the automation events consumer embeds changed records), remote-only so left out of wrangler.jsonc (ADR 0156); turned off with ROS_AI=off or `create-relationship-os --ai off`. The ros-records index is described in apps/app/deploy-inputs.json.",
   "features": {
     "ai": {
       "ai": { "binding": "AI" },
-      "vectorize": [{ "binding": "VECTORIZE", "index_name": "crm-records" }]
+      "vectorize": [{ "binding": "VECTORIZE", "index_name": "ros-records" }]
     }
   }
 }

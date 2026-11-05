@@ -2,7 +2,7 @@
 // runtime types (this library has no Worker config, so no Env). We use the equivalent
 // @cloudflare/workers-types package instead of committing a generated copy.
 {
-  "extends": "@crm/config/tsconfig.vendored.json",
+  "extends": "@relationship-os/config/tsconfig.vendored.json",
   "compilerOptions": {
     "types": ["@cloudflare/workers-types/experimental"]
   },

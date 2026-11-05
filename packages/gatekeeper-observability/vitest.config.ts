@@ -1,6 +1,6 @@
 // Local config (upstream's also wires the error reporter and tail worker that the modules we do
 // not vendor need). `nodejs_als` is what observability-context.ts requires.
-import { defineWorkersTestConfig } from "@crm/config/vitest";
+import { defineWorkersTestConfig } from "@relationship-os/config/vitest";
 
 export default defineWorkersTestConfig({
   workers: {
@@ -10,5 +10,5 @@ export default defineWorkersTestConfig({
     },
   },
   include: ["__tests__/*.test.ts"],
-  setupFiles: ["@crm/gatekeeper-interface/testing/assert-workerd"],
+  setupFiles: ["@relationship-os/gatekeeper-interface/testing/assert-workerd"],
 });

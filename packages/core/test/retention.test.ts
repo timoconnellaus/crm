@@ -2,7 +2,7 @@
 // the append-only triggers, run history purge, pending action compaction and caps, the storage
 // gauge, and that the retention queries keep to their indexes (EXPLAIN QUERY PLAN, rows read).
 import { env } from "cloudflare:workers";
-import { createCrmDb } from "@crm/db";
+import { createCrmDb } from "@relationship-os/db";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   capFileDiffs,

@@ -1,9 +1,9 @@
 // Pick an organisation by typing its name or domain (search.global over organisations), or
 // create one by name when it does not exist yet. Inline (no popover), so it works inside dialogs
 // and on phones.
-import { Button } from "@crm/ui/components/button";
-import { Input } from "@crm/ui/components/input";
-import { cn } from "@crm/ui/lib/utils";
+import { Button } from "@relationship-os/ui/components/button";
+import { Input } from "@relationship-os/ui/components/input";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Building2Icon, PlusIcon, XIcon } from "lucide-react";
 import { useEffect, useId, useState } from "react";

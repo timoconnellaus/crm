@@ -4,8 +4,8 @@
 // harness with it against a deployment (no model credentials needed), and the tests use it to
 // check that every reference widget passes the grader.
 
-import type { ModelClient } from "@crm/evals-mcp/lib/model.ts";
-import { reply, toolCall } from "@crm/evals-mcp/test/fakes.ts";
+import type { ModelClient } from "@relationship-os/evals-mcp/lib/model.ts";
+import { reply, toolCall } from "@relationship-os/evals-mcp/test/fakes.ts";
 import type { DashboardTask } from "../prompts.ts";
 import type { DashboardFilter } from "./core.ts";
 import type { Mode } from "./harness.ts";

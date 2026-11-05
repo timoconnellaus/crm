@@ -2,7 +2,7 @@
 // points at. When the relation is the object's stage (its stage behaviour), columns are the
 // stages in order, limited to the pipeline the board's filter names, so a Deals board shows
 // Lead → Qualified → … → Won, Lost.
-import type { Filter } from "@crm/core/client";
+import type { Filter } from "@relationship-os/core/client";
 import { useQuery } from "@tanstack/react-query";
 import { callOp } from "#/lib/operations";
 import type { FieldInfo, ObjectInfo } from "#/lib/schema";

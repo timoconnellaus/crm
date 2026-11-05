@@ -30,7 +30,9 @@ jobs:
       # every package at once on a 4-vCPU runner makes timing- and startup-sensitive tests flake.
       - run: pnpm test --concurrency=2
       # Wall-clock-sensitive vendored tests, run alone so CPU contention doesn't fail them.
-      - run: pnpm --filter @crm/gatekeeper-microsoft test:timing
+      - run: pnpm --filter @relationship-os/gatekeeper-microsoft test:timing
+      # The landing page (apps/marketing): its build fails on any tracker or third-party load.
+      - run: pnpm --filter @relationship-os/marketing build
 
   e2e:
     name: E2E smoke (Playwright)
@@ -43,7 +45,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @crm/app exec playwright install --with-deps chromium
+      - run: pnpm --filter @relationship-os/app exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()

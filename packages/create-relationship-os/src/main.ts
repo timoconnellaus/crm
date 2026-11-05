@@ -1,18 +1,24 @@
-// create-crm / crm: install, upgrade, roll back and inspect a CRM deployment in your own
+// create-relationship-os / ros: install, upgrade, roll back and inspect a Relationship OS deployment in your own
 // Cloudflare account, from a verified release bundle, with the Cloudflare REST API only
 // (ADR 0163). Every command is safe to re-run.
 //
-//   npx create-crm                      install (interactive)
-//   npx create-crm --yes --token … …    install (non-interactive, e.g. CI)
-//   crm upgrade [--version X.Y.Z]       same steps as Settings → Updates
-//   crm rollback                        undo the last update (redeploy + restore the bookmark)
-//   crm status                          what is installed and what is available
+//   npx create-relationship-os                      install (interactive)
+//   npx create-relationship-os --yes --token … …    install (non-interactive, e.g. CI)
+//   ros upgrade [--version X.Y.Z]       same steps as Settings → Updates
+//   ros rollback                        undo the last update (redeploy + restore the bookmark)
+//   ros status                          what is installed and what is available
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 // Pure data and functions (no Worker imports), bundled into the CLI by esbuild.
-import { modelRolesVar, PROVIDER_INFO, ROLE_PRESETS, RoleLayerError } from "@crm/core/ai-roles";
 import {
+  modelRolesVar,
+  PROVIDER_INFO,
+  ROLE_PRESETS,
+  RoleLayerError,
+} from "@relationship-os/core/ai-roles";
+import {
+  adoptLegacyNames,
   apiKillSwitchStore,
   appliedMigrationsViaApi,
   applyBundleMigrations,
@@ -35,6 +41,8 @@ import {
   healthSmoke,
   installedExtensionsViaApi,
   killSwitchControl,
+  legacyName,
+  legacyReleaseAssetNames,
   listReleases,
   locateDeployment,
   MODEL_ROLES_VAR,
@@ -61,18 +69,18 @@ import {
   withDeploymentVar,
   workersDevHostname,
   writeDeploymentState,
-} from "@crm/release";
+} from "@relationship-os/release";
 import { choose, type Io, type Redactor } from "./io.ts";
 
-export const HELP = `create-crm: install the CRM into your own Cloudflare account.
+export const HELP = `create-relationship-os: install Relationship OS into your own Cloudflare account.
 
 Usage
-  npx create-crm [install] [options]     install, or repair an existing install (idempotent)
-  crm upgrade [--version X.Y.Z]          update to a newer release (preflight, bookmark, migrate,
+  npx create-relationship-os [install] [options]     install, or repair an existing install (idempotent)
+  ros upgrade [--version X.Y.Z]          update to a newer release (preflight, bookmark, migrate,
                                          switch all Workers, smoke check; rolls back on failure)
-  crm rollback                           redeploy the previous release and restore its bookmark
-  crm status                             installed version, channel, URL and available releases
-  crm uninstall                          delete the Workers, database, bucket and namespace (asks)
+  ros rollback                           redeploy the previous release and restore its bookmark
+  ros status                             installed version, channel, URL and available releases
+  ros uninstall                          delete the Workers, database, bucket and namespace (asks)
 
 Options
   --token <t>            Cloudflare API token (or CLOUDFLARE_API_TOKEN). Needs, on the account:
@@ -88,11 +96,11 @@ Options
   --zone <name>          the zone of a custom hostname (default: inferred from it)
   --identity <i>         better-auth (default) or cloudflare-access
   --gatekeepers <list>   optional gatekeeper Workers to install, e.g. google,email-send
-  --ai <on|off>          in-app AI: Workers AI and the crm-records Vectorize index (default on,
-                         or CRM_AI). Off: AI features say "AI is not configured". Upgrades keep
+  --ai <on|off>          in-app AI: Workers AI and the ros-records Vectorize index (default on,
+                         or ROS_AI). Off: AI features say "AI is not configured". Upgrades keep
                          the choice; re-run install with --ai to change it
   --ai-gateway <id|off>  AI Gateway every model call goes through (default: one named after the
-                         install, e.g. crm, created with logging and authentication on and its
+                         install, e.g. ros, created with logging and authentication on and its
                          token stored as AI_GATEWAY_TOKEN). off: call Workers AI directly
   --provider-key P=KEY   store a provider key in the gateway as BYOK (repeatable), e.g.
                          deepseek=… or openai=… (a custom provider by its slug). Never logged.
@@ -101,7 +109,7 @@ Options
                          (${Object.keys(ROLE_PRESETS).join(", ")}), a JSON file, inline JSON, or
                          default (the shipped Workers AI roles). Kept by upgrades; Settings → AI
                          overrides still win
-  --ai-admin-token <t>   Settings → AI's token (or CRM_AI_ADMIN_TOKEN), stored on crm-app as
+  --ai-admin-token <t>   Settings → AI's token (or ROS_AI_ADMIN_TOKEN), stored on ros-app as
                          CLOUDFLARE_API_TOKEN; permissions in docs/deploying.md "In-app AI"
   --secret NAME=VALUE    a secret to set (repeatable); WORKER:NAME=VALUE for a gatekeeper's
   --update-token <t>     store a scoped token so Settings → Updates can update in place
@@ -110,7 +118,7 @@ Options
   --no-gh                skip \`gh attestation verify\` even if gh is installed
   --require-gh           fail unless \`gh attestation verify\` passes (full Sigstore check)
   --wait                 after install, wait until /api/health answers
-  --bundle-dir <dir>     use crm-<version>.tar.gz and SHA256SUMS from <dir> instead of downloading
+  --bundle-dir <dir>     use relationship-os-<version>.tar.gz and SHA256SUMS from <dir> instead of downloading
                          (still verified against its build attestation)
   --yes                  don't ask; fail on anything that would need an answer
   -h, --help
@@ -163,18 +171,37 @@ export function parseArgs(argv: string[]): { command: string; flags: Flags } {
 
 export interface Env {
   /** Cloudflare API base (tests: the fake). */
-  CRM_CLOUDFLARE_API?: string;
+  ROS_CLOUDFLARE_API?: string;
   /** GitHub API base and download origin (tests: the fake). */
-  CRM_GITHUB_API?: string;
+  ROS_GITHUB_API?: string;
   /** Origin that answers /api/health instead of https://<hostname> (tests). */
-  CRM_HEALTH_ORIGIN?: string;
+  ROS_HEALTH_ORIGIN?: string;
   CLOUDFLARE_API_TOKEN?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
   GITHUB_TOKEN?: string;
   /** "off" installs without Workers AI and Vectorize (same as scripts/deploy.mjs). */
-  CRM_AI?: string;
-  /** Settings → AI's token, stored as crm-app's CLOUDFLARE_API_TOKEN secret. */
-  CRM_AI_ADMIN_TOKEN?: string;
+  ROS_AI?: string;
+  /** Settings → AI's token, stored as ros-app's CLOUDFLARE_API_TOKEN secret. */
+  ROS_AI_ADMIN_TOKEN?: string;
+}
+
+/** The variables above as they were named before the rename (ADR 0190): `CRM_AI` → `ROS_AI`. */
+const LEGACY_ENV = [
+  "ROS_CLOUDFLARE_API",
+  "ROS_GITHUB_API",
+  "ROS_HEALTH_ORIGIN",
+  "ROS_AI",
+  "ROS_AI_ADMIN_TOKEN",
+] as const;
+
+/** Reads each `CRM_*` name when its `ROS_*` name is unset, so old scripts keep working. */
+export function withLegacyEnv(env: Env): Env {
+  const out: Env = { ...env };
+  for (const name of LEGACY_ENV) {
+    const legacy = (env as Record<string, string | undefined>)[name.replace(/^ROS_/, "CRM_")];
+    if (out[name] === undefined && legacy !== undefined) out[name] = legacy;
+  }
+  return out;
 }
 
 export interface Deps {
@@ -199,7 +226,7 @@ interface Session {
   github: GitHubOptions;
   repository: string;
   extra: ExtraVerifier | undefined;
-  /** Use bundles from this directory (crm-<version>.tar.gz + SHA256SUMS) instead of downloading. */
+  /** Use bundles from this directory (relationship-os-<version>.tar.gz + SHA256SUMS) instead of downloading. */
   bundleDir?: string;
   /** With bundleDir: skip the attestation check (local test builds only). */
   unverified: boolean;
@@ -219,7 +246,7 @@ async function session(flags: Flags, deps: Deps): Promise<Session> {
   deps.redactor.add(token);
   const api = new CloudflareClient({
     token,
-    ...(env.CRM_CLOUDFLARE_API ? { apiBase: env.CRM_CLOUDFLARE_API } : {}),
+    ...(env.ROS_CLOUDFLARE_API ? { apiBase: env.ROS_CLOUDFLARE_API } : {}),
     ...(deps.fetch ? { fetch: deps.fetch } : {}),
   });
   let accountId = str(flags, "account") ?? env.CLOUDFLARE_ACCOUNT_ID;
@@ -240,7 +267,7 @@ async function session(flags: Flags, deps: Deps): Promise<Session> {
   const repository = str(flags, "repo") ?? DEFAULT_REPOSITORY;
   const github: GitHubOptions = {
     repository,
-    ...(env.CRM_GITHUB_API ? { apiBase: env.CRM_GITHUB_API } : {}),
+    ...(env.ROS_GITHUB_API ? { apiBase: env.ROS_GITHUB_API } : {}),
     ...(deps.fetch ? { fetch: deps.fetch } : {}),
     ...(env.GITHUB_TOKEN ? { token: env.GITHUB_TOKEN } : {}),
   };
@@ -264,7 +291,10 @@ async function session(flags: Flags, deps: Deps): Promise<Session> {
 }
 
 async function verified(s: Session, version: string, deps: Deps) {
-  const local = s.bundleDir ? join(s.bundleDir, releaseAssetNames(version).bundle) : null;
+  const names = [releaseAssetNames(version).bundle, legacyReleaseAssetNames(version).bundle];
+  const local = s.bundleDir
+    ? (names.map((n) => join(s.bundleDir as string, n)).find((p) => existsSync(p)) ?? null)
+    : null;
   if (local && existsSync(local)) {
     // A release built locally or in the release workflow before publishing (--bundle-dir).
     deps.io.out(`Verifying the local bundle ${local}…`);
@@ -286,7 +316,7 @@ async function verified(s: Session, version: string, deps: Deps) {
     }
     return { bundle, digest };
   }
-  deps.io.out(`Downloading crm ${version} and verifying it…`);
+  deps.io.out(`Downloading Relationship OS ${version} and verifying it…`);
   const release = await fetchVerifiedRelease(version, {
     ...s.github,
     ...(s.extra ? { extra: s.extra } : {}),
@@ -302,7 +332,7 @@ function parseSecrets(flags: Flags, redactor: Redactor): Record<string, Record<s
   for (const entry of flags.secret ?? []) {
     const match = /^(?:([\w-]+):)?([A-Z][A-Z0-9_]*)=(.*)$/s.exec(entry);
     if (!match) throw new CliError(`--secret expects NAME=VALUE or WORKER:NAME=VALUE`);
-    const worker = match[1] ?? "crm-app";
+    const worker = match[1] ?? "ros-app";
     out[worker] ??= {};
     (out[worker] as Record<string, string>)[match[2] as string] = match[3] as string;
     redactor.add(match[3]);
@@ -349,9 +379,9 @@ function registryProvider(slug: string): string | undefined {
   return Object.values(PROVIDER_INFO).find((p) => p.gatewaySlug === slug && p.needsKey)?.id;
 }
 
-/** `--ai` / CRM_AI: true, false, or undefined when neither says. */
+/** `--ai` / ROS_AI: true, false, or undefined when neither says. */
 function aiChoice(flags: Flags, env: Env): boolean | undefined {
-  const value = (str(flags, "ai") ?? env.CRM_AI)?.trim().toLowerCase();
+  const value = (str(flags, "ai") ?? env.ROS_AI)?.trim().toLowerCase();
   if (value === undefined || value === "") return undefined;
   if (value === "on" || value === "true") return true;
   if (value === "off" || value === "false") return false;
@@ -375,23 +405,25 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
   const { io } = deps;
   const s = await session(flags, deps);
   const existing = await locateDeployment(s.api, s.accountId);
-  const previous = existing?.state ?? null;
+  const found = existing?.state ?? null;
   const channelFlag = str(flags, "channel");
   if (channelFlag && !CHANNELS.includes(channelFlag as Channel))
     throw new CliError("--channel is stable or beta");
-  const channel = (channelFlag as Channel | undefined) ?? previous?.channel ?? "stable";
-  const version = str(flags, "version") ?? previous?.version ?? (await latestVersion(s, channel));
-  if (previous && compareVersions(version, previous.version) > 0) {
+  const channel = (channelFlag as Channel | undefined) ?? found?.channel ?? "stable";
+  const version = str(flags, "version") ?? found?.version ?? (await latestVersion(s, channel));
+  if (found && compareVersions(version, found.version) > 0) {
     throw new CliError(
-      `crm ${previous.version} is already installed here. Run \`crm upgrade --version ${version}\` to update it.`,
+      `Relationship OS ${found.version} is already installed here. Run \`ros upgrade --version ${version}\` to update it.`,
     );
   }
-  if (previous)
+  if (found)
     io.out(
-      `Found an existing install (${previous.version}); re-running it to repair anything missing.`,
+      `Found an existing install (${found.version}); re-running it to repair anything missing.`,
     );
   const { bundle, digest } = await verified(s, version, deps);
   const manifest = bundle.manifest;
+  // An install from before the rename keeps its deployed names (ADR 0190).
+  const previous = found ? adoptLegacyNames(found, manifest) : null;
   const app = manifest.workers.find((w) => w.role === "app");
   if (!app) throw new CliError("The release has no app Worker.");
 
@@ -451,7 +483,13 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
     .split(",")
     .map((g) => g.trim())
     .filter(Boolean)
-    .map((g) => (g.startsWith("crm-") ? g : `crm-gatekeeper-${g}`));
+    .map((g) =>
+      g.startsWith("ros-")
+        ? g
+        : g.startsWith("crm-")
+          ? g.replace(/^crm-/, "ros-")
+          : `ros-gatekeeper-${g}`,
+    );
   for (const name of requested) {
     if (!optional.some((w) => w.name === name)) throw new CliError(`Unknown gatekeeper ${name}.`);
   }
@@ -495,9 +533,9 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
       : undefined);
   if (updateToken) {
     deps.redactor.add(updateToken);
-    appSecrets.CRM_UPDATE_TOKEN = updateToken;
+    appSecrets.ROS_UPDATE_TOKEN = updateToken;
   }
-  const aiAdminToken = str(flags, "ai-admin-token") ?? deps.env.CRM_AI_ADMIN_TOKEN;
+  const aiAdminToken = str(flags, "ai-admin-token") ?? deps.env.ROS_AI_ADMIN_TOKEN;
   if (aiAdminToken) {
     deps.redactor.add(aiAdminToken);
     appSecrets.CLOUDFLARE_API_TOKEN = aiAdminToken;
@@ -547,7 +585,9 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
     }
   }
 
-  io.out(`\nInstalling crm ${version} into account ${s.accountId} at https://${hostname}`);
+  io.out(
+    `\nInstalling Relationship OS ${version} into account ${s.accountId} at https://${hostname}`,
+  );
   if (!ai) io.out("In-app AI is off (--ai off): no Workers AI or Vectorize bindings.");
   io.out("Resources:");
   const resources = {
@@ -557,6 +597,7 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
       s.accountId,
       neededResources(manifest, gatekeepers, { ai }),
       (l) => io.out(l),
+      previous?.resourceNames,
     )),
   };
   const base: DeploymentState = {
@@ -573,6 +614,7 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
     ...(previous?.aiGatewayCreated ? { aiGatewayCreated: true } : {}),
     ...(previous?.aiGatewayTokenId ? { aiGatewayTokenId: previous.aiGatewayTokenId } : {}),
     workerNames: previous?.workerNames ?? {},
+    ...(previous?.resourceNames ? { resourceNames: previous.resourceNames } : {}),
     vars,
     resources,
     bundleDigest: digest,
@@ -633,15 +675,15 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
     io.out("Waiting for /api/health…");
     await healthSmoke(hostname, version, {
       ...(deps.fetch ? { fetch: deps.fetch } : {}),
-      ...(deps.env.CRM_HEALTH_ORIGIN ? { origin: deps.env.CRM_HEALTH_ORIGIN } : {}),
+      ...(deps.env.ROS_HEALTH_ORIGIN ? { origin: deps.env.ROS_HEALTH_ORIGIN } : {}),
       ...(deps.smokeDelayMs !== undefined ? { delayMs: deps.smokeDelayMs } : {}),
     });
   }
-  io.out(`\nDone. crm ${version} is at ${result.url}`);
+  io.out(`\nDone. Relationship OS ${version} is at ${result.url}`);
   io.out(`Open ${result.url}/setup to create the first admin and finish setting up.`);
   if (!updateToken) {
     io.out(
-      "Updates: run `npx create-crm upgrade` (or store a token with --update-token for Settings → Updates).",
+      "Updates: run `npx create-relationship-os upgrade` (or store a token with --update-token for Settings → Updates).",
     );
   }
   return 0;
@@ -653,7 +695,7 @@ async function locate(s: Session) {
   const located = await locateDeployment(s.api, s.accountId);
   if (!located?.state) {
     throw new CliError(
-      "No CRM installed from a release was found in this account. Run `npx create-crm` first.",
+      "No Relationship OS installed from a release was found in this account. Run `npx create-relationship-os` first.",
     );
   }
   return { databaseId: located.databaseId, state: located.state };
@@ -693,14 +735,18 @@ async function currentManifest(s: Session, version: string) {
 async function upgrade(flags: Flags, deps: Deps): Promise<number> {
   const { io } = deps;
   const s = await session(flags, deps);
-  const { databaseId, state } = await locate(s);
-  const channel = state.channel;
+  const { databaseId, state: found } = await locate(s);
+  const channel = found.channel;
   const target = str(flags, "version") ?? (await latestVersion(s, channel));
-  if (compareVersions(target, state.version) <= 0) {
-    io.out(`crm ${state.version} is installed; nothing newer on the ${channel} channel.`);
+  if (compareVersions(target, found.version) <= 0) {
+    io.out(
+      `Relationship OS ${found.version} is installed; nothing newer on the ${channel} channel.`,
+    );
     return 0;
   }
   const release = await verified(s, target, deps);
+  // An install from before the rename keeps its deployed names (ADR 0190).
+  const state = adoptLegacyNames(found, release.bundle.manifest);
   const secretsSet: Record<string, string[]> = {};
   const scripts = new Set((await s.api.listScripts(s.accountId)).map((x) => x.id));
   for (const worker of release.bundle.manifest.workers) {
@@ -757,7 +803,7 @@ async function upgrade(flags: Flags, deps: Deps): Promise<number> {
     smoke: (hostname, version) =>
       healthSmoke(hostname, version, {
         ...(deps.fetch ? { fetch: deps.fetch } : {}),
-        ...(deps.env.CRM_HEALTH_ORIGIN ? { origin: deps.env.CRM_HEALTH_ORIGIN } : {}),
+        ...(deps.env.ROS_HEALTH_ORIGIN ? { origin: deps.env.ROS_HEALTH_ORIGIN } : {}),
         ...(deps.smokeDelayMs !== undefined ? { delayMs: deps.smokeDelayMs } : {}),
       }),
     onStep: async (step, o) => {
@@ -778,7 +824,7 @@ async function upgrade(flags: Flags, deps: Deps): Promise<number> {
   });
   if (outcome.status === "succeeded") {
     io.out(
-      `\nUpdated to crm ${target}. Migrations applied: ${outcome.migrations.join(", ") || "none"}.`,
+      `\nUpdated to Relationship OS ${target}. Migrations applied: ${outcome.migrations.join(", ") || "none"}.`,
     );
     return 0;
   }
@@ -786,7 +832,7 @@ async function upgrade(flags: Flags, deps: Deps): Promise<number> {
   io.err(
     outcome.status === "rolled_back"
       ? `Rolled back to ${state.version} and restored the database to bookmark ${outcome.bookmark}.`
-      : `Rollback did not complete (${outcome.rollbackError ?? "no bookmark"}). Run \`crm rollback\`, or see docs/deploying.md.`,
+      : `Rollback did not complete (${outcome.rollbackError ?? "no bookmark"}). Run \`ros rollback\`, or see docs/deploying.md.`,
   );
   return 1;
 }
@@ -844,7 +890,7 @@ async function rollback(flags: Flags, deps: Deps): Promise<number> {
     status: "succeeded",
     finished_at: new Date().toISOString(),
   });
-  io.out(`Rolled back to crm ${last.from_version}.`);
+  io.out(`Rolled back to Relationship OS ${last.from_version}.`);
   return 0;
 }
 
@@ -867,13 +913,15 @@ async function status(flags: Flags, deps: Deps): Promise<number> {
     );
     return 0;
   }
-  io.out(`crm ${state.version} (${state.channel} channel) at https://${state.hostname}`);
+  io.out(
+    `Relationship OS ${state.version} (${state.channel} channel) at https://${state.hostname}`,
+  );
   io.out(
     `  sign-in: ${state.identityProvider}; gatekeepers: ${state.gatekeepers.join(", ") || "none"}; AI: ${state.ai === false ? "off" : "on"}`,
   );
   io.out(
     newer.length
-      ? `  available: ${newer.map((r) => r.version).join(", ")} (run \`crm upgrade\`)`
+      ? `  available: ${newer.map((r) => r.version).join(", ")} (run \`ros upgrade\`)`
       : "  up to date",
   );
   for (const run of runs) {
@@ -897,9 +945,13 @@ async function uninstall(flags: Flags, deps: Deps): Promise<number> {
     );
     if (answer !== state.hostname) return 1;
   }
-  const names = ["crm-app", ...state.gatekeepers, "crm-runner"].map(
-    (n) => state.workerNames[n] ?? n,
-  );
+  const names = [
+    ...new Set(
+      ["ros-app", ...state.gatekeepers, "ros-runner"].map(
+        (n) => state.workerNames[n] ?? state.workerNames[legacyName(n)] ?? n,
+      ),
+    ),
+  ];
   const failures: string[] = [];
   const attempt = async (label: string, action: () => Promise<unknown>) => {
     try {
@@ -911,8 +963,11 @@ async function uninstall(flags: Flags, deps: Deps): Promise<number> {
   };
   for (const name of names)
     await attempt(`Worker ${name}`, () => s.api.deleteScript(s.accountId, name));
+  const seen = new Set<string>();
   for (const [key, value] of Object.entries(state.resources)) {
     const kind = key.slice(0, key.indexOf("("));
+    if (seen.has(`${kind}:${value}`)) continue;
+    seen.add(`${kind}:${value}`);
     if (kind === "D1_ID") await attempt(`D1 ${key}`, () => s.api.deleteD1(s.accountId, value));
     if (kind === "KV_ID") await attempt(`KV ${key}`, () => s.api.deleteKv(s.accountId, value));
     if (kind === "R2_NAME") await attempt(`R2 ${value}`, () => s.api.deleteR2(s.accountId, value));
@@ -937,7 +992,8 @@ async function uninstall(flags: Flags, deps: Deps): Promise<number> {
   return failures.length ? 1 : 0;
 }
 
-export async function runCli(argv: string[], deps: Deps): Promise<number> {
+export async function runCli(argv: string[], input: Deps): Promise<number> {
+  const deps: Deps = { ...input, env: withLegacyEnv(input.env) };
   let parsed: ReturnType<typeof parseArgs>;
   try {
     parsed = parseArgs(argv);

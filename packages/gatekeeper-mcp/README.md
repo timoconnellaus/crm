@@ -21,7 +21,7 @@ One resource type, **Any MCP server**, at two grant breadths:
 | **Named tools** — only the listed tools; anything else is refused | `<endpoint>#tool=a&tool=b` | `Mcp<Name><tag>Session` |
 
 A `#server=` fragment is refused here; scoping to one server behind a portal is the MCP Server Portals
-connector's grammar. `@crm/mcp-shared/scope` owns the grammar and the enforcement.
+connector's grammar. `@relationship-os/mcp-shared/scope` owns the grammar and the enforcement.
 
 `<Name>` comes from the endpoint's host and is for reading, not identity — `acme.com` and `acme.io`
 both give `Acme`. `<tag>` is four hex characters derived from the resource URL above, so two grants
@@ -65,7 +65,7 @@ grant, limited to 5,000 tools / 4 MiB; `listTools({ name })` fetches one exact g
 schema under the same bound, and `callTool()` invokes it by wire name.
 `listTools()` remains the list of definitions currently described in the generated surface.
 
-See `src/types.d.ts` in `@crm/mcp-shared` for the base session API.
+See `src/types.d.ts` in `@relationship-os/mcp-shared` for the base session API.
 
 ## Configuration
 
@@ -171,7 +171,7 @@ So the trust decision is made once, by the person pasting the URL, and the conne
 plainly: an annotation is only as trustworthy as the server that sent it. Auto-approval requires a
 `vetted` endpoint, which only [`gatekeeper-mcp-portal`](../gatekeeper-mcp-portal/README.md) can
 produce. Every call records which side classified it (`McpToolInfo.classifiedBy`), so an audit can
-find each one taken on the server's word. See `tools.ts` in `@crm/mcp-shared` for the tier
+find each one taken on the server's word. See `tools.ts` in `@relationship-os/mcp-shared` for the tier
 rules.
 
 A Gadget bound to an MCP server can only be opened by its owner: `addObserver` refuses
@@ -221,7 +221,7 @@ connect their own server.
 | `src/configurator/` | The grant UI (compiled into `src/generated/`) |
 
 The MCP client, OAuth, tool classification, generated TypeScript, and the scope grammar come from
-[`@crm/mcp-shared`](../mcp-shared/README.md).
+[`@relationship-os/mcp-shared`](../mcp-shared/README.md).
 
 ## Build & test
 

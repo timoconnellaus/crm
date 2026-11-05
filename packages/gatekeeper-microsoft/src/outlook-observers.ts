@@ -8,7 +8,7 @@
 // Exchange answers 403 or 404 for a mailbox or item the caller can't open, and neither says whether
 // it exists, so both mean "no access".
 
-import { trackedCollectionObservers, type ObserverKv, type ObserverStrategy } from "@crm/gatekeeper-kit/observers";
+import { trackedCollectionObservers, type ObserverKv, type ObserverStrategy } from "@relationship-os/gatekeeper-kit/observers";
 import { MAX_BATCH_REQUESTS, type BatchRequest, type GraphApi } from "./graph-api";
 import { isMailId } from "./outlook-graph";
 import type { MicrosoftVerifierApi, StoredIdentity } from "./microsoft-credentials";

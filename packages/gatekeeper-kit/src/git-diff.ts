@@ -11,7 +11,7 @@
 // provider's object-by-oid REST endpoints as fallback for the on-remote side, where it has them).
 
 import { structuredPatch } from "diff";
-import type { GitOid } from "@crm/gatekeeper-interface/gatekeeper";
+import type { GitOid } from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 /** One line inside a diff hunk. */
 export type GitDiffLine = {

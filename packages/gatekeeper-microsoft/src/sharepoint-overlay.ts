@@ -5,8 +5,8 @@
 // show a proposed change straight away: a pending rename shows the new name, a pending upload
 // appears in its folder with a temporary ID, and a pending delete drops out of listings.
 
-import type { ActionFileReference } from "@crm/gatekeeper-kit/action-files";
-import type { JournalEntry } from "@crm/gatekeeper-kit/actions";
+import type { ActionFileReference } from "@relationship-os/gatekeeper-kit/action-files";
+import type { JournalEntry } from "@relationship-os/gatekeeper-kit/actions";
 import { canonicalSiteId, type GraphDrive, type GraphDriveItem, type GraphList, type GraphListItem, type GraphSite, type GraphSitePage } from "./graph-parse";
 import type { FolderTarget, SharePointAction } from "./sharepoint-actions";
 import { readFieldValue } from "./sharepoint-lists";

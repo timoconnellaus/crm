@@ -3,8 +3,8 @@
 // which failures are final, what a crash may replay, and the proofs an apply makes before writing.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ActionApplyError, ActionOutcomeUnknownError } from "@crm/gatekeeper-kit/actions";
-import { ProvisionalIds, type SimulationKv } from "@crm/gatekeeper-kit/simulation";
+import { ActionApplyError, ActionOutcomeUnknownError } from "@relationship-os/gatekeeper-kit/actions";
+import { ProvisionalIds, type SimulationKv } from "@relationship-os/gatekeeper-kit/simulation";
 import { GraphApi } from "../src/graph-api";
 import {
   definitions, revert, shownChanges, shownTexts, type FolderTarget, type ItemTarget, type SharePointActionHost, type SharePointActions,

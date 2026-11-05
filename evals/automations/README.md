@@ -85,7 +85,7 @@ The grader calls operations as their curated MCP tool when the server lists one 
 
    ```sh
    export CLOUDFLARE_ACCOUNT_ID=…  CLOUDFLARE_API_TOKEN=…
-   pnpm --filter @crm/evals-automations eval -- --base-url http://localhost:5173
+   pnpm --filter @relationship-os/evals-automations eval -- --base-url http://localhost:5173
    # or: node evals/automations/runner.ts --base-url …
    ```
 

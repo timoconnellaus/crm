@@ -1,5 +1,5 @@
-import { Button } from "@crm/ui/components/button";
-import { cn } from "@crm/ui/lib/utils";
+import { Button } from "@relationship-os/ui/components/button";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
 import type * as React from "react";
 

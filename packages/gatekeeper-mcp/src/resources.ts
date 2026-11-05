@@ -1,5 +1,5 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-mcp/src/resources.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
-import type { SupportedResource } from "@crm/gatekeeper-interface/gatekeeper";
+import type { SupportedResource } from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 const DESCRIPTION =
   "An MCP endpoint you supply. Tools are discovered automatically, and writes need approval.";

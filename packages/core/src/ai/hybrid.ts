@@ -8,7 +8,7 @@
 // still ranks by how high that list put it. Without AI or Vectorize the semantic list is empty
 // and the ranking is the lexical one. Query embeddings are cached per isolate, and callers embed
 // only when typing pauses (Cmd-K), never per keystroke.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, sql } from "kysely";
 import { listObjects } from "../fields/index.ts";
 import {

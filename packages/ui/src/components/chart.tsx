@@ -2,7 +2,7 @@
 // container that maps series keys to labels and theme-aware colours (CSS variables), plus the
 // tooltip and legend content components. Colours come from `--chart-1..5`, redefined in dark
 // mode, so charts are correct in both themes.
-import { cn } from "@crm/ui/lib/utils";
+import { cn } from "@relationship-os/ui/lib/utils";
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 

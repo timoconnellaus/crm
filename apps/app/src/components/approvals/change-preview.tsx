@@ -1,7 +1,7 @@
 // The pieces of a pending action a reviewer reads: risk and status badges, record links, and the
 // human-readable diff (added, removed and changed fields; bulk groups with a "show list" expander).
-import { Badge } from "@crm/ui/components/badge";
-import { cn } from "@crm/ui/lib/utils";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {

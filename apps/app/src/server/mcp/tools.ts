@@ -2,6 +2,8 @@
 // own tools, everything else MCP may reach goes through describe_operations / call_operation,
 // and operations marked `mcp: { expose: false }` are invisible and uncallable. Every reviewable
 // (non-read) call takes a required `reason`, stored on the pending action when it is queued.
+
+import { McpServer, type StandardSchemaWithJSON } from "@modelcontextprotocol/server";
 import {
   type AnyOperation,
   coreRegistry,
@@ -20,15 +22,14 @@ import {
   toOperationError,
   UnknownOperationError,
   ValidationError,
-} from "@crm/core";
-import type { CrmDb } from "@crm/db";
-import { McpServer, type StandardSchemaWithJSON } from "@modelcontextprotocol/server";
+} from "@relationship-os/core";
+import type { CrmDb } from "@relationship-os/db";
 import { z } from "zod";
 
-export const SERVER_NAME = "crm";
+export const SERVER_NAME = "relationship-os";
 export const SCHEMA_RESOURCE_URI = "crm://schema";
 
-export const SERVER_INSTRUCTIONS = `This server is a CRM: people, organisations, their activities (notes, emails, calls, meetings) and tasks.
+export const SERVER_INSTRUCTIONS = `This server is Relationship OS, an AI-native CRM: people, organisations, their activities (notes, emails, calls, meetings) and tasks.
 
 - Search before you create. Use search_global (or person_get / organisation_get) to find a record first; emails and domains are unique, so creating a duplicate fails with a conflict.
 - Always give a reason. Every tool that changes data takes a required "reason": one sentence a person reviewing the change will read. Make it specific ("Logged the call Ada described in her email of 3 Nov").
@@ -36,7 +37,7 @@ export const SERVER_INSTRUCTIONS = `This server is a CRM: people, organisations,
 - Group a task with changeset_begin (give it a title) and changeset_commit when done, so the reviewer sees one coherent change set.
 - Analysis: query_sql runs read-only SQL (one SELECT or WITH) over the crm_* views (crm_people, crm_organisations, crm_affiliations, crm_activities, crm_activity_links, crm_tasks, crm_task_links, crm_record_tags, crm_users). Read the crm://schema resource for objects, fields and operations.
 - Code Mode: the code tool runs a short ES module that calls operations through import { crm } from "codemode:crm", as you and under the same approval rules. Use it for work that needs many calls or some logic; for many records use one *Many operation (one reviewable change), not a loop.
-- Extensions reshape the CRM with code: new objects, fields on people and organisations, formula fields, views and tools. Write the files with extension_write (index.ts default-exports defineExtension({...}) from @crm/sdk; extension_read id "deals" shows a complete one), run extension_check and fix every issue, then extension_propose. Nothing is installed until a person approves the proposal in the Approvals inbox. Authoring needs the admin scope.
+- Extensions reshape the CRM with code: new objects, fields on people and organisations, formula fields, views and tools. Write the files with extension_write (index.ts default-exports defineExtension({...}) from @relationship-os/sdk; extension_read id "deals" shows a complete one), run extension_check and fix every issue, then extension_propose. Nothing is installed until a person approves the proposal in the Approvals inbox. Authoring needs the admin scope.
 - The curated tools cover common work. For anything else, describe_operations lists every operation you may call with its input schema, and call_operation runs one by name.`;
 
 /** MCP tool names allow letters, digits, `_` and `-`: `person.create` → `person_create`. */
@@ -161,7 +162,7 @@ function passthroughSchema(json: JsonSchema): StandardSchemaWithJSON<Args, Args>
   return {
     "~standard": {
       version: 1 as const,
-      vendor: "crm",
+      vendor: "relationship-os",
       validate: (value: unknown) =>
         value && typeof value === "object" && !Array.isArray(value)
           ? { value: value as Args }
@@ -297,7 +298,7 @@ const callInput = z.object({
 /** Builds the MCP server for one request. */
 export function createCrmMcpServer(caller: McpCaller, version: string): McpServer {
   const server = new McpServer(
-    { name: SERVER_NAME, title: "CRM", version },
+    { name: SERVER_NAME, title: "Relationship OS", version },
     { instructions: SERVER_INSTRUCTIONS },
   );
 
@@ -384,7 +385,7 @@ export function createCrmMcpServer(caller: McpCaller, version: string): McpServe
     "schema",
     SCHEMA_RESOURCE_URI,
     {
-      title: "CRM schema",
+      title: "Relationship OS schema",
       description:
         "Objects and their fields, and the operations you can call with their risk classes.",
       mimeType: "application/json",

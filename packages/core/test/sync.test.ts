@@ -2,8 +2,8 @@
 // threading, deletes, each sharing level, mark-private, suggestion thresholds, job-change
 // signals, sync events, and the rows-read budget of one batch.
 import { env } from "cloudflare:workers";
-import { createCrmDb } from "@crm/db";
-import { seedDatabase } from "@crm/db/seed";
+import { createCrmDb } from "@relationship-os/db";
+import { seedDatabase } from "@relationship-os/db/seed";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { type ActingUser, invokeByName, newId, type SyncItem } from "../src/index.ts";
 import { context, createUser, db, unique } from "./helpers.ts";

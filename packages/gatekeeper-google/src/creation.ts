@@ -6,8 +6,8 @@
 
 import type {
   ActionDescription, GatekeeperUserVerifier, SupportedResource,
-} from "@crm/gatekeeper-interface/gatekeeper";
-import { buildDescription, sanitizeTitle } from "@crm/gatekeeper-kit/action-description";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
+import { buildDescription, sanitizeTitle } from "@relationship-os/gatekeeper-kit/action-description";
 import { AccessTokenCache, type AccessTokenProvider } from "./auth-retry";
 import type { GoogleVerifierApi } from "./google-verifier-types";
 import { obsContext } from "./observability";

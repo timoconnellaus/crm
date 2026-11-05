@@ -1,5 +1,5 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-slack/src/configurator/thread-configurator-ui.tsx (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
-import { Field, h, Section, TextInput, type ConfiguratorUISpec } from "@crm/gatekeeper-configurator-ui";
+import { Field, h, Section, TextInput, type ConfiguratorUISpec } from "@relationship-os/gatekeeper-configurator-ui";
 import type { ThreadConfiguratorRpc, ThreadConfiguratorValues } from "./thread-configurator-types";
 
 function parsePermalink(raw: string): { conversationId: string; messageId: string } | null {

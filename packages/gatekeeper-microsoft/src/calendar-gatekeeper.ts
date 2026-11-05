@@ -10,10 +10,10 @@ import { DurableObject, type RpcStub } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
 import type {
   ActionKind, ApprovalQueue, Gatekeeper, GatekeeperUserVerifier, GitCache, ResourceDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
-import { ActionJournal } from "@crm/gatekeeper-kit/actions";
-import { KvTtlCache } from "@crm/gatekeeper-kit/cache";
-import { ProvisionalIds } from "@crm/gatekeeper-kit/simulation";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
+import { ActionJournal } from "@relationship-os/gatekeeper-kit/actions";
+import { KvTtlCache } from "@relationship-os/gatekeeper-kit/cache";
+import { ProvisionalIds } from "@relationship-os/gatekeeper-kit/simulation";
 import TYPES_CODE from "./calendar-types.txt";
 import { DESCRIPTION_TTL_MS, RETAINED_ACTION_TTL_MS, housekeep, isProvisional, PinnedUser, provisionalId, revertRefused } from "./binding";
 import { GraphApi } from "./graph-api";

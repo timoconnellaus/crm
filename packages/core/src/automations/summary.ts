@@ -17,8 +17,8 @@ import type {
   ValueMatch,
   ViewFilter,
   WriteIntent,
-} from "@crm/sdk";
-import { durationMs } from "@crm/sdk";
+} from "@relationship-os/sdk";
+import { durationMs } from "@relationship-os/sdk";
 import { getObject } from "../fields/index.ts";
 import type { AutomationSummary, DiagramNode } from "./schemas.ts";
 

@@ -1,9 +1,9 @@
-// The self-updater's runtime in crm-app (ADR 0054, ADR 0164): the UpdaterRuntime port update.*
+// The self-updater's runtime in ros-app (ADR 0054, ADR 0164): the UpdaterRuntime port update.*
 // operations call. It reads public GitHub Releases (no telemetry, ADR 0166) and, with the scoped
-// token stored as the CRM_UPDATE_TOKEN secret, drives the Cloudflare API with the same code as
-// `crm upgrade` (@crm/release). Downloads are verified (SHA256SUMS + build attestation) before
+// token stored as the ROS_UPDATE_TOKEN secret, drives the Cloudflare API with the same code as
+// `ros upgrade` (@relationship-os/release). Downloads are verified (SHA256SUMS + build attestation) before
 // anything is deployed, so a tampered bundle is refused here exactly as in the CLI.
-import type { UpdaterRuntime } from "@crm/core";
+import type { UpdaterRuntime } from "@relationship-os/core";
 import {
   CloudflareClient,
   DEFAULT_REPOSITORY,
@@ -19,16 +19,18 @@ import {
   type ReleaseBundle,
   runRollback,
   runUpdate,
-} from "@crm/release";
+} from "@relationship-os/release";
 import { runner } from "./runner.ts";
 
 export interface UpdaterEnv {
   DB: D1Database;
   RUNNER?: Fetcher;
-  CRM_RELEASE_VERSION?: string;
-  CRM_RELEASE_REPO?: string;
-  CRM_ACCOUNT_ID?: string;
+  ROS_RELEASE_VERSION?: string;
+  ROS_RELEASE_REPO?: string;
+  ROS_ACCOUNT_ID?: string;
   /** Optional scoped Cloudflare API token (a secret). Without it, updates use the CLI. */
+  ROS_UPDATE_TOKEN?: string;
+  /** The same token on an install from before the rename (ADR 0190); read when ROS_UPDATE_TOKEN is unset. */
   CRM_UPDATE_TOKEN?: string;
 }
 
@@ -46,7 +48,7 @@ export interface UpdaterDeps {
 /**
  * The default smoke check, from inside the Worker being replaced: the runner answers over its
  * service binding (which reaches the newly deployed runner), and the public /api/health of the
- * new crm-app reports the target version. A Worker cannot always fetch its own workers.dev
+ * new ros-app reports the target version. A Worker cannot always fetch its own workers.dev
  * hostname, so an unreachable health URL is tolerated when the runner check passed.
  */
 async function defaultSmoke(env: UpdaterEnv, hostname: string, version: string) {
@@ -70,16 +72,16 @@ async function defaultSmoke(env: UpdaterEnv, hostname: string, version: string) 
 }
 
 export function updaterRuntimeFor(env: UpdaterEnv, deps: UpdaterDeps = {}): UpdaterRuntime {
-  const repository = env.CRM_RELEASE_REPO || DEFAULT_REPOSITORY;
+  const repository = env.ROS_RELEASE_REPO || DEFAULT_REPOSITORY;
   const currentVersion =
-    env.CRM_RELEASE_VERSION && isVersion(env.CRM_RELEASE_VERSION) ? env.CRM_RELEASE_VERSION : null;
+    env.ROS_RELEASE_VERSION && isVersion(env.ROS_RELEASE_VERSION) ? env.ROS_RELEASE_VERSION : null;
   const github: GitHubOptions = {
     repository,
     ...(deps.githubApi ? { apiBase: deps.githubApi } : {}),
     ...(deps.githubFetch ? { fetch: deps.githubFetch } : {}),
   };
-  const token = env.CRM_UPDATE_TOKEN;
-  const accountId = env.CRM_ACCOUNT_ID;
+  const token = env.ROS_UPDATE_TOKEN || env.CRM_UPDATE_TOKEN;
+  const accountId = env.ROS_ACCOUNT_ID;
   const canUpdate = Boolean(token && accountId && currentVersion);
   const api = () => {
     if (!token || !accountId) throw new Error("no update token is stored");
@@ -110,7 +112,7 @@ export function updaterRuntimeFor(env: UpdaterEnv, deps: UpdaterDeps = {}): Upda
       const client = api();
       const scripts = new Set((await client.listScripts(state.accountId)).map((s) => s.id));
       const out: Record<string, string[]> = {};
-      for (const name of ["crm-app", "crm-runner", ...state.gatekeepers]) {
+      for (const name of ["ros-app", "ros-runner", ...state.gatekeepers]) {
         const deployed = state.workerNames[name] ?? name;
         if (scripts.has(deployed)) out[name] = await client.listSecrets(state.accountId, deployed);
       }

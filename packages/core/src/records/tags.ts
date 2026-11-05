@@ -1,6 +1,6 @@
 // Tags on any record (core_tags + polymorphic core_record_tags). Shared by person, organisation
 // and later task/extension operations.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { newId } from "../ids.ts";

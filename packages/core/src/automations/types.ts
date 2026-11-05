@@ -1,15 +1,15 @@
 // Shared automation types (ADR 0028, ADR 0130): post-commit events, the queue message union,
-// trigger sources, the automation host (crm-runner RPC), run statuses and step records.
+// trigger sources, the automation host (ros-runner RPC), run statuses and step records.
 //
 // Data flow:
 //   pipeline commit ─► EventSink.send(batched AutomationQueueMessage[]) ─► Queue AUTOMATION_EVENTS
-//   ─► crm-runner consumer ─► TriggerSource.match(message) per kind ─► rails (depth, cycle,
+//   ─► ros-runner consumer ─► TriggerSource.match(message) per kind ─► rails (depth, cycle,
 //   debounce, rate, kill switch, fan-out budget) ─► run row + Workflow AutomationWorkflow
 //   (id = workflowInstanceId(...)) ─► each step.do in a Dynamic Worker via the executor.
 //
 // Stage 6b adds the `integration` message kind (webhooks, sync events) and its TriggerSource; the
 // consumer dispatches by `kind`, so nothing else changes.
-import type { AutomationManifest, AutomationTestStep, RecordEventType } from "@crm/sdk";
+import type { AutomationManifest, AutomationTestStep, RecordEventType } from "@relationship-os/sdk";
 import type { FieldDiff } from "../diff.ts";
 import type { Actor, Origin } from "../principals.ts";
 
@@ -147,7 +147,7 @@ export type AutomationQueueMessage =
   | IntegrationEventMessage;
 
 /**
- * Where the pipeline sends post-commit events. crm-app and crm-runner pass a Queue producer
+ * Where the pipeline sends post-commit events. ros-app and ros-runner pass a Queue producer
  * (`queueEventSink(env.AUTOMATION_EVENTS)`); absent, no events are emitted (tests, scripts).
  * Implementations batch: one `send` call per operation, at most QUEUE_BATCH_MESSAGES per
  * sendBatch. `delaySeconds` debounces `updated` events.
@@ -294,7 +294,7 @@ export interface AutomationTestReport {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The automation host: crm-runner RPC used by automation.* operations (and the UI through them)
+// The automation host: ros-runner RPC used by automation.* operations (and the UI through them)
 
 export interface StartRunInput {
   automationId: string;

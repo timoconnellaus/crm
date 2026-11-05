@@ -2,8 +2,8 @@
 // widget query walks an index (EXPLAIN QUERY PLAN shows no full table scan), and rows read stay
 // within budgets on a seeded database, so the default Home never scans whole tables.
 import { env } from "cloudflare:workers";
-import { createCrmDb } from "@crm/db";
-import { seedDatabase } from "@crm/db/seed";
+import { createCrmDb } from "@relationship-os/db";
+import { seedDatabase } from "@relationship-os/db/seed";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   type ActingUser,

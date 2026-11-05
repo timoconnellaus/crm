@@ -2,8 +2,8 @@
 // `installExtension` is the one path that makes a version live, used by extension.install,
 // extension.rollback and (stage 3b) extension.approve. Both run inside an operation handler: the
 // install's DDL, state rows and audit commit in the operation's single D1 batch.
-import type { CoreDatabase } from "@crm/db";
-import { type ExtensionManifest, type ManifestIssue, validateManifest } from "@crm/sdk";
+import type { CoreDatabase } from "@relationship-os/db";
+import { type ExtensionManifest, type ManifestIssue, validateManifest } from "@relationship-os/sdk";
 import type { Kysely } from "kysely";
 import { automationSyncStatements } from "../automations/registry.ts";
 import { dashboardSpecSchema } from "../dashboards/spec.ts";

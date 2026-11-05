@@ -1,5 +1,5 @@
 // The prompt file is valid: 10 prompts, unique ids, accepted types the CRM has, and a reference
-// widget whose type is accepted. @crm/core is loaded at runtime (vitest transforms its sources).
+// widget whose type is accepted. @relationship-os/core is loaded at runtime (vitest transforms its sources).
 import { describe, expect, it } from "vitest";
 import { loadCore } from "../lib/core.ts";
 import { DESCRIBE_OPENING } from "../lib/harness.ts";

@@ -11,7 +11,7 @@ import {
   type PendingApproval,
   ROLES,
   type Role,
-} from "@crm/core";
+} from "@relationship-os/core";
 import { integrationRuntime } from "./runtime.ts";
 
 export interface GatekeeperCall {

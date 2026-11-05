@@ -1,5 +1,5 @@
-import { Toaster } from "@crm/ui/components/sonner";
-import { TooltipProvider } from "@crm/ui/components/tooltip";
+import { Toaster } from "@relationship-os/ui/components/sonner";
+import { TooltipProvider } from "@relationship-os/ui/components/tooltip";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createRootRouteWithContext,
@@ -22,7 +22,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "CRM" },
+      { title: "Relationship OS" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),

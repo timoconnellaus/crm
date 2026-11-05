@@ -3,7 +3,7 @@
 // workerd; `call-operation.ts` wraps it in a TanStack Start server function, and `#/lib/operations`
 // is the typed client. The MCP (stage 2) and host-module (stage 3) adapters follow the same shape
 // with a different actor and origin.
-import type { Principal } from "@crm/auth";
+import type { Principal } from "@relationship-os/auth";
 import {
   type AutomationHost,
   type EventSink,
@@ -17,8 +17,8 @@ import {
   type SerializedOperationError,
   toOperationError,
   withCodeModeRateLimit,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { type AiAppEnv, aiContextFor } from "./ai.ts";
 import { blobStoreFor, integrationRuntimeFor } from "./integrations.ts";
 import { deleteGrantTokens } from "./mcp/handler.ts";
@@ -33,25 +33,27 @@ export interface OperationsEnv extends AiAppEnv {
   APPROVAL_EXPIRY_DAYS?: string;
   /** The OAuth provider's store, so revoking a connected app also deletes its tokens. */
   OAUTH_KV?: KVNamespace;
-  /** crm-runner: the extension host (ADR 0025). */
+  /** ros-runner: the extension host (ADR 0025). */
   RUNNER?: Fetcher;
-  /** The automation events queue (ADR 0130): committed changes start automations in crm-runner. */
+  /** The automation events queue (ADR 0130): committed changes start automations in ros-runner. */
   AUTOMATION_EVENTS?: Queue;
   /** Code Mode runs per user (Workers Rate Limiting, ADR 0043). */
   CODE_MODE_RATE_LIMIT?: RateLimitBinding;
   /** Synced email bodies (R2, ADR 0112). */
   BLOBS?: R2Bucket;
   /** Release (stage 8): the installed version, release repository and account (ADR 0164). */
-  CRM_RELEASE_VERSION?: string;
-  CRM_RELEASE_REPO?: string;
-  CRM_ACCOUNT_ID?: string;
+  ROS_RELEASE_VERSION?: string;
+  ROS_RELEASE_REPO?: string;
+  ROS_ACCOUNT_ID?: string;
   /** Optional scoped token for in-app updates (a secret). */
+  ROS_UPDATE_TOKEN?: string;
+  /** The same token on an install from before the rename (ADR 0190); read when ROS_UPDATE_TOKEN is unset. */
   CRM_UPDATE_TOKEN?: string;
 }
 
 /**
- * The extension runtime as seen from crm-app: crm-runner's RPC over the RUNNER service binding
- * (code runs in crm-runner's stateless entrypoint; git and builds in its workspace DO), with Code
+ * The extension runtime as seen from ros-app: ros-runner's RPC over the RUNNER service binding
+ * (code runs in ros-runner's stateless entrypoint; git and builds in its workspace DO), with Code
  * Mode's per-user rate limit applied here, where the binding lives.
  */
 export function extensionHostFor(env: OperationsEnv): ExtensionHost | undefined {
@@ -62,7 +64,7 @@ export function extensionHostFor(env: OperationsEnv): ExtensionHost | undefined 
 
 /**
  * The automation wiring for an invocation (ADR 0130): committed record changes go to the
- * AUTOMATION_EVENTS queue, and automation.test / run / retry / replay / cancel reach crm-runner.
+ * AUTOMATION_EVENTS queue, and automation.test / run / retry / replay / cancel reach ros-runner.
  */
 export function automationWiring(env: OperationsEnv): {
   events?: EventSink;
@@ -107,7 +109,7 @@ let shippedInstall: Promise<void> | null = null;
 
 /**
  * Installs the shipped extensions bundled with this release once per isolate, through
- * `extension.install` in crm-runner (ADR 0025). A failure is logged and retried on a later call;
+ * `extension.install` in ros-runner (ADR 0025). A failure is logged and retried on a later call;
  * operations still run meanwhile.
  */
 export function ensureShippedExtensions(env: OperationsEnv): Promise<void> {

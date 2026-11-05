@@ -10,20 +10,26 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@crm/ui/components/alert-dialog";
-import { Button } from "@crm/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
+} from "@relationship-os/ui/components/alert-dialog";
+import { Button } from "@relationship-os/ui/components/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@relationship-os/ui/components/card";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { OctagonXIcon, PowerIcon } from "lucide-react";
 import { useMemo, useState } from "react";

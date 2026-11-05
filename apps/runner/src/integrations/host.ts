@@ -31,8 +31,8 @@ import {
   syncedInWindow,
   syncKindOf,
   vendorBinding,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { HostQueue, type QueueCaller, type QueueHost } from "./queue.ts";
 import { adapterFor, type SyncKind } from "./sync.ts";
 

@@ -22,7 +22,7 @@ const { values: args } = parseArgs({
   options: {
     checkout: {
       type: "string",
-      default: join(tmpdir(), "crm-upstream-check", "cloudflare-os.git"),
+      default: join(tmpdir(), "ros-upstream-check", "cloudflare-os.git"),
     },
     ref: { type: "string", default: "main" },
     "log-limit": { type: "string", default: "15" },

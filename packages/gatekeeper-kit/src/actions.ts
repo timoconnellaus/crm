@@ -1,14 +1,14 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-kit/src/actions.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 /** Approval-backed resource action declaration, submission, and resolution. */
 
-import { createLogger } from "@crm/gatekeeper-observability/logger";
+import { createLogger } from "@relationship-os/gatekeeper-observability/logger";
 import type { RpcStub } from "cloudflare:workers";
 import type {
   ActionDescription,
   ActionKind,
   ApprovalQueue,
   GitCache,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { ActionJournal, type ActionFence } from "./action-journal";
 import { SerialTaskQueue } from "./serial-queue";
 

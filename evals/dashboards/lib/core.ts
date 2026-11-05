@@ -1,4 +1,4 @@
-// The slice of @crm/core this eval uses: the in-app "Describe a widget" prompt and parser, the
+// The slice of @relationship-os/core this eval uses: the in-app "Describe a widget" prompt and parser, the
 // widget types and the Overview dashboard's filters. Loaded at runtime by a non-literal specifier,
 // as evals/mcp's tests do, so tsc does not type-check core's Workers-typed sources under this
 // Node-typed package. Core uses TypeScript parameter properties, which Node's default type
@@ -55,9 +55,9 @@ export interface DashboardsCore {
   OVERVIEW_DASHBOARD: { spec: { filters: DashboardFilter[] } };
 }
 
-const coreSpecifier = "@crm/core";
+const coreSpecifier = "@relationship-os/core";
 
-/** Imports @crm/core, with a clear message when Node runs without type transforms. */
+/** Imports @relationship-os/core, with a clear message when Node runs without type transforms. */
 export async function loadCore(): Promise<DashboardsCore> {
   try {
     return (await import(coreSpecifier)) as DashboardsCore;
@@ -65,9 +65,9 @@ export async function loadCore(): Promise<DashboardsCore> {
     const message = error instanceof Error ? error.message : String(error);
     if (/strip-only|not supported in strip/i.test(message)) {
       throw new Error(
-        "@crm/core needs Node's TypeScript transforms: run with " +
+        "@relationship-os/core needs Node's TypeScript transforms: run with " +
           "`node --experimental-transform-types evals/dashboards/runner.ts` " +
-          "(or `pnpm --filter @crm/evals-dashboards eval`).",
+          "(or `pnpm --filter @relationship-os/evals-dashboards eval`).",
       );
     }
     throw error;

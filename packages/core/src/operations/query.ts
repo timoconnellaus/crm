@@ -11,7 +11,7 @@
 //      prefix (sqlite_, pragma_, core_, x_, _cf_, d1_), and no dangerous functions;
 //   5. only `?` / `?NNN` parameters, bound by D1.
 // The checked SQL then runs wrapped as `SELECT * FROM (\n<sql>\n) LIMIT n+1` under a time limit.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { CompiledQuery, type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { OperationError, ValidationError } from "../errors.ts";

@@ -1,14 +1,14 @@
 // Semantic search's half of the automation events consumer (ADR 0154 amendment): committed record
 // changes arrive here as stage 5 record events, and the records whose text changed are embedded
 // straight away (hash-checked, batched), with no queue row on the write path. Only with a real
-// Vectorize binding and a model: without them (local dev, tests) crm-app's queue path does it.
+// Vectorize binding and a model: without them (local dev, tests) ros-app's queue path does it.
 import {
   type AutomationQueueMessage,
   embedRecordEvents,
   type VectorizeLike,
   vectorizeStore,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { runnerModels } from "./ai.ts";
 
 interface EmbedEnv {

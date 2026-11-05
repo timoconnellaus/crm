@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { CORE_SCHEMA_VERSION } from "@crm/db";
+import { CORE_SCHEMA_VERSION } from "@relationship-os/db";
 import { describe, expect, it } from "vitest";
 import { getHealth, healthResponse } from "../src/server/health.ts";
 
@@ -19,7 +19,7 @@ describe("GET /api/health", () => {
         schemaVersion: CORE_SCHEMA_VERSION,
         upToDate: true,
       },
-      runner: { ok: true, worker: "crm-runner" },
+      runner: { ok: true, worker: "ros-runner" },
     });
   });
 

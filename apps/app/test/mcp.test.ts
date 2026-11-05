@@ -1,6 +1,6 @@
 // /mcp end to end in workerd (stage 2 AC2): OAuth discovery, and MCP tools generated from the
 // registry, read with the MCP TypeScript client. mcp-flows.test.ts covers AC3-7 and 9.
-import { coreRegistry } from "@crm/core";
+import { coreRegistry } from "@relationship-os/core";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { toolInputSchema } from "../src/server/mcp/tools.ts";
 import {

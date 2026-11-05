@@ -4,7 +4,7 @@
 // then applies core migrations to the local D1 database.
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -53,9 +53,32 @@ if (existsSync(appVars) && !/^AI_FAKE_MODEL=/m.test(readFileSync(appVars, "utf8"
   );
 }
 
-// crm-runner bundles the SDK and the shipped extensions as source at build time (ADR 0025); vite
+// ros-runner bundles the SDK and the shipped extensions as source at build time (ADR 0025); vite
 // dev loads it as an auxiliary Worker, so the bundle must exist first.
 execFileSync("node", [join(root, "apps/runner/scripts/bundle.mjs")], { stdio: "inherit" });
+
+// The rename to Relationship OS (ADR 0190) renamed the local Workers crm-runner → ros-runner.
+// The local D1 database is keyed by its binding (DB), so records, users and settings carry over.
+// Durable Objects are keyed by Worker name, so their local state does not: say so, once (the
+// first `pnpm dev` after the rename creates the ros-* directories).
+const doState = join(root, "apps/app/.wrangler/state/v3/do");
+if (existsSync(doState)) {
+  const dirs = readdirSync(doState);
+  if (dirs.some((d) => d.startsWith("crm-")) && !dirs.some((d) => d.startsWith("ros-"))) {
+    console.log(
+      [
+        "",
+        "Note: local state from before the rename to Relationship OS (crm-runner) is not carried",
+        "over for Durable Objects: extension workspaces, local integration connections and webhook",
+        "endpoints. The local database (records, users, settings) is kept, and shipped extensions",
+        "are re-committed on start. A runtime extension installed locally before the rename has",
+        "lost its source: propose it again, or start from scratch with",
+        "  rm -rf apps/app/.wrangler/state && pnpm dev   (then, in another terminal, pnpm db:seed)",
+        "",
+      ].join("\n"),
+    );
+  }
+}
 
 // The app and the runner share one local D1 database (same database_name, same persist dir).
 execFileSync("pnpm", ["exec", "wrangler", "d1", "migrations", "apply", "DB", "--local"], {

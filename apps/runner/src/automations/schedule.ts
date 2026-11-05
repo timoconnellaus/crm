@@ -11,8 +11,8 @@ import {
   type RunCandidate,
   recordsOnDate,
   zonedTime,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { type DispatchEnv, type StartResult, startRuns } from "./dispatch.ts";
 
 /** core_automation_counters row that marks the day's date-relative scan as done. */

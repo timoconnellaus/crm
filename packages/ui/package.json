@@ -1,6 +1,7 @@
 {
-  "name": "@crm/ui",
+  "name": "@relationship-os/ui",
   "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "type": "module",
   "exports": {
@@ -28,7 +29,7 @@
     "react-dom": "^19"
   },
   "devDependencies": {
-    "@crm/config": "workspace:*",
+    "@relationship-os/config": "workspace:*",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "react": "19.3.1",

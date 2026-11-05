@@ -11,7 +11,7 @@ import {
   RadioCards,
   Section,
   TextInput,
-} from "@crm/gatekeeper-configurator-ui";
+} from "@relationship-os/gatekeeper-configurator-ui";
 import type {
   EndpointConfiguratorRpc,
   EndpointConfiguratorValues,

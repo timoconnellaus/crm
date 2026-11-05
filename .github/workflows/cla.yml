@@ -1,0 +1,45 @@
+# Contributor License Agreement (ADR 0190): every pull request author signs CLA.md once, by
+# commenting the sentence the bot asks for. Signatures are stored in signatures/cla.json on the
+# `cla-signatures` branch of this repository (create it once; see CONTRIBUTING.md and the Stage 9
+# PR). The maintainer and bots are allowlisted.
+#
+# pull_request_target runs this file from the base branch with a token that can comment and set
+# the status. It never checks out or runs the pull request's code.
+name: CLA
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  cla:
+    name: CLA signed
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      (github.event.issue.pull_request &&
+        (github.event.comment.body == 'recheck' ||
+         github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA'))
+    runs-on: ubuntu-latest
+    steps:
+      # contributor-assistant/github-action v2.6.1, pinned by commit.
+      - uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          path-to-document: https://github.com/${{ github.repository }}/blob/main/CLA.md
+          path-to-signatures: signatures/cla.json
+          branch: cla-signatures
+          allowlist: timoconnellaus,*[bot]
+          custom-notsigned-prcomment: >-
+            Thanks for your pull request. Before it can be merged, please read the
+            [Relationship OS Contributor License Agreement](https://github.com/${{ github.repository }}/blob/main/CLA.md)
+            and sign it by commenting the sentence below. You only need to do this once.
+          custom-allsigned-prcomment: All contributors have signed the CLA.

@@ -1,7 +1,7 @@
 // The whole eval flow against the in-memory deployment: seed before authoring, author with the
 // reference model (or a scripted one), approve, then grade check, install, trigger, test mode and
 // summary; and each way a case can fail.
-import { reply, scriptedModel, toolCall } from "@crm/evals-mcp/test/fakes.ts";
+import { reply, scriptedModel, toolCall } from "@relationship-os/evals-mcp/test/fakes.ts";
 import { describe, expect, it } from "vitest";
 import { type AutomationsHarnessDeps, runEval } from "../lib/harness.ts";
 import { referenceModel } from "../lib/reference.ts";

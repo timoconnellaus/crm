@@ -1,6 +1,6 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env, exports } from "cloudflare:workers";
-import type { ObservationDescription } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ObservationDescription } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { describe, expect, it, vi } from "vitest";
 import type { EndpointConfigured } from "../src/configurator/endpoint-configurator-types.js";
 import type { EndpointStatus } from "../src/endpoint.js";

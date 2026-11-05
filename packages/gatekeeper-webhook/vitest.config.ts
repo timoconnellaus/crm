@@ -28,7 +28,7 @@ export default defineConfig({
   test: {
     include: ["__tests__/*.test.ts"],
     testTimeout: 20_000,
-    setupFiles: ["@crm/gatekeeper-interface/testing/assert-workerd"],
+    setupFiles: ["@relationship-os/gatekeeper-interface/testing/assert-workerd"],
     // The Workers pool wraps the entrypoints and Durable Object classes it re-exports. When a
     // wrapped method rejects, the wrapper's own promise also surfaces as an unhandled rejection,
     // although the RPC caller received the error and the test asserted it. Those arrive marked

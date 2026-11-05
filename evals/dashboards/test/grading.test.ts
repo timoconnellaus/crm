@@ -1,4 +1,4 @@
-import type { RecordedCall } from "@crm/evals-mcp/lib/agent.ts";
+import type { RecordedCall } from "@relationship-os/evals-mcp/lib/agent.ts";
 import { describe, expect, it } from "vitest";
 import {
   type Candidate,

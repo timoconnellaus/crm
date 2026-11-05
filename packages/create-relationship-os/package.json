@@ -1,17 +1,17 @@
 {
-  "name": "create-crm",
+  "name": "create-relationship-os",
   "version": "0.1.0",
+  "license": "FSL-1.1-ALv2",
   "description": "Install, upgrade and roll back the open-source CRM in your own Cloudflare account from a verified release bundle. No wrangler, no service of ours, no telemetry.",
-  "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/timoconnellaus/crm.git",
-    "directory": "packages/create-crm"
+    "url": "git+https://github.com/timoconnellaus/relationship-os.git",
+    "directory": "packages/create-relationship-os"
   },
   "type": "module",
   "bin": {
-    "create-crm": "dist/cli.js",
-    "crm": "dist/cli.js"
+    "create-relationship-os": "dist/cli.js",
+    "ros": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -26,9 +26,9 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@crm/config": "workspace:*",
-    "@crm/core": "workspace:*",
-    "@crm/release": "workspace:*",
+    "@relationship-os/config": "workspace:*",
+    "@relationship-os/core": "workspace:*",
+    "@relationship-os/release": "workspace:*",
     "@types/node": "24.19.2",
     "esbuild": "0.28.2",
     "typescript": "6.0.3",

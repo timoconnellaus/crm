@@ -5,7 +5,7 @@
 //
 // LINK_TARGETS lists the objects a link may point at and how to check that a record exists. Stage
 // 3 adds extension objects here (generated from validated identifiers, never from user input).
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, type SqlBool, sql } from "kysely";
 import { z } from "zod";
 import { ValidationError } from "../errors.ts";

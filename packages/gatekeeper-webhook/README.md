@@ -1,6 +1,6 @@
-# @crm/gatekeeper-webhook
+# @relationship-os/gatekeeper-webhook
 
-The inbound webhook gatekeeper (Worker `crm-gatekeeper-webhook`). External systems POST events to
+The inbound webhook gatekeeper (Worker `ros-gatekeeper-webhook`). External systems POST events to
 the CRM. This Worker verifies each delivery's signature, refuses the ones that don't verify, shapes
 the rest into typed `WebhookEvent`s and delivers them to the hook the CRM's integration host bound.
 The host stores them as events; Stage 5 turns them into automation triggers
@@ -20,7 +20,7 @@ It is auto-provisioned (no connect flow, no credentials) and has no outbound act
 | `WebhookVerifier` | The trivial `GatekeeperUserVerifier` (every collaborator may observe). |
 
 The agent-facing types are in [`src/types.d.ts`](src/types.d.ts), served by `getTypeScriptTypes()`.
-The configurator spec module is `@crm/gatekeeper-webhook/configurator/endpoint`.
+The configurator spec module is `@relationship-os/gatekeeper-webhook/configurator/endpoint`.
 
 ## Resource
 
@@ -152,9 +152,9 @@ Bindings: `WEBHOOK_ENDPOINT` (Durable Object `WebhookEndpoint`). Compatibility f
 ## Development
 
 ```sh
-pnpm --filter @crm/gatekeeper-webhook typecheck   # wrangler types --check + tsc
-pnpm --filter @crm/gatekeeper-webhook test        # workerd, @cloudflare/vitest-plugin
-pnpm --filter @crm/gatekeeper-webhook build       # wrangler deploy --dry-run
+pnpm --filter @relationship-os/gatekeeper-webhook typecheck   # wrangler types --check + tsc
+pnpm --filter @relationship-os/gatekeeper-webhook test        # workerd, @cloudflare/vitest-plugin
+pnpm --filter @relationship-os/gatekeeper-webhook build       # wrangler deploy --dry-run
 ```
 
 The tests run `__tests__/worker.ts`, which re-exports the Worker and adds `TestHost` (a Durable

@@ -3,7 +3,7 @@
 // (curated), and through call_operation user.list, record.list, record.create, automation.list,
 // automation.get, automation.test and automation.disable. A proposal installs nothing until the
 // test "approves" it, as a person would in the Approvals inbox.
-import { fakeSession } from "@crm/evals-mcp/test/fakes.ts";
+import { fakeSession } from "@relationship-os/evals-mcp/test/fakes.ts";
 import { type AutomationCase, cases } from "../prompts.ts";
 
 export const USER_ID = "usr_eval";

@@ -1,19 +1,19 @@
 // Display and edit widgets for every extension field type (ADR 0023), picked by the field-type
 // registry's widget descriptor (`FIELD_TYPE_REGISTRY[type].widget`). Formula fields are read-only
 // and show their expression in a tooltip.
-import { FIELD_TYPE_REGISTRY } from "@crm/core/client";
-import { Badge } from "@crm/ui/components/badge";
-import { Checkbox } from "@crm/ui/components/checkbox";
-import { Input } from "@crm/ui/components/input";
+import { FIELD_TYPE_REGISTRY } from "@relationship-os/core/client";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
+import { Input } from "@relationship-os/ui/components/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Textarea } from "@crm/ui/components/textarea";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@crm/ui/components/tooltip";
+} from "@relationship-os/ui/components/select";
+import { Textarea } from "@relationship-os/ui/components/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@relationship-os/ui/components/tooltip";
 import { Link } from "@tanstack/react-router";
 import { SigmaIcon } from "lucide-react";
 import { RecordPicker } from "#/components/record-picker";

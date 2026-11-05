@@ -1,18 +1,18 @@
 // Extension schema state (core_extension_objects / core_extension_fields), the field registry
 // built from it, and the crm_* view SQL generated from it (ADR 0023, ADR 0024).
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import {
   type FieldManifest,
   type FieldTypeName,
   formulaTypeOf,
   type StagesManifest,
-} from "@crm/sdk";
+} from "@relationship-os/sdk";
 import {
   compileFormula,
   type FormulaEnvironment,
   FormulaError,
   type FormulaFieldRef,
-} from "@crm/sdk/formula";
+} from "@relationship-os/sdk/formula";
 import { type Kysely, sql } from "kysely";
 import { FIELD_TYPE_REGISTRY, formulaFilterType } from "../fields/field-types.ts";
 import { CORE_OBJECTS, setExtensionObjects } from "../fields/index.ts";

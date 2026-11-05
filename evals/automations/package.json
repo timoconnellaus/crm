@@ -1,6 +1,7 @@
 {
-  "name": "@crm/evals-automations",
+  "name": "@relationship-os/evals-automations",
   "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,12 +11,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@crm/evals-mcp": "workspace:*"
+    "@relationship-os/evals-mcp": "workspace:*"
   },
   "devDependencies": {
-    "@crm/config": "workspace:*",
-    "@crm/extension-deals": "workspace:*",
-    "@crm/sdk": "workspace:*",
+    "@relationship-os/config": "workspace:*",
+    "@relationship-os/extension-deals": "workspace:*",
+    "@relationship-os/sdk": "workspace:*",
     "@types/node": "24.19.2",
     "typescript": "6.0.3",
     "vitest": "5.1.0"

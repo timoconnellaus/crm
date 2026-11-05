@@ -2,11 +2,11 @@
 // (docs/stages/assets/05-automation-page.html): a two-column grid (1fr / 360px, one column under
 // 900px). Left: What it does, Steps, Test mode. Right: Permissions (approved), Safety rails,
 // Recent runs.
-import type { AutomationTestReport } from "@crm/core";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+import type { AutomationTestReport } from "@relationship-os/core";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { SparklesIcon } from "lucide-react";
 import { Fragment, useState } from "react";

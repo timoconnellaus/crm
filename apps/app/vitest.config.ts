@@ -1,17 +1,17 @@
 import { fileURLToPath } from "node:url";
 import { readD1Migrations } from "@cloudflare/vitest-plugin";
-import { defineWorkersTestConfig } from "@crm/config/vitest";
+import { defineWorkersTestConfig } from "@relationship-os/config/vitest";
 import { mergeConfig } from "vitest/config";
 import { configuratorSpecs } from "./src/components/integrations/configurator/vite-plugin.ts";
 
 const migrationsDir = fileURLToPath(new URL("../../packages/db/migrations", import.meta.url));
 
-// A stand-in crm-runner for the RUNNER service binding: the real one is tested in apps/runner and
+// A stand-in ros-runner for the RUNNER service binding: the real one is tested in apps/runner and
 // end to end by the Playwright smoke test.
 const RUNNER_STUB = `
 import { WorkerEntrypoint } from "cloudflare:workers";
 export default class extends WorkerEntrypoint {
-  async ping() { return { ok: true, worker: "crm-runner", time: new Date().toISOString() }; }
+  async ping() { return { ok: true, worker: "ros-runner", time: new Date().toISOString() }; }
   async installShipped() { return []; }
   async shipped() { return []; }
   async listWorkspace() { return []; }
@@ -31,12 +31,12 @@ export default mergeConfig(
           TEST_MIGRATIONS: await readD1Migrations(migrationsDir),
           BETTER_AUTH_SECRET: "test-secret-test-secret-test-secret-123",
         },
-        serviceBindings: { RUNNER: "crm-runner" },
+        serviceBindings: { RUNNER: "ros-runner" },
         // The fake Cloudflare account's D1 database in the self-updater tests.
         d1Databases: { UPDATER_FAKE_D1: "updater-fake-d1" },
         workers: [
           {
-            name: "crm-runner",
+            name: "ros-runner",
             modules: true,
             script: RUNNER_STUB,
             compatibilityDate: "2026-10-01",

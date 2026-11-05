@@ -11,7 +11,7 @@ the `write-gatekeeper` skill, and the Workshop side in upstream `workshop-backen
    `DurableObjectClass` the gatekeeper returns. The Workshop's per-workspace Overseer DO
    instantiates it with `ctx.facets.get()` and keeps it for the life of the binding. Accounts,
    classes, hook controllers and connect callbacks are persistent RPC stubs
-   (`allow_irrevocable_stub_storage`), and they can only be stored in DO storage. So `crm-runner`
+   (`allow_irrevocable_stub_storage`), and they can only be stored in DO storage. So `ros-runner`
    needs a stateful **integration host DO** that owns the facets and the stubs. D1 can only mirror
    them for queries and the UI. Nothing in the runner does this yet.
 2. **The approval queue fits our pipeline, but its actions are opaque callbacks, not operations.**
@@ -41,7 +41,7 @@ the `write-gatekeeper` skill, and the Workshop side in upstream `workshop-backen
    and how a hook firing (`HookInitiator.startHook()`) becomes an automation trigger with its own
    `ApprovalQueue`.
 
-Also significant: the connect flow needs public routes and a handoff page in `crm-app`. The
+Also significant: the connect flow needs public routes and a handoff page in `ros-app`. The
 resource pickers are sandboxed iframes, shimmed out for now. `GitCache`, slash commands, agent
 catalogs, singletons and management UIs are Workshop features we can stub.
 
@@ -116,14 +116,14 @@ the observer ledger, bound hooks, the git cache, and the restart logic when a gr
 `overseer.ts` is about 14k lines. We need the gatekeeper-hosting core of it, not the Gadget,
 agent-chat or sharing machinery.
 
-## What `crm-runner` (and `crm-app`) must implement
+## What `ros-runner` (and `ros-app`) must implement
 
 | # | Workshop-side duty | Our implementation (proposal) |
 | --- | --- | --- |
-| 1 | Vendor discovery | `GATEKEEPER_<NAME>` service bindings on `crm-runner` (ADR 0004) to entrypoint `GatekeeperVendor`; an admin enables vendors per deployment (ADR 0007). |
+| 1 | Vendor discovery | `GATEKEEPER_<NAME>` service bindings on `ros-runner` (ADR 0004) to entrypoint `GatekeeperVendor`; an admin enables vendors per deployment (ADR 0007). |
 | 2 | Connected-account store | A DO (per user, or one per org keyed by user) storing `Fetcher<GatekeeperUser>` stubs, state and expiry, with a D1 mirror (`core_integration_accounts`?) for the UI. Needs `allow_irrevocable_stub_storage`. |
-| 3 | Connect handoff | `crm-app`: start a connect (server function → runner → `connectAccount`), a `/connect/handoff` page that redeems ticket + nonce over the Principal's session, revoke on expiry, and reconnect/commit. Pass `GatekeeperConnectCallback` as a runner WorkerEntrypoint with props. |
-| 4 | Public gatekeeper routes | `crm-app` proxies `/gatekeeper/<name>/*` (OAuth redirect, connect pages, Pub/Sub push) to the gatekeeper Worker, and sets each gatekeeper's `BASE_URL` / public base URL. |
+| 3 | Connect handoff | `ros-app`: start a connect (server function → runner → `connectAccount`), a `/connect/handoff` page that redeems ticket + nonce over the Principal's session, revoke on expiry, and reconnect/commit. Pass `GatekeeperConnectCallback` as a runner WorkerEntrypoint with props. |
+| 4 | Public gatekeeper routes | `ros-app` proxies `/gatekeeper/<name>/*` (OAuth redirect, connect pages, Pub/Sub push) to the gatekeeper Worker, and sets each gatekeeper's `BASE_URL` / public base URL. |
 | 5 | Gatekeeper host | An **integration host DO** that creates facets from `getGatekeeperClassFor(url)`, persists the class stub, restarts facets on grant changes, and opens sessions with an `ApprovalQueue` bound to the caller (actor, principal, change set). |
 | 6 | `ApprovalQueue` | `authorizeObservation` → audit log entry plus policy (see the observers row). `submitAction` → a pending action in our approval queue tables (packages/db), routed by the gate as risk class `outbound` with `actionKind` / `autoApprovable` as inputs. `bindHook` → a pending hook approval. |
 | 7 | Decision callbacks | On approve: `applyAction(id, gitCacheStub)` on the same facet, in id order per gatekeeper, with an auto-approval drain like upstream's `AutoApprovalDrainer`. On reject: `rejectAction` and honour `restart`. Revert from the audit UI when `implementsRevert`. Errors surface as "failed, retry or discard". |
@@ -149,7 +149,7 @@ agent-chat or sharing machinery.
 | Collaborators / observers | Every CRM user who can see the written record | Mismatch (finding 4). |
 | `getTypeScriptTypes()` | Host-module types for extension code and Code Mode | Good. |
 | Hooks | Automation triggers (inbound events) | Good, needs a run-as account (finding 5). |
-| Connect handoff | Principal-bound server functions in `crm-app` | Good. Identity stays env-only. |
+| Connect handoff | Principal-bound server functions in `ros-app` | Good. Identity stays env-only. |
 
 ## Mismatches and risks
 
@@ -176,7 +176,7 @@ agent-chat or sharing machinery.
   auto-provisioned accounts.
 - **Toolchain.** Gatekeepers depend on `capnweb-validate` decorators (prebuilt for deploys; tests
   pin Vite 7), Node ≥ 24 for `URLPattern` in their Node tests, and a 2026-09-04 compatibility date
-  with `allow_irrevocable_stub_storage`, which `crm-runner` will need too.
+  with `allow_irrevocable_stub_storage`, which `ros-runner` will need too.
 - **Upstream churn.** The interface carries TODOs and a "legacy" observer strategy, and upstream
   moves fast (`overseer.ts` is very active). Keep the runner's adapter narrow so upstream pulls
   stay cheap.
@@ -206,7 +206,7 @@ Three of them don't do what the stage-6 spec assumes. Those gaps are flagged in 
   at `POST {BASE_URL}/outlook/notifications/{driver}` when `BASE_URL` is public https. Otherwise it
   polls on an alarm. It delivers new messages only, not edits or deletes. ADR 0052 sync therefore
   needs:
-  - `crm-app` to proxy that route
+  - `ros-app` to proxy that route
   - our own catch-up reads for updates and deletes
   - polling `listEvents` for meetings, since Calendar has no hook
 - **One tenant per deployment.** `MICROSOFT_TENANT_ID` must be a tenant GUID. `organizations` also
@@ -237,7 +237,7 @@ Three of them don't do what the stage-6 spec assumes. Those gaps are flagged in 
   The session has only `getAddress()` and `subscribe()` (a `bindHook`). Each firing records an
   observation through `startHook()`'s queue. **It can't send mail.** For notifications and digests
   we need one of these instead:
-  - a Cloudflare `send_email` binding on `crm-runner` (system mail, not a user's account)
+  - a Cloudflare `send_email` binding on `ros-runner` (system mail, not a user's account)
   - Gmail or `outlook.send` through the sender's own connection, which is per user and never
     auto-approvable
   - a new sending gatekeeper

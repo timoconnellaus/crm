@@ -1,7 +1,7 @@
 // AI Gateway provisioning (ADR 0180): with the `ai` feature on, every deployment gets its own
 // AI Gateway, and every model call goes through it (Workers AI through the binding's gateway
 // option, other providers through the gateway's provider and unified endpoints). Used by
-// `create-crm` (install and repair) and by runUpdate (`crm upgrade` and the self-updater), so an
+// `create-relationship-os` (install and repair) and by runUpdate (`ros upgrade` and the self-updater), so an
 // upgrade creates whatever is missing.
 //
 //   gateway          find by id, else create (logging on, authentication on)
@@ -39,17 +39,17 @@ function workerName(state: DeploymentState, name: string) {
 
 /**
  * The gateway id of a deployment: the one it chose, else its install name, the app Worker's
- * deployed name without `-app` (`crm-app` → `crm`, `acme-crm-app` → `acme-crm`).
+ * deployed name without `-app` (`ros-app` → `ros`, `acme-ros-app` → `acme-ros`; a pre-rename `crm-app` → `crm`).
  */
 export function gatewayIdFor(state: DeploymentState, manifest: ReleaseManifest): string {
   if (typeof state.aiGateway === "string" && state.aiGateway) return state.aiGateway;
-  const app = manifest.workers.find((w) => w.role === "app")?.name ?? "crm-app";
+  const app = manifest.workers.find((w) => w.role === "app")?.name ?? "ros-app";
   const base = workerName(state, app)
     .toLowerCase()
     .replace(/-app$/, "")
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/^-+|-+$/g, "");
-  return (base || "crm").slice(0, 64);
+  return (base || "ros").slice(0, 64);
 }
 
 /** Workers that read AI_GATEWAY_ID (and so get AI_GATEWAY_TOKEN), by manifest name. */
@@ -274,7 +274,11 @@ export async function provisionAiGateway(
       try {
         const [group] = await api.permissionGroups(accountId, GATEWAY_RUN_PERMISSION);
         if (!group) throw new Error(`no "${GATEWAY_RUN_PERMISSION}" permission group`);
-        const token = await api.createAccountToken(accountId, `${id} AI Gateway (crm)`, [group.id]);
+        const token = await api.createAccountToken(
+          accountId,
+          `${id} AI Gateway (Relationship OS)`,
+          [group.id],
+        );
         setAll(token.value);
         log(
           `  ${GATEWAY_TOKEN_SECRET}: generated (an account token with ${GATEWAY_RUN_PERMISSION})`,

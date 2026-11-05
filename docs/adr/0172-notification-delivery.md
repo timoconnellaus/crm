@@ -34,7 +34,7 @@ loops); and nothing may add D1 writes to the request path or scan the notificati
   like the `fieldChanged` trigger (`{ in }`, `{ stageType: "won" }`). `notification.routes` /
   `notification.setRoutes` are human-admin only and audited.
 
-### Delivery: crm-runner's minute cron
+### Delivery: ros-runner's minute cron
 `scheduled()` runs the automation cron, then `runNotificationCron` (a failure is logged and never
 stops the automation cron). One tick (`runNotificationDelivery` in core):
 1. **New notices**: rows past a keyset cursor `(created_at, id)`, up to now − 30 s (batches still
@@ -59,9 +59,9 @@ by the cron at most once a tick and only when it changed. With no channel config
 one settings row and writes nothing.
 
 ### Channels
-`emailChannel` (`send` on the sender: `[CRM] <title>`, plain text: title, body, "Open in the CRM:
+`emailChannel` (`send` on the sender: `[Relationship OS] <title>`, plain text: title, body, "Open in Relationship OS:
 <absolute URL>") and `slackChannel` (`dm` to the person's email address: mrkdwn title, body,
-`<url|Open in the CRM>`) implement `NotificationChannel`; `deliver` now returns a
+`<url|Open in Relationship OS>`) implement `NotificationChannel`; `deliver` now returns a
 `DeliveryOutcome`. URLs are absolute from `APP_ORIGIN` and `notificationHref`. Calls go through
 `integration.call` as a **system caller**: actor `automation`, origin `{ surface: "system",
 automationId: "system.notifications", sessionId: "notifications" }`, acting for the connection's

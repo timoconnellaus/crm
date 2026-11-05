@@ -2,7 +2,7 @@
 //
 // Determinism is what makes bundles reproducible: entries are sorted by path, every header has
 // mode 0644, uid/gid 0, empty owner names and mtime 0, and the gzip header's mtime and OS bytes
-// are fixed. Any `tar` can still list and extract the result (`tar -tzf crm-1.0.0.tar.gz`).
+// are fixed. Any `tar` can still list and extract the result (`tar -tzf relationship-os-1.0.0.tar.gz`).
 
 export interface ArchiveEntry {
   path: string;

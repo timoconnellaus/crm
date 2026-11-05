@@ -1,5 +1,5 @@
 // Settings home: links to each settings section.
-import { Card, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   BellIcon,

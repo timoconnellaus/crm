@@ -70,11 +70,11 @@ describe("provider keys", () => {
     expect(out).toEqual({
       provider: "openai",
       stored: "secret",
-      targets: ["crm-app", "crm-runner"],
+      targets: ["ros-app", "ros-runner"],
     });
     expect(api.calls.map((c) => `${c.method} ${c.url}`)).toEqual([
-      "PUT https://api.cloudflare.com/client/v4/accounts/acct/workers/scripts/crm-app/secrets",
-      "PUT https://api.cloudflare.com/client/v4/accounts/acct/workers/scripts/crm-runner/secrets",
+      "PUT https://api.cloudflare.com/client/v4/accounts/acct/workers/scripts/ros-app/secrets",
+      "PUT https://api.cloudflare.com/client/v4/accounts/acct/workers/scripts/ros-runner/secrets",
     ]);
     expect(api.calls[0]?.body).toEqual({ name: "AI_KEY_OPENAI", text: KEY, type: "secret_text" });
     expect(JSON.stringify(out)).not.toContain(KEY);

@@ -1,6 +1,6 @@
-import type { Principal } from "@crm/auth";
-import { Avatar, AvatarFallback } from "@crm/ui/components/avatar";
-import { Button } from "@crm/ui/components/button";
+import type { Principal } from "@relationship-os/auth";
+import { Avatar, AvatarFallback } from "@relationship-os/ui/components/avatar";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@crm/ui/components/dropdown-menu";
+} from "@relationship-os/ui/components/dropdown-menu";
 import { LogOut, SunMoon } from "lucide-react";
 import { authClient } from "../lib/auth-client.ts";
 import { type Theme, useTheme } from "./theme.tsx";

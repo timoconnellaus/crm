@@ -1,9 +1,9 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-mcp/src/connect-form.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 // The one page this gatekeeper serves that asks the user something: which MCP server to connect.
-// Lives here rather than in `@crm/mcp-shared/html` because the gateway connector, whose endpoint
+// Lives here rather than in `@relationship-os/mcp-shared/html` because the gateway connector, whose endpoint
 // is a deployment setting, has no equivalent page.
 
-import { escapeHtml, PAGE_STYLE } from "@crm/mcp-shared/html";
+import { escapeHtml, PAGE_STYLE } from "@relationship-os/mcp-shared/html";
 
 // Form controls, on top of the palette and page frame every connect page shares.
 const FORM_STYLE = `

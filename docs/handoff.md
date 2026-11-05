@@ -42,7 +42,7 @@ Each branch has a `WIP.md` at the repo root describing its state:
 - `bash scripts/setup-ci-cloudflare.sh` (after #31 merges) to set up the real install/upgrade CI test.
 - Real Google and Microsoft accounts for sync (stage 6 AC8; `docs/integrations.md`).
 - One manual end-to-end install. Connect Claude Desktop or claude.ai to `/mcp` and capture screenshots for `docs/mcp.md`. Do one MCP Inspector pass.
-- The CLI is **not published to npm yet** (user decision; `create-crm` is taken). Run it from a checkout.
+- The CLI is **not published to npm yet** (user decision; `create-crm` was taken on npm; `create-relationship-os` is free as of 2026-11-05). Run it from a checkout.
 
 ## Local dev
 - Main checkout: `/Users/tim/orca/projects/crm`.

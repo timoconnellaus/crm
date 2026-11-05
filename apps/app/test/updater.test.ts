@@ -1,6 +1,6 @@
 // The self-updater's runtime in workerd (ADR 0164) against a fake GitHub and a fake Cloudflare
 // API: it refuses a tampered bundle (AC2), lists releases per channel (AC7), and runs a verified
-// update through the same procedure as `crm upgrade`.
+// update through the same procedure as `ros upgrade`.
 import { env } from "cloudflare:workers";
 import {
   applyBundleMigrations,
@@ -13,13 +13,13 @@ import {
   provisionResources,
   type RunRecord,
   writeDeploymentState,
-} from "@crm/release";
+} from "@relationship-os/release";
 import {
   buildFixtureRelease,
   FakeCloudflare,
   FakeGitHub,
   type SqlEngine,
-} from "@crm/release/testing";
+} from "@relationship-os/release/testing";
 import { describe, expect, it } from "vitest";
 import { updaterRuntimeFor } from "../src/server/updater.ts";
 
@@ -84,9 +84,9 @@ async function world() {
     updaterRuntimeFor(
       {
         DB: env.DB,
-        CRM_RELEASE_VERSION: version,
-        CRM_ACCOUNT_ID: ACCOUNT,
-        CRM_UPDATE_TOKEN: TOKEN,
+        ROS_RELEASE_VERSION: version,
+        ROS_ACCOUNT_ID: ACCOUNT,
+        ROS_UPDATE_TOKEN: TOKEN,
       },
       {
         githubApi: github.api,
@@ -122,17 +122,17 @@ const noAutomations = { pause: async () => {}, resume: async () => {} };
 
 describe("self-updater runtime", () => {
   it("can update only with a token, an account and a release version", () => {
-    expect(updaterRuntimeFor({ DB: env.DB, CRM_RELEASE_VERSION: "" }).canUpdate).toBe(false);
+    expect(updaterRuntimeFor({ DB: env.DB, ROS_RELEASE_VERSION: "" }).canUpdate).toBe(false);
     expect(
-      updaterRuntimeFor({ DB: env.DB, CRM_RELEASE_VERSION: "1.0.0", CRM_ACCOUNT_ID: ACCOUNT })
+      updaterRuntimeFor({ DB: env.DB, ROS_RELEASE_VERSION: "1.0.0", ROS_ACCOUNT_ID: ACCOUNT })
         .canUpdate,
     ).toBe(false);
     expect(
       updaterRuntimeFor({
         DB: env.DB,
-        CRM_RELEASE_VERSION: "1.0.0",
-        CRM_ACCOUNT_ID: ACCOUNT,
-        CRM_UPDATE_TOKEN: TOKEN,
+        ROS_RELEASE_VERSION: "1.0.0",
+        ROS_ACCOUNT_ID: ACCOUNT,
+        ROS_UPDATE_TOKEN: TOKEN,
       }).canUpdate,
     ).toBe(true);
   });
@@ -181,12 +181,12 @@ describe("self-updater runtime", () => {
     // Install 1.0.0 into the fake account.
     const bundle = await openBundle(v1.bundle);
     const resources = await provisionResources(api, ACCOUNT, neededResources(bundle.manifest, []));
-    const databaseId = resources["D1_ID(crm)"] as string;
+    const databaseId = resources["D1_ID(ros)"] as string;
     await applyBundleMigrations(bundle, d1ApiMigrations(api, ACCOUNT, databaseId));
     const state: DeploymentState = {
       version: "1.0.0",
       accountId: ACCOUNT,
-      hostname: "crm-app.example.workers.dev",
+      hostname: "ros-app.example.workers.dev",
       hostnameMode: "workers.dev",
       identityProvider: "better-auth",
       channel: "stable",
@@ -200,7 +200,7 @@ describe("self-updater runtime", () => {
       api,
       bundle,
       state,
-      secrets: { "crm-app": { BETTER_AUTH_SECRET: "s".repeat(64) } },
+      secrets: { "ros-app": { BETTER_AUTH_SECRET: "s".repeat(64) } },
     });
 
     const steps: string[] = [];
@@ -215,15 +215,15 @@ describe("self-updater runtime", () => {
     });
     expect(outcome).toMatchObject({ status: "succeeded", migrations: ["0161_more.sql"] });
     expect(steps).toEqual(["pause", "bookmark", "migrate", "switch", "smoke", "resume", "done"]);
-    expect(cf.liveBinding("crm-app", "CRM_RELEASE_VERSION")?.text).toBe("1.1.0");
-    expect(cf.liveBinding("crm-runner", "DB")).toBeTruthy();
-    expect(cf.scripts.get("crm-app")?.secrets.get("BETTER_AUTH_SECRET")).toHaveLength(64);
+    expect(cf.liveBinding("ros-app", "ROS_RELEASE_VERSION")?.text).toBe("1.1.0");
+    expect(cf.liveBinding("ros-runner", "DB")).toBeTruthy();
+    expect(cf.scripts.get("ros-app")?.secrets.get("BETTER_AUTH_SECRET")).toHaveLength(64);
     // AI is on, so the update set up the AI Gateway the install lacked (ADR 0180).
-    expect(cf.gateways.get("crm")).toMatchObject({ authentication: true, collect_logs: true });
+    expect(cf.gateways.get("ros")).toMatchObject({ authentication: true, collect_logs: true });
     expect([...cf.customProviders.values()].map((p) => p.slug)).toEqual(["example-llm"]);
-    expect(cf.liveBinding("crm-app", "AI_GATEWAY_ID")?.text).toBe("crm");
+    expect(cf.liveBinding("ros-app", "AI_GATEWAY_ID")?.text).toBe("ros");
     const token = [...cf.tokens.values()][0]?.value;
     expect(token).toBeTruthy();
-    expect(cf.scripts.get("crm-runner")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token);
+    expect(cf.scripts.get("ros-runner")?.secrets.get("AI_GATEWAY_TOKEN")).toBe(token);
   });
 });

@@ -4,21 +4,21 @@
 // (filter, sort, type) lives in the URL, so dashboard click-throughs land on a filtered list.
 // The header (title, live count, tabs, filters) stays fixed. Quick-add with `c`, the New task
 // button or the command palette.
-import { type Filter, type Sort, taskObject } from "@crm/core/client";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Checkbox } from "@crm/ui/components/checkbox";
-import { Kbd } from "@crm/ui/components/kbd";
+import { type Filter, type Sort, taskObject } from "@relationship-os/core/client";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
+import { Kbd } from "@relationship-os/ui/components/kbd";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@crm/ui/components/tabs";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CheckSquareIcon, ListPlusIcon } from "lucide-react";

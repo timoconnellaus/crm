@@ -1,9 +1,9 @@
 {
-  "name": "@crm/gatekeeper-slack",
+  "name": "@relationship-os/gatekeeper-slack",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Gatekeeper Worker for Slack (workspaces, conversations and threads). Vendored from cloudflare-os.",
-  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/slack.ts",
   "scripts": {
@@ -13,15 +13,15 @@
     "test": "node ../../scripts/gatekeeper-configurator-frames.mjs && vitest run && vitest run -c vitest.smoke.config.ts"
   },
   "dependencies": {
-    "@crm/gatekeeper-configurator-ui": "workspace:*",
-    "@crm/gatekeeper-interface": "workspace:*",
-    "@crm/gatekeeper-kit": "workspace:*",
+    "@relationship-os/gatekeeper-configurator-ui": "workspace:*",
+    "@relationship-os/gatekeeper-interface": "workspace:*",
+    "@relationship-os/gatekeeper-kit": "workspace:*",
     "capnweb": "0.12.0",
     "capnweb-validate": "0.3.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
-    "@crm/config": "workspace:*",
+    "@relationship-os/config": "workspace:*",
     "typescript": "6.0.3",
     "vite": "7.3.6",
     "vitest": "5.1.0",

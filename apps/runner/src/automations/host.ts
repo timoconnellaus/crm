@@ -1,5 +1,5 @@
-// The automation host (ADR 0130, ADR 0133): crm-runner's side of automation.test, automation.run,
-// retry, replay and cancel. crm-app reaches it over RPC (the Runner entrypoint's methods).
+// The automation host (ADR 0130, ADR 0133): ros-runner's side of automation.test, automation.run,
+// retry, replay and cancel. ros-app reaches it over RPC (the Runner entrypoint's methods).
 import {
   type AutomationDefinition,
   type AutomationHost,
@@ -15,14 +15,14 @@ import {
   type RunOperationRecord,
   type StartRunInput,
   zonedTime,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import type {
   AutomationEvent,
   AutomationJournalEntry,
   AutomationRunValue,
   AutomationTestStep,
-} from "@crm/sdk";
+} from "@relationship-os/sdk";
 import { Executor, type ExecutorOptions } from "../executor/executor.ts";
 import { type AutomationRunParams, type DispatchEnv, startRuns } from "./dispatch.ts";
 import { finishRun, stepOperations } from "./run.ts";
@@ -415,7 +415,7 @@ export async function cancelRun(env: AutomationHostEnv, runId: string): Promise<
   return { runId };
 }
 
-/** The AutomationHost for crm-runner's own environment. */
+/** The AutomationHost for ros-runner's own environment. */
 export function automationHost(
   env: AutomationHostEnv,
   options: ExecutorOptions = {},

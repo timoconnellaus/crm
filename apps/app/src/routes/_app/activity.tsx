@@ -2,8 +2,8 @@
 // type filter and "only mine" in the fixed header, a live count, and a virtualised feed that
 // loads more as you scroll. Each item links to the records it is on. A `filter` search param
 // (a dashboard click-through) narrows the feed further until it is cleared.
-import { type Filter, filterSchema } from "@crm/core/client";
-import { Button } from "@crm/ui/components/button";
+import { type Filter, filterSchema } from "@relationship-os/core/client";
+import { Button } from "@relationship-os/ui/components/button";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MessageSquareTextIcon, XIcon } from "lucide-react";

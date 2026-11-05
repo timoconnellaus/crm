@@ -2,7 +2,7 @@
 // record they touch would look once applied (`simulated.records`). Reads by that session (`get`,
 // `list`, `search.global`, `activity.listForRecord`) see those records as if applied; everyone
 // else reads real data. Creates appear under provisional ids (`per_pending_…`).
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { NotFoundError } from "../errors.ts";
 import { isProvisionalId } from "../ids.ts";

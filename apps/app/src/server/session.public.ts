@@ -1,8 +1,8 @@
 // Server functions anonymous callers may use (see PUBLIC_SERVER_FN_FILE in identity.ts).
 import { env } from "cloudflare:workers";
-import { createIdentityProvider, signInMethods } from "@crm/auth";
-import { resolveActingUser } from "@crm/core";
-import { createCrmDb } from "@crm/db";
+import { createIdentityProvider, signInMethods } from "@relationship-os/auth";
+import { resolveActingUser } from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { createServerFn } from "@tanstack/react-start";
 
 /**

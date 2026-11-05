@@ -11,13 +11,13 @@
 //   with a suggestion.
 // - It never touches core_* tables' schema. (Renaming an object re-points the object type of
 //   its tags, links and search entries: data, not schema.)
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import {
   type ExtensionManifest,
   type FieldManifest,
   type FieldTypeName,
   isLosslessChange,
-} from "@crm/sdk";
+} from "@relationship-os/sdk";
 import { CompiledQuery, type Kysely } from "kysely";
 import { FIELD_TYPE_REGISTRY } from "../fields/field-types.ts";
 import {

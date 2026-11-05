@@ -4,7 +4,7 @@
 // probability, status and won/lost date, record stage history and post "Moved to <stage>" on the
 // deal and its organisation, for every actor. It runs through the same runtime as AI-written
 // extensions.
-import { defineExtension } from "@crm/sdk";
+import { defineExtension } from "@relationship-os/sdk";
 import { dealAutomations } from "./automations.ts";
 import { pipelineHealth, salesOverview } from "./dashboards.ts";
 import { stageMetrics } from "./tools.ts";

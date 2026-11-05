@@ -1,7 +1,7 @@
 # Deals (shipped extension)
 
 Pipelines of ordered, typed stages; deals that move through them; and the people on each deal
-(ADR 0026). It is built only on the public contract (`@crm/sdk`) and runs through the same runtime
+(ADR 0026). It is built only on the public contract (`@relationship-os/sdk`) and runs through the same runtime
 and permission model as AI-written extensions, as principal `extension:deals`.
 
 ## Objects

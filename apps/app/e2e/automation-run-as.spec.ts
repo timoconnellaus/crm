@@ -12,7 +12,7 @@ const LABEL = "Welcome email";
 
 /** An extension whose automation needs a fake-provider connection (it never fires here). */
 function runAsSource(id: string, endpoint: string): string {
-  return `import { defineAutomation, defineExtension } from "@crm/sdk";
+  return `import { defineAutomation, defineExtension } from "@relationship-os/sdk";
 
 // Written over MCP by the stage 6b run-as e2e spec.
 export default defineExtension({

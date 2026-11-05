@@ -5,8 +5,8 @@
 //
 // Core objects keep their own operations (person.update, …); `record.update` on a core object
 // writes only extension fields (into side tables), and `record.get` returns them.
-import type { CoreDatabase } from "@crm/db";
-import type { FieldManifest } from "@crm/sdk";
+import type { CoreDatabase } from "@relationship-os/db";
+import type { FieldManifest } from "@relationship-os/sdk";
 import { CompiledQuery, type Kysely, type SelectQueryBuilder, sql } from "kysely";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "../errors.ts";

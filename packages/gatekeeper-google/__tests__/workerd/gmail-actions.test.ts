@@ -4,7 +4,7 @@ import {runInDurableObject} from "cloudflare:test";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import type {
   ActionDescription, ActionField, ActionKind, ResourceDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import {
   base64UrlDecodedByteLength, buildEncodedEmail, decodeBase64UrlToBytes,
   GmailApi, GmailOutboundSpec, parseGmailDraft, parseMimeMessage,

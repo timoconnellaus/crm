@@ -3,7 +3,7 @@
 //
 // This file was largely vibe-coded based on an interface spec.
 
-import { AccountDescription } from "@crm/gatekeeper-interface/gatekeeper";
+import { AccountDescription } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import {
   EmailAddress, GmailAttachmentInfo, GmailAttachmentInput, GmailComposeOptions, GmailHeader, GmailReplyOptions,
 } from "./types";

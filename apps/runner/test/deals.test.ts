@@ -11,7 +11,7 @@ import {
   invokeByName,
   PERMISSIONS,
   seedRecordId,
-} from "@crm/core";
+} from "@relationship-os/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   auditFor,

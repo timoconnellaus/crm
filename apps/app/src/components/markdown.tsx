@@ -1,8 +1,8 @@
 // Markdown rendering (react-markdown: no raw HTML, so user text cannot inject markup) and a
 // Write/Preview editor for Markdown fields such as a person's description.
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@crm/ui/components/tabs";
-import { Textarea } from "@crm/ui/components/textarea";
-import { cn } from "@crm/ui/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
+import { Textarea } from "@relationship-os/ui/components/textarea";
+import { cn } from "@relationship-os/ui/lib/utils";
 import type { ComponentProps } from "react";
 import ReactMarkdown from "react-markdown";
 

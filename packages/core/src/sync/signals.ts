@@ -1,5 +1,5 @@
 // Pure helpers the sync service uses to normalise mail (ADR 0112): addresses and domains,
-// thread keys from RFC 5322 headers, snippets, signatures and bounces. Shared by crm-runner's sync
+// thread keys from RFC 5322 headers, snippets, signatures and bounces. Shared by ros-runner's sync
 // adapters (which see the provider's message) and sync.ingest (which decides what to write).
 
 /** Webmail and personal providers: never an organisation's domain, never "internal" by default. */

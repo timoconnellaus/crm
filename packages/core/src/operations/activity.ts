@@ -1,7 +1,7 @@
 // activity.* operations: log notes, emails, calls and meetings on any records' timelines, edit and
 // soft-delete them, and read a record's timeline. `system` activities are written only by the
 // pipeline (field changes, job changes, task completion), never through activity.log.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { ForbiddenError, NotFoundError, ValidationError } from "../errors.ts";

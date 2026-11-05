@@ -3,7 +3,7 @@
 // request as it arrives, and the converted text is read from the response as it is wanted, so
 // neither is ever held whole.
 
-import { readTextPrefix } from "@crm/gatekeeper-kit/response-body";
+import { readTextPrefix } from "@relationship-os/gatekeeper-kit/response-body";
 
 /** The Workers AI binding's passthrough to its own services, which `Ai`'s type does not declare. */
 export type AiFetcher = Pick<Fetcher, "fetch">;

@@ -1,5 +1,5 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-google/src/slides-api.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
-import { readBytesCapped, ResponseTooLargeError } from "@crm/gatekeeper-kit/response-body";
+import { readBytesCapped, ResponseTooLargeError } from "@relationship-os/gatekeeper-kit/response-body";
 import { AccessTokenProvider, fetchWithAuthRetry } from "./auth-retry";
 import { readGoogleJson } from "./google-response";
 import {

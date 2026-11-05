@@ -29,13 +29,13 @@ code). This ADR records how they fit together.
 - `approval.approve`, `approval.reject` and the expiry sweep send `approval` messages (one per
   decided action, with the action's original origin; provisional ids replaced by the real ids the
   action bound).
-- crm-app (UI, MCP, the daily cron's expiry) and crm-runner (automation steps) produce to the
-  `crm-automation-events` queue. A failed send is logged; the change itself is committed.
+- ros-app (UI, MCP, the daily cron's expiry) and ros-runner (automation steps) produce to the
+  `ros-automation-events` queue. A failed send is logged; the change itself is committed.
 
 ### Consumer and trigger sources
 
-- crm-runner's `queue()` handler passes the batch to `dispatchAutomationMessages(env, messages)`
-  and acks it, or retries the whole batch (`max_retries` 5, then `crm-automation-events-dlq`).
+- ros-runner's `queue()` handler passes the batch to `dispatchAutomationMessages(env, messages)`
+  and acks it, or retries the whole batch (`max_retries` 5, then `ros-automation-events-dlq`).
   Batches are up to 100 messages and 5 seconds.
 - Dispatch is by message kind through a **TriggerSource** registry
   (`packages/core/src/automations/sources.ts`): `record` (trigger types `record`, `fieldChanged`)
@@ -45,7 +45,7 @@ code). This ADR records how they fit together.
 - **Stage 6b seam.** Stage 6a stores webhooks and sync events in `core_integration_event` rather
   than on the queue. 6b registers a source for `integration` messages with
   `registerTriggerSource(source)` (trigger types `webhook`, `syncEvent`, added to the SDK's
-  `AutomationTrigger` union and `automationTriggerSchema`), polls unconsumed rows from crm-runner's
+  `AutomationTrigger` union and `automationTriggerSchema`), polls unconsumed rows from ros-runner's
   cron, builds `IntegrationEventMessage`s (id = the row id) and calls the same
   `dispatchAutomationMessages`. Nothing else changes.
 - Automations are loaded through `core_automations_trigger_idx` (enabled, not paused, not removed,
@@ -92,7 +92,7 @@ skips it or re-creates a Workflow that already exists: one run either way.
 
 ### Execution: replay on Workflows
 
-- `AutomationWorkflow` (crm-runner) runs `start` (reads the trigger record, marks the run
+- `AutomationWorkflow` (ros-runner) runs `start` (reads the trigger record, marks the run
   running), then loops `step.do("advance:<n>", { retries: 3, exponential, timeout 2 min }, …)`.
 - An advance is one executor call: `Executor.runAutomation` gets the extension's worker with
   `LOADER.get(toolWorkerId(...))` (the same stable id as its tools; never `load()`) and calls the
@@ -126,7 +126,7 @@ apply → `failed`. Timeout or expiry → `expired`, ending cleanly.
 
 ### Schedules and date-relative triggers
 
-crm-runner's `* * * * *` cron evaluates each schedule automation's 5-field cron in the automation
+ros-runner's `* * * * *` cron evaluates each schedule automation's 5-field cron in the automation
 timezone (setting; `Intl.DateTimeFormat`, so DST is handled), and from 00:05 local once a day
 (a marker row in `core_automation_counters`) scans date-relative matches with a range on the date
 field over the object's view (declare an index on the field; capped at the fan-out budget).
@@ -185,7 +185,7 @@ the instance and marks the run `cancelled`.
 ## Amendments
 
 - 2026-11-05 (stage 6b): events are no longer lost when the post-commit send fails: they are
-  written to an outbox in the operation's batch and retried by crm-runner's cron
+  written to an outbox in the operation's batch and retried by ros-runner's cron
   ([ADR 0171](0171-automation-events-outbox.md)). The `integration` source is registered and its
   events polled from `core_integration_event` ([ADR 0173](0173-integration-trigger-source.md)).
   Automations that declare connections wait for them to be bound ([ADR 0170](0170-automation-run-as-bindings.md)).

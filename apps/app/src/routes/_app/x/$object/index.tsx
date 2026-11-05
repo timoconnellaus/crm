@@ -1,15 +1,15 @@
 // Generic list page for an extension object (`/x/<extension>.<object>`): the same fixed header,
 // live count, virtualised DataTable, FilterBuilder, ColumnPicker and saved views as core lists,
 // driven by the field registry (schema.objects) and fed by record.list.
-import type { ObjectDefinition } from "@crm/core/client";
-import { Button } from "@crm/ui/components/button";
+import type { ObjectDefinition } from "@relationship-os/core/client";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@crm/ui/components/dropdown-menu";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/dropdown-menu";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BoxIcon, DownloadIcon, EllipsisIcon, PlusIcon, UploadIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";

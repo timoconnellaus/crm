@@ -622,7 +622,7 @@ export class CloudflareClient {
    *
    * The key lands in the Secrets Store the gateway uses; a gateway without one is pointed at the
    * account's store (created if the account has none). Needs AI Gateway Edit and Secrets Store
-   * Write. Used by `create-crm --provider-key` and meant for Settings → AI.
+   * Write. Used by `create-relationship-os --provider-key` and meant for Settings → AI.
    */
   async setGatewayProviderKey(
     accountId: string,

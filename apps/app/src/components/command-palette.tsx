@@ -10,14 +10,14 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-} from "@crm/ui/components/command";
+} from "@relationship-os/ui/components/command";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
+} from "@relationship-os/ui/components/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {

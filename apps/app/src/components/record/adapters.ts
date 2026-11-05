@@ -9,7 +9,7 @@
 //   const { create, setDone } = useTaskActions("organisation", org.id);
 //   const history = useRecordHistory("organisation", org.id);
 //   const affiliations = useAffiliations("organisation", org.id);
-import type { Activity, CoreInput, FieldDiff, Task } from "@crm/core";
+import type { Activity, CoreInput, FieldDiff, Task } from "@relationship-os/core";
 import { infiniteQueryOptions, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { toast } from "sonner";

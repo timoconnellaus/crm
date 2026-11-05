@@ -1,5 +1,5 @@
 // Schedule triggers (ADR 0130): a small 5-field cron matcher, evaluated against the wall-clock
-// time in the automation timezone. crm-runner's `* * * * *` cron calls `cronMatches` once a
+// time in the automation timezone. ros-runner's `* * * * *` cron calls `cronMatches` once a
 // minute for each schedule automation; Cloudflare cron triggers themselves run in UTC.
 
 /** A minute of wall-clock time in a timezone. */

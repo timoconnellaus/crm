@@ -2,7 +2,7 @@
 // is fetched once per object + filter and kept: it is cached under the object's list operation
 // (`["op", "person.list", "count", …]`), so the invalidation every write already does for
 // "person." refreshes it, and nothing else does. Scrolling never recounts.
-import type { Filter } from "@crm/core/client";
+import type { Filter } from "@relationship-os/core/client";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { callOp } from "./operations.ts";
 

@@ -9,8 +9,8 @@
 //
 // `scroll="none"` hands the body's height to a child that scrolls itself (DataTable, the record
 // page's two panels). `footer` pins a bar under the body (a dirty form's save bar).
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 import { createContext, type ReactNode, type RefObject, useContext, useRef } from "react";

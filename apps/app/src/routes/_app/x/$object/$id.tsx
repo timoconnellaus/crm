@@ -1,6 +1,6 @@
 // Generic record page for an extension object: RecordLayout with Overview (its fields, from the
 // field registry, edited with the field widgets), Timeline and History tabs, and Trash.
-import { Button } from "@crm/ui/components/button";
+import { Button } from "@relationship-os/ui/components/button";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BoxIcon, Trash2Icon } from "lucide-react";
 import { useMemo } from "react";

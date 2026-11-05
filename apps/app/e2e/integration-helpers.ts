@@ -128,7 +128,7 @@ interface MinuteTick {
 }
 
 /**
- * Runs crm-runner's minute cron once (schedules, outbox retry, integration events → runs) through
+ * Runs ros-runner's minute cron once (schedules, outbox retry, integration events → runs) through
  * the dev-only fake-provider route: local dev has no cron ticks.
  */
 export async function runMinuteCron(request: APIRequestContext): Promise<MinuteTick> {

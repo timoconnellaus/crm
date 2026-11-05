@@ -4,7 +4,7 @@
 // code only picks the key. Counts are per Cloudflare location and eventually consistent, so a
 // limit is approximate: right for stopping a runaway agent, not for exact quotas.
 //
-// Bindings in crm-app (apps/app/wrangler.jsonc, docs/deploying.md):
+// Bindings in ros-app (apps/app/wrangler.jsonc, docs/deploying.md):
 // - MCP_RATE_LIMIT        every /mcp request, keyed per connected app
 // - MCP_WRITE_RATE_LIMIT  non-read operations over MCP, keyed per connected app
 // - CODE_MODE_RATE_LIMIT  Code Mode runs, keyed per user

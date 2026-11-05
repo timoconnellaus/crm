@@ -1,7 +1,7 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-kit/src/endpoint.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 /** Validation and encoding for provider URLs: operator-supplied endpoints, agent-supplied path segments. */
 
-import { stripTrailingSlashes } from "@crm/gatekeeper-interface/gatekeeper";
+import { stripTrailingSlashes } from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 /**
  * Normalizes an operator-supplied vendor endpoint. Validation errors are display-safe and never echo

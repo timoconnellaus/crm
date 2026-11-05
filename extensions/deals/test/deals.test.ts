@@ -1,8 +1,8 @@
 // AC1 (local half): the Deals extension passes its contract and formula checks, its stage
-// behaviour, indexes and seeds are well formed, and its tool works against @crm/sdk/testing's
+// behaviour, indexes and seeds are well formed, and its tool works against @relationship-os/sdk/testing's
 // in-memory host modules. apps/runner/test/deals.test.ts runs the same extension through the real
 // runtime (executor, reconciler, stage rules, stage history).
-import { createTestHost, ExtensionToolError } from "@crm/sdk/testing";
+import { createTestHost, ExtensionToolError } from "@relationship-os/sdk/testing";
 import { describe, expect, it } from "vitest";
 import extension from "../index.ts";
 

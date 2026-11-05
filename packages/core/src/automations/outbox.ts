@@ -1,7 +1,7 @@
 // The automation events outbox (ADR 0171). Stage 5 sent events after commit and only logged a
 // failed send, so a queue hiccup lost them. Now an operation that changes records writes its
 // events into core_automation_outbox in the same D1 batch as the change, sends them after commit
-// and deletes the row; crm-runner's minute cron retries rows that are still there, with backoff.
+// and deletes the row; ros-runner's minute cron retries rows that are still there, with backoff.
 //
 // Cost: one row insert and one delete per event-producing operation (never per read, never per
 // record: a 5,000-record import is one or a few rows). The cron reads at most one page of the
@@ -9,7 +9,7 @@
 //
 // Delivery is at least once (a send that succeeded but whose delete was lost is sent again);
 // runs are exactly once per event id (ADR 0130: the Workflow id is derived from it).
-import type { CrmDb } from "@crm/db";
+import type { CrmDb } from "@relationship-os/db";
 import type { Compilable } from "kysely";
 import { newId } from "../ids.ts";
 import type { AutomationQueueMessage, EventSink } from "./types.ts";
@@ -138,7 +138,7 @@ export interface OutboxRetryResult {
 
 /**
  * The cron's retry: up to OUTBOX_PAGE rows in id (time) order; those due are handed to `send`
- * (crm-runner dispatches them directly, so a queue outage does not block it), deleted on success
+ * (ros-runner dispatches them directly, so a queue outage does not block it), deleted on success
  * and rescheduled with backoff on failure.
  */
 export async function retryOutbox(

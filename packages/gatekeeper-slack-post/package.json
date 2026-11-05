@@ -1,9 +1,9 @@
 {
-  "name": "@crm/gatekeeper-slack-post",
+  "name": "@relationship-os/gatekeeper-slack-post",
   "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "description": "Gatekeeper Worker that posts Slack messages and DMs with a bot token, each post an approval-queue action. Shares the Slack app with the vendored read-only Slack gatekeeper.",
-  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/worker.ts",
   "exports": {
@@ -17,13 +17,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@crm/gatekeeper-interface": "workspace:*",
-    "@crm/gatekeeper-kit": "workspace:*",
+    "@relationship-os/gatekeeper-interface": "workspace:*",
+    "@relationship-os/gatekeeper-kit": "workspace:*",
     "zod": "4.6.7"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
-    "@crm/config": "workspace:*",
+    "@relationship-os/config": "workspace:*",
     "typescript": "6.0.3",
     "vite": "7.3.6",
     "vitest": "5.1.0",

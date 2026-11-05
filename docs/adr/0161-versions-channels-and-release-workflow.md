@@ -19,7 +19,7 @@ Status: accepted, 2026-11-05 (stage 8 build).
   `attestations` and (v4) `artifact-metadata` write permissions.
 - **Changelog** from PR titles: `scripts/release/changelog.ts` lists first-parent squash merges
   (`Title (#n)`) and merge commits since the previous release (a stable release compares with the
-  previous stable one), as the release body. Settings → Updates and `crm status` show it.
+  previous stable one), as the release body. Settings → Updates and `ros status` show it.
   `--all` writes a whole CHANGELOG.md on demand.
 
 ## Consequences

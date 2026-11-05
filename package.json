@@ -1,24 +1,24 @@
 {
-  "name": "crm",
+  "name": "relationship-os",
   "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
   "private": true,
   "type": "module",
-  "license": "Apache-2.0",
   "packageManager": "pnpm@10.23.0",
   "engines": {
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm --filter @crm/app dev",
+    "dev": "pnpm --filter @relationship-os/app dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "biome check .",
     "format": "biome check --write .",
     "test": "turbo run test",
-    "test:e2e": "pnpm --filter @crm/app test:e2e",
+    "test:e2e": "pnpm --filter @relationship-os/app test:e2e",
     "deploy": "node scripts/deploy.mjs",
     "types": "turbo run types",
-    "db:seed": "pnpm --filter @crm/db seed",
+    "db:seed": "pnpm --filter @relationship-os/db seed",
     "upstream:check": "node scripts/upstream-sync-check.mjs"
   },
   "devDependencies": {

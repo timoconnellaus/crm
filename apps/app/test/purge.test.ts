@@ -1,6 +1,6 @@
 // The scheduled Trash purge entry (src/server/purge.ts), run in workerd against real D1.
 import { env } from "cloudflare:workers";
-import { GateDeniedError } from "@crm/core";
+import { GateDeniedError } from "@relationship-os/core";
 import { describe, expect, it } from "vitest";
 import { runScheduledMaintenance, runScheduledPurge } from "../src/server/purge.ts";
 

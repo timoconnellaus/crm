@@ -41,7 +41,7 @@ and in Workers (the self-updater) alike. No wrangler at runtime.
   ([permissions](https://developers.cloudflare.com/fundamentals/api/reference/permissions/)).
 - The client never logs, and errors carry the API's messages, never request bodies. The CLI also
   redacts every secret it handled from its output.
-- **Tests** run against `FakeCloudflare` (`@crm/release/testing`), which is strict where the API is
+- **Tests** run against `FakeCloudflare` (`@relationship-os/release/testing`), which is strict where the API is
   (auth, DO `old_tag`, no migrations on versions, assets tokens), with SQL on Node's SQLite and Time
   Travel emulated by replaying writes.
 
@@ -53,11 +53,11 @@ and in Workers (the self-updater) alike. No wrangler at runtime.
 ## Amendment, 2026-11-05: stage 5 queues and stage 7a's Vectorize index
 - Queue consumers carry their dead-letter queue as a top-level `dead_letter_queue` (a queue name),
   next to `settings`. The manifest keeps it as `deadLetterQueue: "$QUEUE_NAME(…)"` and renders it at
-  deploy time. Stage 5's `crm-automation-events` and `crm-automation-events-dlq` are provisioned
-  from the manifest. The `crm-automation` Workflow is registered by crm-runner's upload, and the
+  deploy time. Stage 5's `ros-automation-events` and `ros-automation-events-dlq` are provisioned
+  from the manifest. The `ros-automation` Workflow is registered by ros-runner's upload, and the
   rate limit namespace 4201 passes through.
 - Vectorize indexes are created from `deploy-inputs.json` `vectorize` settings when wrangler.jsonc
-  cannot express them (dimensions, metric and `metadataIndexes`), e.g. 7a's `crm-records` (384,
+  cannot express them (dimensions, metric and `metadataIndexes`), e.g. 7a's `ros-records` (384,
   cosine, `object` string metadata index). Missing metadata indexes are created on every run, so the
   step is idempotent (`POST …/vectorize/v2/indexes/{name}/metadata_index/create`,
   [docs](https://developers.cloudflare.com/api/resources/vectorize/subresources/indexes/subresources/metadata_index/methods/create/)).

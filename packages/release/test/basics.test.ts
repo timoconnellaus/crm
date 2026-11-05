@@ -51,8 +51,8 @@ describe("semver and channels", () => {
 describe("placeholders", () => {
   it("resolves the closed list and refuses anything else", () => {
     expect(renderString("https://$HOSTNAME/x", values)).toBe("https://crm.example.com/x");
-    expect(renderString("$D1_ID(crm)", values)).toBe("D1_ID:crm");
-    expect(renderString("$WORKER_NAME(crm-runner)", values)).toBe("x-crm-runner");
+    expect(renderString("$D1_ID(ros)", values)).toBe("D1_ID:ros");
+    expect(renderString("$WORKER_NAME(ros-runner)", values)).toBe("x-ros-runner");
     expect(() => renderString("$PUBLIC_BASE_URL", values)).toThrow(/unknown placeholder/);
   });
 
@@ -132,9 +132,9 @@ describe("deploy helpers", () => {
   it("orders dependencies first", async () => {
     const { manifest } = await buildFixtureRelease({ version: "1.0.0" });
     expect(deployOrder(manifest.workers).map((w) => w.name)).toEqual([
-      "crm-runner",
-      "crm-app",
-      "crm-gatekeeper-test",
+      "ros-runner",
+      "ros-app",
+      "ros-gatekeeper-test",
     ]);
   });
 

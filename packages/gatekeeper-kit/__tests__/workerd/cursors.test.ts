@@ -5,7 +5,7 @@ import type {
   GitCache,
   ObservationAuthorizer,
   ObservationDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { RpcStub, RpcTarget } from "cloudflare:workers";
 import {
   ArrayCursor,

@@ -19,7 +19,7 @@ decorators so they also run in the app's Vite 8 dev server; every RPC input is v
   account accepts them.
 - `gatekeeper-webhook`: ADR 0113.
 
-**Resource pickers render natively.** The vendored configurator spec modules run in `crm-app`
+**Resource pickers render natively.** The vendored configurator spec modules run in `ros-app`
 through our implementation of the authoring API (`apps/app/src/components/integrations/configurator`,
 shadcn components); their `ui` capability is called through `connection.configure`. The 16
 placeholder frames the vendored sources import are now untracked build output

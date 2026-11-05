@@ -1,6 +1,6 @@
 // The configurator runtime's pure parts (form state, the ui proxy, the Preact-dialect `h`, the spec
 // transform) and its components, server-rendered.
-import type { ConfiguratorUISpec } from "@crm/gatekeeper-configurator-ui";
+import type { ConfiguratorUISpec } from "@relationship-os/gatekeeper-configurator-ui";
 import { createElement, type ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -207,7 +207,7 @@ import {
   Field,
   // a comment with "quotes" in it
   h,
-} from "@crm/gatekeeper-configurator-ui";
+} from "@relationship-os/gatekeeper-configurator-ui";
 import type { X } from "./x";
 
 let state = 0;

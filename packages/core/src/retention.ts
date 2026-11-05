@@ -11,7 +11,7 @@
 //
 // Every delete and update here works in index-ordered chunks (EXPLAIN QUERY PLAN and rows-read
 // budgets in test/retention.test.ts), so no step scans a whole table or nears D1's limits.
-import type { CoreDatabase, CrmDb } from "@crm/db";
+import type { CoreDatabase, CrmDb } from "@relationship-os/db";
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import type { GateFloor } from "./gate.ts";

@@ -15,7 +15,7 @@ import {
   type SyncItem,
   snippetOf,
   threadKeyFor,
-} from "@crm/core";
+} from "@relationship-os/core";
 import type { ObservationTracker } from "./queue.ts";
 
 export type SyncKind = "mail" | "calendar";
@@ -69,7 +69,7 @@ async function drainAll<T>(
   }
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: gatekeeper sessions are RPC stubs typed by each vendor's .d.ts, which crm-runner does not import.
+// biome-ignore lint/suspicious/noExplicitAny: gatekeeper sessions are RPC stubs typed by each vendor's .d.ts, which ros-runner does not import.
 type Session = any;
 
 interface RawMail {

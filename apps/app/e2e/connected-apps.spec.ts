@@ -35,7 +35,7 @@ test("consent fits a phone and offers admin to admins", async ({ page, baseURL }
   }).toString();
   await page.goto(url.toString());
   await expect(
-    page.getByRole("heading", { name: "Connect Layout check to the CRM?" }),
+    page.getByRole("heading", { name: "Connect Layout check to Relationship OS?" }),
   ).toBeVisible();
   await expect(page.getByText("Signed in as")).toContainText("e2e@example.com");
   // The e2e user is the first user, so an admin: admin is offered, unchecked.

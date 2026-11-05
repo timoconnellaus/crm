@@ -1,4 +1,4 @@
-# Upstream: `@crm/gatekeeper-observability`
+# Upstream: `@relationship-os/gatekeeper-observability`
 
 | | |
 | --- | --- |

@@ -2,8 +2,8 @@
 // Configuration shared by every part of the Microsoft 365 gatekeeper: the Worker's environment, the
 // Entra ID authority it signs in against, the connectable resources, and the OAuth scopes each needs.
 
-import { stripTrailingSlashes, type SupportedResource } from "@crm/gatekeeper-interface/gatekeeper";
-import type { PreviewOAuthEnv } from "@crm/gatekeeper-kit/preview-oauth";
+import { stripTrailingSlashes, type SupportedResource } from "@relationship-os/gatekeeper-interface/gatekeeper";
+import type { PreviewOAuthEnv } from "@relationship-os/gatekeeper-kit/preview-oauth";
 import { CALENDAR_ACCESS_LEVELS, lowerAccess as lowerCalendarAccess, type CalendarAccessLevel, type CalendarScope } from "./calendar-scope";
 import { ACCESS_LEVELS, lowerAccess, type OutlookAccessLevel, type OutlookScope } from "./outlook-scope";
 import type { SharePointScope } from "./sharepoint-scope";

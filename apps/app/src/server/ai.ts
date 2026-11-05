@@ -1,4 +1,4 @@
-// In-app AI for crm-app (ADRs 0150-0155): the model role registry, the vector store, Settings →
+// In-app AI for ros-app (ADRs 0150-0155): the model role registry, the vector store, Settings →
 // AI's Cloudflare API access, and the post-commit hook that drains the embedding queue.
 //
 // Every binding is optional. Without `AI` (and no other provider configured) there is no model
@@ -22,15 +22,15 @@ import {
   type VectorizeLike,
   type VectorStore,
   vectorizeStore,
-} from "@crm/core";
-import { type CrmDb, createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { type CrmDb, createCrmDb } from "@relationship-os/db";
 
 export interface AiAppEnv extends AiEnv {
   /** Vectorize index for record embeddings (optional; docs/deploying.md). */
   VECTORIZE?: unknown;
   /** Secret: Cloudflare API token for Settings → AI (keys, usage). */
   CLOUDFLARE_API_TOKEN?: string;
-  /** Worker scripts that get provider key secrets. Default crm-app,crm-runner. */
+  /** Worker scripts that get provider key secrets. Default ros-app,ros-runner. */
   AI_SECRET_SCRIPTS?: string;
 }
 
@@ -151,7 +151,7 @@ export function aiContextFor(env: AiAppEnv, db: CrmDb) {
   const models = modelsFor(env, db);
   const vectors = vectorStoreFor(env);
   const onCommitted = embeddingHook(db, models, vectors);
-  // With a real Vectorize binding, crm-runner's events consumer embeds committed changes (it has
+  // With a real Vectorize binding, ros-runner's events consumer embeds committed changes (it has
   // the same bindings, ADR 0154 amendment); the in-memory dev store is filled here instead.
   const index = env.VECTORIZE as VectorizeLike | undefined;
   const viaEvents = Boolean(index && typeof index.query === "function" && models?.embed);

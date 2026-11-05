@@ -1,5 +1,5 @@
 // The organisation details editor: draft → minimal organisation.update input.
-import type { Organisation } from "@crm/core";
+import type { Organisation } from "@relationship-os/core";
 import { describe, expect, it } from "vitest";
 import {
   BLANK_ADDRESS,

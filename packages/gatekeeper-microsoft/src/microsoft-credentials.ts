@@ -3,8 +3,8 @@
 // the pinned identity, the verifier's API, and a credential source over one account. Kept apart
 // from microsoft.ts so the facet and configurator modules can use them without an import cycle.
 
-import { CredentialSource } from "@crm/gatekeeper-kit/credentials";
-import type { GatekeeperUserVerifier } from "@crm/gatekeeper-interface/gatekeeper";
+import { CredentialSource } from "@relationship-os/gatekeeper-kit/credentials";
+import type { GatekeeperUserVerifier } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { isGraphAuthError } from "./graph-api";
 import { VENDOR_ID } from "./microsoft-env";
 

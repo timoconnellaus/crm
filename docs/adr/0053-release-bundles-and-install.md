@@ -7,7 +7,7 @@ Status: accepted, 2026-11-04 (stage 8 interview). Supersedes the open parts of A
 - Bundles are published as GitHub Release assets, with sha256 hashes and GitHub build attestations.
 - Versions use semver, with stable and beta channels.
 - **Install paths:**
-  - the `npx create-crm` CLI, using a scoped API token; it verifies attestations
+  - the `npx create-relationship-os` CLI, using a scoped API token; it verifies attestations
   - the Deploy button, for forks
   - manual docs
 - There is no hosted deploy service for now. A hosted OAuth page could wrap the CLI later.

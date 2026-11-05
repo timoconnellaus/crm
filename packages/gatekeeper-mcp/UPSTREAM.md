@@ -1,4 +1,4 @@
-# Upstream: `@crm/gatekeeper-mcp` (Worker `crm-gatekeeper-mcp`)
+# Upstream: `@relationship-os/gatekeeper-mcp` (Worker `ros-gatekeeper-mcp`)
 
 | | |
 | --- | --- |
@@ -16,14 +16,14 @@ every other tool call is queued for approval.
 
 ## Local modifications
 
-- **Scope rename.** `@gadgets/*` imports point at `@crm/gatekeeper-interface`,
-  `@crm/gatekeeper-kit`, `@crm/mcp-shared`, `@crm/gatekeeper-observability` and
-  `@crm/gatekeeper-configurator-ui`. The 11 source files this touched start with a
+- **Scope rename.** `@gadgets/*` imports point at `@relationship-os/gatekeeper-interface`,
+  `@relationship-os/gatekeeper-kit`, `@relationship-os/mcp-shared`, `@relationship-os/gatekeeper-observability` and
+  `@relationship-os/gatekeeper-configurator-ui`. The 11 source files this touched start with a
   `// Vendored from cloudflare/cloudflare-os@… Modified locally` comment.
 - **Worker config.** Upstream generates `wrangler.jsonc` from `cloudflare.config.ts` with
   `@gadgets/scripts/worker-config`. We removed `cloudflare.config.ts` and keep `wrangler.jsonc`
   by hand, with upstream's settings (compatibility date and flags, `MCP_ALLOW_INSECURE`, the
-  capnweb-validate build, Text module rules, DO migrations) plus: name `crm-gatekeeper-mcp`,
+  capnweb-validate build, Text module rules, DO migrations) plus: name `ros-gatekeeper-mcp`,
   `workers_dev: false` and `preview_urls: false`. No account IDs.
 - **Types.** `worker-configuration.d.ts` is regenerated with our wrangler by `pnpm types`
   (`scripts/gatekeeper-worker-types.mjs`, a port of upstream's post-processing). Because

@@ -1,0 +1,31 @@
+{
+  "name": "@relationship-os/marketing",
+  "version": "0.0.0",
+  "license": "FSL-1.1-ALv2",
+  "private": true,
+  "description": "The landing page for relationshiposcrm.com: a static Astro site served by a Worker that stores waitlist and contact-sales submissions in D1. No trackers.",
+  "type": "module",
+  "scripts": {
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev --port 4321",
+    "build": "ASTRO_TELEMETRY_DISABLED=1 astro build && node scripts/check-static.mjs",
+    "preview": "pnpm build && wrangler dev",
+    "deploy": "pnpm build && wrangler deploy && wrangler d1 migrations apply DB --remote",
+    "types": "wrangler types --strict-vars=false",
+    "typecheck": "wrangler types --strict-vars=false --check && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@relationship-os/config": "workspace:*",
+    "@relationship-os/ui": "workspace:*",
+    "@tailwindcss/vite": "4.3.4",
+    "astro": "7.4.2",
+    "tailwindcss": "4.3.4",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0",
+    "wrangler": "4.157.0"
+  }
+}

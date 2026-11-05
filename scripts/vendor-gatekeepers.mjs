@@ -24,11 +24,11 @@ const upstreamRoot = resolve(upstreamArg);
 
 /** Upstream package scope -> our package. Specifiers are rewritten by prefix. */
 const SPECIFIERS = [
-  ["@gadgets/workshop-shared/gatekeeper", "@crm/gatekeeper-interface/gatekeeper"],
-  ["@gadgets/observability/", "@crm/gatekeeper-observability/"],
-  ["@gadgets/configurator-ui", "@crm/gatekeeper-configurator-ui"],
-  ["@gadgets/gatekeeper-kit", "@crm/gatekeeper-kit"],
-  ["@gadgets/mcp-shared", "@crm/mcp-shared"],
+  ["@gadgets/workshop-shared/gatekeeper", "@relationship-os/gatekeeper-interface/gatekeeper"],
+  ["@gadgets/observability/", "@relationship-os/gatekeeper-observability/"],
+  ["@gadgets/configurator-ui", "@relationship-os/gatekeeper-configurator-ui"],
+  ["@gadgets/gatekeeper-kit", "@relationship-os/gatekeeper-kit"],
+  ["@gadgets/mcp-shared", "@relationship-os/mcp-shared"],
 ];
 
 const TEXT_EXTENSIONS = [".ts", ".tsx", ".mts", ".js", ".mjs", ".md", ".json", ".txt"];
