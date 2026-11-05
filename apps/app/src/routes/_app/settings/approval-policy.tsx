@@ -8,7 +8,7 @@ import {
   POLICY_PRESETS,
   type PolicyPreset,
   PRESET_MATRICES,
-} from "@crm/core/client";
+} from "@relationship-os/core/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,13 +18,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@crm/ui/components/alert-dialog";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
-import { Label } from "@crm/ui/components/label";
-import { RadioGroup, RadioGroupItem } from "@crm/ui/components/radio-group";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/alert-dialog";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import { Label } from "@relationship-os/ui/components/label";
+import { RadioGroup, RadioGroupItem } from "@relationship-os/ui/components/radio-group";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute } from "@tanstack/react-router";
 import { LockIcon } from "lucide-react";
 import { useEffect, useState } from "react";

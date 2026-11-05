@@ -29,7 +29,7 @@
   },
   "inputs": [
     {
-      "description": "Public hostname: <crm-app>.<subdomain>.workers.dev or a hostname on your zone",
+      "description": "Public hostname: <ros-app>.<subdomain>.workers.dev or a hostname on your zone",
       "kind": "placeholder",
       "name": "HOSTNAME"
     },
@@ -43,7 +43,7 @@
         "cloudflare-access"
       ],
       "workers": [
-        "crm-app"
+        "ros-app"
       ]
     },
     {
@@ -56,7 +56,7 @@
         "true"
       ],
       "workers": [
-        "crm-app"
+        "ros-app"
       ]
     },
     {
@@ -65,8 +65,8 @@
       "kind": "var",
       "name": "APPROVAL_FLOOR",
       "workers": [
-        "crm-app",
-        "crm-runner"
+        "ros-app",
+        "ros-runner"
       ]
     },
     {
@@ -75,18 +75,18 @@
       "kind": "var",
       "name": "AI_GATEWAY_ID",
       "workers": [
-        "crm-app",
-        "crm-runner"
+        "ros-app",
+        "ros-runner"
       ]
     },
     {
       "default": "",
-      "description": "Deploy-config layer of the model registry: a preset (create-crm --model-roles) or JSON (ADR 0150, ADR 0192)",
+      "description": "Deploy-config layer of the model registry: a preset (create-relationship-os --model-roles) or JSON (ADR 0150, ADR 0192)",
       "kind": "var",
       "name": "AI_MODEL_ROLES",
       "workers": [
-        "crm-app",
-        "crm-runner"
+        "ros-app",
+        "ros-runner"
       ]
     },
     {
@@ -95,8 +95,8 @@
       "kind": "var",
       "name": "AI_GATEWAY_BYOK",
       "workers": [
-        "crm-app",
-        "crm-runner"
+        "ros-app",
+        "ros-runner"
       ]
     }
   ],
@@ -228,113 +228,113 @@
     }
   ],
   "product": "crm",
-  "repository": "timoconnellaus/crm",
+  "repository": "timoconnellaus/relationship-os",
   "resources": [
     {
       "implicit": false,
       "name": "crm",
       "optional": false,
-      "placeholder": "$D1_ID(crm)",
+      "placeholder": "$D1_ID(ros)",
       "type": "d1",
       "usedBy": [
-        "crm-app",
-        "crm-runner"
+        "ros-app",
+        "ros-runner"
       ]
     },
     {
       "implicit": true,
-      "name": "crm-gatekeeper-webhook:WebhookEndpoint",
+      "name": "ros-gatekeeper-webhook:WebhookEndpoint",
       "optional": true,
       "type": "durable_object",
       "usedBy": [
-        "crm-gatekeeper-webhook"
+        "ros-gatekeeper-webhook"
       ]
     },
     {
       "implicit": true,
-      "name": "crm-runner:CodeModeGate",
+      "name": "ros-runner:CodeModeGate",
       "optional": false,
       "type": "durable_object",
       "usedBy": [
-        "crm-runner"
+        "ros-runner"
       ]
     },
     {
       "implicit": true,
-      "name": "crm-runner:ExtensionWorkspace",
+      "name": "ros-runner:ExtensionWorkspace",
       "optional": false,
       "type": "durable_object",
       "usedBy": [
-        "crm-runner"
+        "ros-runner"
       ]
     },
     {
       "implicit": true,
-      "name": "crm-runner:FakeAccount",
+      "name": "ros-runner:FakeAccount",
       "optional": false,
       "type": "durable_object",
       "usedBy": [
-        "crm-runner"
+        "ros-runner"
       ]
     },
     {
       "implicit": true,
-      "name": "crm-runner:FakeProvider",
+      "name": "ros-runner:FakeProvider",
       "optional": false,
       "type": "durable_object",
       "usedBy": [
-        "crm-runner"
+        "ros-runner"
       ]
     },
     {
       "implicit": true,
-      "name": "crm-runner:IntegrationHost",
+      "name": "ros-runner:IntegrationHost",
       "optional": false,
       "type": "durable_object",
       "usedBy": [
-        "crm-runner"
+        "ros-runner"
       ]
     },
     {
       "implicit": false,
-      "name": "crm-app-oauth-kv",
+      "name": "ros-app-oauth-kv",
       "optional": false,
-      "placeholder": "$KV_ID(crm-app-oauth-kv)",
+      "placeholder": "$KV_ID(ros-app-oauth-kv)",
       "type": "kv",
       "usedBy": [
-        "crm-app"
+        "ros-app"
       ]
     },
     {
       "implicit": false,
-      "name": "crm-automation-events",
+      "name": "ros-automation-events",
       "optional": false,
-      "placeholder": "$QUEUE_NAME(crm-automation-events)",
+      "placeholder": "$QUEUE_NAME(ros-automation-events)",
       "type": "queue",
       "usedBy": [
-        "crm-app",
-        "crm-runner"
+        "ros-app",
+        "ros-runner"
       ]
     },
     {
       "implicit": false,
-      "name": "crm-automation-events-dlq",
+      "name": "ros-automation-events-dlq",
       "optional": false,
-      "placeholder": "$QUEUE_NAME(crm-automation-events-dlq)",
+      "placeholder": "$QUEUE_NAME(ros-automation-events-dlq)",
       "type": "queue",
       "usedBy": [
-        "crm-runner"
+        "ros-runner"
       ]
     },
     {
       "implicit": false,
-      "name": "crm-blobs",
+      "name": "ros-blobs",
       "optional": false,
-      "placeholder": "$R2_NAME(crm-blobs)",
+      "placeholder": "$R2_NAME(ros-blobs)",
       "type": "r2",
       "usedBy": [
-        "crm-app",
-        "crm-runner"
+        "ros-app",
+        "ros-runner"
       ]
     },
     {
@@ -350,31 +350,31 @@
       },
       "feature": "ai",
       "implicit": false,
-      "name": "crm-records",
+      "name": "ros-records",
       "optional": false,
-      "placeholder": "$VECTORIZE_NAME(crm-records)",
+      "placeholder": "$VECTORIZE_NAME(ros-records)",
       "type": "vectorize",
       "usedBy": [
-        "crm-app",
-        "crm-runner"
+        "ros-app",
+        "ros-runner"
       ]
     },
     {
       "implicit": true,
-      "name": "crm-automation",
+      "name": "ros-automation",
       "optional": false,
       "type": "workflow",
       "usedBy": [
-        "crm-runner"
+        "ros-runner"
       ]
     },
     {
       "implicit": true,
-      "name": "crm-hello",
+      "name": "ros-hello",
       "optional": false,
       "type": "workflow",
       "usedBy": [
-        "crm-runner"
+        "ros-runner"
       ]
     }
   ],
@@ -396,33 +396,33 @@
       },
       "bindings": [
         {
-          "database_id": "$D1_ID(crm)",
+          "database_id": "$D1_ID(ros)",
           "name": "DB",
           "type": "d1"
         },
         {
-          "bucket_name": "$R2_NAME(crm-blobs)",
+          "bucket_name": "$R2_NAME(ros-blobs)",
           "name": "BLOBS",
           "type": "r2_bucket"
         },
         {
           "name": "OAUTH_KV",
-          "namespace_id": "$KV_ID(crm-app-oauth-kv)",
+          "namespace_id": "$KV_ID(ros-app-oauth-kv)",
           "type": "kv_namespace"
         },
         {
           "name": "RUNNER",
-          "service": "$WORKER_NAME(crm-runner)",
+          "service": "$WORKER_NAME(ros-runner)",
           "type": "service"
         },
         {
           "name": "AUTOMATION_EVENTS",
-          "queue_name": "$QUEUE_NAME(crm-automation-events)",
+          "queue_name": "$QUEUE_NAME(ros-automation-events)",
           "type": "queue"
         },
         {
           "feature": "ai",
-          "index_name": "$VECTORIZE_NAME(crm-records)",
+          "index_name": "$VECTORIZE_NAME(ros-records)",
           "name": "VECTORIZE",
           "type": "vectorize"
         },
@@ -485,7 +485,7 @@
         },
         {
           "name": "AI_SECRET_SCRIPTS",
-          "text": "crm-app,crm-runner",
+          "text": "ros-app,ros-runner",
           "type": "plain_text"
         },
         {
@@ -509,17 +509,17 @@
           "type": "plain_text"
         },
         {
-          "name": "CRM_ACCOUNT_ID",
+          "name": "ROS_ACCOUNT_ID",
           "text": "$ACCOUNT_ID",
           "type": "plain_text"
         },
         {
-          "name": "CRM_RELEASE_REPO",
-          "text": "timoconnellaus/crm",
+          "name": "ROS_RELEASE_REPO",
+          "text": "timoconnellaus/relationship-os",
           "type": "plain_text"
         },
         {
-          "name": "CRM_RELEASE_VERSION",
+          "name": "ROS_RELEASE_VERSION",
           "text": "1.0.0",
           "type": "plain_text"
         },
@@ -569,8 +569,8 @@
           "type": "secret_text"
         },
         {
-          "name": "CRM_UPDATE_TOKEN",
-          "text": "$SECRET(CRM_UPDATE_TOKEN)",
+          "name": "ROS_UPDATE_TOKEN",
+          "text": "$SECRET(ROS_UPDATE_TOKEN)",
           "type": "secret_text"
         },
         {
@@ -593,7 +593,7 @@
         "*/10 * * * *"
       ],
       "dependsOn": [
-        "crm-runner"
+        "ros-runner"
       ],
       "durableObjectMigrations": [],
       "mainModule": "index.js",
@@ -605,7 +605,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-app",
+      "name": "ros-app",
       "observability": {
         "enabled": true
       },
@@ -646,14 +646,14 @@
           "source": "installer"
         },
         {
-          "description": "Optional. Settings → AI's Cloudflare API token: provider keys as Workers secrets, AI Gateway usage (docs/deploying.md, In-app AI). Set from CRM_AI_ADMIN_TOKEN.",
+          "description": "Optional. Settings → AI's Cloudflare API token: provider keys as Workers secrets, AI Gateway usage (docs/deploying.md, In-app AI). Set from ROS_AI_ADMIN_TOKEN.",
           "name": "CLOUDFLARE_API_TOKEN",
           "required": false,
           "source": "installer"
         },
         {
-          "description": "Optional. A scoped Cloudflare API token that lets Settings → Updates update this deployment itself (docs/deploying.md). Without it, updates use the `crm upgrade` CLI.",
-          "name": "CRM_UPDATE_TOKEN",
+          "description": "Optional. A scoped Cloudflare API token that lets Settings → Updates update this deployment itself (docs/deploying.md). Without it, updates use the `ros upgrade` CLI.",
+          "name": "ROS_UPDATE_TOKEN",
           "required": false,
           "source": "installer"
         },
@@ -675,19 +675,19 @@
     {
       "bindings": [
         {
-          "database_id": "$D1_ID(crm)",
+          "database_id": "$D1_ID(ros)",
           "name": "DB",
           "type": "d1"
         },
         {
-          "bucket_name": "$R2_NAME(crm-blobs)",
+          "bucket_name": "$R2_NAME(ros-blobs)",
           "name": "BLOBS",
           "type": "r2_bucket"
         },
         {
           "entrypoint": "FakeGatekeeperVendor",
           "name": "GATEKEEPER_FAKE",
-          "service": "$WORKER_NAME(crm-runner)",
+          "service": "$WORKER_NAME(ros-runner)",
           "type": "service"
         },
         {
@@ -719,22 +719,22 @@
           "class_name": "HelloWorkflow",
           "name": "HELLO_WORKFLOW",
           "type": "workflow",
-          "workflow_name": "crm-hello"
+          "workflow_name": "ros-hello"
         },
         {
           "class_name": "AutomationWorkflow",
           "name": "AUTOMATION_WORKFLOW",
           "type": "workflow",
-          "workflow_name": "crm-automation"
+          "workflow_name": "ros-automation"
         },
         {
           "name": "AUTOMATION_EVENTS",
-          "queue_name": "$QUEUE_NAME(crm-automation-events)",
+          "queue_name": "$QUEUE_NAME(ros-automation-events)",
           "type": "queue"
         },
         {
           "feature": "ai",
-          "index_name": "$VECTORIZE_NAME(crm-records)",
+          "index_name": "$VECTORIZE_NAME(ros-records)",
           "name": "VECTORIZE",
           "type": "vectorize"
         },
@@ -851,7 +851,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-runner",
+      "name": "ros-runner",
       "observability": {
         "enabled": true
       },
@@ -860,8 +860,8 @@
       "public": false,
       "queueConsumers": [
         {
-          "deadLetterQueue": "$QUEUE_NAME(crm-automation-events-dlq)",
-          "queue": "$QUEUE_NAME(crm-automation-events)",
+          "deadLetterQueue": "$QUEUE_NAME(ros-automation-events-dlq)",
+          "queue": "$QUEUE_NAME(ros-automation-events)",
           "settings": {
             "batch_size": 100,
             "max_retries": 5,
@@ -901,7 +901,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-gatekeeper-email",
+      "name": "ros-gatekeeper-email",
       "observability": {
         "enabled": true,
         "head_sampling_rate": 1,
@@ -958,7 +958,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-gatekeeper-email-send",
+      "name": "ros-gatekeeper-email-send",
       "observability": {
         "enabled": true,
         "head_sampling_rate": 1,
@@ -1081,7 +1081,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-gatekeeper-google",
+      "name": "ros-gatekeeper-google",
       "observability": {
         "enabled": true,
         "head_sampling_rate": 1,
@@ -1162,7 +1162,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-gatekeeper-mcp",
+      "name": "ros-gatekeeper-mcp",
       "observability": {
         "enabled": true,
         "head_sampling_rate": 1,
@@ -1224,7 +1224,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-gatekeeper-microsoft",
+      "name": "ros-gatekeeper-microsoft",
       "observability": {
         "enabled": true,
         "head_sampling_rate": 1,
@@ -1293,7 +1293,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-gatekeeper-slack",
+      "name": "ros-gatekeeper-slack",
       "optional": true,
       "package": "packages/gatekeeper-slack",
       "public": false,
@@ -1368,7 +1368,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-gatekeeper-slack-post",
+      "name": "ros-gatekeeper-slack-post",
       "observability": {
         "enabled": true,
         "head_sampling_rate": 1,
@@ -1435,7 +1435,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-gatekeeper-webhook",
+      "name": "ros-gatekeeper-webhook",
       "observability": {
         "enabled": true,
         "head_sampling_rate": 1,
@@ -1482,7 +1482,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-gatekeeper-websearch",
+      "name": "ros-gatekeeper-websearch",
       "observability": {
         "enabled": true,
         "head_sampling_rate": 1,
@@ -1536,7 +1536,7 @@
           "type": "esm"
         }
       ],
-      "name": "crm-gatekeeper-zoominfo",
+      "name": "ros-gatekeeper-zoominfo",
       "observability": {
         "enabled": true,
         "head_sampling_rate": 1,

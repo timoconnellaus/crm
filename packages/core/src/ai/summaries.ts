@@ -8,7 +8,7 @@
 // request (a button, or a batch for the visible part of a timeline), never per keystroke.
 // Private activities are never summarised or used as input; synced email bodies are read from R2
 // only when their mailbox shares full content.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, sql } from "kysely";
 import { NotFoundError, ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";

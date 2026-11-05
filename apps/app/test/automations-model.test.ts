@@ -1,7 +1,7 @@
 // The automation and notification UI's wording (src/components/automations/model.ts): run outcome
 // text, the test-mode report as lines, the provenance line, diagram code parts, durations,
 // compact relative times and notification links.
-import type { AutomationTestReport, RunStepRecord } from "@crm/core";
+import type { AutomationTestReport, RunStepRecord } from "@relationship-os/core";
 import { describe, expect, it } from "vitest";
 import {
   asTestReport,

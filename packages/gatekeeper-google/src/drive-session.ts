@@ -1,6 +1,6 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-google/src/drive-session.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
-import { isObservationRefused } from "@crm/gatekeeper-kit/observers";
-import type { ObservationDescription } from "@crm/gatekeeper-interface/gatekeeper";
+import { isObservationRefused } from "@relationship-os/gatekeeper-kit/observers";
+import type { ObservationDescription } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { CursorPager, type Pager } from "./cursor";
 import {
   FOLDER_MIME_TYPE, MAX_QUERY_PARENTS, SHORTCUT_MIME_TYPE,

@@ -1,5 +1,5 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-google/src/configurator/calendar-configurator-ui.tsx (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
-import { Autocomplete, Field, h, RadioCards, Section, type ConfiguratorUISpec } from "@crm/gatekeeper-configurator-ui";
+import { Autocomplete, Field, h, RadioCards, Section, type ConfiguratorUISpec } from "@relationship-os/gatekeeper-configurator-ui";
 import type { CalendarConfiguratorRpc, CalendarConfiguratorValues } from "./calendar-configurator-types";
 
 /** The suggested calendar if the account can write it, with `primary` resolved to a stable ID. */

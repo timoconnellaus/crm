@@ -1,5 +1,5 @@
 {
-  "$comment": "Deploy inputs wrangler.jsonc cannot hold, read by scripts/release/manifest-lib.ts (the release manifest, ADR 0160) and scripts/deploy.mjs. `features.ai`: Workers AI and Vectorize, remote-only so left out of wrangler.jsonc (ADR 0156); turned off with CRM_AI=off or `create-crm --ai off`. `vectorize`: how each index is created. `aiGateway`: the AI Gateway installs create with AI on (ADR 0180): its settings (authentication is always on) and the custom providers to create, called as custom-<slug> (none ship: built-in gateway providers such as deepseek need none, ADR 0192). `secrets`: optional secrets beyond package.json's. Values are never committed.",
+  "$comment": "Deploy inputs wrangler.jsonc cannot hold, read by scripts/release/manifest-lib.ts (the release manifest, ADR 0160) and scripts/deploy.mjs. `features.ai`: Workers AI and Vectorize, remote-only so left out of wrangler.jsonc (ADR 0156); turned off with ROS_AI=off or `create-relationship-os --ai off`. `vectorize`: how each index is created. `aiGateway`: the AI Gateway installs create with AI on (ADR 0180): its settings (authentication is always on) and the custom providers to create, called as custom-<slug> (none ship: built-in gateway providers such as deepseek need none, ADR 0192). `secrets`: optional secrets beyond package.json's. Values are never committed.",
   "features": {
     "ai": {
       "ai": {
@@ -8,13 +8,13 @@
       "vectorize": [
         {
           "binding": "VECTORIZE",
-          "index_name": "crm-records"
+          "index_name": "ros-records"
         }
       ]
     }
   },
   "vectorize": {
-    "crm-records": {
+    "ros-records": {
       "dimensions": 384,
       "metric": "cosine",
       "metadataIndexes": [
@@ -40,7 +40,7 @@
     {
       "name": "CLOUDFLARE_API_TOKEN",
       "required": false,
-      "description": "Optional. Settings → AI's Cloudflare API token: provider keys as Workers secrets, AI Gateway usage (docs/deploying.md, In-app AI). Set from CRM_AI_ADMIN_TOKEN."
+      "description": "Optional. Settings → AI's Cloudflare API token: provider keys as Workers secrets, AI Gateway usage (docs/deploying.md, In-app AI). Set from ROS_AI_ADMIN_TOKEN."
     },
     {
       "name": "AI_GATEWAY_TOKEN",

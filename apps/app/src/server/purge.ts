@@ -13,14 +13,14 @@ import {
   queueEventSink,
   runAuditPurge,
   runTrashPurge,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { integrationRuntimeFor } from "./integrations.ts";
 
 export interface PurgeEnv {
   DB: D1Database;
   APPROVAL_FLOOR?: string;
-  /** crm-runner: expired outbound items are dropped on their gatekeepers. */
+  /** ros-runner: expired outbound items are dropped on their gatekeepers. */
   RUNNER?: Fetcher;
   /** Expired approvals wake the automation runs waiting on them (ADR 0130). */
   AUTOMATION_EVENTS?: Queue;

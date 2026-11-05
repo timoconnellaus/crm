@@ -1,9 +1,9 @@
 // Resolving the authenticated Principal to the CRM user an operation acts for.
-import type { CrmDb } from "@crm/db";
+import type { CrmDb } from "@relationship-os/db";
 import { newId } from "./ids.ts";
 import type { ActingUser, Role } from "./principals.ts";
 
-/** The parts of an identity-adapter Principal this needs (structurally `@crm/auth`'s). */
+/** The parts of an identity-adapter Principal this needs (structurally `@relationship-os/auth`'s). */
 export interface PrincipalLike {
   userId: string;
   email: string;

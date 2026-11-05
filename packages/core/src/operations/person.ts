@@ -1,7 +1,7 @@
 // person.* operations. The reference implementation of the operation pattern: read with ctx.db,
 // queue writes with ctx.write, record before/after snapshots with ctx.recordChange, and return
 // the record (reading it after commit where that is simpler). See ../../README.md.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ConflictError, NotFoundError, ValidationError } from "../errors.ts";

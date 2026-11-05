@@ -1,5 +1,5 @@
 // Better Auth adapter (the default): email + password and Google sign-in, stored in core_* tables.
-import { newId } from "@crm/core";
+import { newId } from "@relationship-os/core";
 import { betterAuth } from "better-auth";
 import type { IdentityProvider, Principal } from "./principal.ts";
 

@@ -1,11 +1,11 @@
-// crm-gatekeeper-webhook: inbound webhooks. External systems POST events to
+// ros-gatekeeper-webhook: inbound webhooks. External systems POST events to
 // https://<crm-origin>/gatekeeper/webhook/in/:endpointId, which the CRM proxies to this Worker's
 // fetch handler. It verifies the provider's signature, shapes the payload into a typed event and
 // delivers it to the hook the CRM's integration host bound. Account-agnostic: no account or
 // resource IDs are committed (ADR 0012). See README.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "crm-gatekeeper-webhook",
+  "name": "ros-gatekeeper-webhook",
   "main": "src/worker.ts",
   "compatibility_date": "2026-09-04",
   "compatibility_flags": ["allow_irrevocable_stub_storage"],

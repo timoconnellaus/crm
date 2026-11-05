@@ -18,27 +18,27 @@ upstream start with a `// Vendored from cloudflare/cloudflare-os@… Modified lo
 
 | Package | Upstream path | Taken |
 | --- | --- | --- |
-| [`@crm/gatekeeper-interface`](packages/gatekeeper-interface/UPSTREAM.md) | `packages/workshop-shared/src/gatekeeper.ts`, `scripts/assert-workerd.ts` | Those two files only, unchanged |
-| [`@crm/gatekeeper-observability`](packages/gatekeeper-observability/UPSTREAM.md) | `packages/observability` | The logger and observability context, unchanged |
-| [`@crm/gatekeeper-configurator-ui`](packages/gatekeeper-configurator-ui/UPSTREAM.md) | `packages/configurator-ui` | The authoring API (`src/index.ts`, `src/runtime/options.ts`), unchanged |
-| [`@crm/gatekeeper-kit`](packages/gatekeeper-kit/UPSTREAM.md) | `packages/gatekeeper-kit` | All of `src`, `__tests__` and docs |
-| [`@crm/mcp-shared`](packages/mcp-shared/UPSTREAM.md) | `packages/mcp-shared` | All of `src`, `__tests__` and docs |
-| [`@crm/gatekeeper-mcp`](packages/gatekeeper-mcp/UPSTREAM.md) (Worker `crm-gatekeeper-mcp`) | `packages/gatekeeper-mcp` | All of `src`, `__tests__` and README |
-| [`@crm/gatekeeper-google`](packages/gatekeeper-google/UPSTREAM.md) (Worker `crm-gatekeeper-google`) | `packages/gatekeeper-google` | All of `src`, `__tests__` and README |
-| [`@crm/gatekeeper-microsoft`](packages/gatekeeper-microsoft/UPSTREAM.md) (Worker `crm-gatekeeper-microsoft`) | `packages/gatekeeper-microsoft` | All of `src`, `__tests__`, README, AGENTS.md and `storage-schema.md` |
-| [`@crm/gatekeeper-slack`](packages/gatekeeper-slack/UPSTREAM.md) (Worker `crm-gatekeeper-slack`) | `packages/gatekeeper-slack` | All of `src` (tests included) and README |
-| [`@crm/gatekeeper-email`](packages/gatekeeper-email/UPSTREAM.md) (Worker `crm-gatekeeper-email`) | `packages/gatekeeper-email` | All of `src` and README. Inbound mail only |
-| [`@crm/gatekeeper-zoominfo`](packages/gatekeeper-zoominfo/UPSTREAM.md) (Worker `crm-gatekeeper-zoominfo`) | `packages/gatekeeper-zoominfo` | All of `src` and README |
-| [`@crm/gatekeeper-websearch`](packages/gatekeeper-websearch/UPSTREAM.md) (Worker `crm-gatekeeper-websearch`) | `packages/gatekeeper-websearch` | All of `src`, `__tests__`, README and AGENTS.md |
+| [`@relationship-os/gatekeeper-interface`](packages/gatekeeper-interface/UPSTREAM.md) | `packages/workshop-shared/src/gatekeeper.ts`, `scripts/assert-workerd.ts` | Those two files only, unchanged |
+| [`@relationship-os/gatekeeper-observability`](packages/gatekeeper-observability/UPSTREAM.md) | `packages/observability` | The logger and observability context, unchanged |
+| [`@relationship-os/gatekeeper-configurator-ui`](packages/gatekeeper-configurator-ui/UPSTREAM.md) | `packages/configurator-ui` | The authoring API (`src/index.ts`, `src/runtime/options.ts`), unchanged |
+| [`@relationship-os/gatekeeper-kit`](packages/gatekeeper-kit/UPSTREAM.md) | `packages/gatekeeper-kit` | All of `src`, `__tests__` and docs |
+| [`@relationship-os/mcp-shared`](packages/mcp-shared/UPSTREAM.md) | `packages/mcp-shared` | All of `src`, `__tests__` and docs |
+| [`@relationship-os/gatekeeper-mcp`](packages/gatekeeper-mcp/UPSTREAM.md) (Worker `ros-gatekeeper-mcp`) | `packages/gatekeeper-mcp` | All of `src`, `__tests__` and README |
+| [`@relationship-os/gatekeeper-google`](packages/gatekeeper-google/UPSTREAM.md) (Worker `ros-gatekeeper-google`) | `packages/gatekeeper-google` | All of `src`, `__tests__` and README |
+| [`@relationship-os/gatekeeper-microsoft`](packages/gatekeeper-microsoft/UPSTREAM.md) (Worker `ros-gatekeeper-microsoft`) | `packages/gatekeeper-microsoft` | All of `src`, `__tests__`, README, AGENTS.md and `storage-schema.md` |
+| [`@relationship-os/gatekeeper-slack`](packages/gatekeeper-slack/UPSTREAM.md) (Worker `ros-gatekeeper-slack`) | `packages/gatekeeper-slack` | All of `src` (tests included) and README |
+| [`@relationship-os/gatekeeper-email`](packages/gatekeeper-email/UPSTREAM.md) (Worker `ros-gatekeeper-email`) | `packages/gatekeeper-email` | All of `src` and README. Inbound mail only |
+| [`@relationship-os/gatekeeper-zoominfo`](packages/gatekeeper-zoominfo/UPSTREAM.md) (Worker `ros-gatekeeper-zoominfo`) | `packages/gatekeeper-zoominfo` | All of `src` and README |
+| [`@relationship-os/gatekeeper-websearch`](packages/gatekeeper-websearch/UPSTREAM.md) (Worker `ros-gatekeeper-websearch`) | `packages/gatekeeper-websearch` | All of `src`, `__tests__`, README and AGENTS.md |
 
 Local changes, in summary:
 
-- **Renames.** Package scopes `@gadgets/*` → `@crm/*` (`workshop-shared/gatekeeper` →
+- **Renames.** Package scopes `@gadgets/*` → `@relationship-os/*` (`workshop-shared/gatekeeper` →
   `gatekeeper-interface/gatekeeper`, `observability` → `gatekeeper-observability`,
   `configurator-ui` → `gatekeeper-configurator-ui`); Worker names `gatekeeper-*` →
-  `crm-gatekeeper-*`.
+  `ros-gatekeeper-*`.
 - **Replaced with our own files:** every `package.json` and `tsconfig*.json` (they extend
-  `@crm/config/tsconfig.vendored.json`: strict, without our extra checks, so vendored files stay
+  `@relationship-os/config/tsconfig.vendored.json`: strict, without our extra checks, so vendored files stay
   identical to upstream), the Workers' `wrangler.jsonc` (upstream generates it from
   `cloudflare.config.ts`; ours is hand-kept, internal-only and without account IDs), and their
   `worker-configuration.d.ts` (regenerated by `scripts/gatekeeper-worker-types.mjs`, a port of
@@ -75,9 +75,9 @@ ADR 0114). They have no `UPSTREAM.md`, are linted normally, and use no capnweb-v
 
 | Package | Worker | What it does |
 | --- | --- | --- |
-| [`@crm/gatekeeper-email-send`](packages/gatekeeper-email-send/README.md) | `crm-gatekeeper-email-send` | Sends email with Cloudflare Email Service (`email.send`, `email.internal`) |
-| [`@crm/gatekeeper-slack-post`](packages/gatekeeper-slack-post/README.md) | `crm-gatekeeper-slack-post` | Posts to Slack and sends DMs as the bot of the same Slack app as the vendored read-only gatekeeper (`slack.post`, `slack.dm`) |
-| [`@crm/gatekeeper-webhook`](packages/gatekeeper-webhook/README.md) | `crm-gatekeeper-webhook` | Receives signed webhooks and delivers typed events (ADR 0113) |
+| [`@relationship-os/gatekeeper-email-send`](packages/gatekeeper-email-send/README.md) | `ros-gatekeeper-email-send` | Sends email with Cloudflare Email Service (`email.send`, `email.internal`) |
+| [`@relationship-os/gatekeeper-slack-post`](packages/gatekeeper-slack-post/README.md) | `ros-gatekeeper-slack-post` | Posts to Slack and sends DMs as the bot of the same Slack app as the vendored read-only gatekeeper (`slack.post`, `slack.dm`) |
+| [`@relationship-os/gatekeeper-webhook`](packages/gatekeeper-webhook/README.md) | `ros-gatekeeper-webhook` | Receives signed webhooks and delivers typed events (ADR 0113) |
 
 ## Ported, not vendored: release tooling (stage 8)
 
@@ -113,7 +113,7 @@ only be fixed inside vendored code, so we propose them upstream instead of patch
 ## Local changes to vendored code
 
 - `packages/ui` shadcn components: the CLI resolved the `cn` helper to a bare `"cn"` package; imports
-  were changed to `@crm/ui/lib/utils`. Files are formatted by Biome. `noDocumentCookie` and
+  were changed to `@relationship-os/ui/lib/utils`. Files are formatted by Biome. `noDocumentCookie` and
   `useExhaustiveDependencies` are switched off for these files (biome.json) to stay close to
   upstream. The theme in `src/styles/globals.css` is the standard neutral theme plus a `--success`
   colour.

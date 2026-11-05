@@ -10,7 +10,7 @@
 // It lives in its own module so that a gatekeeper implemented outside google.ts (Chat) can name
 // the interface without importing the module that implements it, which also re-exports it.
 
-import type { GatekeeperUserVerifier } from "@crm/gatekeeper-interface/gatekeeper";
+import type { GatekeeperUserVerifier } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import type { ObserverBatchResult } from "./observers";
 import type { DriveObservation } from "./drive-observers";
 

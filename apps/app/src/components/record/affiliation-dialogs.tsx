@@ -1,7 +1,7 @@
 // Affiliation writes from a person's Organisations card: add one (affiliation.create), end one
 // (affiliation.end), and Change job (person.changeJob: ends the primary job, starts a new primary
 // one and posts a Job change on the timelines).
-import { Button } from "@crm/ui/components/button";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +9,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
+} from "@relationship-os/ui/components/dialog";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { errorMessage, useOpMutation } from "#/lib/query";

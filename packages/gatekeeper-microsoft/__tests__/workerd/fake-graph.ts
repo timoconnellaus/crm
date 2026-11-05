@@ -9,7 +9,7 @@
 
 import { env, runInDurableObject } from "cloudflare:test";
 import { vi } from "vitest";
-import { generateNonce } from "@crm/gatekeeper-kit/connect-nonce";
+import { generateNonce } from "@relationship-os/gatekeeper-kit/connect-nonce";
 import type { StoredIdentity } from "../../src/microsoft-credentials";
 import { SHAREPOINT_RESOURCE, getRedirectUri, scopesFor, type Env } from "../../src/microsoft-env";
 import type { SharePointScope } from "../../src/sharepoint-scope";

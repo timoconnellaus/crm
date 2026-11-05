@@ -1,8 +1,8 @@
 // System status: the /api/health report and the hello-world Workflow (stage 0 smoke test).
 
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageLayout } from "#/components/layout/page-layout";
@@ -92,7 +92,7 @@ function StatusPage() {
       <Card>
         <CardHeader>
           <CardTitle>Hello Workflow</CardTitle>
-          <CardDescription>Runs crm-runner's hello-world Workflow.</CardDescription>
+          <CardDescription>Runs ros-runner's hello-world Workflow.</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between gap-4 text-sm">
           <span data-testid="workflow-status">{workflow}</span>

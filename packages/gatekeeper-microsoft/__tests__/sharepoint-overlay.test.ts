@@ -1,6 +1,6 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-microsoft/__tests__/sharepoint-overlay.test.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import { describe, expect, it } from "vitest";
-import type { JournalEntry } from "@crm/gatekeeper-kit/actions";
+import type { JournalEntry } from "@relationship-os/gatekeeper-kit/actions";
 import type { GraphDriveItem } from "../src/graph-parse";
 import type { FolderTarget, ItemTarget, SharePointAction } from "../src/sharepoint-actions";
 import { Overlay, drivePath, itemSiteId, pageWebUrl, toEntry, toPageInfo } from "../src/sharepoint-overlay";

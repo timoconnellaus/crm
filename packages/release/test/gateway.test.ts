@@ -33,7 +33,7 @@ async function setup() {
   const state: DeploymentState = {
     version: "1.0.0",
     accountId: ACCOUNT,
-    hostname: "crm-app.example.workers.dev",
+    hostname: "ros-app.example.workers.dev",
     hostnameMode: "workers.dev",
     identityProvider: "better-auth",
     channel: "stable",
@@ -49,7 +49,7 @@ describe("AI Gateway names", () => {
   it("names the gateway after the install, unless one was chosen", async () => {
     const { manifest, state } = await setup();
     expect(gatewayIdFor(state, manifest)).toBe("crm");
-    expect(gatewayIdFor({ ...state, workerNames: { "crm-app": "Acme_CRM-app" } }, manifest)).toBe(
+    expect(gatewayIdFor({ ...state, workerNames: { "ros-app": "Acme_CRM-app" } }, manifest)).toBe(
       "acme-crm",
     );
     expect(gatewayIdFor({ ...state, aiGateway: "mine" }, manifest)).toBe("mine");
@@ -68,18 +68,18 @@ describe("AI Gateway names", () => {
 describe("per-deployment vars (ADR 0192)", () => {
   it("sets AI_MODEL_ROLES on the Workers that declare it, and clears it with an empty value", async () => {
     const { manifest } = await setup();
-    expect(varWorkers(manifest, MODEL_ROLES_VAR)).toEqual(["crm-app", "crm-runner"]);
-    const start = { "crm-app": { IDENTITY_PROVIDER: "cloudflare-access" } };
+    expect(varWorkers(manifest, MODEL_ROLES_VAR)).toEqual(["ros-app", "ros-runner"]);
+    const start = { "ros-app": { IDENTITY_PROVIDER: "cloudflare-access" } };
     const set = withDeploymentVar(start, manifest, MODEL_ROLES_VAR, '{"summarise":{}}');
     expect(set).toEqual({
-      "crm-app": { IDENTITY_PROVIDER: "cloudflare-access", AI_MODEL_ROLES: '{"summarise":{}}' },
-      "crm-runner": { AI_MODEL_ROLES: '{"summarise":{}}' },
+      "ros-app": { IDENTITY_PROVIDER: "cloudflare-access", AI_MODEL_ROLES: '{"summarise":{}}' },
+      "ros-runner": { AI_MODEL_ROLES: '{"summarise":{}}' },
     });
     expect(withDeploymentVar(set, manifest, MODEL_ROLES_VAR, "")).toEqual({
-      "crm-app": { IDENTITY_PROVIDER: "cloudflare-access" },
-      "crm-runner": {},
+      "ros-app": { IDENTITY_PROVIDER: "cloudflare-access" },
+      "ros-runner": {},
     });
-    expect(start).toEqual({ "crm-app": { IDENTITY_PROVIDER: "cloudflare-access" } });
+    expect(start).toEqual({ "ros-app": { IDENTITY_PROVIDER: "cloudflare-access" } });
   });
 
   it("adds BYOK providers to AI_GATEWAY_BYOK once each, on the gateway's Workers", async () => {
@@ -88,8 +88,8 @@ describe("per-deployment vars (ADR 0192)", () => {
     vars = withByokProvider(vars, manifest, "openai");
     vars = withByokProvider(vars, manifest, "deepseek");
     expect(vars).toEqual({
-      "crm-app": { [GATEWAY_BYOK_VAR]: "deepseek,openai" },
-      "crm-runner": { [GATEWAY_BYOK_VAR]: "deepseek,openai" },
+      "ros-app": { [GATEWAY_BYOK_VAR]: "deepseek,openai" },
+      "ros-runner": { [GATEWAY_BYOK_VAR]: "deepseek,openai" },
     });
   });
 });
@@ -105,14 +105,14 @@ describe("provisionAiGateway", () => {
       expect.objectContaining({ slug: "example-llm", base_url: "https://llm.example.com" }),
     ]);
     expect(result.vars).toEqual({
-      "crm-app": { AI_GATEWAY_ID: "crm" },
-      "crm-runner": { AI_GATEWAY_ID: "crm" },
+      "ros-app": { AI_GATEWAY_ID: "crm" },
+      "ros-runner": { AI_GATEWAY_ID: "crm" },
     });
     const [token] = [...cf.tokens.values()];
     expect(token?.permissionGroups).toEqual(["pg-aig-run"]);
     expect(result.secrets).toEqual({
-      "crm-app": { AI_GATEWAY_TOKEN: token?.value },
-      "crm-runner": { AI_GATEWAY_TOKEN: token?.value },
+      "ros-app": { AI_GATEWAY_TOKEN: token?.value },
+      "ros-runner": { AI_GATEWAY_TOKEN: token?.value },
     });
     expect(result.state).toMatchObject({ aiGateway: "crm", aiGatewayCreated: true });
     expect(lines.join("\n")).not.toContain(token?.value);
@@ -121,7 +121,7 @@ describe("provisionAiGateway", () => {
   it("is idempotent once the Workers hold the token", async () => {
     const { cf, api, manifest, state } = await setup();
     const first = await provisionAiGateway({ api, manifest, state });
-    for (const name of ["crm-app", "crm-runner"]) {
+    for (const name of ["ros-app", "ros-runner"]) {
       cf.scripts.set(name, {
         name,
         versions: [],
@@ -180,7 +180,7 @@ describe("provisionAiGateway", () => {
       manifest: older as ReleaseManifest,
       state: { ...state, aiGateway: "chosen" },
     });
-    expect(legacy.vars["crm-app"]).toEqual({ AI_GATEWAY_ID: "chosen" });
+    expect(legacy.vars["ros-app"]).toEqual({ AI_GATEWAY_ID: "chosen" });
     expect(cf.gateways.size).toBe(0);
     expect(cf.tokens.size).toBe(0);
   });
@@ -188,7 +188,7 @@ describe("provisionAiGateway", () => {
   it("uses a supplied token instead of generating one", async () => {
     const { cf, api, manifest, state } = await setup();
     const result = await provisionAiGateway({ api, manifest, state, token: "mine-123" });
-    expect(result.secrets["crm-runner"]).toEqual({ AI_GATEWAY_TOKEN: "mine-123" });
+    expect(result.secrets["ros-runner"]).toEqual({ AI_GATEWAY_TOKEN: "mine-123" });
     expect(cf.tokens.size).toBe(0);
   });
 

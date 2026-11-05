@@ -55,11 +55,11 @@ back. Shipped extensions run through the same runtime.
 - `automations`: the field exists in the contract, typed and validated, but triggers don't fire until
   stage 5.
 - `contractVersion`: the host supports the current and previous versions.
-- `@crm/sdk/testing`: a harness to unit-test an extension locally with in-memory host modules.
+- `@relationship-os/sdk/testing`: a harness to unit-test an extension locally with in-memory host modules.
 
 ### Extension workspace and runtime (ADR 0006, ADR 0025)
 - The **extension workspace** is a `@cloudflare/computer` Workspace in a Durable Object in
-  `crm-runner`, with one directory per runtime extension (`/extensions/<id>/`) under git.
+  `ros-runner`, with one directory per runtime extension (`/extensions/<id>/`) under git.
 - Execution uses the `worker-javascript` backend with `globalOutbound: null`.
 - **Shipped extensions** (`extensions/<id>/` in the repo) are bundled as source at build time and
   run through the same backend and permission model. There is no static fast path.

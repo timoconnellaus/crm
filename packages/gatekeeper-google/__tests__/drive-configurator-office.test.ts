@@ -9,7 +9,7 @@ import {
 } from "../src/resources";
 import { nodes, text } from "./configurator-tree";
 
-vi.mock("@crm/gatekeeper-configurator-ui", () => ({
+vi.mock("@relationship-os/gatekeeper-configurator-ui", () => ({
   h: (component: unknown, props: unknown, ...children: unknown[]) => ({
     component, props: props ?? {}, children,
   }),

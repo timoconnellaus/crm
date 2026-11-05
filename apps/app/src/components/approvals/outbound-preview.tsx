@@ -3,9 +3,9 @@
 // auto-apply), the connection and resource it acts on, the gatekeeper's Markdown description, and
 // its literal fields. Field values are shown verbatim: HTML is shown as escaped source in a
 // scroll box, never rendered.
-import type { CoreOutput } from "@crm/core";
-import { Badge } from "@crm/ui/components/badge";
-import { cn } from "@crm/ui/lib/utils";
+import type { CoreOutput } from "@relationship-os/core";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { SendIcon } from "lucide-react";
 import { Markdown } from "../markdown.tsx";
 

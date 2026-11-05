@@ -1,7 +1,7 @@
 // Helpers for reconciler and record tests: build manifests and apply their reconcile plans
 // directly (the runtime path, extension.install, is covered in apps/runner).
 import { env } from "cloudflare:workers";
-import { type ExtensionManifest, manifestSchema } from "@crm/sdk";
+import { type ExtensionManifest, manifestSchema } from "@relationship-os/sdk";
 import {
   applyPlan,
   checkManifest,

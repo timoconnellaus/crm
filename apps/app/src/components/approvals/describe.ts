@@ -1,7 +1,7 @@
 // Turns a pending action (operation + diff preview) into words a reviewer reads in the Approvals
 // inbox: a title ("Update 38 people"), and per group of records the field changes as added,
 // removed and changed lines, with labels from the field registry. Pure, so it is unit tested.
-import { getObject } from "@crm/core/client";
+import { getObject } from "@relationship-os/core/client";
 import { diffValue } from "#/lib/format";
 
 export interface PreviewEntry {

@@ -1,19 +1,19 @@
 // Settings → Integrations' "Available integrations": the gatekeepers this release ships
 // (integration.catalogue). Members connect enabled ones; admins enable them per deployment
 // (integration.setVendor) and set web search's mode (off / optional per user / on for everyone).
-import type { CoreOutput } from "@crm/core";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Label } from "@crm/ui/components/label";
+import type { CoreOutput } from "@relationship-os/core";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { Switch } from "@crm/ui/components/switch";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { Switch } from "@relationship-os/ui/components/switch";
 import { Building2Icon, PlugIcon } from "lucide-react";
 import { useId } from "react";
 import { toast } from "sonner";

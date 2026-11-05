@@ -1,4 +1,4 @@
-# @crm/config
+# @relationship-os/config
 
 Shared tooling presets for every workspace package:
 

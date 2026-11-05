@@ -6,7 +6,7 @@
 // plain data.
 
 import { DurableObject, RpcTarget, WorkerEntrypoint } from "cloudflare:workers";
-import type { ObservationDescription } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ObservationDescription } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import type { WebhookEvent, WebhookSession } from "../src/types.js";
 
 // Named one by one: the pool registers a main module's entrypoints in `ctx.exports` only when they

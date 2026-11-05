@@ -1,8 +1,8 @@
 // Extension tools as operations (ADR 0023): `x.<extension>.<tool>`, built from installed
 // manifests, so they appear in the registry (and so as MCP tools) next to core operations. The
 // handler runs the tool in the sandbox through the extension host.
-import type { CoreDatabase } from "@crm/db";
-import type { ExtensionManifest, ToolManifest } from "@crm/sdk";
+import type { CoreDatabase } from "@relationship-os/db";
+import type { ExtensionManifest, ToolManifest } from "@relationship-os/sdk";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ForbiddenError, OperationError } from "../errors.ts";

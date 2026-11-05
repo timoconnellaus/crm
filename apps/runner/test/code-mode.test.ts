@@ -2,7 +2,7 @@
 // through the same gate and simulation as MCP tools. Tagging 30 people is one bulk-write pending
 // action in the caller's change set, and the script's own later reads see it applied.
 import { env } from "cloudflare:workers";
-import { type ActingUser, invokeByName, PERMISSIONS } from "@crm/core";
+import { type ActingUser, invokeByName, PERMISSIONS } from "@relationship-os/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { call, context, createAdmin, unique } from "./helpers.ts";
 

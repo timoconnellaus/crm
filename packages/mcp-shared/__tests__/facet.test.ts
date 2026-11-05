@@ -8,7 +8,7 @@ import type { McpClient, McpTool } from "../src/client.js";
 import type { ToolScope } from "../src/scope.js";
 import type { ScopedCatalog } from "../src/catalog.js";
 import type { ConnectionAccount } from "../src/connection.js";
-import type { ResourceDescription } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ResourceDescription } from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 const log = {
   debug() {}, info() {}, error() {},

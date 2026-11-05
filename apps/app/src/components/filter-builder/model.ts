@@ -1,5 +1,5 @@
 // The filter builder's model: an editable draft tree (groups of conditions, with raw input text)
-// and its conversion to and from filter JSON (`Filter` from @crm/core, ADR 0016). Pure, so it is
+// and its conversion to and from filter JSON (`Filter` from @relationship-os/core, ADR 0016). Pure, so it is
 // unit-tested without a DOM. Operators come from the field's type (OPS_BY_TYPE, narrowed for
 // multi-valued fields), and every emitted filter is checked with `filterSchema`.
 import {
@@ -12,7 +12,7 @@ import {
   type ObjectDefinition,
   OPS_BY_TYPE,
   RELATED_OPS,
-} from "@crm/core/client";
+} from "@relationship-os/core/client";
 
 export type GroupMode = "and" | "or";
 

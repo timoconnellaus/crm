@@ -1,5 +1,5 @@
 // Reference answer for the `ticket-tool` prompt: an object and a read-only tool over it.
-import { defineExtension, defineTool, z } from "@crm/sdk";
+import { defineExtension, defineTool, z } from "@relationship-os/sdk";
 
 const countOpenTickets = defineTool({
   description: "Count the open tickets of one organisation. Read-only.",

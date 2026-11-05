@@ -29,7 +29,7 @@ Reproduce:
 
 ```sh
 cp apps/runner/.dev.vars.example apps/runner/.dev.vars
-pnpm --filter @crm/runner exec wrangler dev --port 18787
+pnpm --filter @relationship-os/runner exec wrangler dev --port 18787
 node apps/runner/scripts/spike-bench.mjs http://127.0.0.1:18787 10 50
 ```
 
@@ -119,7 +119,7 @@ library docs and what we saw:
   hot automations: shard executions across DOs, or keep the workspace DO for storage and git only.
 - Per-execution timeout defaults to 3 min (`maxTimeoutMs`); longer runs need Workflows (as ADR
   0006 already says).
-- Worker sizes: crm-runner uploads 1.41 MiB (286 KiB gzip) including the library and the spike.
+- Worker sizes: ros-runner uploads 1.41 MiB (286 KiB gzip) including the library and the spike.
 
 ## Recommendation
 

@@ -6,7 +6,7 @@
 // - Win a deal; Sales overview (the default Home) reflects it after a refresh, and clicking the
 //   KPI lands on the list of exactly those deals.
 // - Pipelines and stages under Settings, the base currency, the Default pipeline setting.
-import { seedRecordId } from "@crm/db/seed";
+import { seedRecordId } from "@relationship-os/db/seed";
 import { expect, type Page, test } from "@playwright/test";
 import { expectNoHorizontalScroll, isPhone, moveCard, open, unique } from "./helpers.ts";
 import { createOrganisation } from "./org-helpers.ts";

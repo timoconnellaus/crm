@@ -22,11 +22,11 @@ interface __BaseEnv_Env {
 	VECTORIZE_DIMENSIONS: string;
 	AI_SECRET_SCRIPTS: string;
 	AI_FAKE_MODEL: string;
-	CRM_RELEASE_VERSION: string;
-	CRM_RELEASE_REPO: string;
-	CRM_ACCOUNT_ID: string;
+	ROS_RELEASE_VERSION: string;
+	ROS_RELEASE_REPO: string;
+	ROS_ACCOUNT_ID: string;
 	BETTER_AUTH_SECRET: string;
-	RUNNER: Fetcher /* crm-runner */;
+	RUNNER: Fetcher /* ros-runner */;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
@@ -39,7 +39,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "IDENTITY_PROVIDER" | "AUTH_ALLOW_SIGNUP" | "APPROVAL_FLOOR" | "APPROVAL_EXPIRY_DAYS" | "MCP_ACCESS_TOKEN_TTL" | "AI_GATEWAY_ID" | "CLOUDFLARE_ACCOUNT_ID" | "AI_MODEL_ROLES" | "AI_PROVIDERS" | "AI_GATEWAY_BYOK" | "VECTORIZE_DIMENSIONS" | "AI_SECRET_SCRIPTS" | "AI_FAKE_MODEL" | "CRM_RELEASE_VERSION" | "CRM_RELEASE_REPO" | "CRM_ACCOUNT_ID" | "BETTER_AUTH_SECRET">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "IDENTITY_PROVIDER" | "AUTH_ALLOW_SIGNUP" | "APPROVAL_FLOOR" | "APPROVAL_EXPIRY_DAYS" | "MCP_ACCESS_TOKEN_TTL" | "AI_GATEWAY_ID" | "CLOUDFLARE_ACCOUNT_ID" | "AI_MODEL_ROLES" | "AI_PROVIDERS" | "AI_GATEWAY_BYOK" | "VECTORIZE_DIMENSIONS" | "AI_SECRET_SCRIPTS" | "AI_FAKE_MODEL" | "ROS_RELEASE_VERSION" | "ROS_RELEASE_REPO" | "ROS_ACCOUNT_ID" | "BETTER_AUTH_SECRET">> {}
 }
 declare module "*.txt" {
 	const value: string;

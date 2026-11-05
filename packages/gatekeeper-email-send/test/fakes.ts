@@ -4,7 +4,7 @@
 import type {
   ActionDescription,
   ObservationDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import type { OutgoingEmail } from "../src/transport";
 
 /** Every email the fake Email Service binding received, in order. */

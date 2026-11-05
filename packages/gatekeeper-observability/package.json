@@ -1,5 +1,5 @@
 {
-  "name": "@crm/gatekeeper-observability",
+  "name": "@relationship-os/gatekeeper-observability",
   "version": "0.0.0",
   "private": true,
   "description": "The structured Worker logger the vendored gatekeepers log through (a subset of cloudflare-os packages/observability).",
@@ -16,8 +16,8 @@
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
     "@cloudflare/workers-types": "5.20261104.1",
-    "@crm/config": "workspace:*",
-    "@crm/gatekeeper-interface": "workspace:*",
+    "@relationship-os/config": "workspace:*",
+    "@relationship-os/gatekeeper-interface": "workspace:*",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
   }

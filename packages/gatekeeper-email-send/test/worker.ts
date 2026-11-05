@@ -8,7 +8,7 @@ import type {
   ActionKind,
   ObservationDescription,
   ResourceDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import type { OutgoingEmail } from "../src/transport";
 import type { EmailSendSession } from "../src/types";
 import type { EmailSendGatekeeper } from "../src/worker";

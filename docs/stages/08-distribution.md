@@ -17,7 +17,7 @@ collected.
 ## Scope
 
 ### Release bundles (ADR 0053)
-- CI builds **byte-identical** bundles for every Worker (`crm-app`, `crm-runner`, each gatekeeper),
+- CI builds **byte-identical** bundles for every Worker (`ros-app`, `ros-runner`, each gatekeeper),
   plus the frontend assets and a **manifest**. The manifest lists:
   - Workers and their bindings
   - resources to provision (D1, R2, Queues, Vectorize, Workflows, DOs, crons)
@@ -34,7 +34,7 @@ collected.
 - Release workflow: tag → build → attest → draft release → smoke install (below) → publish.
 
 ### Install
-- **CLI**: `npx create-crm`, also runnable as `pnpm dlx create-crm`, in `packages/create-crm`. It
+- **CLI**: `npx create-relationship-os`, also runnable as `pnpm dlx create-relationship-os`, in `packages/create-relationship-os`. It
   takes a scoped Cloudflare API token (permissions documented) and then:
   - picks the account and hostname (`workers.dev` or a zone)
   - picks the identity adapter (Better Auth or Cloudflare Access)
@@ -64,7 +64,7 @@ collected.
   5. post-update smoke checks
   6. resume automations
 - **Rollback** (admin): redeploy the previous bundle and restore the bookmark.
-- Without a stored token, `crm upgrade` in the CLI does the same from an operator's machine.
+- Without a stored token, `ros upgrade` in the CLI does the same from an operator's machine.
 
 ### First-run setup wizard
 Runs on the first visit after install:

@@ -10,7 +10,7 @@ import {
   type InvocationContext,
   invokeByName,
   memoryEventSink,
-} from "@crm/core";
+} from "@relationship-os/core";
 import { dispatchAutomationMessages } from "../src/automations/dispatch.ts";
 import { automationHost } from "../src/automations/host.ts";
 import { context, db } from "./helpers.ts";
@@ -22,7 +22,7 @@ const task = (title: string) =>
   `ctx.crm.call("task.create", { title: ${title}, links: event.record ? [{ object: event.record.object, id: event.record.id }] : [] })`;
 
 export const FIXTURE_FILES: Record<string, string> = {
-  "index.ts": `import { defineAutomation, defineExtension } from "@crm/sdk";
+  "index.ts": `import { defineAutomation, defineExtension } from "@relationship-os/sdk";
 
 export default defineExtension({
   id: "${FIXTURE_ID}",

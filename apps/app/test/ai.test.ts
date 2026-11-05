@@ -1,8 +1,8 @@
-// In-app AI through crm-app's adapter (ADRs 0150-0156): without AI everything says so; with the
+// In-app AI through ros-app's adapter (ADRs 0150-0156): without AI everything says so; with the
 // local stand-ins (AI_FAKE_MODEL) Settings → AI tests a role, summaries generate, and the
 // post-commit hook embeds new records so Similar records finds them. Keys never reach D1.
 import { env } from "cloudflare:workers";
-import type { Principal } from "@crm/auth";
+import type { Principal } from "@relationship-os/auth";
 import { describe, expect, it } from "vitest";
 import { aiEnvView } from "../src/server/ai.ts";
 import { runOperation } from "../src/server/operations.ts";

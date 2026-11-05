@@ -1,7 +1,7 @@
 // Running and validating widgets (ADR 0057). A data widget's SQL is bound (named → positional
 // params), checked by the query.sql validator, and run with row and time limits through
 // `runReadOnlySql`; results are cached for 60 s per query + params + visibility scope.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";

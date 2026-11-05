@@ -1,7 +1,7 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-slack/src/slack.test.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SlackApi, SlackApiError, type SlackInstallation, type SlackOAuthGrant } from "./slack-api";
-import { stageCredentials } from "@crm/gatekeeper-kit/credential-stage";
+import { stageCredentials } from "@relationship-os/gatekeeper-kit/credential-stage";
 
 // These tests exercise binding/observer behavior in Node; the production RPC schema is checked
 // separately by the Worker prebuild. The only emulation here is the Workers hosting surface.

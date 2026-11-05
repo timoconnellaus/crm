@@ -3,7 +3,7 @@
 // used, and a revoke button. Admins also see every user's apps and can revoke any of them.
 // Revoking stops the app's access and refresh tokens at once (connectedApp.revoke).
 
-import type { CoreOutput } from "@crm/core";
+import type { CoreOutput } from "@relationship-os/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,13 +13,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@crm/ui/components/alert-dialog";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Checkbox } from "@crm/ui/components/checkbox";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/alert-dialog";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute } from "@tanstack/react-router";
 import { CopyIcon, PlugIcon, UnplugIcon } from "lucide-react";
 import { useEffect, useState } from "react";

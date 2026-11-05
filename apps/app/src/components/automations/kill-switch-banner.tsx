@@ -1,5 +1,5 @@
 // Shown on the automation pages while the admin kill switch is engaged: no automation runs.
-import { Button } from "@crm/ui/components/button";
+import { Button } from "@relationship-os/ui/components/button";
 import { Link } from "@tanstack/react-router";
 import { OctagonXIcon } from "lucide-react";
 

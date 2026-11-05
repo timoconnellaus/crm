@@ -3,8 +3,8 @@
 // so its outcome (cascades, failures) can be read. "History" lists every set, collapsed.
 // `?set=chs_…` (from a record's pending badge) outlines and scrolls to one set.
 
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@crm/ui/components/tabs";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CheckCheckIcon, HistoryIcon } from "lucide-react";
 import { useEffect, useState } from "react";

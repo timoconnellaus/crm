@@ -7,7 +7,7 @@
 // canonical empty pack, report-status parsing, the push driver's body composition, and the
 // branch-head simulation over queued ref updates.
 
-import type { GitPullHints, GitPullStatus } from "@crm/gatekeeper-interface/gatekeeper";
+import type { GitPullHints, GitPullStatus } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { describe, expect, it } from "vitest";
 import {
   DELIM_PKT,

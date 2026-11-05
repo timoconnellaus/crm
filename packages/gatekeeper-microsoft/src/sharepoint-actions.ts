@@ -16,11 +16,11 @@ import {
   type ActionDefinition,
   type ActionPresentation,
   type TaggedAction,
-} from "@crm/gatekeeper-kit/actions";
-import { buildDescription, plainInline, sanitizeTitle } from "@crm/gatekeeper-kit/action-description";
-import type { ActionFileReference } from "@crm/gatekeeper-kit/action-files";
-import { diffTextLines, type GitDiffHunk } from "@crm/gatekeeper-kit/git-diff";
-import type { ProvisionalIds } from "@crm/gatekeeper-kit/simulation";
+} from "@relationship-os/gatekeeper-kit/actions";
+import { buildDescription, plainInline, sanitizeTitle } from "@relationship-os/gatekeeper-kit/action-description";
+import type { ActionFileReference } from "@relationship-os/gatekeeper-kit/action-files";
+import { diffTextLines, type GitDiffHunk } from "@relationship-os/gatekeeper-kit/git-diff";
+import type { ProvisionalIds } from "@relationship-os/gatekeeper-kit/simulation";
 import { isProvisional, realId } from "./binding";
 import { GraphApiError, isOutcomeUnknown, type GraphApi } from "./graph-api";
 import { ITEM_SELECT, parseDriveItem, parseListItem, parseVersion, parsePage } from "./graph-parse";

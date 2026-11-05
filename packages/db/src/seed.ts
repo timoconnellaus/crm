@@ -3,7 +3,7 @@
 //
 // One generator serves every consumer:
 //   * tests and Workers: `seedDatabase(env.DB, options)` runs the statements in D1 batches;
-//   * local dev and e2e: `pnpm --filter @crm/db seed` (scripts/seed.ts) writes them to a file and
+//   * local dev and e2e: `pnpm --filter @relationship-os/db seed` (scripts/seed.ts) writes them to a file and
 //     runs `wrangler d1 execute DB --local --file …`.
 //
 // The output is the same for the same options (seeded PRNG, fixed clock), ids are valid prefixed
@@ -49,7 +49,7 @@ export interface SeedResult {
 const SEED_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 /**
- * The id of an extension's seed record (a copy of @crm/core's `seedRecordId`, which this file
+ * The id of an extension's seed record (a copy of @relationship-os/core's `seedRecordId`, which this file
  * cannot import; packages/core/test/seed-ids.test.ts keeps them equal).
  */
 export function seedRecordId(extension: string, object: string, key: string): string {

@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { readD1Migrations } from "@cloudflare/vitest-plugin";
-import { defineWorkersTestConfig } from "@crm/config/vitest";
+import { defineWorkersTestConfig } from "@relationship-os/config/vitest";
 import { build } from "esbuild";
 
 const migrationsDir = fileURLToPath(new URL("../../packages/db/migrations", import.meta.url));
@@ -43,11 +43,11 @@ export default defineWorkersTestConfig({
         APP_ORIGIN: "http://crm.test",
       },
       serviceBindings: {
-        GATEKEEPER_WEBHOOK: { name: "crm-gatekeeper-webhook", entrypoint: "GatekeeperVendor" },
+        GATEKEEPER_WEBHOOK: { name: "ros-gatekeeper-webhook", entrypoint: "GatekeeperVendor" },
       },
       workers: [
         {
-          name: "crm-gatekeeper-webhook",
+          name: "ros-gatekeeper-webhook",
           modules: true,
           scriptPath: await bundleWebhookGatekeeper(),
           compatibilityDate: "2026-09-04",

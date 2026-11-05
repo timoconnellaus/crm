@@ -1,5 +1,5 @@
-// The operator's view of a deployment over the REST API (the CLI's `crm upgrade`, `crm rollback`
-// and `crm status`): its stored state, installed extensions and update history in D1
+// The operator's view of a deployment over the REST API (the CLI's `ros upgrade`, `ros rollback`
+// and `ros status`): its stored state, installed extensions and update history in D1
 // (core_install, core_extensions, core_update_runs from migration 0160). The self-updater reads
 // the same tables through its own D1 binding.
 import { CloudflareApiError, type CloudflareClient } from "./cloudflare.ts";

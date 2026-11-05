@@ -4,7 +4,7 @@
 // Worker's config (a new binding, a new secret, a new migration) fails this test until the golden
 // file is regenerated, which forces a look at how the change reaches installed deployments.
 //
-// Regenerate: UPDATE_GOLDEN=1 pnpm --filter @crm/release-scripts test
+// Regenerate: UPDATE_GOLDEN=1 pnpm --filter @relationship-os/release-scripts test
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,7 +15,7 @@ import {
   type ReleaseManifest,
   sha256Hex,
   stableStringify,
-} from "@crm/release";
+} from "@relationship-os/release";
 import { describe, expect, it } from "vitest";
 import { collectAssets } from "../build-release.ts";
 import {
@@ -51,7 +51,7 @@ async function fixtureManifest(version = "1.0.0"): Promise<ReleaseManifest> {
       root: ROOT,
       version,
       commit: "0123456789abcdef0123456789abcdef01234567",
-      repository: "timoconnellaus/crm",
+      repository: "timoconnellaus/relationship-os",
       wranglerVersion: "0.0.0-fixture",
     },
     builds,
@@ -134,7 +134,7 @@ describe("release manifest", () => {
       builds,
       readMigrations(ROOT),
     );
-    const entry = manifest.workers.find((w) => w.name === "crm-runner");
+    const entry = manifest.workers.find((w) => w.name === "ros-runner");
     expect(entry?.bindings).toContainEqual({
       type: "queue",
       name: "EVENTS",
@@ -150,13 +150,13 @@ describe("release manifest", () => {
 
   it("carries stage 7a's AI and Vectorize bindings from deploy-inputs.json, behind the ai feature", async () => {
     const manifest = await fixtureManifest();
-    for (const name of ["crm-app", "crm-runner"]) {
+    for (const name of ["ros-app", "ros-runner"]) {
       const worker = manifest.workers.find((w) => w.name === name);
       expect(worker?.bindings, name).toContainEqual({ type: "ai", name: "AI", feature: "ai" });
       expect(worker?.bindings, name).toContainEqual({
         type: "vectorize",
         name: "VECTORIZE",
-        index_name: "$VECTORIZE_NAME(crm-records)",
+        index_name: "$VECTORIZE_NAME(ros-records)",
         feature: "ai",
       });
       // AI Gateway URLs and Settings → AI need the account id; it is never baked in.
@@ -166,11 +166,11 @@ describe("release manifest", () => {
         text: "$ACCOUNT_ID",
       });
     }
-    expect(manifest.resources.find((r) => r.name === "crm-records")).toMatchObject({
+    expect(manifest.resources.find((r) => r.name === "ros-records")).toMatchObject({
       type: "vectorize",
       feature: "ai",
       optional: false,
-      usedBy: ["crm-app", "crm-runner"],
+      usedBy: ["ros-app", "ros-runner"],
       config: {
         dimensions: 384,
         metric: "cosine",
@@ -178,10 +178,10 @@ describe("release manifest", () => {
       },
     });
     expect(manifest.inputs.find((i) => i.name === "AI_GATEWAY_ID")?.workers).toEqual([
-      "crm-app",
-      "crm-runner",
+      "ros-app",
+      "ros-runner",
     ]);
-    const app = manifest.workers.find((w) => w.name === "crm-app");
+    const app = manifest.workers.find((w) => w.name === "ros-app");
     expect(app?.secrets.map((s) => s.name)).toEqual(
       expect.arrayContaining(["AI_GATEWAY_TOKEN", "CLOUDFLARE_API_TOKEN"]),
     );
@@ -223,7 +223,7 @@ describe("release manifest", () => {
   it("deploys the runner before the app, and gatekeepers are optional", async () => {
     const manifest = await fixtureManifest();
     const order = deployOrder(manifest.workers).map((w) => w.name);
-    expect(order.indexOf("crm-runner")).toBeLessThan(order.indexOf("crm-app"));
+    expect(order.indexOf("ros-runner")).toBeLessThan(order.indexOf("ros-app"));
     expect(manifest.workers.filter((w) => w.optional).every((w) => w.role === "gatekeeper")).toBe(
       true,
     );
@@ -234,11 +234,11 @@ describe("release manifest", () => {
     expect(manifest.aiGateway?.settings).toMatchObject({ collect_logs: true });
     // No custom provider ships: DeepSeek is built in to AI Gateway (ADR 0192).
     expect(manifest.aiGateway?.customProviders).toEqual([]);
-    // Per-deployment AI vars the installer sets (create-crm --model-roles, --provider-key).
+    // Per-deployment AI vars the installer sets (create-relationship-os --model-roles, --provider-key).
     for (const name of ["AI_MODEL_ROLES", "AI_GATEWAY_BYOK"]) {
       expect(manifest.inputs.find((i) => i.name === name)).toMatchObject({
         kind: "var",
-        workers: ["crm-app", "crm-runner"],
+        workers: ["ros-app", "ros-runner"],
         default: "",
       });
     }

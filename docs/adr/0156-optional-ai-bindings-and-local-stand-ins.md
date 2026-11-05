@@ -13,16 +13,16 @@ unable to select one in non-interactive mode"). Tests and e2e must run without c
 ## Decision
 - **The committed `wrangler.jsonc` files leave both bindings out.** `pnpm run deploy` adds them:
   it writes `wrangler.deploy.jsonc` next to each config (git-ignored) with `"ai": { "binding": "AI" }`
-  on both Workers and `"vectorize": [{ "binding": "VECTORIZE", "index_name": "crm-records" }]` on
-  crm-app, creates the index when missing, deploys crm-runner with `--config`, and builds crm-app
-  with `CRM_WRANGLER_CONFIG` (read by `vite.config.ts`). `CRM_AI=off` deploys without them.
+  on both Workers and `"vectorize": [{ "binding": "VECTORIZE", "index_name": "ros-records" }]` on
+  ros-app, creates the index when missing, deploys ros-runner with `--config`, and builds ros-app
+  with `ROS_WRANGLER_CONFIG` (read by `vite.config.ts`). `ROS_AI=off` deploys without them.
 - **Every AI feature degrades when a binding is missing**: no model runner → "AI is not
   configured" (summaries, Describe a widget, the Test button, `codemode:ai`); no Vectorize →
   search.hybrid is full-text only, Similar records says semantic search is not configured, and
   the embedding queue is left alone (nothing to drain into).
 - **Locally**, `AI_FAKE_MODEL=true` (written to `.dev.vars` by `pnpm dev`, never in production)
   now answers **every** role with deterministic stand-ins (`fakeModels()`: the build role's canned
-  widgets, summaries built from the prompt's fact lines, the fake embedder) and crm-app keeps
+  widgets, summaries built from the prompt's fact lines, the fake embedder) and ros-app keeps
   vectors in memory per isolate. The stand-ins are used only when there is no `AI` binding.
 - Tests inject a fake `AI` binding, a fake OpenAI-compatible server and an in-memory vector store
   (`packages/core/test/ai-helpers.ts`), so the whole registry, gateway routing and the drain run in

@@ -47,12 +47,12 @@ identical to upstream.
   live in `packages/gatekeeper-*` without `UPSTREAM.md`, and are marked as ours in `UPSTREAMS.md`.
 
 ### Integration host (ADR 0050)
-- An **integration host Durable Object** in `crm-runner` implements the Workshop side of the
+- An **integration host Durable Object** in `ros-runner` implements the Workshop side of the
   gatekeeper interface. See the research doc's duties list, which covers:
   - creating and owning gatekeeper facets
   - storing connected-account, gatekeeper-class and hook stubs in DO storage
   - the connect handoff page
-  - the `/gatekeeper/*` proxy on `crm-app`
+  - the `/gatekeeper/*` proxy on `ros-app`
   - hook callbacks
   - observation authorisation
 - D1 mirrors connection state for the UI only.
@@ -88,7 +88,7 @@ identical to upstream.
   admin.
 
 ### Email and calendar sync (ADR 0052)
-- A **built-in sync service** in `crm-runner`. It is driven by gatekeeper hooks (push), with periodic
+- A **built-in sync service** in `ros-runner`. It is driven by gatekeeper hooks (push), with periodic
   catch-up and backfill on connect.
 - **Matching**: people by email address, organisations by domain. Internal domains are excluded.
 - **Activities**: email and meeting activities, threaded. Duplicates are removed **across mailboxes**:

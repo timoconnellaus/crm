@@ -1,4 +1,4 @@
-# Upstream: `@crm/gatekeeper-configurator-ui`
+# Upstream: `@relationship-os/gatekeeper-configurator-ui`
 
 | | |
 | --- | --- |
@@ -20,7 +20,7 @@ The authoring API that gatekeeper resource-configurator modules (`src/configurat
   module in a sandboxed iframe with Kumo components on Preact and Tailwind, bundled by
   `build/` and `scripts/build-gatekeeper-configurator.ts` into `src/generated/*.txt` in each
   gatekeeper. The CRM renders the configurator modules natively instead (stage 6): the app aliases
-  this package to its own React runtime built from `@crm/ui`'s shadcn components
+  this package to its own React runtime built from `@relationship-os/ui`'s shadcn components
   (`apps/app/src/components/integrations/configurator/runtime.tsx`, wired up by `vite-plugin.ts`
   there) and drives each gatekeeper's `ui` capability through the server. The modules themselves
   stay unchanged; they are still type-checked and unit-tested in their own packages.

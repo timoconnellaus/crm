@@ -19,7 +19,7 @@ before it.
 
 - **`--mode agent`** (the default) is the MCP route. The model gets a fresh MCP connection. Its
   system prompt is the server's instructions, today's date, and the widget guidance that the
-  in-app box gives its model (`describePrompt` from `@crm/core`, minus the box's "answer with
+  in-app box gives its model (`describePrompt` from `@relationship-os/core`, minus the box's "answer with
   JSON only" opening line), plus the dashboard's filters. It builds the widget with the CRM's
   tools and finishes by calling `call_operation` with `widget.preview`.
 - **`--mode describe`** is the in-app "Describe a widget" box (`widget.describe`), reproduced
@@ -74,7 +74,7 @@ deletes it afterwards.
 
 ## Running it
 
-`@crm/core` (for `describePrompt`, `extractJson` and the Overview's filters) uses TypeScript
+`@relationship-os/core` (for `describePrompt`, `extractJson` and the Overview's filters) uses TypeScript
 syntax that Node's default type stripping refuses. So the eval runs with
 `--experimental-transform-types`, and the package scripts pass that flag (Node ≥ 24).
 
@@ -82,7 +82,7 @@ syntax that Node's default type stripping refuses. So the eval runs with
 
    ```sh
    pnpm dev
-   pnpm --filter @crm/db seed -- --people 300 --organisations 80 --activities 200 --tasks 60
+   pnpm --filter @relationship-os/db seed -- --people 300 --organisations 80 --activities 200 --tasks 60
    ```
 
 2. Check the plumbing without a model. This step needs no credentials. The smoke script signs
@@ -91,7 +91,7 @@ syntax that Node's default type stripping refuses. So the eval runs with
    `prompts.ts`). Every prompt should pass:
 
    ```sh
-   pnpm --filter @crm/evals-dashboards smoke -- --base-url http://localhost:5173
+   pnpm --filter @relationship-os/evals-dashboards smoke -- --base-url http://localhost:5173
    # or: node --experimental-transform-types evals/dashboards/smoke.ts [--mode agent|describe|both] [--only id,id]
    ```
 
@@ -102,8 +102,8 @@ syntax that Node's default type stripping refuses. So the eval runs with
 
    ```sh
    export CLOUDFLARE_ACCOUNT_ID=…  CLOUDFLARE_API_TOKEN=…
-   pnpm --filter @crm/evals-dashboards eval -- --base-url http://localhost:5173
-   pnpm --filter @crm/evals-dashboards eval -- --mode describe
+   pnpm --filter @relationship-os/evals-dashboards eval -- --base-url http://localhost:5173
+   pnpm --filter @relationship-os/evals-dashboards eval -- --mode describe
    # or: node --experimental-transform-types evals/dashboards/runner.ts --base-url …
    ```
 
@@ -117,7 +117,7 @@ syntax that Node's default type stripping refuses. So the eval runs with
      Any member will do.
 
    Without credentials, the runner exits with code 2 and a clear message, and writes nothing.
-   This happens before `@crm/core` loads, so it also works under plain `node`. The runner exits
+   This happens before `@relationship-os/core` loads, so it also works under plain `node`. The runner exits
    0 when the target is met and 1 otherwise. A describe-mode report's file name ends in
    `-describe`.
 
@@ -126,7 +126,7 @@ syntax that Node's default type stripping refuses. So the eval runs with
 - `prompts.ts`: the 10 prompts, each with its accepted types, its extra expectations and a
   reference widget.
 - `runner.ts`: the CLI. `smoke.ts`: the plumbing check without a model.
-- `lib/core.ts`: loads the `@crm/core` pieces at runtime, with their types.
+- `lib/core.ts`: loads the `@relationship-os/core` pieces at runtime, with their types.
 - `lib/grading.ts`: picks the final widget from the recorded calls, runs the grader's preview,
   and checks the type, the mapping and the expectations.
 - `lib/harness.ts`: runs one prompt in either mode. It also holds the agent's building guide.

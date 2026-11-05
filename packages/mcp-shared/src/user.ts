@@ -1,6 +1,6 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/mcp-shared/src/user.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import { WorkerEntrypoint } from "cloudflare:workers";
-import type { AccountDescription, AvatarImage } from "@crm/gatekeeper-interface/gatekeeper";
+import type { AccountDescription, AvatarImage } from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 import type { ConnectedServer } from "./account.js";
 import { generateNonce } from "./connect-nonce.js";

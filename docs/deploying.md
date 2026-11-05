@@ -4,11 +4,11 @@ One deployment = one Cloudflare account (ADR 0001). It has two Workers and one D
 
 | Resource | Name | Notes |
 | --- | --- | --- |
-| Worker | `crm-app` | UI, server functions, `/api/*`. Public. |
-| Worker | `crm-runner` | Workflows, Worker Loader, extension runtime. No public URL (`workers_dev: false`); reached only through `crm-app`'s `RUNNER` service binding. |
+| Worker | `ros-app` | UI, server functions, `/api/*`. Public. |
+| Worker | `ros-runner` | Workflows, Worker Loader, extension runtime. No public URL (`workers_dev: false`); reached only through `ros-app`'s `RUNNER` service binding. |
 | D1 database | `crm` | Bound as `DB` to both Workers. Created by name on the first deploy. |
-| R2 bucket | `crm-blobs` | Bound as `BLOBS` to both Workers: full bodies of synced email (stage 6a, ADR 0112). Created by name on the first deploy. |
-| Gatekeeper Workers | `crm-gatekeeper-<name>` | Optional, one per integration you use; bound to `crm-runner` as `GATEKEEPER_<NAME>`. See [integrations.md](integrations.md). |
+| R2 bucket | `ros-blobs` | Bound as `BLOBS` to both Workers: full bodies of synced email (stage 6a, ADR 0112). Created by name on the first deploy. |
+| Gatekeeper Workers | `ros-gatekeeper-<name>` | Optional, one per integration you use; bound to `ros-runner` as `GATEKEEPER_<NAME>`. See [integrations.md](integrations.md). |
 
 Workers Paid is required (Durable Objects with SQLite, Workflows, Worker Loader).
 
@@ -19,8 +19,8 @@ deploy.
 ## Configuration
 
 `IDENTITY_PROVIDER`, `AUTH_ALLOW_SIGNUP`, `APPROVAL_FLOOR` and the approval and MCP settings below are plain vars in `apps/app/wrangler.jsonc`: change them
-there (in your fork) to switch adapter. Everything else is a **secret** on `crm-app`, set with
-`wrangler secret put <NAME> --name crm-app`, through the deploy script (below), or in the dashboard.
+there (in your fork) to switch adapter. Everything else is a **secret** on `ros-app`, set with
+`wrangler secret put <NAME> --name ros-app`, through the deploy script (below), or in the dashboard.
 `apps/app/.dev.vars.example` lists the same names for local development.
 
 | Name | Kind | Needed when | Purpose |
@@ -37,18 +37,18 @@ there (in your fork) to switch adapter. Everything else is a **secret** on `crm-
 | `GOOGLE_CLIENT_SECRET` | secret | Google sign-in | |
 | `CF_ACCESS_TEAM_DOMAIN` | secret | Cloudflare Access | `myteam` or `myteam.cloudflareaccess.com` |
 | `CF_ACCESS_AUD` | secret | Cloudflare Access | The Access application's Audience (AUD) tag |
-| `CRM_UPDATE_TOKEN` | secret | optional | Scoped API token for in-app updates ([Updates](#updates)) |
-| `CRM_RELEASE_VERSION` | var | releases | The installed release; set by the release manifest, empty from source |
-| `CRM_RELEASE_REPO` | var | releases | GitHub repository releases are read from (default `timoconnellaus/crm`) |
-| `CRM_ACCOUNT_ID` | var | releases | The account the self-updater deploys to; set by the installer |
+| `ROS_UPDATE_TOKEN` | secret | optional | Scoped API token for in-app updates ([Updates](#updates)) |
+| `ROS_RELEASE_VERSION` | var | releases | The installed release; set by the release manifest, empty from source |
+| `ROS_RELEASE_REPO` | var | releases | GitHub repository releases are read from (default `timoconnellaus/relationship-os`) |
+| `ROS_ACCOUNT_ID` | var | releases | The account the self-updater deploys to; set by the installer |
 
-`BETTER_AUTH_SECRET` is declared in `secrets.required`, so wrangler refuses to deploy `crm-app`
+`BETTER_AUTH_SECRET` is declared in `secrets.required`, so wrangler refuses to deploy `ros-app`
 without it. Set it even with Cloudflare Access (any random value): it keeps the config uniform.
 
 The first user of a deployment (Better Auth sign-up, or the first Cloudflare Access user to load
 the app) becomes its admin; everyone after that is a member until an admin changes their role.
 
-`crm-app` also binds a KV namespace, `OAUTH_KV`, for MCP OAuth clients, grants and hashed
+`ros-app` also binds a KV namespace, `OAUTH_KV`, for MCP OAuth clients, grants and hashed
 tokens. Like the D1 database, wrangler provisions it by name on the first deploy. Connecting
 Claude is described in [`mcp.md`](mcp.md).
 
@@ -74,8 +74,8 @@ not an exact quota. Each `namespace_id` must be an integer that is unique in you
 since bindings that share a namespace share counters. If a binding is missing, requests are not
 limited and the Worker logs a warning. Rate-limited requests show up in Workers Logs as 429s.
 
-`crm-runner` has no secrets. It runs extension code, which calls operations there, so set its
-`APPROVAL_FLOOR` var (in `apps/runner/wrangler.jsonc`) to the same value as crm-app's. Shipped
+`ros-runner` has no secrets. It runs extension code, which calls operations there, so set its
+`APPROVAL_FLOOR` var (in `apps/runner/wrangler.jsonc`) to the same value as ros-app's. Shipped
 extensions (`extensions/`) are installed through `extension.install` on the first request after a
 deploy. AI (model roles for `codemode:ai`, "Describe a widget", summaries and semantic search) is
 described in [In-app AI](#in-app-ai) below.
@@ -87,45 +87,45 @@ provisioned by name on deploy:
 
 | Binding | Worker | Purpose |
 | --- | --- | --- |
-| `AUTOMATION_EVENTS` (queue producer) | crm-app, crm-runner | Committed record changes and approval decisions, queue `crm-automation-events` |
-| queue consumer | crm-runner | Starts runs: batches of up to 100, 5 s, 5 retries, then the dead-letter queue `crm-automation-events-dlq` |
-| `AUTOMATION_WORKFLOW` | crm-runner | Workflow `crm-automation` (class `AutomationWorkflow`), one instance per run |
-| `AUTOMATION_RATE_LIMIT` | crm-runner | Runs per minute per automation (default 60 per 60 s, `namespace_id` 4201); above it the automation auto-pauses and admins are notified |
-| cron `* * * * *` | crm-runner | Schedule triggers and the daily date-relative scan |
+| `AUTOMATION_EVENTS` (queue producer) | ros-app, ros-runner | Committed record changes and approval decisions, queue `ros-automation-events` |
+| queue consumer | ros-runner | Starts runs: batches of up to 100, 5 s, 5 retries, then the dead-letter queue `ros-automation-events-dlq` |
+| `AUTOMATION_WORKFLOW` | ros-runner | Workflow `ros-automation` (class `AutomationWorkflow`), one instance per run |
+| `AUTOMATION_RATE_LIMIT` | ros-runner | Runs per minute per automation (default 60 per 60 s, `namespace_id` 4201); above it the automation auto-pauses and admins are notified |
+| cron `* * * * *` | ros-runner | Schedule triggers and the daily date-relative scan |
 
 Create the queues once per account before the first deploy (`wrangler queues create
-crm-automation-events` and `wrangler queues create crm-automation-events-dlq`); Workflows need no
+ros-automation-events` and `wrangler queues create ros-automation-events-dlq`); Workflows need no
 setup. Queues and Workflows are billed per use (see ADR 0130). The kill switch, the automation
 timezone and the debounce window are in Settings → Automations; only human admins can engage the
 kill switch.
 
 Semantic search (ADR 0154) also consumes these events: the queue consumer embeds the records a
-batch changed, so crm-runner gets the `vectorize` binding too (added by the deploy script; see
+batch changed, so ros-runner gets the `vectorize` binding too (added by the deploy script; see
 [In-app AI](#in-app-ai)).
 
 Dashboard widget results are cached for 60 seconds in the Workers Cache API (ADR 0057). The Cache
-API does nothing on `*.workers.dev` hostnames, so put crm-app on a custom domain to get the cache;
+API does nothing on `*.workers.dev` hostnames, so put ros-app on a custom domain to get the cache;
 without it every widget view runs its query.
 
-## Option 1 (recommended): `npx create-crm`
+## Option 1 (recommended): `npx create-relationship-os`
 
 Installs a published, verified **release bundle** (ADR 0053, ADR 0160) with the Cloudflare API. No
 checkout, no wrangler, no service of ours.
 
 ```sh
-npx create-crm            # or: pnpm dlx create-crm
+npx create-relationship-os            # or: pnpm dlx create-relationship-os
 ```
 
 **The CLI is not published to npm yet.** Run it from a checkout of this repository:
 
 ```sh
-pnpm install && pnpm --filter create-crm build
-node packages/create-crm/dist/cli.js            # install; add upgrade / rollback / status / uninstall
+pnpm install && pnpm --filter create-relationship-os build
+node packages/create-relationship-os/dist/cli.js            # install; add upgrade / rollback / status / uninstall
 ```
 
-Everywhere this guide says `npx create-crm`, use `node packages/create-crm/dist/cli.js` for now.
+Everywhere this guide says `npx create-relationship-os`, use `node packages/create-relationship-os/dist/cli.js` for now.
 The release workflow publishes it only when an `NPM_TOKEN` secret is set (and the npm name
-`create-crm` is taken by an unrelated package, so publishing will need a scoped name).
+`create-relationship-os` is taken by an unrelated package, so publishing will need a scoped name).
 
 It asks for, in order:
 
@@ -137,10 +137,10 @@ It asks for, in order:
    | --- | --- |
    | Workers Scripts: Edit | upload Workers, versions, deployments, secrets, crons, workers.dev |
    | D1: Edit | create the `crm` database, run migrations, Time Travel bookmarks and restore |
-   | Workers R2 Storage: Edit | create the `crm-blobs` bucket |
-   | Workers KV Storage: Edit | create the `crm-app-oauth-kv` namespace |
+   | Workers R2 Storage: Edit | create the `ros-blobs` bucket |
+   | Workers KV Storage: Edit | create the `ros-app-oauth-kv` namespace |
    | Queues: Edit | queues and consumers, once a release declares them |
-   | Vectorize: Edit | the `crm-records` index for semantic search (not needed with `--ai off`) |
+   | Vectorize: Edit | the `ros-records` index for semantic search (not needed with `--ai off`) |
    | Account Settings: Read | list the account |
    | AI Gateway: Edit | create the deployment's AI Gateway and its custom providers (not needed with `--ai off` or `--ai-gateway off`) |
    | Account API Tokens: Edit | generate the gateway's token (AI Gateway Run only), stored as `AI_GATEWAY_TOKEN` |
@@ -150,7 +150,7 @@ It asks for, in order:
    token is only used by the CLI unless you choose to store it for in-app updates (below). Pass it as
    `--token` or `CLOUDFLARE_API_TOKEN` to skip the prompt.
 2. **The account** (asked only when the token sees several).
-3. **The hostname:** `workers.dev` (gives `https://crm-app.<subdomain>.workers.dev`) or a hostname on
+3. **The hostname:** `workers.dev` (gives `https://ros-app.<subdomain>.workers.dev`) or a hostname on
    one of your zones, e.g. `crm.example.com`, attached as a Worker custom domain.
 4. **Sign-in:** Better Auth (email and password) or Cloudflare Access (then the Access team domain
    and AUD; see [Cloudflare Access](#cloudflare-access)).
@@ -159,31 +159,31 @@ Then it downloads the newest release on the channel (`--version`, `--channel bet
 **checks its sha256 against SHA256SUMS and its GitHub build attestation** (and runs
 `gh attestation verify` too when the GitHub CLI is installed; `--require-gh` insists), and refuses
 a bundle that fails. It creates or finds the D1 database, R2 bucket, KV namespace, queues and the
-`crm-records` Vectorize index (with its `object` metadata index), runs the core migrations, uploads crm-runner then crm-app with their assets, generates `BETTER_AUTH_SECRET`, sets
+`ros-records` Vectorize index (with its `object` metadata index), runs the core migrations, uploads ros-runner then ros-app with their assets, generates `BETTER_AUTH_SECRET`, sets
 `BETTER_AUTH_URL`, and prints the URL. Open `<url>/setup`: sign up (the first account is the admin)
 and the setup wizard takes it from there.
 
-Re-running `npx create-crm` repairs an install: it changes only what is missing or wrong and keeps
+Re-running `npx create-relationship-os` repairs an install: it changes only what is missing or wrong and keeps
 secrets. Non-interactive use (CI):
 
 ```sh
-npx create-crm --yes --token "$CF_TOKEN" --account "$CF_ACCOUNT_ID" \
+npx create-relationship-os --yes --token "$CF_TOKEN" --account "$CF_ACCOUNT_ID" \
   --hostname crm.example.com --identity better-auth --gatekeepers google \
-  --secret crm-gatekeeper-google:CLIENT_ID=… --secret crm-gatekeeper-google:CLIENT_SECRET=…
+  --secret ros-gatekeeper-google:CLIENT_ID=… --secret ros-gatekeeper-google:CLIENT_SECRET=…
 ```
 
 Gatekeepers (integrations, ADR 0169) are optional: add them with `--gatekeepers` (now or on a later
 re-run) and enable them in Settings → Integrations.
 
 In-app AI is on by default: both Workers get the Workers AI and Vectorize bindings, as with
-`pnpm run deploy` (see [In-app AI](#in-app-ai)). `--ai off` (or `CRM_AI=off`) installs without
+`pnpm run deploy` (see [In-app AI](#in-app-ai)). `--ai off` (or `ROS_AI=off`) installs without
 them; upgrades keep the choice, and re-running the install with `--ai on` turns it on (the index is
 created then). With AI on, every model call goes through an **AI Gateway** that the install
 creates for you (see [AI Gateway](#ai-gateway)). `--ai-gateway <id>` picks its id,
 `--ai-gateway off` skips it, and `--provider-key deepseek=<key>` stores a provider key in it.
 `--model-roles <preset|file|default>` sets this deployment's model roles (see
 [Using DeepSeek for every role](#using-deepseek-for-every-role)).
-`--ai-admin-token <t>` (or `CRM_AI_ADMIN_TOKEN`) stores Settings → AI's token as crm-app's
+`--ai-admin-token <t>` (or `ROS_AI_ADMIN_TOKEN`) stores Settings → AI's token as ros-app's
 `CLOUDFLARE_API_TOKEN`.
 
 ## Updates
@@ -202,19 +202,19 @@ Every update runs the same procedure, whether from the app or the CLI (ADR 0164)
 3. If a migration, the switch or the smoke check fails, the previous release is redeployed and the
    database is restored to the bookmark.
 
-**From the app (one click):** store a scoped token as the `CRM_UPDATE_TOKEN` secret on crm-app (with
+**From the app (one click):** store a scoped token as the `ROS_UPDATE_TOKEN` secret on ros-app (with
 the permissions above, including the AI Gateway ones, so updates can add the gateway and its
-custom providers): `npx create-crm --update-token <token>` (or `--store-update-token` to store
-the install token), or `wrangler secret put CRM_UPDATE_TOKEN --name crm-app`. Then Settings → Updates →
+custom providers): `npx create-relationship-os --update-token <token>` (or `--store-update-token` to store
+the install token), or `wrangler secret put ROS_UPDATE_TOKEN --name ros-app`. Then Settings → Updates →
 **Preflight** → **Update**. Only human admins can update; every update is audited and listed under
 History.
 
 **From your machine (no stored token):** Settings → Updates shows the command:
 
 ```sh
-npx create-crm upgrade                  # newest release on the deployment's channel
-npx create-crm upgrade --version 1.4.0
-npx create-crm status                   # installed version, channel, available releases, history
+npx create-relationship-os upgrade                  # newest release on the deployment's channel
+npx create-relationship-os upgrade --version 1.4.0
+npx create-relationship-os status                   # installed version, channel, available releases, history
 ```
 
 ## Rollback
@@ -222,7 +222,7 @@ npx create-crm status                   # installed version, channel, available 
 Settings → Updates → History → **Roll back** on the latest successful update, or:
 
 ```sh
-npx create-crm rollback
+npx create-relationship-os rollback
 ```
 
 It redeploys the release the update replaced and restores the database to the bookmark taken just
@@ -241,16 +241,16 @@ Model roles (ADR 0009, ADR 0150), summaries (ADR 0153) and semantic search (ADR 
 Everything works without AI; each feature then says "AI is not configured".
 
 **Bindings.** Workers AI (`"ai": { "binding": "AI" }`) and Vectorize
-(`"vectorize": [{ "binding": "VECTORIZE", "index_name": "crm-records" }]`), both on crm-app and
-crm-runner (whose automation events consumer embeds changed records), are
+(`"vectorize": [{ "binding": "VECTORIZE", "index_name": "ros-records" }]`), both on ros-app and
+ros-runner (whose automation events consumer embeds changed records), are
 remote-only, so the committed `wrangler.jsonc` files leave them out (local development and tests
-use stand-ins, ADR 0156). `pnpm run deploy` and `create-crm` add them from
+use stand-ins, ADR 0156). `pnpm run deploy` and `create-relationship-os` add them from
 `apps/app/deploy-inputs.json` and `apps/runner/deploy-inputs.json` (`features.ai`, and the
 index's settings under `vectorize`). To do it by hand:
 
 ```sh
-pnpm exec wrangler vectorize create crm-records --dimensions=384 --metric=cosine
-pnpm exec wrangler vectorize create-metadata-index crm-records --property-name=object --type=string
+pnpm exec wrangler vectorize create ros-records --dimensions=384 --metric=cosine
+pnpm exec wrangler vectorize create-metadata-index ros-records --property-name=object --type=string
 # then add both bindings above to apps/app/wrangler.jsonc and apps/runner/wrangler.jsonc
 ```
 
@@ -263,50 +263,50 @@ backfill), new and changed ones by the automation events consumer seconds after 
 
 | Name | Kind | Purpose |
 | --- | --- | --- |
-| `AI_GATEWAY_ID` | var | Send every model call through this AI Gateway (needed for usage and spend per role, and BYOK). Set by `create-crm` and the updater to the gateway they create |
+| `AI_GATEWAY_ID` | var | Send every model call through this AI Gateway (needed for usage and spend per role, and BYOK). Set by `create-relationship-os` and the updater to the gateway they create |
 | `CLOUDFLARE_ACCOUNT_ID` | var | Your account id: AI Gateway URLs for non-Workers-AI providers, and Settings → AI's Cloudflare API calls |
-| `AI_MODEL_ROLES` | var | Deploy-config layer of the registry: JSON, e.g. `{"summarise":{"provider":"openai","model":"gpt-4.1-mini"}}`. Admin overrides in Settings → AI win over it. Set per deployment with `create-crm --model-roles` or `CRM_AI_MODEL_ROLES` (a preset such as `deepseek-flash`, a JSON file or inline JSON); leave the committed value empty |
+| `AI_MODEL_ROLES` | var | Deploy-config layer of the registry: JSON, e.g. `{"summarise":{"provider":"openai","model":"gpt-4.1-mini"}}`. Admin overrides in Settings → AI win over it. Set per deployment with `create-relationship-os --model-roles` or `ROS_AI_MODEL_ROLES` (a preset such as `deepseek-flash`, a JSON file or inline JSON); leave the committed value empty |
 | `AI_PROVIDERS` | var | Base URLs for `jev` and `openai-compatible`: `{"openai-compatible":{"baseURL":"https://…/v1"}}` |
-| `AI_GATEWAY_BYOK` | var | Providers whose key AI Gateway holds as BYOK, comma-separated, e.g. `deepseek`. Set by `create-crm --provider-key`, or `CRM_AI_GATEWAY_BYOK` for `pnpm run deploy`. Names only, never keys |
+| `AI_GATEWAY_BYOK` | var | Providers whose key AI Gateway holds as BYOK, comma-separated, e.g. `deepseek`. Set by `create-relationship-os --provider-key`, or `ROS_AI_GATEWAY_BYOK` for `pnpm run deploy`. Names only, never keys |
 | `VECTORIZE_DIMENSIONS` | var | The Vectorize index's size. Default `384` |
-| `AI_SECRET_SCRIPTS` | var | Workers that Settings → AI stores provider keys on. Default `crm-app,crm-runner` |
-| `CLOUDFLARE_API_TOKEN` | secret (crm-app) | Settings → AI's token (deploy script: set `CRM_AI_ADMIN_TOKEN`). See permissions below |
-| `AI_GATEWAY_TOKEN` | secret (both Workers) | The gateway's token (AI Gateway Run), sent as `cf-aig-authorization`. Generated by `create-crm` and the updater |
+| `AI_SECRET_SCRIPTS` | var | Workers that Settings → AI stores provider keys on. Default `ros-app,ros-runner` |
+| `CLOUDFLARE_API_TOKEN` | secret (ros-app) | Settings → AI's token (deploy script: set `ROS_AI_ADMIN_TOKEN`). See permissions below |
+| `AI_GATEWAY_TOKEN` | secret (both Workers) | The gateway's token (AI Gateway Run), sent as `cf-aig-authorization`. Generated by `create-relationship-os` and the updater |
 | `AI_KEY_OPENAI`, `AI_KEY_GOOGLE`, `AI_KEY_OPENROUTER`, `AI_KEY_DEEPSEEK`, `AI_KEY_ANTHROPIC`, `AI_KEY_JEV`, `AI_KEY_CUSTOM` | secrets (both Workers) | Provider keys. Set from Settings → AI, or with `wrangler secret put` on both Workers. Never stored in D1 |
 | `AI_FAKE_MODEL` | var | Local development and e2e only (`.dev.vars`): deterministic stand-ins for every role and in-memory vectors when there is no `ai` binding. Never set it in production |
 
-**Settings → AI's API token** (`CLOUDFLARE_API_TOKEN` on crm-app). Create a custom token scoped
+**Settings → AI's API token** (`CLOUDFLARE_API_TOKEN` on ros-app). Create a custom token scoped
 to your account with:
 
 - Account → **Workers Scripts → Edit**: store provider keys as Workers secrets (each save creates
-  a new version of crm-app and crm-runner with the secret);
+  a new version of ros-app and ros-runner with the secret);
 - Account → **AI Gateway → Edit** and Account → **Secrets Store → Edit**: store keys in AI Gateway
   (BYOK) instead;
 - Account → **AI Gateway → Read**: usage and spend per role.
 
 Leave it unset and Settings → AI shows these instructions instead of the key form; keys can still
-be set with `wrangler secret put AI_KEY_OPENAI --name crm-app` (and `--name crm-runner`).
+be set with `wrangler secret put AI_KEY_OPENAI --name ros-app` (and `--name ros-runner`).
 No role defaults to a third-party provider: every shipped default is a Workers AI model, so a
 deployment needs no third-party key.
 
 ### AI Gateway
 
 All AI calls go through AI Gateway by default (ADR 0180), and provider keys are stored there as
-BYOK. With AI on, `create-crm` (install and re-run), `crm upgrade` and Settings → Updates each
+BYOK. With AI on, `create-relationship-os` (install and re-run), `ros upgrade` and Settings → Updates each
 check the following and create whatever is missing:
 
-- **A gateway per deployment**, named after the install (`crm` for `crm-app`; `--ai-gateway <id>`
+- **A gateway per deployment**, named after the install (`crm` for `ros-app`; `--ai-gateway <id>`
   to choose). It has logging on and **authentication on**. An existing gateway with that id is
   reused, and its logging and authentication are turned on if they were off.
 - **Custom providers** listed in `apps/app/deploy-inputs.json` under `aiGateway.customProviders`.
   None ship: the optional providers the registry knows (OpenAI, Google AI Studio, OpenRouter,
   DeepSeek, Anthropic) are built in to AI Gateway (ADR 0192).
-- **`AI_GATEWAY_ID`** on crm-app and crm-runner, and **`AI_GATEWAY_TOKEN`** on both. The token is
+- **`AI_GATEWAY_ID`** on ros-app and ros-runner, and **`AI_GATEWAY_TOKEN`** on both. The token is
   an account API token with only **AI Gateway Run**, generated once and created again only if a
   Worker has lost it. Workers AI (the default for every role) goes through the gateway with the
   binding and needs no token. Other providers send it as `cf-aig-authorization`.
 
-Permissions: the table in [Option 1](#option-1-recommended-npx-create-crm). If the token lacks
+Permissions: the table in [Option 1](#option-1-recommended-npx-create-relationship-os). If the token lacks
 AI Gateway Edit, the install still finishes: it warns and calls Workers AI directly. If it lacks
 Account API Tokens Edit, the gateway is still created, but you must set `AI_GATEWAY_TOKEN` yourself.
 To do that, create a token with Account → **AI Gateway → Run** and pass it with
@@ -317,8 +317,8 @@ Uninstall deletes the gateway only if the install created it.
 `openai` or `google-ai-studio`, needs only a key:
 
 ```sh
-npx create-crm --provider-key deepseek=<DEEPSEEK_API_KEY>   # re-run install; never printed
-npx create-crm --provider-key openai=<OPENAI_API_KEY>
+npx create-relationship-os --provider-key deepseek=<DEEPSEEK_API_KEY>   # re-run install; never printed
+npx create-relationship-os --provider-key openai=<OPENAI_API_KEY>
 ```
 
 This also adds the provider to `AI_GATEWAY_BYOK` on both Workers, so the model registry knows the
@@ -326,7 +326,7 @@ gateway holds its key. You can also add a key later in **Settings → AI** (the 
 moved to AI Gateway BYOK in stage 7b), or in the dashboard (AI Gateway → your gateway → Provider
 keys). In the dashboard case, also add the provider to `AI_GATEWAY_BYOK`. A key is replaced, never
 duplicated, and is never written to D1, a Worker or the output. Code that needs to store a key
-calls `setGatewayProviderKey(accountId, gatewayId, provider, key)` on `@crm/release`'s
+calls `setGatewayProviderKey(accountId, gatewayId, provider, key)` on `@relationship-os/release`'s
 `CloudflareClient`. Storing keys needs **Secrets Store: Edit** and **AI Gateway: Edit**.
 
 **Adding a custom provider.** For a provider AI Gateway does not have built in, add an entry to
@@ -359,30 +359,30 @@ committed and the shipped defaults do not change.
 | assistant, review | deepseek-flash | the role's Workers AI default | on |
 | embed | bge-small-en-v1.5 (Workers AI) | none | |
 
-**With `create-crm`** (recommended). This needs a release that includes ADR 0192: an older
+**With `create-relationship-os`** (recommended). This needs a release that includes ADR 0192: an older
 release's Workers do not know the `deepseek` provider and ignore the preset.
 
 1. Create an API key on the DeepSeek platform (https://platform.deepseek.com).
 2. Make sure the install token has **AI Gateway: Edit** and **Secrets Store: Edit** (the table in
-   [Option 1](#option-1-recommended-npx-create-crm)).
+   [Option 1](#option-1-recommended-npx-create-relationship-os)).
 3. Re-run the install against the deployment. A re-run repairs and keeps everything else, and on
    a new account it installs:
 
    ```sh
-   npx create-crm --model-roles deepseek-flash --provider-key deepseek="$DEEPSEEK_API_KEY"
+   npx create-relationship-os --model-roles deepseek-flash --provider-key deepseek="$DEEPSEEK_API_KEY"
    ```
 
    This does three things:
    - stores the key in the deployment's AI Gateway as BYOK, under the built-in `deepseek`
      provider;
-   - sets `AI_GATEWAY_BYOK=deepseek` and the preset's `AI_MODEL_ROLES` on crm-app and crm-runner;
-   - records both in the deployment state, so `crm upgrade` and Settings → Updates keep them.
+   - sets `AI_GATEWAY_BYOK=deepseek` and the preset's `AI_MODEL_ROLES` on ros-app and ros-runner;
+   - records both in the deployment state, so `ros upgrade` and Settings → Updates keep them.
 
    The key is never printed or written to D1 or a Worker.
 4. Open **Settings → AI**. Each role except `embed` shows `deepseek-flash` with source
    "deploy", and DeepSeek shows as ready (BYOK). Press **Test** on a role to check it.
 
-To go back to the shipped defaults, run `npx create-crm --model-roles default`. The key stays in
+To go back to the shipped defaults, run `npx create-relationship-os --model-roles default`. The key stays in
 the gateway until you delete it there. Settings → AI overrides still win role by role, and
 `--model-roles` also takes a JSON file or inline JSON in the same shape as `AI_MODEL_ROLES`. It is
 checked when you run it, and a model a role cannot use fails the command.
@@ -392,20 +392,20 @@ checked when you run it, and a model a role cannot use fails the command.
 the committed empty values:
 
 ```sh
-CRM_AI_MODEL_ROLES=deepseek-flash   # becomes AI_MODEL_ROLES on both Workers
-CRM_AI_GATEWAY_BYOK=deepseek        # only when the key is in the gateway (below)
+ROS_AI_MODEL_ROLES=deepseek-flash   # becomes AI_MODEL_ROLES on both Workers
+ROS_AI_GATEWAY_BYOK=deepseek        # only when the key is in the gateway (below)
 ```
 
 The deploy script does not create a gateway (ADR 0180), so choose one way to supply the key:
 - **With a gateway:** set `AI_GATEWAY_ID`, `CLOUDFLARE_ACCOUNT_ID` and `AI_GATEWAY_TOKEN` as
   above. Add the DeepSeek key in the dashboard (AI Gateway → your gateway → Provider keys →
-  DeepSeek), and keep `CRM_AI_GATEWAY_BYOK=deepseek`.
-- **Without a gateway:** leave `CRM_AI_GATEWAY_BYOK` unset, and store the key as a Workers secret
+  DeepSeek), and keep `ROS_AI_GATEWAY_BYOK=deepseek`.
+- **Without a gateway:** leave `ROS_AI_GATEWAY_BYOK` unset, and store the key as a Workers secret
   on both Workers. Calls then go straight to `https://api.deepseek.com`:
 
   ```sh
-  pnpm exec wrangler secret put AI_KEY_DEEPSEEK --name crm-app
-  pnpm exec wrangler secret put AI_KEY_DEEPSEEK --name crm-runner
+  pnpm exec wrangler secret put AI_KEY_DEEPSEEK --name ros-app
+  pnpm exec wrangler secret put AI_KEY_DEEPSEEK --name ros-runner
   ```
 
 **Things to know.**
@@ -422,7 +422,7 @@ The deploy script does not create a gateway (ADR 0180), so choose one way to sup
   configured" rather than falling back. The fallback is used when a DeepSeek call fails.
 
 **Real-model checks.** The semantic search relevance set runs against the real embedding model
-with `CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… pnpm --filter @crm/core relevance:real`
+with `CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… pnpm --filter @relationship-os/core relevance:real`
 (a token with Workers AI Read). The eval harnesses in `evals/` take their default model from the
 registry's `assistant` role.
 
@@ -431,9 +431,9 @@ registry's `assistant` role.
 The button in the README forks the repository into your GitHub account, creates the `crm` D1
 database, asks for the secrets in `apps/app/.dev.vars.example`, and connects Workers Builds.
 Workers Builds then runs `apps/app`'s `deploy` script, which is the same deploy script as below:
-it deploys `crm-runner`, applies migrations and deploys `crm-app`.
+it deploys `ros-runner`, applies migrations and deploys `ros-app`.
 
-After it finishes, open `https://crm-app.<your-subdomain>.workers.dev/sign-in` and sign up: the
+After it finishes, open `https://ros-app.<your-subdomain>.workers.dev/sign-in` and sign up: the
 first user to sign up is the only one allowed to while `AUTH_ALLOW_SIGNUP=false`.
 
 ## Option 3: From a checkout (manual)
@@ -443,7 +443,7 @@ pnpm install
 pnpm exec wrangler login        # or set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID
 
 export BETTER_AUTH_SECRET=$(openssl rand -hex 32)
-export BETTER_AUTH_URL=https://crm-app.<your-subdomain>.workers.dev   # optional
+export BETTER_AUTH_URL=https://ros-app.<your-subdomain>.workers.dev   # optional
 pnpm run deploy
 ```
 
@@ -452,19 +452,19 @@ never reaches our script.
 
 `scripts/deploy.mjs` runs, in order:
 
-1. with AI on (the default; `CRM_AI=off` skips it): `wrangler vectorize create crm-records
+1. with AI on (the default; `ROS_AI=off` skips it): `wrangler vectorize create ros-records
    --dimensions=384 --metric=cosine` and its `object` metadata index, if the index does not exist
    yet, and a generated `wrangler.deploy.jsonc` for each Worker that adds the `ai` binding (both)
    and the `vectorize` binding (both) (see [In-app AI](#in-app-ai));
-2. `wrangler deploy` for `crm-runner` (creates the `crm` D1 database on a fresh account);
+2. `wrangler deploy` for `ros-runner` (creates the `crm` D1 database on a fresh account);
 3. `wrangler d1 migrations apply DB --remote` (core migrations, tracked in `core_migrations`);
-4. `vite build` and `wrangler deploy` for `crm-app`, passing any of the secrets above that are set
+4. `vite build` and `wrangler deploy` for `ros-app`, passing any of the secrets above that are set
    in the environment with `--secrets-file`. A first deploy needs at least `BETTER_AUTH_SECRET`;
    later deploys keep the secrets already set.
 
 `pnpm run deploy -- --dry-run` builds and validates both Workers without touching an account.
 
-Check the result: `curl https://crm-app.<subdomain>.workers.dev/api/health` should return
+Check the result: `curl https://ros-app.<subdomain>.workers.dev/api/health` should return
 `"status": "ok"`, the latest migration and `"runner": { "ok": true }`.
 
 ## Cloudflare Access
@@ -486,7 +486,7 @@ rejected but should never get that far.
 ## Upgrades from source
 
 For the button and checkout installs: pull the new release (or merge upstream into your fork) and run
-`pnpm run deploy` again (Workers Builds does this on push). Migrations apply before the new `crm-app`
+`pnpm run deploy` again (Workers Builds does this on push). Migrations apply before the new `ros-app`
 is deployed, so `/api/health` reports `upToDate: true` once the deploy finishes. Settings → Updates
 says the deployment is from source and does not offer in-app updates.
 
@@ -505,19 +505,19 @@ Releases are built by `.github/workflows/release.yml` on a `vX.Y.Z` / `vX.Y.Z-be
 Stage 8 acceptance criterion 8. **Status: not yet run; needs a human with a Cloudflare account.**
 Save a screenshot of each numbered step to `docs/stages/assets/stage-8-manual/NN-name.png`.
 
-1. Create an API token with the permissions in [Option 1](#option-1-recommended-npx-create-crm).
-2. `npx create-crm` and answer the prompts (workers.dev, Better Auth). Screenshot the summary. (`01-install.png`)
+1. Create an API token with the permissions in [Option 1](#option-1-recommended-npx-create-relationship-os).
+2. `npx create-relationship-os` and answer the prompts (workers.dev, Better Auth). Screenshot the summary. (`01-install.png`)
 3. Open the printed URL, sign up; the setup wizard opens. Walk every step: organisation (name, logo,
    currency, timezone), "Use Workers AI only for now", a policy preset, skip connect, install sample
    data. (`02-wizard-*.png`)
 4. Check People and Organisations show the "(sample)" records; remove them from Settings → General. (`03-sample.png`)
 5. Connect Claude over MCP (`docs/mcp.md`) and create a person from Claude. (`04-mcp.png`)
 6. Settings → Updates: version, channel, changelog; switch to beta and back. (`05-updates.png`)
-7. When a newer release exists: Preflight, then `npx create-crm upgrade` (no stored token). (`06-upgrade-cli.png`)
-8. Store a token (`npx create-crm --update-token …`), then update or roll back from Settings →
+7. When a newer release exists: Preflight, then `npx create-relationship-os upgrade` (no stored token). (`06-upgrade-cli.png`)
+8. Store a token (`npx create-relationship-os --update-token …`), then update or roll back from Settings →
    Updates. (`07-update-app.png`, `08-rollback.png`)
-9. `npx create-crm status`. (`09-status.png`)
-10. Tear down: `npx create-crm uninstall`.
+9. `npx create-relationship-os status`. (`09-status.png`)
+10. Tear down: `npx create-relationship-os uninstall`.
 
 The automated equivalent in a dedicated test account is `.github/workflows/install-test.yml`
 (ADR 0168); create its secrets with `bash scripts/setup-ci-cloudflare.sh`.

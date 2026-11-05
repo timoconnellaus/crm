@@ -6,13 +6,13 @@ import type { ToolExpectation } from "../lib/grading.ts";
 import type { SetupContext } from "../lib/harness.ts";
 import { tasks } from "../tasks.ts";
 
-// @crm/core is imported by a non-literal specifier so tsc does not type-check its Workers-typed
+// @relationship-os/core is imported by a non-literal specifier so tsc does not type-check its Workers-typed
 // sources under this Node-typed package; vitest loads it at runtime like any other module.
 interface RegistryOperation {
   name: string;
   mcp?: { curated?: boolean; expose?: boolean; toolName?: string };
 }
-const coreSpecifier = "@crm/core";
+const coreSpecifier = "@relationship-os/core";
 const { coreRegistry } = (await import(coreSpecifier)) as {
   coreRegistry: { list(): RegistryOperation[] };
 };

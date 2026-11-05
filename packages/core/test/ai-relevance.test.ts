@@ -1,6 +1,6 @@
 // Semantic search relevance (stage 7 AC 7, ADR 0155): 20 queries with an expected hit each; at
 // least 17 must be in the top 5 of search.hybrid. By default the embed role is the deterministic
-// fake embedder (word stems and trigrams). `pnpm --filter @crm/core relevance:real` runs the
+// fake embedder (word stems and trigrams). `pnpm --filter @relationship-os/core relevance:real` runs the
 // same set with the real Workers AI embedding model (CLOUDFLARE_ACCOUNT_ID and
 // CLOUDFLARE_API_TOKEN must be set) and prints the report.
 import { env } from "cloudflare:workers";

@@ -1,5 +1,5 @@
 // The deploy engine (ADR 0163): puts a verified release bundle into a Cloudflare account through
-// the REST API. Used by `create-crm` (install), `crm upgrade` and the self-updater.
+// the REST API. Used by `create-relationship-os` (install), `ros upgrade` and the self-updater.
 //
 //   provision resources (find by name, else create)   idempotent
 //   apply pending core migrations                      bookkept in core_migrations
@@ -48,7 +48,7 @@ export interface DeploymentState {
    * with `--ai-gateway off`. Absent means the default, named after the install.
    */
   aiGateway?: string | false;
-  /** The gateway was created by this deployment (so `crm uninstall` deletes it). */
+  /** The gateway was created by this deployment (so `ros uninstall` deletes it). */
   aiGatewayCreated?: boolean;
   /** The id of the generated AI Gateway Run token stored as AI_GATEWAY_TOKEN. */
   aiGatewayTokenId?: string;
@@ -56,7 +56,7 @@ export interface DeploymentState {
   workerNames: Record<string, string>;
   /** Plain var overrides per Worker (e.g. IDENTITY_PROVIDER, APPROVAL_FLOOR). */
   vars: Record<string, Record<string, string>>;
-  /** Resolved resource placeholders, e.g. `D1_ID(crm)` → its uuid. */
+  /** Resolved resource placeholders, e.g. `D1_ID(ros)` → its uuid. */
   resources: Record<string, string>;
   /** sha256 of the installed bundle. */
   bundleDigest?: string;
@@ -180,7 +180,7 @@ export function neededResources(
   );
 }
 
-/** Finds or creates each resource. Returns resolved placeholders (`D1_ID(crm)` → id). */
+/** Finds or creates each resource. Returns resolved placeholders (`D1_ID(ros)` → id). */
 export async function provisionResources(
   api: CloudflareClient,
   accountId: string,
@@ -347,7 +347,7 @@ export function workerBindings(
       bindings.push({ type: "service", name, service: workerName(state, gk.name), entrypoint });
     }
   }
-  // Any secret value supplied but not declared in the manifest (e.g. CRM_UPDATE_TOKEN set late).
+  // Any secret value supplied but not declared in the manifest (e.g. ROS_UPDATE_TOKEN set late).
   for (const [name, text] of Object.entries(secrets)) {
     if (!bindings.some((b) => b.name === name)) bindings.push({ type: "secret_text", name, text });
   }
@@ -451,7 +451,7 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
       ...(worker.observability ? { observability: worker.observability } : {}),
       ...(assetsJwt ? { assets: { jwt: assetsJwt, config: worker.assets?.config ?? {} } } : {}),
       annotations: {
-        "workers/message": `crm ${manifest.version}`,
+        "workers/message": `Relationship OS ${manifest.version}`,
         "workers/tag": manifest.version,
       },
     };
@@ -485,7 +485,7 @@ export async function deployWorkers(input: DeployInput): Promise<DeployResult> {
         state.accountId,
         item.deployedName,
         item.versionId,
-        `crm ${manifest.version}`,
+        `Relationship OS ${manifest.version}`,
       );
       result.push({ name: item.worker.name, deployedAs: item.deployedName, via: "version" });
     } else {

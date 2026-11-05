@@ -6,7 +6,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { type ExtraVerifier, releaseAssetNames, VerificationError } from "@crm/release";
+import { type ExtraVerifier, releaseAssetNames, VerificationError } from "@relationship-os/release";
 
 const run = promisify(execFile);
 

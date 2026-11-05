@@ -1,4 +1,4 @@
-# Upstream: `@crm/gatekeeper-interface`
+# Upstream: `@relationship-os/gatekeeper-interface`
 
 | | |
 | --- | --- |

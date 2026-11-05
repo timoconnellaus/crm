@@ -1,5 +1,5 @@
 // The core registry and typed entry points adapters call.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { UnknownOperationError } from "./errors.ts";
 import { loadExtensionOperations, resolveExtensionOperation } from "./extensions/tools.ts";

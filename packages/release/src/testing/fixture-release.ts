@@ -49,7 +49,7 @@ export interface FixtureOptions {
   contract?: { version: number; supported: number[] };
   /** Extra runner Durable Object migration steps. */
   runnerMigrations?: { tag: string; new_sqlite_classes: string[] }[];
-  /** Extra required secrets on crm-app. */
+  /** Extra required secrets on ros-app. */
   appSecrets?: { name: string; required: boolean; source: "user" | "generated" | "installer" }[];
   /** Change the gatekeeper's code (so preflight reports it changed). */
   gatekeeperRevision?: number;
@@ -100,7 +100,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
   }
 
   const app = await finish({
-    name: "crm-app",
+    name: "ros-app",
     package: "apps/app",
     role: "app",
     optional: false,
@@ -113,13 +113,13 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     compatibilityFlags: ["nodejs_compat"],
     durableObjectMigrations: [],
     bindings: [
-      { type: "d1", name: "DB", database_id: "$D1_ID(crm)" },
-      { type: "r2_bucket", name: "BLOBS", bucket_name: "$R2_NAME(crm-blobs)" },
-      { type: "kv_namespace", name: "OAUTH_KV", namespace_id: "$KV_ID(crm-app-oauth-kv)" },
-      { type: "service", name: "RUNNER", service: "$WORKER_NAME(crm-runner)" },
+      { type: "d1", name: "DB", database_id: "$D1_ID(ros)" },
+      { type: "r2_bucket", name: "BLOBS", bucket_name: "$R2_NAME(ros-blobs)" },
+      { type: "kv_namespace", name: "OAUTH_KV", namespace_id: "$KV_ID(ros-app-oauth-kv)" },
+      { type: "service", name: "RUNNER", service: "$WORKER_NAME(ros-runner)" },
       { type: "plain_text", name: "IDENTITY_PROVIDER", text: "better-auth" },
-      { type: "plain_text", name: "CRM_RELEASE_VERSION", text: version },
-      { type: "plain_text", name: "CRM_ACCOUNT_ID", text: "$ACCOUNT_ID" },
+      { type: "plain_text", name: "ROS_RELEASE_VERSION", text: version },
+      { type: "plain_text", name: "ROS_ACCOUNT_ID", text: "$ACCOUNT_ID" },
       { type: "plain_text", name: "AI_GATEWAY_ID", text: "" },
       { type: "plain_text", name: "AI_MODEL_ROLES", text: "" },
       { type: "plain_text", name: "AI_GATEWAY_BYOK", text: "" },
@@ -140,11 +140,11 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     public: true,
     assets: { config: { not_found_handling: "none" }, files: assetFiles },
     queueConsumers: [],
-    dependsOn: ["crm-runner"],
+    dependsOn: ["ros-runner"],
   });
 
   const runner = await finish({
-    name: "crm-runner",
+    name: "ros-runner",
     package: "apps/runner",
     role: "runner",
     optional: false,
@@ -160,7 +160,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       ...(options.runnerMigrations ?? []),
     ],
     bindings: [
-      { type: "d1", name: "DB", database_id: "$D1_ID(crm)" },
+      { type: "d1", name: "DB", database_id: "$D1_ID(ros)" },
       { type: "durable_object_namespace", name: "WORKSPACE", class_name: "Workspace" },
       // Stage 5 shapes: a Workflow, the automation events queue (consumed with a DLQ) and a
       // rate limit; stage 7a's shape: Workers AI and a Vectorize index, both behind the `ai`
@@ -168,13 +168,13 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       {
         type: "workflow",
         name: "AUTOMATION_WORKFLOW",
-        workflow_name: "crm-automation",
+        workflow_name: "ros-automation",
         class_name: "AutomationWorkflow",
       },
       {
         type: "queue",
         name: "AUTOMATION_EVENTS",
-        queue_name: "$QUEUE_NAME(crm-automation-events)",
+        queue_name: "$QUEUE_NAME(ros-automation-events)",
       },
       {
         type: "ratelimit",
@@ -185,7 +185,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       {
         type: "vectorize",
         name: "VECTORIZE",
-        index_name: "$VECTORIZE_NAME(crm-records)",
+        index_name: "$VECTORIZE_NAME(ros-records)",
         feature: "ai",
       },
       { type: "ai", name: "AI", feature: "ai" },
@@ -199,9 +199,9 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     public: false,
     queueConsumers: [
       {
-        queue: "$QUEUE_NAME(crm-automation-events)",
+        queue: "$QUEUE_NAME(ros-automation-events)",
         settings: { batch_size: 100, max_retries: 5, max_wait_time_ms: 5000 },
-        deadLetterQueue: "$QUEUE_NAME(crm-automation-events-dlq)",
+        deadLetterQueue: "$QUEUE_NAME(ros-automation-events-dlq)",
       },
     ],
     dependsOn: [],
@@ -209,7 +209,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
   });
 
   const gatekeeper = await finish({
-    name: "crm-gatekeeper-test",
+    name: "ros-gatekeeper-test",
     package: "packages/gatekeeper-test",
     role: "gatekeeper",
     optional: true,
@@ -242,7 +242,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
     version,
     channel: channelOf(version),
     commit: "0".repeat(40),
-    repository: options.repository ?? "timoconnellaus/crm",
+    repository: options.repository ?? "timoconnellaus/relationship-os",
     wranglerVersion: "4.157.0",
     extensionContract: contract,
     coreSchemaVersion: Number(migrations.at(-1)?.name.slice(0, 4) ?? 0),
@@ -252,56 +252,56 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       {
         type: "d1",
         name: "crm",
-        placeholder: "$D1_ID(crm)",
+        placeholder: "$D1_ID(ros)",
         implicit: false,
-        usedBy: ["crm-app", "crm-runner"],
+        usedBy: ["ros-app", "ros-runner"],
         optional: false,
       },
       {
         type: "r2",
-        name: "crm-blobs",
-        placeholder: "$R2_NAME(crm-blobs)",
+        name: "ros-blobs",
+        placeholder: "$R2_NAME(ros-blobs)",
         implicit: false,
-        usedBy: ["crm-app"],
+        usedBy: ["ros-app"],
         optional: false,
       },
       {
         type: "kv",
-        name: "crm-app-oauth-kv",
-        placeholder: "$KV_ID(crm-app-oauth-kv)",
+        name: "ros-app-oauth-kv",
+        placeholder: "$KV_ID(ros-app-oauth-kv)",
         implicit: false,
-        usedBy: ["crm-app"],
+        usedBy: ["ros-app"],
         optional: false,
       },
       {
         type: "durable_object",
         name: "Workspace",
         implicit: true,
-        usedBy: ["crm-runner"],
+        usedBy: ["ros-runner"],
         optional: false,
       },
       {
         type: "queue",
-        name: "crm-automation-events",
-        placeholder: "$QUEUE_NAME(crm-automation-events)",
+        name: "ros-automation-events",
+        placeholder: "$QUEUE_NAME(ros-automation-events)",
         implicit: false,
-        usedBy: ["crm-runner"],
+        usedBy: ["ros-runner"],
         optional: false,
       },
       {
         type: "queue",
-        name: "crm-automation-events-dlq",
-        placeholder: "$QUEUE_NAME(crm-automation-events-dlq)",
+        name: "ros-automation-events-dlq",
+        placeholder: "$QUEUE_NAME(ros-automation-events-dlq)",
         implicit: false,
-        usedBy: ["crm-runner"],
+        usedBy: ["ros-runner"],
         optional: false,
       },
       {
         type: "vectorize",
-        name: "crm-records",
-        placeholder: "$VECTORIZE_NAME(crm-records)",
+        name: "ros-records",
+        placeholder: "$VECTORIZE_NAME(ros-records)",
         implicit: false,
-        usedBy: ["crm-runner"],
+        usedBy: ["ros-runner"],
         optional: false,
         feature: "ai",
         config: {
@@ -312,9 +312,9 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       },
       {
         type: "workflow",
-        name: "crm-automation",
+        name: "ros-automation",
         implicit: true,
-        usedBy: ["crm-runner"],
+        usedBy: ["ros-runner"],
         optional: false,
       },
     ],
@@ -323,7 +323,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       {
         name: "IDENTITY_PROVIDER",
         kind: "var",
-        workers: ["crm-app"],
+        workers: ["ros-app"],
         options: ["better-auth", "cloudflare-access"],
         default: "better-auth",
         description: "Identity adapter",
@@ -331,21 +331,21 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       {
         name: "AI_GATEWAY_ID",
         kind: "var",
-        workers: ["crm-app", "crm-runner"],
+        workers: ["ros-app", "ros-runner"],
         default: "",
         description: "AI Gateway every model call goes through",
       },
       {
         name: "AI_MODEL_ROLES",
         kind: "var",
-        workers: ["crm-app", "crm-runner"],
+        workers: ["ros-app", "ros-runner"],
         default: "",
         description: "Deploy-config layer of the model registry",
       },
       {
         name: "AI_GATEWAY_BYOK",
         kind: "var",
-        workers: ["crm-app", "crm-runner"],
+        workers: ["ros-app", "ros-runner"],
         default: "",
         description: "Providers whose key AI Gateway holds as BYOK",
       },

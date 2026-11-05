@@ -3,7 +3,7 @@
 // the per-user inbox (list, unread count, mark read), links → app paths, retention, and that the
 // inbox queries keep to their indexes (EXPLAIN QUERY PLAN, rows read).
 import { env } from "cloudflare:workers";
-import { createCrmDb } from "@crm/db";
+import { createCrmDb } from "@relationship-os/db";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   type ActingUser,

@@ -6,7 +6,7 @@
 
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { generateNonce } from "@crm/gatekeeper-kit/connect-nonce";
+import { generateNonce } from "@relationship-os/gatekeeper-kit/connect-nonce";
 import worker from "../../src/microsoft";
 import type { PublicGrant } from "../../src/microsoft-credentials";
 import { SHAREPOINT_RESOURCE, getRedirectUri, scopesFor, type Env } from "../../src/microsoft-env";

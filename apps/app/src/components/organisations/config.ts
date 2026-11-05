@@ -1,6 +1,6 @@
 // Organisations list configuration: which organisation fields the list shows and offers.
-import type { OrganisationListItem } from "@crm/core";
-import { organisationObject, type Sort } from "@crm/core/client";
+import type { OrganisationListItem } from "@relationship-os/core";
+import { organisationObject, type Sort } from "@relationship-os/core/client";
 import type { ViewDefaults } from "../views/view-state.ts";
 
 /** Fields organisation.list returns that make sense as columns, in picker order. */

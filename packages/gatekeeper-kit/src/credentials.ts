@@ -1,7 +1,7 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-kit/src/credentials.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 /** Account-side credential storage and consumer-side RPC access. */
 
-import { createLogger } from "@crm/gatekeeper-observability/logger";
+import { createLogger } from "@relationship-os/gatekeeper-observability/logger";
 import { ACCESS_TOKEN_SAFETY_MS, generateNonce } from "./connect-nonce";
 import { clearCredentialExpiryLatch } from "./credential-expiry";
 import type { KvMutable } from "./kv";

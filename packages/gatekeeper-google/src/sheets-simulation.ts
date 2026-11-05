@@ -22,10 +22,10 @@
  * about which cells a change writes.
  */
 
-import type { TaggedAction } from "@crm/gatekeeper-kit/actions";
+import type { TaggedAction } from "@relationship-os/gatekeeper-kit/actions";
 import {
   replaySimulation, type SimulationResult, type SimulationStep,
-} from "@crm/gatekeeper-kit/simulation";
+} from "@relationship-os/gatekeeper-kit/simulation";
 import type { SheetArea } from "./sheets-api";
 import { mergeFormat, type BaseFormats, type FormatEntry } from "./sheets-format";
 import {

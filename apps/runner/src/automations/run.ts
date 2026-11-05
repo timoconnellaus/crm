@@ -14,14 +14,14 @@ import {
   type RunStatus,
   type RunStepRecord,
   TERMINAL_RUN_STATUSES,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import type {
   AutomationAdvance,
   AutomationEvent,
   AutomationJournalEntry,
   AutomationManifest,
-} from "@crm/sdk";
+} from "@relationship-os/sdk";
 import { sql } from "kysely";
 import { type Executor, PERMANENT_AUTOMATION_ERRORS } from "../executor/executor.ts";
 import type { RunLog, RunOperation } from "../executor/host.ts";

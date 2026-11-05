@@ -1,4 +1,4 @@
-import type { ActionField } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ActionField } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SlackPostReceipt, SlackPostRecord } from "../src/types";
 import { SlackPostUserAccount } from "../src/worker";

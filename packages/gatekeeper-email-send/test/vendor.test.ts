@@ -1,5 +1,5 @@
 import { exports } from "cloudflare:workers";
-import type { SupportedResource } from "@crm/gatekeeper-interface/gatekeeper";
+import type { SupportedResource } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { describe, expect, it } from "vitest";
 import senderConfigurator from "../src/configurator/sender-configurator-ui";
 import { assertSenderAllowed, senderFromUrl, senderUrl } from "../src/sender";

@@ -1,6 +1,6 @@
 -- Migration 0131: the in-app notification centre (stage 5, ADR 0029, ADR 0132).
 --
--- One row per notification per user. Typed (`type`, see NOTIFICATION_TYPES in @crm/core) so stage
+-- One row per notification per user. Typed (`type`, see NOTIFICATION_TYPES in @relationship-os/core) so stage
 -- 6b can route types to email or Slack. Kept 90 days (the daily maintenance cron).
 CREATE TABLE core_notifications (
   id TEXT PRIMARY KEY NOT NULL,

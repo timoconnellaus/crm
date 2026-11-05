@@ -5,8 +5,8 @@
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RpcStub } from "cloudflare:workers";
-import type { ObserverStrategy } from "@crm/gatekeeper-kit/observers";
-import type { ApprovalQueue, ObservationDescription } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ObserverStrategy } from "@relationship-os/gatekeeper-kit/observers";
+import type { ApprovalQueue, ObservationDescription } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { definitions, type CalendarAction, type CalendarActions } from "../src/calendar-actions";
 import type { CalendarAccessLevel, CalendarScope } from "../src/calendar-scope";
 import { CalendarContext, CalendarReaderImpl, CalendarSessionImpl, type CalendarSessionHost } from "../src/calendar-session";

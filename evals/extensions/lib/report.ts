@@ -3,8 +3,8 @@
 // check issue the model hit on the way, by stage and code, which is what feeds the SDK docs.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ModelParams } from "@crm/evals-mcp/lib/model.ts";
-import { cell, describeModel, summaryLine } from "@crm/evals-mcp/lib/report.ts";
+import type { ModelParams } from "@relationship-os/evals-mcp/lib/model.ts";
+import { cell, describeModel, summaryLine } from "@relationship-os/evals-mcp/lib/report.ts";
 import type { FailureKind, PromptResult } from "./harness.ts";
 
 export interface ExtensionsReport {

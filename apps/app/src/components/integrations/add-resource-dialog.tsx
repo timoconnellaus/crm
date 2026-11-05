@@ -3,8 +3,8 @@
 // (connection.bindResource). The picker is the gatekeeper's configurator spec rendered with our
 // shadcn runtime; its `ui` calls go through connection.configure. A type with no spec (the
 // dev-only fake gatekeeper) gets a generic form: one field per named group of its URL pattern.
-import type { ConfiguratorUISpec } from "@crm/gatekeeper-configurator-ui";
-import { Button } from "@crm/ui/components/button";
+import type { ConfiguratorUISpec } from "@relationship-os/gatekeeper-configurator-ui";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -12,11 +12,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
-import { RadioGroup, RadioGroupItem } from "@crm/ui/components/radio-group";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/dialog";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
+import { RadioGroup, RadioGroupItem } from "@relationship-os/ui/components/radio-group";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { callOp } from "#/lib/operations";

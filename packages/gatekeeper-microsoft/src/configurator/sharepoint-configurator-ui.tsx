@@ -2,7 +2,7 @@
 import {
   Button, Field, Fragment, h, Notice, Section,
   type ConfiguratorUIRenderContext, type ConfiguratorUISpec,
-} from "@crm/gatekeeper-configurator-ui";
+} from "@relationship-os/gatekeeper-configurator-ui";
 import type {
   SharePointBrowserCrumb as Crumb,
   SharePointBrowserIcon as Icon,

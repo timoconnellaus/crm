@@ -19,7 +19,7 @@
 // read a draft (a page with unpublished changes, a minor version, an item awaiting approval) the
 // unit pins that version, and the probe passes only if the observer is shown the same one.
 
-import { trackedCollectionObservers, type ObserverKv, type ObserverStrategy } from "@crm/gatekeeper-kit/observers";
+import { trackedCollectionObservers, type ObserverKv, type ObserverStrategy } from "@relationship-os/gatekeeper-kit/observers";
 import { MAX_BATCH_REQUESTS, type BatchRequest, type GraphApi } from "./graph-api";
 import type { MicrosoftVerifierApi, StoredIdentity } from "./microsoft-credentials";
 import { VENDOR_ID } from "./microsoft-env";

@@ -1,4 +1,4 @@
 import { env } from "cloudflare:workers";
-import { applyMigrations } from "@crm/db";
+import { applyMigrations } from "@relationship-os/db";
 
 await applyMigrations(env.DB, env.TEST_MIGRATIONS);

@@ -7,7 +7,7 @@ The stage 5 build environment had no Cloudflare credentials (no `CLOUDFLARE_ACCO
 attempted the 10 cases and no pass rate is claimed. The target is **at least 8 of 10** (stage 5,
 acceptance criterion 9).
 
-Verified: the harness and graders are unit-tested (`pnpm --filter @crm/evals-automations test`)
+Verified: the harness and graders are unit-tested (`pnpm --filter @relationship-os/evals-automations test`)
 against a stand-in model and an in-memory deployment. The tests cover the three phases, every
 failure kind (never proposed, check fails, not approved, wrong trigger, wrong test-mode output,
 summary keywords, judge rejection), the judge's parsing and retry, the CLI and the report writer.

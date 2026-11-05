@@ -1,12 +1,12 @@
-// GET /api/health: version, commit, D1 migration level and a crm-runner ping.
-import { identityProviderKind } from "@crm/auth";
-import { getMigrationLevel, type MigrationLevel } from "@crm/db";
+// GET /api/health: version, commit, D1 migration level and a ros-runner ping.
+import { identityProviderKind } from "@relationship-os/auth";
+import { getMigrationLevel, type MigrationLevel } from "@relationship-os/db";
 import { runner } from "./runner.ts";
 
 export interface HealthEnv {
   DB: D1Database;
   /** The installed release (stage 8); empty for a source deploy. */
-  CRM_RELEASE_VERSION?: string;
+  ROS_RELEASE_VERSION?: string;
   IDENTITY_PROVIDER?: string;
   RUNNER: Fetcher;
 }
@@ -54,7 +54,7 @@ export async function getHealth(env: HealthEnv): Promise<Health> {
   return {
     status: database.ok && runnerHealth.ok ? "ok" : "degraded",
     // The release version when installed from a release, so smoke checks can see the switch.
-    version: env.CRM_RELEASE_VERSION || VERSION,
+    version: env.ROS_RELEASE_VERSION || VERSION,
     commit: COMMIT,
     identityProvider,
     database,

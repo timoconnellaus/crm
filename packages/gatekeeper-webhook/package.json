@@ -1,5 +1,5 @@
 {
-  "name": "@crm/gatekeeper-webhook",
+  "name": "@relationship-os/gatekeeper-webhook",
   "version": "0.0.0",
   "private": true,
   "description": "Gatekeeper Worker for inbound webhooks: verifies provider signatures and delivers typed events to a bound hook.",
@@ -18,13 +18,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@crm/gatekeeper-configurator-ui": "workspace:*",
-    "@crm/gatekeeper-interface": "workspace:*",
-    "@crm/gatekeeper-kit": "workspace:*"
+    "@relationship-os/gatekeeper-configurator-ui": "workspace:*",
+    "@relationship-os/gatekeeper-interface": "workspace:*",
+    "@relationship-os/gatekeeper-kit": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
-    "@crm/config": "workspace:*",
+    "@relationship-os/config": "workspace:*",
     "typescript": "6.0.3",
     "vitest": "5.1.0",
     "wrangler": "4.157.0"

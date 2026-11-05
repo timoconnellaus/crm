@@ -1,7 +1,7 @@
-import { Button } from "@crm/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
+import { Button } from "@relationship-os/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
 import { authClient } from "../lib/auth-client.ts";
@@ -58,7 +58,7 @@ function SignInPage() {
     <div className="flex min-h-svh items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Sign in to CRM</CardTitle>
+          <CardTitle>Sign in to Relationship OS</CardTitle>
           <CardDescription>
             {methods.kind === "better-auth"
               ? "Use your email and password."

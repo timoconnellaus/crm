@@ -5,8 +5,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
-import { Kbd, KbdGroup } from "@crm/ui/components/kbd";
+} from "@relationship-os/ui/components/dialog";
+import { Kbd, KbdGroup } from "@relationship-os/ui/components/kbd";
 import { SHORTCUTS } from "#/lib/shortcuts";
 
 export function ShortcutSheet({

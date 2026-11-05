@@ -2,8 +2,8 @@
 // a summary, hybrid search, similar records, timeline one-liners and an embedding drain round walk
 // indexes and primary keys, never whole tables. Writes add one queue statement, not a scan.
 import { env } from "cloudflare:workers";
-import { createCrmDb } from "@crm/db";
-import { seedDatabase } from "@crm/db/seed";
+import { createCrmDb } from "@relationship-os/db";
+import { seedDatabase } from "@relationship-os/db/seed";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   type ActingUser,

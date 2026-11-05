@@ -12,10 +12,10 @@
 // skipped. A record with nothing to embed has its vector deleted, which is also how an erase
 // (ADR 0019) removes vectors.
 //
-// The seam (`EmbeddingProducer`): today the pipeline enqueues and crm-app drains after the commit;
+// The seam (`EmbeddingProducer`): today the pipeline enqueues and ros-app drains after the commit;
 // stage 5's event queue can call `enqueueEmbeddings` / `drainEmbeddingQueue` from its consumer
 // instead, without changing what is embedded or how.
-import type { CoreDatabase, CrmDb } from "@crm/db";
+import type { CoreDatabase, CrmDb } from "@relationship-os/db";
 import { type Compilable, type CompiledQuery, type Kysely, sql } from "kysely";
 
 type Statement = Compilable | CompiledQuery;

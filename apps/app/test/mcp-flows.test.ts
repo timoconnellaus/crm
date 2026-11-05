@@ -1,7 +1,7 @@
 // /mcp end to end, continued (stage 2 AC3-7 and 9): scopes and revocation, the Balanced gate,
 // simulation and approval in one session, rejection cascades, and per-token rate limits.
 import { env } from "cloudflare:workers";
-import { memoryRateLimit } from "@crm/core";
+import { memoryRateLimit } from "@relationship-os/core";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { runOperation } from "../src/server/operations.ts";
 import {

@@ -33,12 +33,12 @@ async function setup(version = "1.0.0") {
   });
   const bundle = await openBundle((await buildFixtureRelease({ version })).bundle);
   const resources = await provisionResources(api, ACCOUNT, neededResources(bundle.manifest, []));
-  const databaseId = resources["D1_ID(crm)"] as string;
+  const databaseId = resources["D1_ID(ros)"] as string;
   await applyBundleMigrations(bundle, d1ApiMigrations(api, ACCOUNT, databaseId));
   const state: DeploymentState = {
     version,
     accountId: ACCOUNT,
-    hostname: "crm-app.example.workers.dev",
+    hostname: "ros-app.example.workers.dev",
     hostnameMode: "workers.dev",
     identityProvider: "better-auth",
     channel: "stable",
@@ -52,7 +52,7 @@ async function setup(version = "1.0.0") {
     api,
     bundle,
     state,
-    secrets: { "crm-app": { BETTER_AUTH_SECRET: "x".repeat(64) } },
+    secrets: { "ros-app": { BETTER_AUTH_SECRET: "x".repeat(64) } },
   });
   return { cf, api, bundle, state, databaseId };
 }
@@ -63,14 +63,14 @@ const rows = async (api: CloudflareClient, db: string, sql: string) =>
 describe("deploy engine", () => {
   it("installs every required Worker, keeps secrets and enables workers.dev for the app", async () => {
     const { cf } = await setup();
-    expect([...cf.scripts.keys()].sort()).toEqual(["crm-app", "crm-runner"]);
-    expect(cf.scripts.get("crm-app")?.secrets.get("BETTER_AUTH_SECRET")).toHaveLength(64);
-    expect(cf.scripts.get("crm-app")?.workersDev).toBe(true);
-    expect(cf.scripts.get("crm-runner")?.workersDev).toBe(false);
-    expect(cf.scripts.get("crm-runner")?.migrationTag).toBe("v1");
-    expect(cf.liveBinding("crm-app", "CRM_ACCOUNT_ID")?.text).toBe(ACCOUNT);
-    expect(cf.liveBinding("crm-runner", "APP_ORIGIN")?.text).toBe(
-      "https://crm-app.example.workers.dev",
+    expect([...cf.scripts.keys()].sort()).toEqual(["ros-app", "ros-runner"]);
+    expect(cf.scripts.get("ros-app")?.secrets.get("BETTER_AUTH_SECRET")).toHaveLength(64);
+    expect(cf.scripts.get("ros-app")?.workersDev).toBe(true);
+    expect(cf.scripts.get("ros-runner")?.workersDev).toBe(false);
+    expect(cf.scripts.get("ros-runner")?.migrationTag).toBe("v1");
+    expect(cf.liveBinding("ros-app", "ROS_ACCOUNT_ID")?.text).toBe(ACCOUNT);
+    expect(cf.liveBinding("ros-runner", "APP_ORIGIN")?.text).toBe(
+      "https://ros-app.example.workers.dev",
     );
   });
 
@@ -106,8 +106,8 @@ describe("deploy engine", () => {
     expect(outcome.status).toBe("succeeded");
     expect(outcome.migrations).toEqual(["0161_more.sql"]);
     expect(steps).toEqual(["pause", "bookmark", "migrate", "switch", "smoke", "resume", "done"]);
-    expect(cf.liveBinding("crm-app", "CRM_RELEASE_VERSION")?.text).toBe("1.1.0");
-    expect(cf.scripts.get("crm-runner")?.migrationTag).toBe("v2");
+    expect(cf.liveBinding("ros-app", "ROS_RELEASE_VERSION")?.text).toBe("1.1.0");
+    expect(cf.scripts.get("ros-runner")?.migrationTag).toBe("v2");
     expect((await readDeploymentState(api, ACCOUNT, databaseId))?.version).toBe("1.1.0");
     expect(await rows(api, databaseId, "SELECT name FROM core_person")).toEqual([{ name: "Ada" }]);
   });
@@ -119,7 +119,7 @@ describe("deploy engine", () => {
       databaseId,
       "INSERT INTO core_person (id, name) VALUES ('p1', 'Ada')",
     );
-    const live = cf.scripts.get("crm-app")?.current;
+    const live = cf.scripts.get("ros-app")?.current;
     const target = await openBundle(
       (
         await buildFixtureRelease({
@@ -142,7 +142,7 @@ describe("deploy engine", () => {
     });
     expect(outcome.status).toBe("rolled_back");
     expect(outcome.error).toMatch(/no_such_table/);
-    expect(cf.scripts.get("crm-app")?.current).toBe(live);
+    expect(cf.scripts.get("ros-app")?.current).toBe(live);
     expect(await rows(api, databaseId, "SELECT name FROM core_person")).toEqual([{ name: "Ada" }]);
     expect(
       (await rows(api, databaseId, "SELECT name FROM core_migrations")).map((r) => r.name),
@@ -176,7 +176,7 @@ describe("deploy engine", () => {
       },
     });
     expect(outcome.status).toBe("rolled_back");
-    expect(cf.liveBinding("crm-app", "CRM_RELEASE_VERSION")?.text).toBe("1.0.0");
+    expect(cf.liveBinding("ros-app", "ROS_RELEASE_VERSION")?.text).toBe("1.0.0");
     expect(await rows(api, databaseId, "SELECT name FROM core_person")).toEqual([{ name: "Ada" }]);
     expect((await readDeploymentState(api, ACCOUNT, databaseId))?.version).toBe("1.0.0");
   });
@@ -186,29 +186,29 @@ describe("Stage 5 and 7a resources", () => {
   it("provisions queues, the DLQ, consumers, Workflows and the Vectorize index, idempotently", async () => {
     const { cf, api, state, bundle } = await setup();
     expect([...cf.queues.values()].map((q) => q.name).sort()).toEqual([
-      "crm-automation-events",
-      "crm-automation-events-dlq",
+      "ros-automation-events",
+      "ros-automation-events-dlq",
     ]);
-    const events = [...cf.queues.values()].find((q) => q.name === "crm-automation-events");
+    const events = [...cf.queues.values()].find((q) => q.name === "ros-automation-events");
     expect(events?.consumers).toEqual([
       expect.objectContaining({
-        script_name: "crm-runner",
-        dead_letter_queue: "crm-automation-events-dlq",
+        script_name: "ros-runner",
+        dead_letter_queue: "ros-automation-events-dlq",
         settings: { batch_size: 100, max_retries: 5, max_wait_time_ms: 5000 },
       }),
     ]);
-    expect(cf.workflows.get("crm-automation")).toEqual({
+    expect(cf.workflows.get("ros-automation")).toEqual({
       className: "AutomationWorkflow",
-      script: "crm-runner",
+      script: "ros-runner",
     });
-    expect(cf.liveBinding("crm-runner", "AUTOMATION_EVENTS")?.queue_name).toBe(
-      "crm-automation-events",
+    expect(cf.liveBinding("ros-runner", "AUTOMATION_EVENTS")?.queue_name).toBe(
+      "ros-automation-events",
     );
-    expect(cf.liveBinding("crm-runner", "AUTOMATION_RATE_LIMIT")).toMatchObject({
+    expect(cf.liveBinding("ros-runner", "AUTOMATION_RATE_LIMIT")).toMatchObject({
       namespace_id: "4201",
     });
-    expect(cf.vectorize.get("crm-records")).toEqual({ dimensions: 384, metric: "cosine" });
-    expect(cf.vectorizeMetadata.get("crm-records")).toEqual([
+    expect(cf.vectorize.get("ros-records")).toEqual({ dimensions: 384, metric: "cosine" });
+    expect(cf.vectorizeMetadata.get("ros-records")).toEqual([
       { propertyName: "object", indexType: "string" },
     ]);
     // A second run changes nothing and creates no second consumer or metadata index.
@@ -216,16 +216,16 @@ describe("Stage 5 and 7a resources", () => {
     await deployWorkers({ api, bundle, state, secrets: {} });
     expect(cf.queues.size).toBe(2);
     expect(events?.consumers).toHaveLength(1);
-    expect(cf.vectorizeMetadata.get("crm-records")).toHaveLength(1);
+    expect(cf.vectorizeMetadata.get("ros-records")).toHaveLength(1);
   });
 
   it("binds Workers AI and Vectorize when AI is on, without the manifest's feature tag", async () => {
     const { cf } = await setup();
-    expect(cf.liveBinding("crm-runner", "AI")).toEqual({ type: "ai", name: "AI" });
-    expect(cf.liveBinding("crm-runner", "VECTORIZE")).toEqual({
+    expect(cf.liveBinding("ros-runner", "AI")).toEqual({ type: "ai", name: "AI" });
+    expect(cf.liveBinding("ros-runner", "VECTORIZE")).toEqual({
       type: "vectorize",
       name: "VECTORIZE",
-      index_name: "crm-records",
+      index_name: "ros-records",
     });
   });
 
@@ -240,12 +240,12 @@ describe("Stage 5 and 7a resources", () => {
     const needed = neededResources(bundle.manifest, [], { ai: false });
     expect(needed.some((r) => r.type === "vectorize")).toBe(false);
     const resources = await provisionResources(api, ACCOUNT, needed);
-    const databaseId = resources["D1_ID(crm)"] as string;
+    const databaseId = resources["D1_ID(ros)"] as string;
     await applyBundleMigrations(bundle, d1ApiMigrations(api, ACCOUNT, databaseId));
     const state: DeploymentState = {
       version: "1.0.0",
       accountId: ACCOUNT,
-      hostname: "crm-app.example.workers.dev",
+      hostname: "ros-app.example.workers.dev",
       hostnameMode: "workers.dev",
       identityProvider: "better-auth",
       channel: "stable",
@@ -258,8 +258,8 @@ describe("Stage 5 and 7a resources", () => {
     await writeDeploymentState(api, databaseId, state);
     await deployWorkers({ api, bundle, state, secrets: {} });
     expect(cf.vectorize.size).toBe(0);
-    expect(cf.liveBinding("crm-runner", "AI")).toBeUndefined();
-    expect(cf.liveBinding("crm-runner", "VECTORIZE")).toBeUndefined();
+    expect(cf.liveBinding("ros-runner", "AI")).toBeUndefined();
+    expect(cf.liveBinding("ros-runner", "VECTORIZE")).toBeUndefined();
 
     // Re-installed with --ai on: the next update creates the index before switching.
     const target = await openBundle((await buildFixtureRelease({ version: "1.1.0" })).bundle);
@@ -273,13 +273,13 @@ describe("Stage 5 and 7a resources", () => {
       smoke: async () => {},
     });
     expect(outcome.status).toBe("succeeded");
-    expect(cf.vectorize.get("crm-records")).toEqual({ dimensions: 384, metric: "cosine" });
-    expect(cf.liveBinding("crm-runner", "VECTORIZE")?.index_name).toBe("crm-records");
+    expect(cf.vectorize.get("ros-records")).toEqual({ dimensions: 384, metric: "cosine" });
+    expect(cf.liveBinding("ros-runner", "VECTORIZE")?.index_name).toBe("ros-records");
     expect(
       (await readDeploymentState(api, ACCOUNT, databaseId))?.resources[
-        "VECTORIZE_NAME(crm-records)"
+        "VECTORIZE_NAME(ros-records)"
       ],
-    ).toBe("crm-records");
+    ).toBe("ros-records");
   });
 });
 
@@ -381,13 +381,13 @@ describe("preflight", () => {
       target,
       appliedMigrations: current.migrations.map((m) => m.name),
       extensions: [],
-      installedGatekeepers: ["crm-gatekeeper-test"],
-      secretsSet: { "crm-app": ["BETTER_AUTH_SECRET"], "crm-gatekeeper-test": ["CLIENT_SECRET"] },
+      installedGatekeepers: ["ros-gatekeeper-test"],
+      secretsSet: { "ros-app": ["BETTER_AUTH_SECRET"], "ros-gatekeeper-test": ["CLIENT_SECRET"] },
     });
     expect(result.migrations).toEqual(["0161_x.sql"]);
-    expect(result.gatekeepers.changed).toEqual(["crm-gatekeeper-test"]);
+    expect(result.gatekeepers.changed).toEqual(["ros-gatekeeper-test"]);
     expect(result.secrets).toContainEqual({
-      worker: "crm-app",
+      worker: "ros-app",
       name: "NEW_KEY",
       required: true,
       set: false,

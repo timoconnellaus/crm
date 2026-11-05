@@ -6,9 +6,9 @@
 //
 //   node evals/automations/smoke.ts --base-url http://localhost:5173 [--only weekly-digest] [--propose]
 import { parseArgs } from "node:util";
-import { makeSuffix } from "@crm/evals-mcp/lib/harness.ts";
-import { openMcpSession, parseResult } from "@crm/evals-mcp/lib/mcp.ts";
-import { authorize, signIn } from "@crm/evals-mcp/lib/oauth.ts";
+import { makeSuffix } from "@relationship-os/evals-mcp/lib/harness.ts";
+import { openMcpSession, parseResult } from "@relationship-os/evals-mcp/lib/mcp.ts";
+import { authorize, signIn } from "@relationship-os/evals-mcp/lib/oauth.ts";
 import { CrmClient } from "./lib/crm.ts";
 import { AUTHORING_TOOLS } from "./lib/harness.ts";
 import { referenceSource } from "./lib/reference.ts";

@@ -1,7 +1,7 @@
 // runPrompt end to end with a scripted model and an in-memory extension workspace that follows
 // the extension_* tool contract: write the working copy, check it, propose it, then the grader's
 // own check of the working copy and the prompt's expectations.
-import { fakeSession, reply, scriptedModel, toolCall } from "@crm/evals-mcp/test/fakes.ts";
+import { fakeSession, reply, scriptedModel, toolCall } from "@relationship-os/evals-mcp/test/fakes.ts";
 import { describe, expect, it } from "vitest";
 import { type ExtensionsHarnessDeps, runPrompt } from "../lib/harness.ts";
 import type { Manifest } from "../lib/manifest.ts";

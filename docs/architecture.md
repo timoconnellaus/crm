@@ -55,14 +55,14 @@ gatekeepers.
  GitHub Release: crm-X.Y.Z.tar.gz · crm-X.Y.Z.manifest.json · SHA256SUMS · build attestation
                     │ downloaded + verified (sha256, attestation, every file vs manifest)
         ┌───────────┴─────────────┐
- npx create-crm / crm upgrade    Settings → Updates (self-updater, optional CRM_UPDATE_TOKEN)
+ npx create-relationship-os / ros upgrade    Settings → Updates (self-updater, optional ROS_UPDATE_TOKEN)
         └───────────┬─────────────┘
           packages/release: Cloudflare REST API (no wrangler) — provision, migrate, stage versions,
           switch all Workers, smoke-check; bookmark + restore for rollback
 ```
 
 - **Release bundle** ([ADR 0160](adr/0160-release-manifest-and-bundle.md)): `scripts/release`
-  builds every Worker with wrangler's dry run, crm-app's assets and the migrations into one
+  builds every Worker with wrangler's dry run, ros-app's assets and the migrations into one
   reproducible tar.gz; the manifest is generated from the wrangler configs, with `$ACCOUNT_ID`,
   `$HOSTNAME`, `$SECRET(…)`, `$WORKER_NAME(…)` and resource placeholders.
 - **Versions and channels** ([ADR 0161](adr/0161-versions-channels-and-release-workflow.md)):
@@ -70,7 +70,7 @@ gatekeepers.
 - **Verification** ([ADR 0162](adr/0162-release-verification.md)): SHA256SUMS plus GitHub's
   attestation store; `gh attestation verify` in the CLI when available.
 - **Deploy engine** ([ADR 0163](adr/0163-deploy-engine-over-the-cloudflare-api.md)) and the
-  **create-crm** CLI ([ADR 0165](adr/0165-installer-cli-and-deployment-state.md)); installer choices
+  **create-relationship-os** CLI ([ADR 0165](adr/0165-installer-cli-and-deployment-state.md)); installer choices
   live in D1 (`core_install`) so every later deploy matches.
 - **Self-updater** ([ADR 0054](adr/0054-self-updater.md), [ADR 0164](adr/0164-update-procedure-preflight-and-rollback.md)):
   `update.*` operations (human admins) behind an `UpdaterRuntime` port; preflight blocks an
@@ -105,7 +105,7 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
 
 - **Core schema** (`core_*` tables): our versioned migrations, applied on deploy or upgrade. It covers
   the minimal core objects (People, Organisations, Activities, Tasks), users, settings, the approval
-  queue and the audit log. Deletes are soft (Trash); a daily cron trigger on `crm-app` purges
+  queue and the audit log. Deletes are soft (Trash); a daily cron trigger on `ros-app` purges
   people, organisations, activities and tasks after 30 days through the operations pipeline
   (`trash.purge`), and admin erase redacts the append-only audit log through a sanctioned path
   ([ADR 0019](adr/0019-audit-redaction-for-erasure.md)).
@@ -151,7 +151,7 @@ How stage 3a built it ([ADR 0040](adr/0040-extension-runtime-build.md)):
 
 - **Contract**: `defineExtension({ id, version, contractVersion, permissions, objects, fields,
   views, tools, automations })` in `packages/sdk`, with every field type and a typed formula
-  language compiled to SQLite (`@crm/sdk/formula`). See `packages/sdk/README.md`.
+  language compiled to SQLite (`@relationship-os/sdk/formula`). See `packages/sdk/README.md`.
 - **Reconciler** (`packages/core/src/extensions/reconciler.ts`): manifest → ordered DDL over
   `x_<ext>_<object>` tables and 1:1 side tables `x_<ext>_<target>`, plus regenerated `crm_*` views,
   dry-run by `extension.check` and applied atomically by `extension.install`.
@@ -163,9 +163,9 @@ How stage 3a built it ([ADR 0040](adr/0040-extension-runtime-build.md)):
   - **The workspace.** The `ExtensionWorkspace` DO holds each extension's source in its own git
     repo, plus the build cache. It runs no code.
   - **Builds.** A build is a transpile, an import check and a TypeScript type check against
-    `@crm/sdk`'s declarations. The type check runs in its own Dynamic Worker. Builds are cached by
+    `@relationship-os/sdk`'s declarations. The type check runs in its own Dynamic Worker. Builds are cached by
     a content hash of the source.
-  - **The executor.** It runs from crm-runner's stateless entrypoint, so runs execute in parallel.
+  - **The executor.** It runs from ros-runner's stateless entrypoint, so runs execute in parallel.
     Tool and manifest workers come from `LOADER.get(stableId)`: the id hashes the extension,
     commit, host modules, SDK and runtime. Only Code Mode uses `load()`.
   - **Per-run context.** Each call gets its context as RPC arguments, including a per-run host
@@ -225,11 +225,11 @@ How stage 5 runs automations ([ADR 0130](adr/0130-automation-runtime.md), test m
 
 ```
  operation commits ─► EventSink (≤100 changes/message, one sendBatch per operation, origin-tagged)
-   ─► Queue crm-automation-events ─► crm-runner queue() ─► dispatchAutomationMessages
+   ─► Queue ros-automation-events ─► ros-runner queue() ─► dispatchAutomationMessages
         TriggerSource per message kind (record, approval; 6b: integration)
         ─► rails: kill switch, depth ≤ 3, cycle, bulk, debounce, conditions, fan-out, rate limits
         ─► run row (INSERT … ON CONFLICT DO NOTHING on the Workflow id) ─► createBatch
- crm-runner cron (* * * * *) ─► schedules in the automation timezone, daily date-relative scan
+ ros-runner cron (* * * * *) ─► schedules in the automation timezone, daily date-relative scan
  AutomationWorkflow: start ─► advance:<n> (executor.runAutomation via LOADER.get) ─► sleep / wait
         ─► review pause (waitForEvent approval-<actionId>) ─► finish (counters, history)
 ```
@@ -246,7 +246,7 @@ How stage 5 runs automations ([ADR 0130](adr/0130-automation-runtime.md), test m
 - **Test mode.** One executor call with `InvocationContext.simulate`: gates recorded, writes
   dry-run into an in-memory overlay, nothing written, no events.
 - **Operations.** `automation.list/get/test/enable/disable/runs/run/retry/replay/cancel/explain/
-  killSwitch/settings/updateSettings` (`packages/core/src/operations/automation.ts`); crm-app
+  killSwitch/settings/updateSettings` (`packages/core/src/operations/automation.ts`); ros-app
   reaches the runner's `AutomationHost` RPC for test, run, retry, replay and cancel.
 - **History.** `core_automation_runs` and `core_automation_run_records`, purged by the daily cron
   (30 days, failed 90).
@@ -261,19 +261,19 @@ the network directly. `gatekeeper-mcp` lets an admin connect any MCP server at r
 Stage 6a ([ADR 0110](adr/0110-integration-host-per-connection.md) to
 [ADR 0114](adr/0114-own-gatekeepers-pickers-and-host-modules.md)):
 
-- **Integration host**: one Durable Object per **connection** in `crm-runner`
+- **Integration host**: one Durable Object per **connection** in `ros-runner`
   (`INTEGRATION_HOST.getByName(connectionId)`). It holds the gatekeeper account, one facet per bound
   resource (recreated from its stored class stub after a restart), hook controllers and sync state.
   D1 (`core_integration_connection`) mirrors connections for the UI. Operations reach it through the
-  `IntegrationRuntime` port (`packages/core/src/integrations/runtime.ts`), over RPC from `crm-app`.
+  `IntegrationRuntime` port (`packages/core/src/integrations/runtime.ts`), over RPC from `ros-app`.
 - **Connect flow**: `connection.create` → provider popup → `/gatekeeper/<vendor>/*` (proxied by
-  `crm-app` to the gatekeeper through `crm-runner`) → `/connect/handoff#ticket` →
+  `ros-app` to the gatekeeper through `ros-runner`) → `/connect/handoff#ticket` →
   `connection.completeConnect`, which activates the account only for the user who started the flow
   and the popup's nonce.
 - **Outbound actions**: a gatekeeper's `submitAction` is gated as risk `outbound` by action kind and
   mirrored into the approval queue; approval calls `applyAction` on the facet, in order per facet.
 - **Sync**: hook-driven, alarm-chunked mail and calendar sync per connection (90 days by default),
-  written by `sync.ingest` with an indexed external key, bodies in R2 (`crm-blobs`), sharing level per
+  written by `sync.ingest` with an indexed external key, bodies in R2 (`ros-blobs`), sharing level per
   connection, private activities, suggested contacts and job-change suggestions.
 - **Code**: `integration.call` (MCP), and `codemode:<gatekeeper>` host modules for extension tools and
   Code Mode.
@@ -309,7 +309,7 @@ mention the erased record (ADR 0032 amendment).
 
 ### MCP
 
-`/mcp` on `crm-app` ([ADR 0021](adr/0021-mcp-surface.md), ADR 0032): `workers-oauth-provider`
+`/mcp` on `ros-app` ([ADR 0021](adr/0021-mcp-surface.md), ADR 0032): `workers-oauth-provider`
 wraps the Worker (OAuth 2.1, dynamic client registration, PKCE, one-hour access tokens and
 30-day refresh tokens in the `OAUTH_KV` namespace). `/oauth/consent` signs the user in through
 the identity adapter and grants scopes `read`, `write` and (admins only) `admin`; effective
@@ -328,7 +328,7 @@ A deploy-time **identity adapter** ([ADR 0008](adr/0008-identity-adapters.md)): 
 default) or Cloudflare Access, selected by env var. The MCP OAuth 2.1 server sits on top and delegates
 login to the active adapter. Identity is never runtime-pluggable.
 
-In `crm-app`, one TanStack Start request middleware resolves the **Principal** for every page
+In `ros-app`, one TanStack Start request middleware resolves the **Principal** for every page
 route, server route and server function call. Everything is private by default: only `/sign-in`,
 `/api/health`, the adapter's own routes (`/api/auth/*`) and server functions in `*.public.ts` files
 are reachable without one. The OAuth routes (`/oauth/*`, `/.well-known/oauth-*`) and `/mcp`
@@ -352,15 +352,15 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
 
 - **The registry** resolves each role through shipped defaults (every role on Workers AI),
   deploy config (`AI_MODEL_ROLES`) and admin overrides (`core_settings.ai_settings`), rejecting
-  models without the role's capabilities, with one fallback per role. crm-app passes the runner to
-  operations as `ctx.models`; crm-runner uses the same registry for `codemode:ai` and proposal
+  models without the role's capabilities, with one fallback per role. ros-app passes the runner to
+  operations as `ctx.models`; ros-runner uses the same registry for `codemode:ai` and proposal
   summaries. Every call goes through AI Gateway when `AI_GATEWAY_ID` is set, tagged with its role;
   the installer and the updater create a gateway per deployment and set it
   ([ADR 0180](adr/0180-ai-gateway-provisioned-per-deployment.md)).
 - **Providers**: Workers AI (the binding) and, optionally, OpenAI, Google AI Studio, OpenRouter,
   DeepSeek, Anthropic, Jev and any OpenAI-compatible endpoint, each through the gateway's
   provider path (`…/{gateway}/deepseek/…`). A deployment can pick a **model role preset**
-  (`create-crm --model-roles deepseek-flash`), stored as its `AI_MODEL_ROLES` in the deployment
+  (`create-relationship-os --model-roles deepseek-flash`), stored as its `AI_MODEL_ROLES` in the deployment
   state, and `AI_GATEWAY_BYOK` says which providers' keys the gateway holds
   ([ADR 0192](adr/0192-deepseek-provider-and-model-role-presets.md)). The shipped defaults stay
   on Workers AI.
@@ -377,19 +377,19 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   [ADR 0155](adr/0155-hybrid-search-similar-records-and-retrieval.md)):
 
 ```
- write ─► pipeline commit ─► stage 5 record events (Queue) ─► crm-runner consumer ─► embedRecordEvents
+ write ─► pipeline commit ─► stage 5 record events (Queue) ─► ros-runner consumer ─► embedRecordEvents
          (no Vectorize, erase, sync: core_embedding_queue rows in the batch ─► onCommitted ─► drain)
-                                       10-minute cron (crm-app) ─► backfill + drain retries
- drain: text per record ─► SHA-256 unchanged? skip : embed role (≤100 per call) ─► Vectorize (crm-records)
+                                       10-minute cron (ros-app) ─► backfill + drain retries
+ drain: text per record ─► SHA-256 unchanged? skip : embed role (≤100 per call) ─► Vectorize (ros-records)
  search.hybrid: FTS5 (all words, any word) + Vectorize nearest ─► reciprocal rank fusion ─► Cmd-K, retrieval
  record.similar: the record's stored vector ─► Vectorize nearest ─► "Similar records"
 ```
 
   Private and metadata-only synced activities are never embedded; an erase deletes vectors and
-  summaries. Changed records are embedded from stage 5's record events by crm-runner's queue
+  summaries. Changed records are embedded from stage 5's record events by ros-runner's queue
   consumer; the D1 queue is only the fallback (ADR 0154 amendment).
 - **Bindings are optional** ([ADR 0156](adr/0156-optional-ai-bindings-and-local-stand-ins.md)):
-  `pnpm run deploy` adds `ai` (both Workers) and `vectorize` (crm-app). Without them AI features
+  `pnpm run deploy` adds `ai` (both Workers) and `vectorize` (ros-app). Without them AI features
   say AI is not configured and search is full-text only. Locally `AI_FAKE_MODEL=true` answers
   every role with deterministic stand-ins and keeps vectors in memory.
 - **Stage 7b** adds the in-app assistant (`assistant` role, retrieval through `search.hybrid` /
@@ -400,7 +400,7 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
 A view spec rendered by our own shadcn/chart components. Widgets query with read-only SQL over the
 `crm.*` views: the SQL is checked by a SQLite-faithful tokenizer validator (one SELECT/WITH,
 `crm_*` views only), takes bound params, and runs with row and time limits
-([ADR 0020](adr/0020-query-sql-validator-and-csv-import.md); `validateReadOnlySql` in `@crm/core`,
+([ADR 0020](adr/0020-query-sql-validator-and-csv-import.md); `validateReadOnlySql` in `@relationship-os/core`,
 used by `query.sql`). Computed widgets are extension code. Extensions never ship UI
 ([ADR 0010](adr/0010-dashboards-sql-views.md)).
 
@@ -420,15 +420,15 @@ How stage 4a built it:
   extensions declare `recordTabs`, `recordPanels` and typed `settings`; `view.recordViews` and
   `extensionSettings.*` serve them to the UI.
 - **Describe a widget** ([ADR 0059](adr/0059-describe-a-widget.md)): `widget.describe` asks the
-  `build` role (Workers AI through the optional `AI` binding on crm-app) for a widget, validates
+  `build` role (Workers AI through the optional `AI` binding on ros-app) for a widget, validates
   and previews it; without AI it says so.
 
 ## Repository layout
 
 ```
 apps/
-  app/                 TanStack Start + shadcn UI, server functions, /mcp       → Worker "crm-app"
-  runner/              extension runtime, automations, Workflows, Queues         → Worker "crm-runner"
+  app/                 TanStack Start + shadcn UI, server functions, /mcp       → Worker "ros-app"
+  runner/              extension runtime, automations, Workflows, Queues         → Worker "ros-runner"
 packages/
   core/                operations registry, risk classes, policy types, model role registry (ai/), schema reconciler
   db/                  core D1 migrations (incl. core_base_* views), typed core schema
@@ -438,14 +438,14 @@ packages/
   config/              shared tsconfig, biome and vitest presets
   release/             release bundles, manifest types, verification, the Cloudflare API deploy
                        engine, preflight and the update procedure (Node and Workers)
-  create-crm/          the installer CLI: npx create-crm, crm upgrade / rollback / status
+  create-relationship-os/          the installer CLI: npx create-relationship-os, ros upgrade / rollback / status
   gatekeeper-interface/ the gatekeeper RPC interface (vendored from cloudflare-os, see UPSTREAMS.md)
   gatekeeper-kit/      gatekeeper building blocks (vendored)
   gatekeeper-observability/, gatekeeper-configurator-ui/, mcp-shared/
                        what the vendored gatekeepers depend on (vendored subsets)
-  gatekeeper-<name>/   gatekeeper Workers `crm-gatekeeper-<name>`: vendored (google, microsoft, slack, mcp,
+  gatekeeper-<name>/   gatekeeper Workers `ros-gatekeeper-<name>`: vendored (google, microsoft, slack, mcp,
                        email, zoominfo, websearch) and ours (email-send, slack-post, webhook); bound to
-                       crm-runner as GATEKEEPER_<NAME> per deployment (docs/integrations.md)
+                       ros-runner as GATEKEEPER_<NAME> per deployment (docs/integrations.md)
 extensions/
   deals/               (stage 4) Deals: pipelines, stages, deals, participants (ADR 0026, 0100)
   deals/               (stage 4) first real shipped extension

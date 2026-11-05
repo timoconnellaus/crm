@@ -3,8 +3,8 @@
 // migration 0050 a 50-row person.list scanned every person about four times over, and
 // search.global's hydration scanned every person once.
 import { env } from "cloudflare:workers";
-import { createCrmDb } from "@crm/db";
-import { seedDatabase } from "@crm/db/seed";
+import { createCrmDb } from "@relationship-os/db";
+import { seedDatabase } from "@relationship-os/db/seed";
 import { beforeAll, describe, expect, it } from "vitest";
 import { type ActingUser, invokeByName } from "../src/index.ts";
 import { createUser } from "./helpers.ts";

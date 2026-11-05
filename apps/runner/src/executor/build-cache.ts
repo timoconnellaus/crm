@@ -3,7 +3,7 @@
 // hash of the files (plus the runtime and checker hashes), so `extension.check` on a working copy,
 // `extension.propose` of the same files, approval and every cold tool worker share one build and
 // one type check. The work happens here, in the stateless caller, never inside the DO.
-import type { SourceIssue } from "@crm/core";
+import type { SourceIssue } from "@relationship-os/core";
 import { buildExtension } from "../extensions/build.ts";
 import type { ExtensionWorkspace } from "../extensions/workspace.ts";
 import CHECKER from "../generated/checker.txt";

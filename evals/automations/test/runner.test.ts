@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_MODEL } from "@crm/evals-mcp/lib/model.ts";
+import { DEFAULT_MODEL } from "@relationship-os/evals-mcp/lib/model.ts";
 import { describe, expect, it } from "vitest";
 import type { CaseResult } from "../lib/harness.ts";
 import { type AutomationsReport, renderMarkdown, writeReport } from "../lib/report.ts";

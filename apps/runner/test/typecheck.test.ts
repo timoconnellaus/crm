@@ -1,5 +1,5 @@
 // The in-Worker type check of extension source (src/extensions/typecheck.ts), run in workerd:
-// directly (this test bundle imports the compiler), and as crm-runner runs it, in the checker's
+// directly (this test bundle imports the compiler), and as ros-runner runs it, in the checker's
 // Dynamic Worker (LOADER.get with a stable id, ADR 0043).
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";

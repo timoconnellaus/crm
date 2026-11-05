@@ -6,8 +6,8 @@
 // D1 batch (one transaction). Refusals (role, actor, gate) and failures are audited separately.
 // A gate `review` dry-runs the handler and queues a pending action instead (approvals/queue.ts);
 // reads by an MCP session see its pending actions applied (approvals/simulation.ts).
-import type { AuditChangeAction, CrmDb } from "@crm/db";
-import { checkGrant } from "@crm/sdk";
+import type { AuditChangeAction, CrmDb } from "@relationship-os/db";
+import { checkGrant } from "@relationship-os/sdk";
 import { type Compilable, type CompiledQuery, sql } from "kysely";
 import type { AiAdmin } from "./ai/admin.ts";
 import type { AiEnv } from "./ai/client.ts";
@@ -112,11 +112,11 @@ export interface InvocationContext {
   /** The self-updater (ADR 0164): GitHub Releases and the Cloudflare API. */
   updater?: UpdaterRuntime;
   /**
-   * Where committed record changes go as automation events (ADR 0130): crm-app and crm-runner
+   * Where committed record changes go as automation events (ADR 0130): ros-app and ros-runner
    * pass a Queue producer. Absent: no events (tests, scripts). Nested invocations inherit it.
    */
   events?: EventSink;
-  /** crm-runner's automation host (automation.test, run, retry, replay, cancel). */
+  /** ros-runner's automation host (automation.test, run, retry, replay, cancel). */
   automationHost?: AutomationHost;
   /**
    * Test mode (ADR 0133): the call is simulated against this in-memory overlay. The gate is
@@ -127,7 +127,7 @@ export interface InvocationContext {
   vectors?: VectorStore;
   /**
    * Set where the automation events consumer embeds committed changes (a Vectorize binding on
-   * crm-runner, ADR 0154 amendment): with `events`, the pipeline then writes no embedding queue
+   * ros-runner, ADR 0154 amendment): with `events`, the pipeline then writes no embedding queue
    * row, so every write is embedded exactly once, from its event.
    */
   embedViaEvents?: boolean;
@@ -136,7 +136,7 @@ export interface InvocationContext {
   /** The Worker's AI environment, for provider readiness in Settings → AI. */
   aiEnv?: AiEnv;
   /**
-   * Called after a successful commit (ADR 0154): the post-commit hook. crm-app uses it to drain
+   * Called after a successful commit (ADR 0154): the post-commit hook. ros-app uses it to drain
    * the embedding queue in the background when the call queued anything (only without an event
    * sink, and for operations that queue themselves: erase, sync).
    */

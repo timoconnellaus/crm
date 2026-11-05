@@ -2,7 +2,7 @@
 // trigger sources (record, fieldChanged incl. stage types, approvalDecided), event chunking, the
 // queue sink's batching, retention of automation runs, and automation operations' permissions.
 import { env } from "cloudflare:workers";
-import type { AutomationManifest } from "@crm/sdk";
+import type { AutomationManifest } from "@relationship-os/sdk";
 import { describe, expect, it } from "vitest";
 import {
   type AutomationDefinition,

@@ -1,9 +1,9 @@
 {
-  "extends": "@crm/config/tsconfig.base.json",
+  "extends": "@relationship-os/config/tsconfig.base.json",
   "compilerOptions": {
     // `Symbol.dispose` on RPC stubs.
     "lib": ["ESNext"],
-    // tsc checks the vendored @crm/gatekeeper-interface and gatekeeper-kit sources we import (they
+    // tsc checks the vendored @relationship-os/gatekeeper-interface and gatekeeper-kit sources we import (they
     // ship .ts, so skipLibCheck does not cover them), and upstream does not index-check. Our own
     // code is otherwise held to the full base config.
     "noUncheckedIndexedAccess": false,

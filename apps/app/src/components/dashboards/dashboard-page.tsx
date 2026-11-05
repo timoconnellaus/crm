@@ -2,14 +2,14 @@
 // actions: edit, add widget, set as Home, copy, share, delete), the filter bar, and the grid.
 // Widget edits save at once through dashboard.update, shown optimistically and rolled back on
 // failure.
-import type { WidgetSpec } from "@crm/core/client";
-import { Button } from "@crm/ui/components/button";
+import type { WidgetSpec } from "@relationship-os/core/client";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@crm/ui/components/dropdown-menu";
+} from "@relationship-os/ui/components/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {

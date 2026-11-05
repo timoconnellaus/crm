@@ -6,10 +6,10 @@
 // independently. Narrower: one scroll for the whole page. The header scrolls away and the tab bar
 // sticks to the top, showing the record's name once the header is out of view (it collapses to
 // name + tabs). The side panel shows first on Overview and is hidden on the other tabs.
-import { Avatar, AvatarFallback, AvatarImage } from "@crm/ui/components/avatar";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@crm/ui/components/tabs";
-import { cn } from "@crm/ui/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@relationship-os/ui/components/avatar";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";

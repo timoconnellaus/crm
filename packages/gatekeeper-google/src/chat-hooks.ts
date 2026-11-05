@@ -14,11 +14,11 @@
 
 import { DurableObject, RpcTarget, WorkerEntrypoint, type RpcStub } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
-import { HookDeliveryQueue, disposeStubs } from "@crm/gatekeeper-kit/hook-delivery-queue";
-import { SingleFlight } from "@crm/gatekeeper-kit/single-flight";
+import { HookDeliveryQueue, disposeStubs } from "@relationship-os/gatekeeper-kit/hook-delivery-queue";
+import { SingleFlight } from "@relationship-os/gatekeeper-kit/single-flight";
 import type {
   ApprovalQueue, HookController, HookInitiator, HookTargetMetadata,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { fetchWithAuthRetry, type AccessTokenProvider } from "./auth-retry";
 import { ChatApiError, chatApiFailure, type ChatMessageRaw } from "./chat-api";
 import type { ChatMessageHook } from "./chat-types";

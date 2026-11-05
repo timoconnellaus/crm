@@ -1,4 +1,4 @@
-import { cn } from "@crm/ui/lib/utils";
+import { cn } from "@relationship-os/ui/lib/utils";
 
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (

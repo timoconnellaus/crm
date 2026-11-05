@@ -2,7 +2,7 @@
 // global fetch. The Worker's SLACK_API_BASE points at https://slack.test/api (vitest.config.ts).
 // Shared with the test Worker: both run in one isolate.
 
-import type { ConnectHandoff } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ConnectHandoff } from "@relationship-os/gatekeeper-interface/gatekeeper";
 
 export const FAKE_API_BASE = "https://slack.test/api";
 

@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_MODEL } from "@crm/evals-mcp/lib/model.ts";
+import { DEFAULT_MODEL } from "@relationship-os/evals-mcp/lib/model.ts";
 import { describe, expect, it } from "vitest";
 import type { DashboardResult } from "../lib/harness.ts";
 import { type DashboardsReport, renderMarkdown, writeReport } from "../lib/report.ts";
@@ -22,7 +22,7 @@ describe("runner CLI", () => {
       EVAL_API_KEY: _k,
       ...env
     } = process.env;
-    // Plain node (no transform flag): the credentials check comes before @crm/core loads.
+    // Plain node (no transform flag): the credentials check comes before @relationship-os/core loads.
     const result = spawnSync(process.execPath, [runner, "--base-url", "http://127.0.0.1:9"], {
       env,
       encoding: "utf8",

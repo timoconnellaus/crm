@@ -1,10 +1,10 @@
 # Release tooling
 
 How releases are built (ADR 0053, ADR 0160, ADR 0161). Deploying them is `packages/release` and
-`packages/create-crm`.
+`packages/create-relationship-os`.
 
 - `build-release.ts --version X.Y.Z [--out release-out]` runs `pnpm build`, bundles every Worker
-  exactly as `wrangler deploy` would (`--dry-run --outdir`, the pinned wrangler), collects crm-app's
+  exactly as `wrangler deploy` would (`--dry-run --outdir`, the pinned wrangler), collects ros-app's
   assets and the core migrations, generates the manifest and writes `crm-<v>.tar.gz`,
   `crm-<v>.manifest.json` and `SHA256SUMS`. Two builds of one commit are byte-identical; the release
   workflow builds twice and compares.
@@ -16,7 +16,7 @@ How releases are built (ADR 0053, ADR 0160, ADR 0161). Deploying them is `packag
   install with `--ai off` skips them.
 - **Golden file:** `test/testdata/golden-manifest.json`. Any change to a Worker's config, a
   `deploy-inputs.json` or the migrations changes it. Review the diff, then regenerate:
-  `UPDATE_GOLDEN=1 pnpm --filter @crm/release-scripts test`.
+  `UPDATE_GOLDEN=1 pnpm --filter @relationship-os/release-scripts test`.
 - `changelog.ts --tag vX.Y.Z` writes the release notes from PR titles (`--all` for a whole changelog).
 - `inspect-bundle.ts <bundle>` opens a bundle the way deployers do and prints what it holds.
 

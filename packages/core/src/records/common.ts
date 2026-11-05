@@ -1,6 +1,6 @@
 // Helpers shared by the record operations (person, organisation, affiliation, trash, activity,
 // task, import).
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, type RawBuilder, sql } from "kysely";
 import { ValidationError } from "../errors.ts";
 

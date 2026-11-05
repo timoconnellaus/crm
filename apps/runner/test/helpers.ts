@@ -6,8 +6,8 @@ import {
   type InvocationContext,
   invokeByName,
   newId,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { automationHost } from "../src/automations/host.ts";
 import { extensionHost } from "../src/index.ts";
 
@@ -91,7 +91,7 @@ export function source(
   extra = "",
 ): Record<string, string> {
   return {
-    "index.ts": `import { defineExtension, defineTool, z } from "@crm/sdk";
+    "index.ts": `import { defineExtension, defineTool, z } from "@relationship-os/sdk";
 ${extra}
 export default defineExtension({
   id: "${id}",

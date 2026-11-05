@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // Specs against a REAL deployment in a Cloudflare test account (stage 8, AC3/AC4), run by
-// .github/workflows/install-test.yml after `create-crm` installs it. No local server.
-//   LIVE_BASE_URL=https://crm-app.<subdomain>.workers.dev LIVE_PHASE=install pnpm exec playwright test -c playwright.live.config.ts
+// .github/workflows/install-test.yml after `create-relationship-os` installs it. No local server.
+//   LIVE_BASE_URL=https://ros-app.<subdomain>.workers.dev LIVE_PHASE=install pnpm exec playwright test -c playwright.live.config.ts
 const baseURL = process.env.LIVE_BASE_URL;
 
 export default defineConfig({

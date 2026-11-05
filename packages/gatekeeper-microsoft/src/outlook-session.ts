@@ -12,11 +12,11 @@
 
 import { RpcTarget, type RpcStub } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
-import type { ActionFileReference } from "@crm/gatekeeper-kit/action-files";
-import type { ActionSubmitter, JournalEntry } from "@crm/gatekeeper-kit/actions";
-import { TokenCursor } from "@crm/gatekeeper-kit/cursors";
-import { ObservationGate, escapeObservationValue, type ObserverStrategy } from "@crm/gatekeeper-kit/observers";
-import type { ApprovalQueue, Cursor } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ActionFileReference } from "@relationship-os/gatekeeper-kit/action-files";
+import type { ActionSubmitter, JournalEntry } from "@relationship-os/gatekeeper-kit/actions";
+import { TokenCursor } from "@relationship-os/gatekeeper-kit/cursors";
+import { ObservationGate, escapeObservationValue, type ObserverStrategy } from "@relationship-os/gatekeeper-kit/observers";
+import type { ApprovalQueue, Cursor } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { isProvisional, OutsideBindingError } from "./binding";
 import { DownloadTooLargeError, GraphApiError, type GraphApi } from "./graph-api";
 import { graphInstant } from "./calendar-time";

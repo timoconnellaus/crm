@@ -10,7 +10,7 @@ import {
 import type { BigQuerySession } from "../../src/bigquery-types";
 import type {
   ActionKind, HookController, ResourceDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import {TestGitCache} from "../test-git-cache";
 import type {
   GmailAttachmentInput, GmailComposeOptions, GmailDraftAttachment, GmailDraftAttachmentEntry,

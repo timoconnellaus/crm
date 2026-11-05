@@ -1,5 +1,5 @@
 {
-  "name": "@crm/gatekeeper-kit",
+  "name": "@relationship-os/gatekeeper-kit",
   "version": "0.0.0",
   "private": true,
   "description": "Building blocks for gatekeepers: connect-flow, credential, action, observation, and simulation primitives. Vendored from cloudflare-os. Not a deployable Worker.",
@@ -40,15 +40,15 @@
     "test": "vitest run && vitest run -c vitest.worker.config.ts"
   },
   "dependencies": {
-    "@crm/gatekeeper-interface": "workspace:*",
-    "@crm/gatekeeper-observability": "workspace:*",
+    "@relationship-os/gatekeeper-interface": "workspace:*",
+    "@relationship-os/gatekeeper-observability": "workspace:*",
     "diff": "9.0.0",
     "jose": "6.2.15"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
     "@cloudflare/workers-types": "5.20261104.1",
-    "@crm/config": "workspace:*",
+    "@relationship-os/config": "workspace:*",
     "@types/node": "24.19.2",
     "typescript": "6.0.3",
     "vitest": "5.1.0"

@@ -12,7 +12,7 @@
 // - suggested contacts (counted once per distinct message) and job-change signals;
 // - sync events for stage 5.
 // Restricted reads never get here: the sync service drops them before building the batch.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Compilable, type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { enqueueEmbeddings } from "../ai/embedding.ts";

@@ -59,7 +59,7 @@ impact is computed by the host from manifests and the reconcile plan (`computeIm
 from anything the extension says. The diff is a line LCS over the two commits' files
 (`diffFiles`), not `git diff`, so it is pure and testable and has the shape the UI renders.
 
-**AI summary.** `ExtensionHost.describeChange(prompt)` runs role `build` in crm-runner through
+**AI summary.** `ExtensionHost.describeChange(prompt)` runs role `build` in ros-runner through
 the minimal mapping (Workers AI by default, AI Gateway when `AI_GATEWAY_ID` is set). The prompt
 gives the impact as trusted and the diff as untrusted data. With no `ai` binding it returns null
 and the screen says "No AI summary available". The summary is always labelled AI-written.

@@ -15,7 +15,7 @@
 // gives them that person's free/busy, the read showed them nothing more. So no collaborator needs a
 // calendar permission beyond what Outlook already gives them.
 
-import { trackedCollectionObservers, type ObserverKv, type ObserverStrategy } from "@crm/gatekeeper-kit/observers";
+import { trackedCollectionObservers, type ObserverKv, type ObserverStrategy } from "@relationship-os/gatekeeper-kit/observers";
 import type { GraphApi } from "./graph-api";
 import { CalendarApi, isCalendarId, type GraphSchedule } from "./calendar-graph";
 import { DETAIL_LEVELS, roleSees, type RevealLevel, type SharingRole } from "./calendar-scope";

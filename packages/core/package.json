@@ -1,5 +1,5 @@
 {
-  "name": "@crm/core",
+  "name": "@relationship-os/core",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,17 +16,17 @@
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
     "@cloudflare/workers-types": "5.20261104.1",
-    "@crm/config": "workspace:*",
-    "@crm/extension-deals": "workspace:*",
+    "@relationship-os/config": "workspace:*",
+    "@relationship-os/extension-deals": "workspace:*",
     "typescript": "6.0.3",
     "vitest": "5.1.0"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.73",
     "@ai-sdk/provider": "4.0.30",
-    "@crm/db": "workspace:*",
-    "@crm/release": "workspace:*",
-    "@crm/sdk": "workspace:*",
+    "@relationship-os/db": "workspace:*",
+    "@relationship-os/release": "workspace:*",
+    "@relationship-os/sdk": "workspace:*",
     "ai": "7.0.145",
     "kysely": "0.29.8",
     "workers-ai-provider": "4.0.0",

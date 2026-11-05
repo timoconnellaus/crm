@@ -1,5 +1,5 @@
 {
-  "extends": "@crm/config/tsconfig.vendored.json",
+  "extends": "@relationship-os/config/tsconfig.vendored.json",
   "compilerOptions": {
     // Configurator modules (src/configurator/*.tsx) use the authoring API's `h`.
     "jsx": "react",

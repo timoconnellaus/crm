@@ -17,14 +17,14 @@ import {
   type RunToolInput,
   type RunToolResult,
   type SourceIssue,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import {
   type AutomationRunRequest,
   type ExtensionManifest,
   GATEKEEPER_MODULES,
   type RunResponse,
-} from "@crm/sdk";
+} from "@relationship-os/sdk";
 import { runBuildRole } from "../extensions/ai.ts";
 import {
   buildScript,

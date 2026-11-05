@@ -1,6 +1,6 @@
-// The port between the operations registry and the integration host (ADRs 0050, 0110). crm-runner
+// The port between the operations registry and the integration host (ADRs 0050, 0110). ros-runner
 // implements it (one integration host Durable Object per connection, which owns the gatekeeper
-// accounts, facets and hooks); crm-app reaches the same implementation over the RUNNER service
+// accounts, facets and hooks); ros-app reaches the same implementation over the RUNNER service
 // binding. Integration operations receive it through the invocation context, so packages/core
 // never imports the runtime or the gatekeeper interface.
 import type { PendingApproval } from "../errors.ts";

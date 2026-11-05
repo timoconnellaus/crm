@@ -1,7 +1,7 @@
 // The model role registry (ADR 0009, ADR 0150): code asks for a role, never a model id.
 //
 // Pure data and functions, no Worker or SDK imports, so the eval harnesses (plain Node) can import
-// it through `@crm/core/ai-roles` and resolve the same defaults the app uses.
+// it through `@relationship-os/core/ai-roles` and resolve the same defaults the app uses.
 //
 //   shipped defaults (all Workers AI)  →  deploy config (AI_MODEL_ROLES)  →  admin overrides (D1)
 //
@@ -666,7 +666,7 @@ export function parseRoleLayer(json: string | null | undefined): RoleLayer {
 // ---- Deploy-config presets (ADR 0192) -------------------------------------------------------
 //
 // A preset is a ready deploy layer (AI_MODEL_ROLES) that one deployment can choose with
-// `create-crm --model-roles <name>` or `CRM_AI_MODEL_ROLES=<name> pnpm run deploy`. The shipped
+// `create-relationship-os --model-roles <name>` or `ROS_AI_MODEL_ROLES=<name> pnpm run deploy`. The shipped
 // defaults never change: a preset is per-deployment config.
 
 /** A role on DeepSeek V4.1 Flash, falling back to the role's shipped Workers AI model. */

@@ -1,7 +1,7 @@
 // The field-type registry for extension fields (ADR 0023): for every SDK field type, its SQLite
 // storage, zod validation, filter semantics (and so its filter operators), CSV mapping and the UI
 // widgets that display and edit it. Browser-safe: the UI renders widgets from `widget`.
-import type { FieldManifest, FieldTypeName } from "@crm/sdk";
+import type { FieldManifest, FieldTypeName } from "@relationship-os/sdk";
 import { z } from "zod";
 import type { FieldType } from "./types.ts";
 

@@ -1,7 +1,7 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/mcp-shared/__tests__/account-endpoint.test.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { stageCredentials } from "@crm/gatekeeper-kit/credential-stage";
+import { stageCredentials } from "@relationship-os/gatekeeper-kit/credential-stage";
 
 import { McpAuthRequiredError } from "../src/client.js";
 import {

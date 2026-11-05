@@ -1,11 +1,11 @@
-// A real TypeScript type check of extension source against @crm/sdk's types, in the Worker: the
+// A real TypeScript type check of extension source against @relationship-os/sdk's types, in the Worker: the
 // compiler API over an in-memory host. The declarations (the SDK's .d.ts, the zod .d.ts files they
 // reach, the ES2022 libs) and their import resolutions are generated at build time
 // (scripts/bundle.mjs → src/generated/sdk-types.ts). Their parsed (and bound) SourceFiles are
 // cached in module scope, so after the first call in an isolate only the extension's own files
 // are parsed. Synchronous and CPU-bound. The compiler is the build-time ESM bundle of
 // `typescript` (generated/typescript.js), which works under nodejs_compat.
-import type { SourceIssue } from "@crm/core";
+import type { SourceIssue } from "@relationship-os/core";
 import { SDK_TYPES } from "../generated/sdk-types.ts";
 import ts from "../generated/typescript.js";
 
@@ -14,7 +14,7 @@ const MAX_MESSAGE_LENGTH = 2_000;
 
 /** Extension files live under this virtual directory; issue paths are relative to it. */
 const ROOT = "/ext/";
-const SDK_SPECIFIER = "@crm/sdk";
+const SDK_SPECIFIER = "@relationship-os/sdk";
 
 const OPTIONS: ts.CompilerOptions = {
   target: ts.ScriptTarget.ES2022,
@@ -107,7 +107,7 @@ function issueFor(diagnostic: ts.Diagnostic): SourceIssue {
 
 /**
  * Type-checks an extension's source (paths relative to the extension root, entry `index.ts`)
- * against @crm/sdk. `.ts` files are checked; `.js` files are only read for their exports.
+ * against @relationship-os/sdk. `.ts` files are checked; `.js` files are only read for their exports.
  * Returns at most MAX_TYPE_ISSUES issues, errors only; an empty array means it type-checks.
  */
 export function typecheckExtension(files: Record<string, string>): SourceIssue[] {

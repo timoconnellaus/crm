@@ -5,8 +5,8 @@
 
 import { describe, expect, it } from "vitest";
 import type { RpcStub } from "cloudflare:workers";
-import type { ObserverStrategy } from "@crm/gatekeeper-kit/observers";
-import type { ApprovalQueue, ObservationDescription } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ObserverStrategy } from "@relationship-os/gatekeeper-kit/observers";
+import type { ApprovalQueue, ObservationDescription } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { GraphApi } from "../src/graph-api";
 import type { StoredIdentity } from "../src/microsoft-credentials";
 import type { OutlookAction, OutlookActions } from "../src/outlook-actions";

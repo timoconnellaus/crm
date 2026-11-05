@@ -1,6 +1,6 @@
 // Where a click-through lands: the object's own list page with the filter in the URL (people,
 // organisations, tasks' All tab, Activity, or an extension object's list).
-import type { Filter } from "@crm/core/client";
+import type { Filter } from "@relationship-os/core/client";
 import type { useNavigate } from "@tanstack/react-router";
 
 type Navigate = ReturnType<typeof useNavigate>;

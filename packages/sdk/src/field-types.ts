@@ -1,7 +1,7 @@
 // The extension field types (ADR 0023) and the facts about them both the SDK and the host need:
 // the formula type a field reads as, and which type changes are lossless. Storage, validation,
 // filter operators, CSV mapping and widgets live in the host's field-type registry
-// (`@crm/core`, fields/field-types.ts), keyed by these names.
+// (`@relationship-os/core`, fields/field-types.ts), keyed by these names.
 import type { FormulaType } from "./formula/ast.ts";
 
 export const FIELD_TYPES = [

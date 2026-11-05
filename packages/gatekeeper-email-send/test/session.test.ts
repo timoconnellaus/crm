@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import type { ActionField } from "@crm/gatekeeper-interface/gatekeeper";
+import type { ActionField } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { EmailSendReceipt, EmailSendRecord } from "../src/types";
 import { fakeEmail, observations, resetFakes, sentEmails, submissions } from "./fakes";

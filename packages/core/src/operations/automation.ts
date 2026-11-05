@@ -5,9 +5,9 @@
 // Permissions: reading automations and runs is `records:read`; enable, disable and the settings
 // are `settings:manage` (admins: they change what runs for everyone); starting, retrying,
 // replaying and cancelling runs is `records:write`; the kill switch is human admins only and
-// never reachable over MCP. Runs execute in crm-runner, reached through `ctx.automationHost`.
-import type { CoreDatabase } from "@crm/db";
-import type { AutomationManifest, ExtensionManifest } from "@crm/sdk";
+// never reachable over MCP. Runs execute in ros-runner, reached through `ctx.automationHost`.
+import type { CoreDatabase } from "@relationship-os/db";
+import type { AutomationManifest, ExtensionManifest } from "@relationship-os/sdk";
 import { type Kysely, sql } from "kysely";
 import type { z } from "zod";
 import {
@@ -46,7 +46,7 @@ const DAY_MS = 86_400_000;
 
 function host(ctx: HandlerContext): AutomationHost {
   if (!ctx.automationHost) {
-    throw new ConfigError("The automation runtime (crm-runner) is not available to this caller");
+    throw new ConfigError("The automation runtime (ros-runner) is not available to this caller");
   }
   return ctx.automationHost;
 }
@@ -301,7 +301,7 @@ export const automationGet = defineOperation({
       version: row.version ?? null,
       commit: row.commit_oid,
       provenance: {
-        author: row.source === "shipped" ? "Shipped with the CRM" : null,
+        author: row.source === "shipped" ? "Shipped with Relationship OS" : null,
         approvedBy: approver?.name ?? null,
         approvedAt: row.installed_by ? (row.installed_at ?? null) : null,
         shipped: row.source === "shipped",

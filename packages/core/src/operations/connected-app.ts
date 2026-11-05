@@ -2,7 +2,7 @@
 // OAuth. A row is created at the consent step and is the authority on whether the connection
 // may still be used: revoking it stops its access and refresh tokens on their next use (the app
 // also deletes them from the OAuth provider's store).
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../errors.ts";

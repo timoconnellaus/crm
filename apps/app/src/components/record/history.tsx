@@ -1,7 +1,7 @@
 // History tab: field-level diffs from the audit log, newest first.
-import { getField, type ObjectDefinition } from "@crm/core/client";
-import { Badge } from "@crm/ui/components/badge";
-import { Skeleton } from "@crm/ui/components/skeleton";
+import { getField, type ObjectDefinition } from "@relationship-os/core/client";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { HistoryIcon } from "lucide-react";
 import { diffValue, formatDateTime } from "#/lib/format";
 import { EmptyState, ErrorState } from "../empty-state.tsx";

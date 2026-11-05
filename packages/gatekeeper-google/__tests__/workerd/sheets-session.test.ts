@@ -4,7 +4,7 @@ import { RpcStub, RpcTarget } from "cloudflare:workers";
 import type {
   ActionDescription, ApprovalQueue, GitCache, HookController, HookDescription,
   ObservationDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { unguardedNativeRead } from "../../src/drive-session";
 import { GoogleSheetsApi } from "../../src/sheets-api";

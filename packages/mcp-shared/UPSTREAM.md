@@ -1,4 +1,4 @@
-# Upstream: `@crm/mcp-shared`
+# Upstream: `@relationship-os/mcp-shared`
 
 | | |
 | --- | --- |
@@ -14,12 +14,12 @@
 ## Local modifications
 
 - **Scope rename.** `@gadgets/workshop-shared/gatekeeper`, `@gadgets/gatekeeper-kit/*` and
-  `@gadgets/observability/*` imports point at `@crm/gatekeeper-interface/gatekeeper`,
-  `@crm/gatekeeper-kit/*` and `@crm/gatekeeper-observability/*`. The 10 source files this touched
+  `@gadgets/observability/*` imports point at `@relationship-os/gatekeeper-interface/gatekeeper`,
+  `@relationship-os/gatekeeper-kit/*` and `@relationship-os/gatekeeper-observability/*`. The 10 source files this touched
   start with a `// Vendored from cloudflare/cloudflare-os@… Modified locally` comment.
 - **Replaced (ours):** `package.json` (scope, exact versions; `typescript6` stays an alias of
   `typescript@6.0.3` because a test imports it by that name), `tsconfig.json` and
-  `tsconfig.test.json` (extend `@crm/config/tsconfig.vendored.json`, and use
+  `tsconfig.test.json` (extend `@relationship-os/config/tsconfig.vendored.json`, and use
   `@cloudflare/workers-types/experimental` instead of a committed `worker-configuration.d.ts`:
   this library has no Worker config, so the upstream file held runtime types only).
 - **Removed:** `vite.config.ts` (Vite+ tasks) and `worker-configuration.d.ts`.

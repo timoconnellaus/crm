@@ -1,15 +1,15 @@
-// crm-gatekeeper-websearch: the Web Search gatekeeper vendored from cloudflare-os
+// ros-gatekeeper-websearch: the Web Search gatekeeper vendored from cloudflare-os
 // (packages/gatekeeper-websearch). Upstream generates its wrangler.jsonc from cloudflare.config.ts;
 // we keep this file as the source of truth instead, with the same settings plus our name and no
 // public URL. Account-agnostic: no account or resource IDs are committed (ADR 0012). Not yet bound
-// to crm-runner (stage 6).
+// to ros-runner (stage 6).
 //
 // No secrets and no connect flow: the host mints its account with createAccount(). Optional var:
 // CF_AI_GATEWAY, the AI Gateway searches go through (defaults to the account's `default` gateway,
 // which must be in this Worker's own account). See README.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "crm-gatekeeper-websearch",
+  "name": "ros-gatekeeper-websearch",
   // capnweb-validate writes the validated entrypoint here (see `build`); wrangler bundles that.
   "main": ".wrangler/validate/src/worker.ts",
   "compatibility_date": "2026-09-04",

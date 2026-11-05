@@ -1,17 +1,17 @@
 // Settings → General: the deployment's base currency (ADR 0101). Every currency field without its
 // own currency (deal values, budgets) is shown in it. Admins change it; everyone can see it.
-import { COMMON_CURRENCIES } from "@crm/core/client";
-import { Button } from "@crm/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@crm/ui/components/card";
-import { Label } from "@crm/ui/components/label";
+import { COMMON_CURRENCIES } from "@relationship-os/core/client";
+import { Button } from "@relationship-os/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";

@@ -13,7 +13,7 @@ import type {
   ActionDescription,
   GitCache,
   ObservationDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import {
   ActionApplyError,
   ActionOutcomeUnknownError,

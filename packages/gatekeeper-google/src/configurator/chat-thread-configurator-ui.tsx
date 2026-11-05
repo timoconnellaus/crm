@@ -1,5 +1,5 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-google/src/configurator/chat-thread-configurator-ui.tsx (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
-import { Field, h, Section, TextInput, type ConfiguratorUISpec } from "@crm/gatekeeper-configurator-ui";
+import { Field, h, Section, TextInput, type ConfiguratorUISpec } from "@relationship-os/gatekeeper-configurator-ui";
 import type {
   ChatThreadConfiguratorRpc, ChatThreadConfiguratorValues,
 } from "./chat-thread-configurator-types";

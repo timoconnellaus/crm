@@ -1,6 +1,6 @@
-// Browser-safe subset of @crm/core for UI code: the field registry, filter JSON, sort, and the
+// Browser-safe subset of @relationship-os/core for UI code: the field registry, filter JSON, sort, and the
 // approval-policy presets. It never pulls in operation handlers or the database package, so the
-// UI bundle stays small and cannot reach D1. Import it as `@crm/core/client`.
+// UI bundle stays small and cannot reach D1. Import it as `@relationship-os/core/client`.
 export { COMMON_CURRENCIES } from "./currencies.ts";
 export { type Row, resolveClickThrough } from "./dashboards/click-through.ts";
 export * from "./dashboards/spec.ts";

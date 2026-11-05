@@ -2,7 +2,7 @@
 // sync.setSettings) and which outbound action kinds may auto-apply under Balanced
 // (outbound.kinds / outbound.setAutoApprove). Turning auto-approval on loosens the approval
 // policy, so it asks first.
-import type { CoreOutput } from "@crm/core";
+import type { CoreOutput } from "@relationship-os/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,13 +12,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@crm/ui/components/alert-dialog";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Label } from "@crm/ui/components/label";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { Switch } from "@crm/ui/components/switch";
-import { Textarea } from "@crm/ui/components/textarea";
+} from "@relationship-os/ui/components/alert-dialog";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Label } from "@relationship-os/ui/components/label";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { Switch } from "@relationship-os/ui/components/switch";
+import { Textarea } from "@relationship-os/ui/components/textarea";
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState } from "#/components/empty-state";

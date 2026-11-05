@@ -2,20 +2,20 @@
 // first, in a virtualised list that loads more as you scroll, filtered by user, actor, operation,
 // outcome, record and date (the filters fold into the fixed header). Each entry expands to its
 // field diffs per record.
-import { getObject } from "@crm/core/client";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
+import { getObject } from "@relationship-os/core/client";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/ui/components/select";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ChevronRightIcon, LinkIcon, ListFilterIcon, LockIcon, ScrollTextIcon } from "lucide-react";

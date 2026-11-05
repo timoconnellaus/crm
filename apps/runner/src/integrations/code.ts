@@ -4,7 +4,7 @@
 // resource)`. Calls go to the connection's integration host as the caller, so the gate, outbound
 // approvals and observations apply exactly as for MCP's integration.call. An extension principal
 // never owns a personal connection, so extension code reaches org connections only.
-import type { ActingUser, Actor, Origin } from "@crm/core";
+import type { ActingUser, Actor, Origin } from "@relationship-os/core";
 import { integrationRuntime } from "./runtime.ts";
 
 export interface GatekeeperCall {

@@ -1,5 +1,5 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/mcp-shared/src/http.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
-import { stripTrailingSlashes, type ConnectHandoff } from "@crm/gatekeeper-interface/gatekeeper";
+import { stripTrailingSlashes, type ConnectHandoff } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { NONCE_BYTES } from "./connect-nonce.js";
 import {
   connectHandoffPageHtml,

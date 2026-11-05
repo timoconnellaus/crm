@@ -1,5 +1,5 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-microsoft/src/observability.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
-import { createObservabilityContext } from "@crm/gatekeeper-observability/observability-context";
+import { createObservabilityContext } from "@relationship-os/gatekeeper-observability/observability-context";
 
 /** Observability fields emitted by the Microsoft 365 gatekeeper. */
 export type MicrosoftObservabilityFields = {

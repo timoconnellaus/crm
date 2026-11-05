@@ -173,7 +173,7 @@ source and the build cache. A commit is a version, approval reviews a diff, and 
 revert. It runs no code: the executor does.
 
 **Executor**
-What runs extension code, from crm-runner's stateless entrypoint (and from Workflow steps in stage
+What runs extension code, from ros-runner's stateless entrypoint (and from Workflow steps in stage
 5). Each run gets a Dynamic Worker from `LOADER.get` with a **stable loader id**, and its context
 arrives as RPC arguments.
 _Avoid_: sandbox host (for the DO)
@@ -339,7 +339,7 @@ endpoint), each served by one gatekeeper facet. Settings → Integrations manage
 _Avoid_: connected app (that is an MCP client), account (the provider's side)
 
 **Integration host**
-The Durable Object in crm-runner, one per connection, that implements the Workshop side of the
+The Durable Object in ros-runner, one per connection, that implements the Workshop side of the
 gatekeeper interface: it owns the connection's account, facets and hooks, runs the connect handoff,
 decides outbound actions and observations, and runs sync. D1 only mirrors its state for the UI.
 
@@ -392,7 +392,7 @@ _Avoid_: model config, LLM settings
 
 **Model role preset**
 A named, ready deploy-config layer (`ROLE_PRESETS` in `roles.ts`) that one deployment chooses
-with `create-crm --model-roles <name>` (or `CRM_AI_MODEL_ROLES` for `pnpm run deploy`). It
+with `create-relationship-os --model-roles <name>` (or `ROS_AI_MODEL_ROLES` for `pnpm run deploy`). It
 becomes that deployment's `AI_MODEL_ROLES` and never changes the shipped defaults. The first is
 `deepseek-flash`: every role but `embed` on DeepSeek V4.1 Flash with Workers AI fallbacks
 (ADR 0192).
@@ -416,10 +416,10 @@ The JSON a view is made of, rendered by our components: a discriminated union of
 and a chart mapping). See ADR 0056 and ADR 0057.
 
 **Release bundle**
-One versioned, reproducible `crm-<version>.tar.gz` holding every Worker's modules, crm-app's static
+One versioned, reproducible `crm-<version>.tar.gz` holding every Worker's modules, ros-app's static
 assets, the core migrations and the **release manifest** (generated from the `wrangler.jsonc` files,
-with placeholders such as `$ACCOUNT_ID` and `$D1_ID(crm)` for account-specific values). Published as
-a GitHub Release asset with SHA256SUMS and a build attestation; `create-crm` installs it and the
+with placeholders such as `$ACCOUNT_ID` and `$D1_ID(ros)` for account-specific values). Published as
+a GitHub Release asset with SHA256SUMS and a build attestation; `create-relationship-os` installs it and the
 **self-updater** upgrades to it. See ADR 0053 and ADR 0160.
 _Avoid_: build, artifact (for the bundle as a whole), package
 
@@ -434,7 +434,7 @@ secrets or inputs. A **blocker** refuses the update and says what to do. See ADR
 
 **Self-updater**
 Settings → Updates: a deployment updating itself from GitHub Releases with an optional scoped API
-token (`CRM_UPDATE_TOKEN`). It runs the same procedure as `crm upgrade`: pause automations, take a D1
+token (`ROS_UPDATE_TOKEN`). It runs the same procedure as `ros upgrade`: pause automations, take a D1
 Time Travel bookmark, migrate, switch all Workers together, smoke-check, resume; **rollback**
 redeploys the previous bundle and restores the bookmark. See ADR 0054 and ADR 0164.
 

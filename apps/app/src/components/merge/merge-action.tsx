@@ -4,7 +4,7 @@
 //   const merge = useMergeAction("person", person.id);
 //   <DropdownMenuContent>{merge.item}…</DropdownMenuContent>
 //   {merge.dialog}
-import { DropdownMenuItem } from "@crm/ui/components/dropdown-menu";
+import { DropdownMenuItem } from "@relationship-os/ui/components/dropdown-menu";
 import { MergeIcon } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { MergeDialog } from "./merge-dialog.tsx";

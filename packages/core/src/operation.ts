@@ -1,8 +1,8 @@
 // defineOperation (ADR 0003, ADR 0016): every operation is defined once with zod schemas, a
 // model-facing description, a permission and a risk class. Adapters (server functions now, MCP in
 // stage 2, the `codemode:crm` host module in stage 3) are generated from these definitions.
-import type { AuditChangeAction, CoreDatabase, CrmDb } from "@crm/db";
-import type { PermissionsManifest } from "@crm/sdk";
+import type { AuditChangeAction, CoreDatabase, CrmDb } from "@relationship-os/db";
+import type { PermissionsManifest } from "@relationship-os/sdk";
 import type { Compilable, CompiledQuery, Kysely } from "kysely";
 import type { z } from "zod";
 import type { AiAdmin } from "./ai/admin.ts";
@@ -153,7 +153,7 @@ export interface HandlerContext {
   readonly aiEnv?: AiEnv;
   /** Post-commit automation events (ADR 0130), for operations that emit their own (approvals). */
   readonly events?: EventSink;
-  /** crm-runner's automation host, for automation.* operations. */
+  /** ros-runner's automation host, for automation.* operations. */
   readonly automationHost?: AutomationHost;
 }
 

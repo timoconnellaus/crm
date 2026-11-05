@@ -1,7 +1,7 @@
 // Person record page, layout B: header with actions, tabs (Overview, Timeline, Tasks, History),
 // composer + timeline in the main column, and details, organisations and tasks in the side
 // panel. Deleted people stay viewable here with a Restore banner.
-import { personObject } from "@crm/core/client";
+import { personObject } from "@relationship-os/core/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,15 +11,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@crm/ui/components/alert-dialog";
-import { Button } from "@crm/ui/components/button";
+} from "@relationship-os/ui/components/alert-dialog";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@crm/ui/components/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@crm/ui/components/tooltip";
+} from "@relationship-os/ui/components/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@relationship-os/ui/components/tooltip";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   EllipsisIcon,

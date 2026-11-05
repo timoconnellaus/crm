@@ -12,10 +12,10 @@
  * the preview and the write cannot disagree about where an edit lands.
  */
 
-import type { TaggedAction } from "@crm/gatekeeper-kit/actions";
+import type { TaggedAction } from "@relationship-os/gatekeeper-kit/actions";
 import {
   replaySimulation, type SimulationResult, type SimulationStep,
-} from "@crm/gatekeeper-kit/simulation";
+} from "@relationship-os/gatekeeper-kit/simulation";
 import type { RestPage, RestPageElement, RestSlide, RestThemePage } from "./slides-api";
 import { designDeck, pageOf, slideIdOf, type DesignChange } from "./slides-design";
 import { ChangeConflict } from "./slides-text";

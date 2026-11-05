@@ -1,7 +1,7 @@
 // affiliation.* operations: a Person's link to an Organisation (title, role, start, end, current),
 // with at most one primary per person. A job change is person.changeJob, which ends the primary
 // affiliation and starts a new one in one step.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "../errors.ts";

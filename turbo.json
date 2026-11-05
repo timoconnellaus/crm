@@ -2,17 +2,17 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "stream",
   "globalPassThroughEnv": [
-    "CRM_AI",
-    "CRM_VECTORIZE_INDEX",
-    "CRM_AI_MODEL_ROLES",
-    "CRM_AI_GATEWAY_BYOK",
+    "ROS_AI",
+    "ROS_VECTORIZE_INDEX",
+    "ROS_AI_MODEL_ROLES",
+    "ROS_AI_GATEWAY_BYOK",
     "RELEVANCE_REAL"
   ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"],
-      "env": ["WORKERS_CI_COMMIT_SHA", "GIT_COMMIT", "CRM_WRANGLER_CONFIG"]
+      "env": ["WORKERS_CI_COMMIT_SHA", "GIT_COMMIT", "ROS_WRANGLER_CONFIG"]
     },
     "typecheck": {
       "dependsOn": ["^typecheck"]

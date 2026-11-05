@@ -2,7 +2,7 @@
 // A configurator's `resourceUrl` mints the string that `parseResourceUrl` then turns into a
 // capability, and its `initialValuesFromResourceUrl` reads a URL the user pasted back into form
 // values. Neither can import `resources.ts`: `scripts/build-gatekeeper-configurator.ts` transpiles
-// each configurator module on its own, stripping only `@crm/gatekeeper-configurator-ui` and type-only
+// each configurator module on its own, stripping only `@relationship-os/gatekeeper-configurator-ui` and type-only
 // imports, so a runtime import would not resolve inside the sandboxed frame. The duplication is
 // deliberate; this test is what keeps the copies honest. Drift on either side -- a lost
 // `encodeURIComponent`, a normalization one side does and the other does not -- shows up here
@@ -10,7 +10,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@crm/gatekeeper-configurator-ui", () => ({
+vi.mock("@relationship-os/gatekeeper-configurator-ui", () => ({
   h: (component: unknown, props: unknown, ...children: unknown[]) => ({
     component, props, children,
   }),

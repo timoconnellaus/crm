@@ -2,10 +2,10 @@
 // labelled), the host-computed impact (schema changes, permissions requested or widened, host
 // modules, tools, triggers), the check result, and the git diff per file, syntax-highlighted.
 // Everything but the AI summary is computed by the host from the manifests and the reconcile plan.
-import type { ExtensionImpact, FileDiff } from "@crm/core";
-import { Badge } from "@crm/ui/components/badge";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+import type { ExtensionImpact, FileDiff } from "@relationship-os/core";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import {
   AlertTriangleIcon,
   CheckCircle2Icon,

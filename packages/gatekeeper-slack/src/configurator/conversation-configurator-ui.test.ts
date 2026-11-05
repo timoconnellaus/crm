@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ConversationConfiguratorValues } from "./conversation-configurator-types";
 
-vi.mock("@crm/gatekeeper-configurator-ui", () => ({
+vi.mock("@relationship-os/gatekeeper-configurator-ui", () => ({
   h: (component: unknown, props: unknown, ...children: unknown[]) =>
     ({ component, props: props ?? {}, children: children.flat() }),
   Section: () => undefined,

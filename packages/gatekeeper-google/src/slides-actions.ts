@@ -13,11 +13,11 @@
 import {
   ActionApplyError, ActionOutcomeUnknownError, APPLY_OUTCOME_UNKNOWN_MESSAGE, defineActions,
   type ActionDefinition,
-} from "@crm/gatekeeper-kit/actions";
+} from "@relationship-os/gatekeeper-kit/actions";
 import {
   buildDescription, codeSpan, plainInline, sanitizeTitle,
-} from "@crm/gatekeeper-kit/action-description";
-import type { ActionKind } from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-kit/action-description";
+import type { ActionKind } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { obsContext } from "./observability";
 import { SlidesWriteRefused, type GoogleSlidesApi, type RestSlide } from "./slides-api";
 import {

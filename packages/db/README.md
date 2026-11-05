@@ -1,4 +1,4 @@
-# @crm/db
+# @relationship-os/db
 
 Core D1 schema for a deployment.
 
@@ -11,10 +11,10 @@ Core D1 schema for a deployment.
 - `createDb(d1)`: typed [Kysely](https://kysely.dev) access to core tables (ADR 0014).
 - `createCrmDb(d1)`: the handle operations use: `{ query: Kysely, batch(statements) }`, where
   `batch` runs compiled statements as one D1 transaction.
-- `@crm/db/seed` (`src/seed.ts`): deterministic demo data (default 10k records: 6k people with
+- `@relationship-os/db/seed` (`src/seed.ts`): deterministic demo data (default 10k records: 6k people with
   emails, phones and primary affiliations, 2k organisations with domains, 1k activities, 1k
   tasks, plus the fixed `SEED_FIXTURES` "Ada Lovelace" / "Analytical Engines").
-  `seedDatabase(env.DB, options)` seeds a D1 binding (tests); `pnpm --filter @crm/db seed`
+  `seedDatabase(env.DB, options)` seeds a D1 binding (tests); `pnpm --filter @relationship-os/db seed`
   (`scripts/seed.ts`) seeds the local dev database (`-- --people 500 …` for smaller sets,
   `-- --remote` for a deployed one). Inserts are `INSERT OR IGNORE`, so re-running is harmless.
 

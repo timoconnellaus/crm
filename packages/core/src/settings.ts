@@ -1,5 +1,5 @@
 // Org settings (core_settings), starting with the approval policy.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import type { AiAdminSettings } from "./ai/client.ts";
 import { PROVIDERS, type ProviderId, parseRoleLayer } from "./ai/roles.ts";

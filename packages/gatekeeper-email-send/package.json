@@ -1,5 +1,5 @@
 {
-  "name": "@crm/gatekeeper-email-send",
+  "name": "@relationship-os/gatekeeper-email-send",
   "version": "0.0.0",
   "private": true,
   "description": "Gatekeeper Worker that sends email through Cloudflare Email Service, each send an approval-queue action.",
@@ -18,14 +18,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@crm/gatekeeper-configurator-ui": "workspace:*",
-    "@crm/gatekeeper-interface": "workspace:*",
-    "@crm/gatekeeper-kit": "workspace:*",
+    "@relationship-os/gatekeeper-configurator-ui": "workspace:*",
+    "@relationship-os/gatekeeper-interface": "workspace:*",
+    "@relationship-os/gatekeeper-kit": "workspace:*",
     "zod": "4.6.7"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "1.5.1",
-    "@crm/config": "workspace:*",
+    "@relationship-os/config": "workspace:*",
     "typescript": "6.0.3",
     "vite": "7.3.6",
     "vitest": "5.1.0",

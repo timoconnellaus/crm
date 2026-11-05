@@ -1,9 +1,9 @@
 // integration.*, connection.* and outbound.* operations (stage 6a, ADRs 0050, 0051, 0110): the
 // gatekeeper catalogue an admin enables, connections (personal and org-wide), their resources and
 // sync, calling a connected gatekeeper's session as the caller, and which outbound action kinds
-// may auto-apply. The integration host (crm-runner, one Durable Object per connection) is the
+// may auto-apply. The integration host (ros-runner, one Durable Object per connection) is the
 // authority for accounts and facets; these operations keep the D1 mirror the UI reads.
-import type { CoreDatabase, CoreIntegrationConnectionTable } from "@crm/db";
+import type { CoreDatabase, CoreIntegrationConnectionTable } from "@relationship-os/db";
 import type { Kysely, Selectable } from "kysely";
 import { z } from "zod";
 import { ForbiddenError, NotFoundError, OperationError, ValidationError } from "../errors.ts";
@@ -90,7 +90,7 @@ export function requireIntegrations(ctx: HandlerContext): IntegrationRuntime {
   if (!ctx.integrations) {
     throw new OperationError(
       "config",
-      "The integration host is not available here (crm-runner is not bound)",
+      "The integration host is not available here (ros-runner is not bound)",
     );
   }
   return ctx.integrations;

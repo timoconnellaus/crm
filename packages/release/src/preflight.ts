@@ -1,5 +1,5 @@
 // Preflight (ADR 0054, ADR 0164): what an update would do, and whether anything must stop it,
-// computed before anything changes. Shared by Settings → Updates and `crm upgrade`.
+// computed before anything changes. Shared by Settings → Updates and `ros upgrade`.
 //
 // Blockers (the update refuses to start):
 // - the target is not newer than what is installed (rollback is its own path);

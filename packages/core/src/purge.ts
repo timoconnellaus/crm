@@ -1,7 +1,7 @@
 // The scheduled Trash purge (stage 1): hard-deletes records soft-deleted more than 30 days ago by
 // calling `trash.purge` through the pipeline as an automation, so every round is gated and
 // audited like any other operation. A Worker's `scheduled` handler calls runTrashPurge.
-import type { CrmDb } from "@crm/db";
+import type { CrmDb } from "@relationship-os/db";
 import type { GateFloor } from "./gate.ts";
 import { invoke } from "./invoke.ts";
 import { PURGE_MAX } from "./operations/trash.ts";

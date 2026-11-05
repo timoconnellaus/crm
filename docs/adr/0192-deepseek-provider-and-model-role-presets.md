@@ -109,20 +109,20 @@ tokens, and thinking would spend them before the answer. The assistant and the r
 thinking, with larger budgets.
 
 **How a deployment chooses it.** We reuse what exists: the deployment state's per-Worker `vars`,
-which the installer, `crm upgrade` and the self-updater already keep.
-- `create-crm --model-roles <preset | file.json | inline JSON | default>` checks the value
+which the installer, `ros upgrade` and the self-updater already keep.
+- `create-relationship-os --model-roles <preset | file.json | inline JSON | default>` checks the value
   strictly (`modelRolesVar`). Bad JSON, an unknown role, or a model or fallback the role would
   reject fails the install, rather than being dropped at run time the way `parseRoleLayer` drops
-  it. The result is stored as `AI_MODEL_ROLES` on every Worker that declares it (crm-app and
-  crm-runner, from the manifest's new `AI_MODEL_ROLES` input). Re-runs and upgrades keep it, and
+  it. The result is stored as `AI_MODEL_ROLES` on every Worker that declares it (ros-app and
+  ros-runner, from the manifest's new `AI_MODEL_ROLES` input). Re-runs and upgrades keep it, and
   `default` clears it.
-- `scripts/deploy.mjs` (wrangler, from a checkout) reads `CRM_AI_MODEL_ROLES` with the same
+- `scripts/deploy.mjs` (wrangler, from a checkout) reads `ROS_AI_MODEL_ROLES` with the same
   values and writes it into the git-ignored `wrangler.deploy.jsonc` for both Workers. Nothing is
   committed.
 - Settings → AI overrides (the admin layer) still win, role by role.
 
 ### BYOK the registry can see: `AI_GATEWAY_BYOK`
-`create-crm --provider-key deepseek=…` stored the key in the gateway. But the runner treated a
+`create-relationship-os --provider-key deepseek=…` stored the key in the gateway. But the runner treated a
 provider as BYOK only when D1's `ai_settings.byok` listed it, which is set by Settings → AI. A key
 stored by the installer therefore looked missing: the provider showed "No key", and because
 `AiNotConfiguredError` does not trigger the fallback, every role on it would fail. A new
@@ -132,7 +132,7 @@ deploy-config var fixes this:
 - `--provider-key` adds the registry provider for a built-in gateway slug: `deepseek` →
   `deepseek`, `google-ai-studio` → `google`. A custom provider (`custom-<slug>`) is not a
   registry provider, so it is left out.
-- `scripts/deploy.mjs` takes it from `CRM_AI_GATEWAY_BYOK`.
+- `scripts/deploy.mjs` takes it from `ROS_AI_GATEWAY_BYOK`.
 
 The var names providers only. It never holds a key.
 
@@ -167,5 +167,5 @@ never delete account-wide providers.
 - The release manifest gains two `var` inputs (`AI_MODEL_ROLES`, `AI_GATEWAY_BYOK`), and its
   `aiGateway.customProviders` is now empty. `MANIFEST_VERSION` stays 1. Older CLIs ignore the
   inputs, and vars not declared in a manifest were always passed through.
-- `create-crm` now bundles `@crm/core/ai-roles` (pure data and functions), so it uses the same
+- `create-relationship-os` now bundles `@relationship-os/core/ai-roles` (pure data and functions), so it uses the same
   registry, presets and checks as the app.

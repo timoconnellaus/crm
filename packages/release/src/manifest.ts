@@ -1,11 +1,11 @@
 // The release manifest (ADR 0053, ADR 0160): the contract between the release build
-// (scripts/release) and everything that deploys a release (the create-crm CLI and the
+// (scripts/release) and everything that deploys a release (the create-relationship-os CLI and the
 // self-updater). It is generated from each Worker's wrangler.jsonc, never hand-written, and every
 // account-specific value in it is a placeholder that is resolved only at deploy time:
 //
 //   $ACCOUNT_ID              the Cloudflare account id
 //   $HOSTNAME                the deployment's public hostname (crm.example.com or
-//                            crm-app.<subdomain>.workers.dev)
+//                            ros-app.<subdomain>.workers.dev)
 //   $SECRET(<NAME>)          a secret value, passed as a secret_text binding
 //   $WORKER_NAME(<name>)     the deployed name of another Worker of the release
 //   $D1_ID(<name>)           the id of a D1 database provisioned at deploy time
@@ -62,7 +62,7 @@ export interface DurableObjectMigration {
 export type SecretSource =
   /** The installer generates a random value (BETTER_AUTH_SECRET). */
   | "generated"
-  /** The installer derives it from its own answers (BETTER_AUTH_URL, CRM_UPDATE_TOKEN). */
+  /** The installer derives it from its own answers (BETTER_AUTH_URL, ROS_UPDATE_TOKEN). */
   | "installer"
   /** The operator supplies it (OAuth client secrets). */
   | "user";
@@ -117,7 +117,7 @@ export interface WorkerEntry {
   /** Other Workers of the release this one binds to; they deploy first. */
   dependsOn: string[];
   /**
-   * crm-runner: installed gatekeepers are bound as `GATEKEEPER_<SHORTNAME>` service bindings to
+   * ros-runner: installed gatekeepers are bound as `GATEKEEPER_<SHORTNAME>` service bindings to
    * their `entrypoint` (docs/integrations.md).
    */
   gatekeeperBindings?: { prefix: string; entrypoint: string };
@@ -146,7 +146,7 @@ export interface ResourceEntry {
   optional: boolean;
   /** Creation settings, e.g. a Vectorize index's dimensions and metric. */
   config?: Record<string, unknown>;
-  /** Only needed when this feature is on (e.g. the `crm-records` index for `ai`). */
+  /** Only needed when this feature is on (e.g. the `ros-records` index for `ai`). */
   feature?: Feature;
 }
 
@@ -372,7 +372,7 @@ export function parseManifest(text: string): ReleaseManifest {
   if (manifest?.product !== "crm") throw new Error("not a CRM release manifest");
   if (manifest.manifestVersion !== MANIFEST_VERSION) {
     throw new Error(
-      `manifest version ${manifest.manifestVersion} is not supported by this tool (expects ${MANIFEST_VERSION}); update create-crm`,
+      `manifest version ${manifest.manifestVersion} is not supported by this tool (expects ${MANIFEST_VERSION}); update create-relationship-os`,
     );
   }
   if (!Array.isArray(manifest.workers) || !Array.isArray(manifest.migrations)) {
@@ -402,7 +402,7 @@ export function deployOrder(workers: WorkerEntry[]): WorkerEntry[] {
   return out;
 }
 
-/** The binding name a gatekeeper gets on crm-runner: `email-send` → `GATEKEEPER_EMAIL_SEND`. */
+/** The binding name a gatekeeper gets on ros-runner: `email-send` → `GATEKEEPER_EMAIL_SEND`. */
 export function gatekeeperBindingName(prefix: string, shortName: string): string {
   return `${prefix}${shortName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
 }

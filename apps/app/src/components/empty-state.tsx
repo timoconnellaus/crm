@@ -1,7 +1,7 @@
 // Empty and error states: an icon, a title, a line of text and an optional action. Every list and
 // panel uses these, so "nothing here" and "could not load" look the same everywhere.
-import { Button } from "@crm/ui/components/button";
-import { cn } from "@crm/ui/lib/utils";
+import { Button } from "@relationship-os/ui/components/button";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { CircleAlertIcon, type LucideIcon, RotateCwIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { errorMessage } from "#/lib/query";

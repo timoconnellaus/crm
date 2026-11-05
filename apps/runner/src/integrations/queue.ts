@@ -20,8 +20,8 @@ import {
   parseFloor,
   readCountHour,
   submitOutbound,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 
 export type QueueCaller =
   | { kind: "actor"; caller: IntegrationCaller; user: ActingUser }

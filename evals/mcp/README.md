@@ -49,7 +49,7 @@ account, unknown model) stops the run, since no task could pass.
    not depend on the seed):
 
    ```sh
-   pnpm --filter @crm/db seed -- --people 300 --organisations 80 --activities 200 --tasks 60
+   pnpm --filter @relationship-os/db seed -- --people 300 --organisations 80 --activities 200 --tasks 60
    ```
 
 3. Leave the org's approval preset on **Balanced** (the default). The tasks expect single creates
@@ -61,7 +61,7 @@ account, unknown model) stops the run, since no task could pass.
    ```sh
    export CLOUDFLARE_ACCOUNT_ID=…  CLOUDFLARE_API_TOKEN=…
    node evals/mcp/runner.ts --base-url http://localhost:5173
-   # or: pnpm --filter @crm/evals-mcp eval -- --base-url http://localhost:5173
+   # or: pnpm --filter @relationship-os/evals-mcp eval -- --base-url http://localhost:5173
    ```
 
    Options: `--only id,id` runs some tasks (all of them must pass), `--model` (default
@@ -143,7 +143,7 @@ A task passes only when every check holds:
 - `lib/grading.ts`, `lib/harness.ts`, `lib/report.ts`: grading, running a task, the report.
 - `test/`: unit tests (plain Node, no network). The loop is tested with a scripted model, the
   client against a fake `fetch`, and the task file against the tool names generated from
-  `@crm/core`'s registry.
+  `@relationship-os/core`'s registry.
 
-`lib/*` is exported (`@crm/evals-mcp/lib/agent.ts` and so on) for the other eval packages;
+`lib/*` is exported (`@relationship-os/evals-mcp/lib/agent.ts` and so on) for the other eval packages;
 `evals/extensions` reuses the OAuth, MCP, model, conversion and loop modules.

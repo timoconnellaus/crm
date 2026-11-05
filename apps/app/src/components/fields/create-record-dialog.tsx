@@ -1,6 +1,6 @@
 // Create a record of an extension object: a form of its writable fields (field widgets), saved
 // with record.create.
-import { Button } from "@crm/ui/components/button";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
-import { Label } from "@crm/ui/components/label";
+} from "@relationship-os/ui/components/dialog";
+import { Label } from "@relationship-os/ui/components/label";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { errorMessage, useOpMutation } from "#/lib/query";

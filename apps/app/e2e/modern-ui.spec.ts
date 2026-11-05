@@ -246,7 +246,7 @@ test("People with the 10k seed scrolls smoothly with a bounded DOM", async ({ pa
   test.setTimeout(240_000);
   // The deterministic demo seed (6,000 people, idempotent): see packages/db/scripts/seed.ts.
   const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
-  execFileSync("pnpm", ["--filter", "@crm/db", "seed"], { cwd: root, stdio: "ignore" });
+  execFileSync("pnpm", ["--filter", "@relationship-os/db", "seed"], { cwd: root, stdio: "ignore" });
 
   await open(page, "/people");
   const count = page.getByTestId("page-count");

@@ -1,5 +1,5 @@
-// Our runtime for the gatekeeper configurator authoring API (`@crm/gatekeeper-configurator-ui`),
-// built from @crm/ui's shadcn components. Upstream renders each configurator spec in a sandboxed
+// Our runtime for the gatekeeper configurator authoring API (`@relationship-os/gatekeeper-configurator-ui`),
+// built from @relationship-os/ui's shadcn components. Upstream renders each configurator spec in a sandboxed
 // frame with its own runtime; the CRM renders the specs in the app instead (stage 6), and the app's
 // Vite and Vitest configs alias the authoring API to this module (see vite-plugin.ts). The authoring
 // API's docstrings are the behavioural spec for every component here.
@@ -13,7 +13,7 @@ import type {
   RadioCardsProps,
   SectionProps,
   TextInputProps,
-} from "@crm/gatekeeper-configurator-ui";
+} from "@relationship-os/gatekeeper-configurator-ui";
 import {
   checkboxSelection,
   failureMessage,
@@ -21,16 +21,16 @@ import {
   sanitizeOptions,
   splitList,
   withUnavailableOptions,
-} from "@crm/gatekeeper-configurator-ui/options";
-import { Button as UIButton } from "@crm/ui/components/button";
-import { Checkbox } from "@crm/ui/components/checkbox";
-import { Command, CommandInput, CommandItem, CommandList } from "@crm/ui/components/command";
-import { Input } from "@crm/ui/components/input";
-import { Label } from "@crm/ui/components/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@crm/ui/components/popover";
-import { RadioGroup, RadioGroupItem } from "@crm/ui/components/radio-group";
-import { Skeleton } from "@crm/ui/components/skeleton";
-import { cn } from "@crm/ui/lib/utils";
+} from "@relationship-os/gatekeeper-configurator-ui/options";
+import { Button as UIButton } from "@relationship-os/ui/components/button";
+import { Checkbox } from "@relationship-os/ui/components/checkbox";
+import { Command, CommandInput, CommandItem, CommandList } from "@relationship-os/ui/components/command";
+import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@relationship-os/ui/components/popover";
+import { RadioGroup, RadioGroupItem } from "@relationship-os/ui/components/radio-group";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { CheckIcon, ChevronsUpDownIcon, CircleAlertIcon, InfoIcon, XIcon } from "lucide-react";
 import {
   Fragment,
@@ -44,7 +44,7 @@ import {
 } from "react";
 import { FieldContext, type OptionsEntry, useField, useFrame } from "./form-context.ts";
 
-export type * from "@crm/gatekeeper-configurator-ui";
+export type * from "@relationship-os/gatekeeper-configurator-ui";
 export { h } from "./compat.ts";
 export { HierarchyPicker } from "./hierarchy-picker.tsx";
 export { Fragment };

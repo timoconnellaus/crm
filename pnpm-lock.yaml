@@ -23,24 +23,24 @@ importers:
       '@cloudflare/workers-oauth-provider':
         specifier: 1.2.4
         version: 1.2.4
-      '@crm/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
-      '@crm/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@crm/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@crm/release':
-        specifier: workspace:*
-        version: link:../../packages/release
-      '@crm/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@modelcontextprotocol/server':
         specifier: 2.4.0
         version: 2.4.0
+      '@relationship-os/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@relationship-os/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@relationship-os/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@relationship-os/release':
+        specifier: workspace:*
+        version: link:../../packages/release
+      '@relationship-os/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: 5.105.3
         version: 5.105.3(@types/react@19.3.0)(react@19.3.1)
@@ -87,18 +87,18 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)))
-      '@crm/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@crm/runner':
-        specifier: workspace:*
-        version: link:../runner
       '@modelcontextprotocol/client':
         specifier: 2.4.0
         version: 2.4.0
       '@playwright/test':
         specifier: 1.64.1
         version: 1.64.1
+      '@relationship-os/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@relationship-os/runner':
+        specifier: workspace:*
+        version: link:../runner
       '@tailwindcss/vite':
         specifier: 4.3.4
         version: 4.3.4(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
@@ -138,18 +138,18 @@ importers:
       '@cloudflare/computer':
         specifier: 0.9.0
         version: 0.9.0(@cloudflare/workers-types@5.20261104.1)(@platformatic/vfs@0.5.0)(ai@7.0.145(zod@4.6.7))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(zod@4.6.7)
-      '@crm/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@crm/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@crm/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
       '@platformatic/vfs':
         specifier: 0.5.0
         version: 0.5.0
+      '@relationship-os/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@relationship-os/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@relationship-os/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       kysely:
         specifier: 0.29.8
         version: 0.29.8
@@ -163,7 +163,7 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../../packages/config
       esbuild:
@@ -178,17 +178,17 @@ importers:
 
   evals/automations:
     dependencies:
-      '@crm/evals-mcp':
+      '@relationship-os/evals-mcp':
         specifier: workspace:*
         version: link:../mcp
     devDependencies:
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@crm/extension-deals':
+      '@relationship-os/extension-deals':
         specifier: workspace:*
         version: link:../../extensions/deals
-      '@crm/sdk':
+      '@relationship-os/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       '@types/node':
@@ -203,14 +203,14 @@ importers:
 
   evals/dashboards:
     dependencies:
-      '@crm/core':
+      '@relationship-os/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@crm/evals-mcp':
+      '@relationship-os/evals-mcp':
         specifier: workspace:*
         version: link:../mcp
     devDependencies:
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':
@@ -225,14 +225,14 @@ importers:
 
   evals/extensions:
     dependencies:
-      '@crm/evals-mcp':
+      '@relationship-os/evals-mcp':
         specifier: workspace:*
         version: link:../mcp
     devDependencies:
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@crm/sdk':
+      '@relationship-os/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       '@types/node':
@@ -254,10 +254,10 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261104.1
         version: 5.20261104.1
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@crm/core':
+      '@relationship-os/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@types/node':
@@ -272,7 +272,7 @@ importers:
 
   extensions/deals:
     dependencies:
-      '@crm/sdk':
+      '@relationship-os/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
     devDependencies:
@@ -282,7 +282,7 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261104.1
         version: 5.20261104.1
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../../packages/config
       typescript:
@@ -294,7 +294,7 @@ importers:
 
   packages/auth:
     dependencies:
-      '@crm/core':
+      '@relationship-os/core':
         specifier: workspace:*
         version: link:../core
       better-auth:
@@ -310,10 +310,10 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261104.1
         version: 5.20261104.1
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
-      '@crm/db':
+      '@relationship-os/db':
         specifier: workspace:*
         version: link:../db
       typescript:
@@ -340,13 +340,13 @@ importers:
       '@ai-sdk/provider':
         specifier: 4.0.30
         version: 4.0.30
-      '@crm/db':
+      '@relationship-os/db':
         specifier: workspace:*
         version: link:../db
-      '@crm/release':
+      '@relationship-os/release':
         specifier: workspace:*
         version: link:../release
-      '@crm/sdk':
+      '@relationship-os/sdk':
         specifier: workspace:*
         version: link:../sdk
       ai:
@@ -368,10 +368,10 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261104.1
         version: 5.20261104.1
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
-      '@crm/extension-deals':
+      '@relationship-os/extension-deals':
         specifier: workspace:*
         version: link:../../extensions/deals
       typescript:
@@ -381,15 +381,15 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
-  packages/create-crm:
+  packages/create-relationship-os:
     devDependencies:
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
-      '@crm/core':
+      '@relationship-os/core':
         specifier: workspace:*
         version: link:../core
-      '@crm/release':
+      '@relationship-os/release':
         specifier: workspace:*
         version: link:../release
       '@types/node':
@@ -417,7 +417,7 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261104.1
         version: 5.20261104.1
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -429,7 +429,7 @@ importers:
 
   packages/gatekeeper-configurator-ui:
     devDependencies:
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -441,16 +441,16 @@ importers:
 
   packages/gatekeeper-email:
     dependencies:
-      '@crm/gatekeeper-configurator-ui':
+      '@relationship-os/gatekeeper-configurator-ui':
         specifier: workspace:*
         version: link:../gatekeeper-configurator-ui
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
+      '@relationship-os/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
-      '@crm/gatekeeper-observability':
+      '@relationship-os/gatekeeper-observability':
         specifier: workspace:*
         version: link:../gatekeeper-observability
       capnweb:
@@ -466,7 +466,7 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -484,13 +484,13 @@ importers:
 
   packages/gatekeeper-email-send:
     dependencies:
-      '@crm/gatekeeper-configurator-ui':
+      '@relationship-os/gatekeeper-configurator-ui':
         specifier: workspace:*
         version: link:../gatekeeper-configurator-ui
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
+      '@relationship-os/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
       zod:
@@ -500,7 +500,7 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -518,16 +518,16 @@ importers:
 
   packages/gatekeeper-google:
     dependencies:
-      '@crm/gatekeeper-configurator-ui':
+      '@relationship-os/gatekeeper-configurator-ui':
         specifier: workspace:*
         version: link:../gatekeeper-configurator-ui
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
+      '@relationship-os/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
-      '@crm/gatekeeper-observability':
+      '@relationship-os/gatekeeper-observability':
         specifier: workspace:*
         version: link:../gatekeeper-observability
       capnweb:
@@ -549,7 +549,7 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       '@types/node':
@@ -579,7 +579,7 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261104.1
         version: 5.20261104.1
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -591,10 +591,10 @@ importers:
 
   packages/gatekeeper-kit:
     dependencies:
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-observability':
+      '@relationship-os/gatekeeper-observability':
         specifier: workspace:*
         version: link:../gatekeeper-observability
       diff:
@@ -610,7 +610,7 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261104.1
         version: 5.20261104.1
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       '@types/node':
@@ -625,19 +625,19 @@ importers:
 
   packages/gatekeeper-mcp:
     dependencies:
-      '@crm/gatekeeper-configurator-ui':
+      '@relationship-os/gatekeeper-configurator-ui':
         specifier: workspace:*
         version: link:../gatekeeper-configurator-ui
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
+      '@relationship-os/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
-      '@crm/gatekeeper-observability':
+      '@relationship-os/gatekeeper-observability':
         specifier: workspace:*
         version: link:../gatekeeper-observability
-      '@crm/mcp-shared':
+      '@relationship-os/mcp-shared':
         specifier: workspace:*
         version: link:../mcp-shared
       capnweb:
@@ -650,7 +650,7 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -668,16 +668,16 @@ importers:
 
   packages/gatekeeper-microsoft:
     dependencies:
-      '@crm/gatekeeper-configurator-ui':
+      '@relationship-os/gatekeeper-configurator-ui':
         specifier: workspace:*
         version: link:../gatekeeper-configurator-ui
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
+      '@relationship-os/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
-      '@crm/gatekeeper-observability':
+      '@relationship-os/gatekeeper-observability':
         specifier: workspace:*
         version: link:../gatekeeper-observability
       capnweb:
@@ -690,7 +690,7 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       '@types/node':
@@ -717,10 +717,10 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261104.1
         version: 5.20261104.1
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
       typescript:
@@ -732,13 +732,13 @@ importers:
 
   packages/gatekeeper-slack:
     dependencies:
-      '@crm/gatekeeper-configurator-ui':
+      '@relationship-os/gatekeeper-configurator-ui':
         specifier: workspace:*
         version: link:../gatekeeper-configurator-ui
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
+      '@relationship-os/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
       capnweb:
@@ -751,7 +751,7 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -769,10 +769,10 @@ importers:
 
   packages/gatekeeper-slack-post:
     dependencies:
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
+      '@relationship-os/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
       zod:
@@ -782,7 +782,7 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -800,20 +800,20 @@ importers:
 
   packages/gatekeeper-webhook:
     dependencies:
-      '@crm/gatekeeper-configurator-ui':
+      '@relationship-os/gatekeeper-configurator-ui':
         specifier: workspace:*
         version: link:../gatekeeper-configurator-ui
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
+      '@relationship-os/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
     devDependencies:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -828,10 +828,10 @@ importers:
 
   packages/gatekeeper-websearch:
     dependencies:
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
+      '@relationship-os/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
       capnweb:
@@ -847,7 +847,7 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -865,13 +865,13 @@ importers:
 
   packages/gatekeeper-zoominfo:
     dependencies:
-      '@crm/gatekeeper-configurator-ui':
+      '@relationship-os/gatekeeper-configurator-ui':
         specifier: workspace:*
         version: link:../gatekeeper-configurator-ui
-      '@crm/gatekeeper-interface':
+      '@relationship-os/gatekeeper-interface':
         specifier: workspace:*
         version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
+      '@relationship-os/gatekeeper-kit':
         specifier: workspace:*
         version: link:../gatekeeper-kit
       capnweb:
@@ -884,7 +884,7 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@7.3.6(@types/node@24.19.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)))
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -902,23 +902,23 @@ importers:
 
   packages/mcp-shared:
     dependencies:
-      '@crm/gatekeeper-interface':
-        specifier: workspace:*
-        version: link:../gatekeeper-interface
-      '@crm/gatekeeper-kit':
-        specifier: workspace:*
-        version: link:../gatekeeper-kit
-      '@crm/gatekeeper-observability':
-        specifier: workspace:*
-        version: link:../gatekeeper-observability
       '@modelcontextprotocol/client':
         specifier: 2.3.0
         version: 2.3.0
+      '@relationship-os/gatekeeper-interface':
+        specifier: workspace:*
+        version: link:../gatekeeper-interface
+      '@relationship-os/gatekeeper-kit':
+        specifier: workspace:*
+        version: link:../gatekeeper-kit
+      '@relationship-os/gatekeeper-observability':
+        specifier: workspace:*
+        version: link:../gatekeeper-observability
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20261104.1
         version: 5.20261104.1
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       '@types/node':
@@ -936,7 +936,7 @@ importers:
 
   packages/release:
     devDependencies:
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       '@types/node':
@@ -961,7 +961,7 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261104.1
         version: 5.20261104.1
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       typescript:
@@ -1001,7 +1001,7 @@ importers:
         specifier: 1.4.0
         version: 1.4.0
     devDependencies:
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
       '@types/react':
@@ -1025,11 +1025,11 @@ importers:
 
   scripts/release:
     dependencies:
-      '@crm/release':
+      '@relationship-os/release':
         specifier: workspace:*
         version: link:../../packages/release
     devDependencies:
-      '@crm/config':
+      '@relationship-os/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@types/node':

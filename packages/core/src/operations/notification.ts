@@ -1,7 +1,7 @@
 // notification.* operations (ADR 0029, ADR 0132): send an in-app notification, and the current
 // user's inbox (list, unread count, mark read). Every read and update is scoped to ctx.user: no
 // one reads or marks another person's notifications.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, sql } from "kysely";
 import { NOTIFICATION_OPERATION_SCHEMAS, type NotificationItem } from "../automations/schemas.ts";
 import { ValidationError } from "../errors.ts";

@@ -3,7 +3,7 @@ import type {
   ConfiguratorUIHostContext,
   ConfiguratorUISpec,
   ConfiguratorUIValues,
-} from "@crm/gatekeeper-configurator-ui";
+} from "@relationship-os/gatekeeper-configurator-ui";
 
 /** `setValues(patch)`: the patch merged over the values. An empty patch only re-renders. */
 export function applySetValues(

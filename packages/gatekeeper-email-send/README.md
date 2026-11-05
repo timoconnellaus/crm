@@ -1,9 +1,9 @@
-# @crm/gatekeeper-email-send
+# @relationship-os/gatekeeper-email-send
 
-Worker `crm-gatekeeper-email-send`: an outbound gatekeeper that sends email through
+Worker `ros-gatekeeper-email-send`: an outbound gatekeeper that sends email through
 [Cloudflare Email Service](https://developers.cloudflare.com/email-service/). It is ours, not
-vendored. It is built on `@crm/gatekeeper-kit` and implements the Cloudflare OS gatekeeper interface
-(`@crm/gatekeeper-interface`). Every email is an approval-queue action, and nothing is sent until
+vendored. It is built on `@relationship-os/gatekeeper-kit` and implements the Cloudflare OS gatekeeper interface
+(`@relationship-os/gatekeeper-interface`). Every email is an approval-queue action, and nothing is sent until
 the host applies that action. See `docs/stages/06-integrations.md`, "Own outbound gatekeepers".
 
 ## Shape
@@ -24,8 +24,8 @@ the host applies that action. See `docs/stages/06-integrations.md`, "Own outboun
   is not in `ALLOWED_SENDER_DOMAINS`.
 - **Configurator**: `startResourceConfigurator()` returns a minimal fallback iframe plus a `ui`
   capability with `allowedDomains(): Promise<string[]>`. The CRM renders the spec module
-  `@crm/gatekeeper-email-send/configurator/sender` (`src/configurator/sender-configurator-ui.tsx`,
-  written against `@crm/gatekeeper-configurator-ui`): a text input for the address, whose
+  `@relationship-os/gatekeeper-email-send/configurator/sender` (`src/configurator/sender-configurator-ui.tsx`,
+  written against `@relationship-os/gatekeeper-configurator-ui`): a text input for the address, whose
   `resourceUrl` builds the URL above.
 
 ## Session API (`EmailSendSession`, types in `src/types.d.ts`)

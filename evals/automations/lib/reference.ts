@@ -1,7 +1,7 @@
 // A known-good answer to each case: the extension source a capable model would write. smoke.ts
 // writes them to a real deployment (and can propose them), and the unit tests use them as the
 // stand-in model's answers. Each is generated from a compact description, so the 10 stay uniform.
-import type { ChatCompletionResponse, ModelClient } from "@crm/evals-mcp/lib/model.ts";
+import type { ChatCompletionResponse, ModelClient } from "@relationship-os/evals-mcp/lib/model.ts";
 import type { AutomationCase } from "../prompts.ts";
 
 interface ReferenceAutomation {
@@ -212,7 +212,7 @@ export function referenceSource(c: AutomationCase, extensionId: string): string 
   const ref = REFERENCES[c.id];
   if (!ref) throw new Error(`no reference for ${c.id}`);
   const permissions = { ...ref.permissions, modules: ["crm"] };
-  return `import { defineAutomation, defineExtension } from "@crm/sdk";
+  return `import { defineAutomation, defineExtension } from "@relationship-os/sdk";
 
 export default defineExtension({
   id: ${json(extensionId)},

@@ -1,11 +1,11 @@
 // "Pending changes" badges (ADR 0022): on a record's header and on list rows, for records an agent
 // has queued changes to. The UI reads real data, so this is how people learn a change is waiting.
 // The popover lists each pending action with a link to its change set in the Approvals inbox.
-import type { CoreOutput } from "@crm/core";
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@crm/ui/components/popover";
-import { cn } from "@crm/ui/lib/utils";
+import type { CoreOutput } from "@relationship-os/core";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@relationship-os/ui/components/popover";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { useQueries } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ClockIcon } from "lucide-react";

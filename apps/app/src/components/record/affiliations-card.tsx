@@ -1,15 +1,15 @@
 // Affiliations of a record: current ones (primary first) and past ones (job history). On a
 // person it lists their organisations; on an organisation, its people.
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@crm/ui/components/card";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@crm/ui/components/dropdown-menu";
-import { Skeleton } from "@crm/ui/components/skeleton";
+} from "@relationship-os/ui/components/dropdown-menu";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { BriefcaseIcon, Building2Icon, EllipsisIcon, PlusIcon, UserIcon } from "lucide-react";
 import { formatDate } from "#/lib/format";
 import { errorMessage } from "#/lib/query";

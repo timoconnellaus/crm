@@ -10,7 +10,7 @@ import {
   visibleOnChannel,
 } from "./semver.ts";
 
-export const DEFAULT_REPOSITORY = "timoconnellaus/crm";
+export const DEFAULT_REPOSITORY = "timoconnellaus/relationship-os";
 export const GITHUB_API = "https://api.github.com";
 
 export interface GitHubOptions {
@@ -49,7 +49,7 @@ function headers(options: GitHubOptions): HeadersInit {
   return {
     accept: "application/vnd.github+json",
     "x-github-api-version": "2022-11-28",
-    "user-agent": "crm-updater",
+    "user-agent": "ros-updater",
     ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
   };
 }
@@ -115,7 +115,7 @@ export async function getRelease(version: string, options: GitHubOptions = {}) {
 /** Downloads a release asset (follows GitHub's redirect to its storage). */
 export async function downloadAsset(url: string, options: GitHubOptions = {}): Promise<Uint8Array> {
   const response = await (options.fetch ?? fetch)(url, {
-    headers: { "user-agent": "crm-updater", accept: "application/octet-stream" },
+    headers: { "user-agent": "ros-updater", accept: "application/octet-stream" },
     redirect: "follow",
   });
   if (!response.ok) throw new Error(`download ${url}: HTTP ${response.status}`);

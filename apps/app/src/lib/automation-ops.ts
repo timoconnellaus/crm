@@ -3,7 +3,7 @@
 // and cached under the same `["op", name, input]` keys, so `invalidateOps(client, "automation.")`
 // refreshes them. Once those operations are in the core registry, `callOp` types them too and
 // these wrappers keep working unchanged.
-import type { AUTOMATION_OPERATION_SCHEMAS, NOTIFICATION_OPERATION_SCHEMAS } from "@crm/core";
+import type { AUTOMATION_OPERATION_SCHEMAS, NOTIFICATION_OPERATION_SCHEMAS } from "@relationship-os/core";
 import {
   type QueryKey,
   type UseQueryOptions,

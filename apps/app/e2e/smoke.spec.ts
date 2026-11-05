@@ -8,7 +8,7 @@ test("health is green", async ({ request }) => {
   expect(health).toMatchObject({
     status: "ok",
     database: { ok: true, upToDate: true },
-    runner: { ok: true, worker: "crm-runner" },
+    runner: { ok: true, worker: "ros-runner" },
   });
 });
 

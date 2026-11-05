@@ -1,7 +1,7 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-google/src/google-configurators.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 import { RpcTarget } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
-import { displayText } from "@crm/gatekeeper-configurator-ui/options";
+import { displayText } from "@relationship-os/gatekeeper-configurator-ui/options";
 import { BigQueryApi } from "./bigquery-api";
 import { GoogleCalendarApi } from "./calendar-api";
 import { ChatApi, chatSpaceIdFromReference, isChatNoAccessError } from "./chat-api";

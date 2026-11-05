@@ -2,9 +2,9 @@
 // drawer on phones), a header with search and the user menu, and the page, which brings its own
 // fixed header and single scroll region (PageLayout). Plus the app-wide command palette, shortcut
 // sheet and create dialogs.
-import { Button } from "@crm/ui/components/button";
-import { Kbd } from "@crm/ui/components/kbd";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@crm/ui/components/sidebar";
+import { Button } from "@relationship-os/ui/components/button";
+import { Kbd } from "@relationship-os/ui/components/kbd";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@relationship-os/ui/components/sidebar";
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { SearchIcon } from "lucide-react";
 import { useEffect, useRef } from "react";

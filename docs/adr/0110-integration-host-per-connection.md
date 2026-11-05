@@ -4,7 +4,7 @@ Status: accepted, 2026-11-05 (stage 6a build). Implements ADR 0050. Decides cost
 
 ## Context
 ADR 0050 puts the Workshop side of the Cloudflare OS gatekeeper interface in an "integration host
-DO" in `crm-runner`. Gatekeeper accounts, facet classes and hook controllers are persistent RPC
+DO" in `ros-runner`. Gatekeeper accounts, facet classes and hook controllers are persistent RPC
 stubs: only Durable Object storage can hold them (`allow_irrevocable_stub_storage`). The cost audit
 (U10) warns that one host DO for the whole org would carry every gatekeeper call, hook firing,
 outbound apply and sync pass of the deployment, and would be awake all the time.
@@ -44,17 +44,17 @@ the account only if the user is the one who started the flow, the nonce matches 
 fresh (15 minutes), and revokes it otherwise. Reconnect stages credentials the same way and commits
 with `commitReconnect(stageId)`. A catalogue entry's companion connects next in the same popup.
 
-**Public routes.** `crm-app` proxies `/gatekeeper/<vendor>/*` (no session: OAuth redirects, connect
-pages, provider pushes) to `crm-runner.gatekeeperFetch(vendor, request)`, which forwards to the
+**Public routes.** `ros-app` proxies `/gatekeeper/<vendor>/*` (no session: OAuth redirects, connect
+pages, provider pushes) to `ros-runner.gatekeeperFetch(vendor, request)`, which forwards to the
 gatekeeper Worker's default fetch. Each gatekeeper authenticates its own routes (nonces,
 signatures). The request's origin is the handoff's target; `APP_ORIGIN` is the fallback.
 
-**Gatekeeper bindings** are `GATEKEEPER_<NAME>` service bindings on `crm-runner` to each Worker's
+**Gatekeeper bindings** are `GATEKEEPER_<NAME>` service bindings on `ros-runner` to each Worker's
 `GatekeeperVendor` entrypoint. A deployment binds the gatekeepers it deploys; `availableVendors`
 reports which exist, and an admin enables them (`core_integration_vendor`, `integration.setVendor`).
 The committed config binds only the fake provider.
 
-**The fake provider** is part of `crm-runner` (`FakeGatekeeperVendor`, its account DO, facet and
+**The fake provider** is part of `ros-runner` (`FakeGatekeeperVendor`, its account DO, facet and
 provider data DO), bound to itself as `GATEKEEPER_FAKE`, and answers only when
 `INTEGRATIONS_FAKE_PROVIDER=true` (local development and tests). It implements the real interface
 (OAuth-like consent page, handoff, facets, hooks, a journalled outbox) so the whole path is tested
@@ -66,7 +66,7 @@ without real accounts.
 - Facets of one connection share their host's isolate and storage limits; a very busy shared
   mailbox is still one object. Splitting further (per resource) is possible later without changing
   the D1 mirror or the operations.
-- `crm-runner` now needs `allow_irrevocable_stub_storage`, the R2 bucket `crm-blobs` (ADR 0112) and
+- `ros-runner` now needs `allow_irrevocable_stub_storage`, the R2 bucket `ros-blobs` (ADR 0112) and
   the new Durable Object classes (migration tag `v4`).
 
 ## Stage 6b plug points

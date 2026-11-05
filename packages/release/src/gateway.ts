@@ -1,7 +1,7 @@
 // AI Gateway provisioning (ADR 0180): with the `ai` feature on, every deployment gets its own
 // AI Gateway, and every model call goes through it (Workers AI through the binding's gateway
 // option, other providers through the gateway's provider and unified endpoints). Used by
-// `create-crm` (install and repair) and by runUpdate (`crm upgrade` and the self-updater), so an
+// `create-relationship-os` (install and repair) and by runUpdate (`ros upgrade` and the self-updater), so an
 // upgrade creates whatever is missing.
 //
 //   gateway          find by id, else create (logging on, authentication on)
@@ -39,11 +39,11 @@ function workerName(state: DeploymentState, name: string) {
 
 /**
  * The gateway id of a deployment: the one it chose, else its install name, the app Worker's
- * deployed name without `-app` (`crm-app` → `crm`, `acme-crm-app` → `acme-crm`).
+ * deployed name without `-app` (`ros-app` → `crm`, `acme-ros-app` → `acme-crm`).
  */
 export function gatewayIdFor(state: DeploymentState, manifest: ReleaseManifest): string {
   if (typeof state.aiGateway === "string" && state.aiGateway) return state.aiGateway;
-  const app = manifest.workers.find((w) => w.role === "app")?.name ?? "crm-app";
+  const app = manifest.workers.find((w) => w.role === "app")?.name ?? "ros-app";
   const base = workerName(state, app)
     .toLowerCase()
     .replace(/-app$/, "")

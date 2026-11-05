@@ -44,11 +44,11 @@ runaways.
 
 ### Execution
 - **Events:** the pipeline emits record events after commit (`ctx.afterCommit`) to a **Queue**. The
-  consumer in `crm-runner` matches enabled automations and starts runs.
+  consumer in `ros-runner` matches enabled automations and starts runs.
 - **Runs:** every run is a **Cloudflare Workflow** instance. Its id is derived from the idempotency
   key (event id + automation id), so duplicate deliveries never double-run. Steps are retried with
   backoff and are durable across redeploys.
-- **Schedules and date-relative triggers:** a cron in `crm-runner` evaluates schedules and daily
+- **Schedules and date-relative triggers:** a cron in `ros-runner` evaluates schedules and daily
   date-relative matches, using idempotency keys per period.
 - **Review pauses:** if an action's gate decision is `review`, it becomes a pending action (stage 2
   queue) in a change set for the run. The Workflow waits for the decision via `waitForEvent`.

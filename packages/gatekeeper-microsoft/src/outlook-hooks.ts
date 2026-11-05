@@ -13,11 +13,11 @@
 
 import { DurableObject, RpcTarget, WorkerEntrypoint, type RpcStub } from "cloudflare:workers";
 import { validateRpc } from "capnweb-validate";
-import { sanitizeTitle } from "@crm/gatekeeper-kit/action-description";
-import { HookDeliveryQueue, disposeStubs } from "@crm/gatekeeper-kit/hook-delivery-queue";
-import { escapeObservationValue } from "@crm/gatekeeper-kit/observers";
-import { ResponseTooLargeError, readTextCapped } from "@crm/gatekeeper-kit/response-body";
-import type { ApprovalQueue, HookController, HookInitiator, HookTargetMetadata } from "@crm/gatekeeper-interface/gatekeeper";
+import { sanitizeTitle } from "@relationship-os/gatekeeper-kit/action-description";
+import { HookDeliveryQueue, disposeStubs } from "@relationship-os/gatekeeper-kit/hook-delivery-queue";
+import { escapeObservationValue } from "@relationship-os/gatekeeper-kit/observers";
+import { ResponseTooLargeError, readTextCapped } from "@relationship-os/gatekeeper-kit/response-body";
+import type { ApprovalQueue, HookController, HookInitiator, HookTargetMetadata } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { GraphApi, GraphApiError } from "./graph-api";
 import { accountSource } from "./microsoft-credentials";
 import { VENDOR_ID, getBaseUrl, type Env } from "./microsoft-env";

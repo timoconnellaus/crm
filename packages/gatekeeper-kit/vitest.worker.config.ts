@@ -1,4 +1,4 @@
-// Upstream's workerd config. Local change: `assert-workerd` comes from @crm/gatekeeper-interface
+// Upstream's workerd config. Local change: `assert-workerd` comes from @relationship-os/gatekeeper-interface
 // instead of upstream's @gadgets/scripts.
 import { cloudflareTest } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
@@ -21,6 +21,6 @@ export default defineConfig({
   ],
   test: {
     include: ["__tests__/workerd/*.test.ts"],
-    setupFiles: ["@crm/gatekeeper-interface/testing/assert-workerd"],
+    setupFiles: ["@relationship-os/gatekeeper-interface/testing/assert-workerd"],
   },
 });

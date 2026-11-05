@@ -4,7 +4,7 @@
 // delivery.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ActionApplyError, ActionOutcomeUnknownError } from "@crm/gatekeeper-kit/actions";
+import { ActionApplyError, ActionOutcomeUnknownError } from "@relationship-os/gatekeeper-kit/actions";
 import { GraphApi, GraphApiError } from "../src/graph-api";
 import {
   definitions, replaceOwnPart, requiredAccess, revert, submit, type Composed, type DraftVersion, type MessageTarget, type OutlookAction, type OutlookActions,

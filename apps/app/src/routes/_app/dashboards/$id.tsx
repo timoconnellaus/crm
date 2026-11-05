@@ -1,5 +1,5 @@
 // One dashboard: /dashboards/<id>, with its filter values in the URL.
-import { Skeleton } from "@crm/ui/components/skeleton";
+import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { DashboardPage, parseFilterValues } from "#/components/dashboards/dashboard-page";
 import type { FilterValues } from "#/components/dashboards/dashboard-view";

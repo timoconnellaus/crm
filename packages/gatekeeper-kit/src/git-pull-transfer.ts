@@ -2,7 +2,7 @@
 import { RpcTarget } from "cloudflare:workers";
 import type {
   GitOid, GitPullHints, GitPullStatus, GitPullTransfer,
-} from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { pullGitPack } from "./git-transport";
 
 /** Keep the producer's terminal result reachable even if RPC replaces a stream exception. */

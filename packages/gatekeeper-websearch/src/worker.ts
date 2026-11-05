@@ -18,8 +18,8 @@ import type {
   ResourceDescription,
   SupportedResource,
   VendorDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
-import { workerVersionTag } from "@crm/gatekeeper-interface/gatekeeper";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
+import { workerVersionTag } from "@relationship-os/gatekeeper-interface/gatekeeper";
 import { search } from "./search.js";
 import type { WebSearchResult, WebSearchSession } from "./types.js";
 import TYPES_CODE from "./types.txt";

@@ -1,6 +1,6 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-google/src/oauth.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
-import { stripTrailingSlashes } from "@crm/gatekeeper-interface/gatekeeper";
-import type { PreviewOAuthEnv } from "@crm/gatekeeper-kit/preview-oauth";
+import { stripTrailingSlashes } from "@relationship-os/gatekeeper-interface/gatekeeper";
+import type { PreviewOAuthEnv } from "@relationship-os/gatekeeper-kit/preview-oauth";
 
 const OAUTH_CALLBACK_PATH = "/oauth";
 

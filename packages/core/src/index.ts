@@ -1,4 +1,4 @@
-// @crm/core: the operations registry and everything an operation needs. See README.md.
+// @relationship-os/core: the operations registry and everything an operation needs. See README.md.
 
 export * from "./ai/admin.ts";
 export * from "./ai/embedding.ts";

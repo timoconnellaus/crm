@@ -1,7 +1,7 @@
 // Vendored from cloudflare/cloudflare-os@a3ba4746b58f packages/gatekeeper-kit/src/observer-tracker.ts (Apache-2.0). Modified locally: see UPSTREAM.md in this package.
 /** Durable collaborator admission and per-collection observer exclusion. */
 
-import { createLogger } from "@crm/gatekeeper-observability/logger";
+import { createLogger } from "@relationship-os/gatekeeper-observability/logger";
 import { generateNonce } from "./connect-nonce";
 import type { KvScannable } from "./kv";
 import { perStorage } from "./per-storage";

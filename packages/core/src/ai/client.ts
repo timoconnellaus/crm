@@ -91,7 +91,7 @@ export interface AiEnv {
   AI_PROVIDERS?: string;
   /**
    * Deploy config: comma-separated providers whose key is stored in AI Gateway as BYOK (e.g.
-   * `deepseek`), set by `create-crm --provider-key` (ADR 0192). Joins the admin layer's `byok`.
+   * `deepseek`), set by `create-relationship-os --provider-key` (ADR 0192). Joins the admin layer's `byok`.
    */
   AI_GATEWAY_BYOK?: string;
   /** Size of the Vectorize index; the embed role must match it. */

@@ -15,12 +15,12 @@ import type {
   GatekeeperUserVerifier,
   GitCache,
   ResourceDescription,
-} from "@crm/gatekeeper-interface/gatekeeper";
-import { ActionFileStore } from "@crm/gatekeeper-kit/action-files";
-import { ActionJournal } from "@crm/gatekeeper-kit/actions";
-import { KvTtlCache } from "@crm/gatekeeper-kit/cache";
-import { ProvisionalIds } from "@crm/gatekeeper-kit/simulation";
-import { SerialTaskQueue } from "@crm/gatekeeper-kit/serial-queue";
+} from "@relationship-os/gatekeeper-interface/gatekeeper";
+import { ActionFileStore } from "@relationship-os/gatekeeper-kit/action-files";
+import { ActionJournal } from "@relationship-os/gatekeeper-kit/actions";
+import { KvTtlCache } from "@relationship-os/gatekeeper-kit/cache";
+import { ProvisionalIds } from "@relationship-os/gatekeeper-kit/simulation";
+import { SerialTaskQueue } from "@relationship-os/gatekeeper-kit/serial-queue";
 import TYPES_CODE from "./types.txt";
 import { DESCRIPTION_TTL_MS, housekeep, isProvisional, PinnedUser, provisionalId, revertRefused } from "./binding";
 import { GraphApi, GraphApiError } from "./graph-api";

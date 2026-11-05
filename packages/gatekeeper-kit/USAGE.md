@@ -1,4 +1,4 @@
-# Using `@crm/gatekeeper-kit`
+# Using `@relationship-os/gatekeeper-kit`
 
 The kit exposes independent modules through package subpaths. Import only the pieces the gatekeeper
 needs:
@@ -7,7 +7,7 @@ needs:
 import {
   CredentialCoordinator,
   CredentialSource,
-} from "@crm/gatekeeper-kit/credentials";
+} from "@relationship-os/gatekeeper-kit/credentials";
 ```
 
 The exported symbols carry their exact contracts in JSDoc. This guide covers the choices and
@@ -586,7 +586,7 @@ decided while the dependent was being delivered fails it instead, as the cascade
 
 ### Describe with `buildDescription`
 
-Write `describe` with `buildDescription` from `@crm/gatekeeper-kit/action-description`. The
+Write `describe` with `buildDescription` from `@relationship-os/gatekeeper-kit/action-description`. The
 approver vouches for the text they read, so every piece of content the action will send that came
 from the workspace — a body, a field value, an identifier, serialized arguments — goes in a field
 (`inline`, `verbatim`, `json`, `list`, or `file`). Fields travel as `ActionDescription.fields`,

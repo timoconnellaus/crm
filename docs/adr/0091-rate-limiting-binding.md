@@ -39,7 +39,7 @@ The [Workers Rate Limiting binding](https://developers.cloudflare.com/workers/ru
 - **Limits move from vars to wrangler config.** `MCP_RATE_LIMIT_REQUESTS` and
   `MCP_RATE_LIMIT_WRITES` are removed. To change a limit, edit `ratelimits` and redeploy
   (documented in `docs/deploying.md`).
-- **One helper** in `@crm/core`: `rateLimit(binding, key)` returns `{ ok: true }` or
+- **One helper** in `@relationship-os/core`: `rateLimit(binding, key)` returns `{ ok: true }` or
   `{ ok: false, retryAfterSeconds }`. A missing binding allows the call and logs one warning
   (fail open: a misconfigured deploy must not lock everyone out). `memoryRateLimit(limit)` is an
   exact in-memory fake for tests, which inject it instead of the real binding.

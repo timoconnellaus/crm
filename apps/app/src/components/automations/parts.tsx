@@ -1,7 +1,7 @@
 // Small pieces the automation pages share: the status pill, a run's coloured outcome, the
 // reference design's titled cards, and the test-mode result.
-import type { AutomationTestReport } from "@crm/core";
-import { cn } from "@crm/ui/lib/utils";
+import type { AutomationTestReport } from "@relationship-os/core";
+import { cn } from "@relationship-os/ui/lib/utils";
 import type { ReactNode } from "react";
 import {
   type AutomationStatus,

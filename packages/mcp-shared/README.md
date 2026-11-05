@@ -138,6 +138,6 @@ Fixed rather than configurable.
 ## Build & test
 
 ```
-pnpm --filter @crm/mcp-shared build   # tsc
-pnpm --filter @crm/mcp-shared test:run    # vitest
+pnpm --filter @relationship-os/mcp-shared build   # tsc
+pnpm --filter @relationship-os/mcp-shared test:run    # vitest
 ```

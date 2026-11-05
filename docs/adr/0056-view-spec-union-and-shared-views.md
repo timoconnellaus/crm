@@ -3,8 +3,8 @@
 Status: accepted, 2026-11-05 (stage 4a build). Refines ADR 0016 and ADR 0027.
 
 ## Decision
-- **One discriminated union** in `packages/core/src/views/spec.ts`, exported from `@crm/core`
-  and `@crm/core/client`:
+- **One discriminated union** in `packages/core/src/views/spec.ts`, exported from `@relationship-os/core`
+  and `@relationship-os/core/client`:
   - `table { object, filter, sort, columns }` (stage 1, unchanged)
   - `board { object, filter, sort, groupBy, columnOrder?, hiddenColumns?, sumField?, cardFields }`
   - `calendar { object, filter, dateField, mode: month | week | agenda, cardFields }`

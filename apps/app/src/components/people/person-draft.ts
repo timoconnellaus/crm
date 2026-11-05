@@ -1,6 +1,6 @@
 // The person details editor's form model: a draft built from a Person, and the minimal
 // person.update input for what changed. Pure, so it is unit-tested.
-import type { CoreInput, Person } from "@crm/core";
+import type { CoreInput, Person } from "@relationship-os/core";
 
 export interface PersonDraft {
   givenName: string;

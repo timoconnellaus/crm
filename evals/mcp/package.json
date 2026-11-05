@@ -1,5 +1,5 @@
 {
-  "name": "@crm/evals-mcp",
+  "name": "@relationship-os/evals-mcp",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -18,8 +18,8 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261104.1",
-    "@crm/config": "workspace:*",
-    "@crm/core": "workspace:*",
+    "@relationship-os/config": "workspace:*",
+    "@relationship-os/core": "workspace:*",
     "@types/node": "24.19.2",
     "typescript": "6.0.3",
     "vitest": "5.1.0"

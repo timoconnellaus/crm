@@ -5,7 +5,7 @@
 // a seed can point at another (`{ seed: "newBusiness" }`) and demo data (`pnpm db:seed`) can refer
 // to them without reading the database. packages/db/src/seed.ts carries a copy of `seedRecordId`
 // (it cannot import core); a test keeps the two equal.
-import type { ExtensionManifest, FieldManifest } from "@crm/sdk";
+import type { ExtensionManifest, FieldManifest } from "@relationship-os/sdk";
 import { CompiledQuery } from "kysely";
 import { FIELD_TYPE_REGISTRY } from "../fields/field-types.ts";
 import { columnName, objectTable } from "./naming.ts";

@@ -20,9 +20,9 @@ import {
   parseFloor,
   type TestSimulation,
   toOperationError,
-} from "@crm/core";
-import { createCrmDb } from "@crm/db";
-import type { ExtensionManifest } from "@crm/sdk";
+} from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
+import type { ExtensionManifest } from "@relationship-os/sdk";
 import { runModelRole } from "../extensions/ai.ts";
 import { CODE_MAX_CALLS } from "../extensions/code-mode.ts";
 import { embedsFromEvents } from "../extensions/embeddings.ts";

@@ -1,6 +1,6 @@
 // search.global: Cmd-K search over people, organisations, activities and tasks, using the FTS5
 // index core_search (migration 0006). Every query word is a prefix match, so it works as you type.
-import type { CoreDatabase } from "@crm/db";
+import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { getObject, isCoreObject, listObjects } from "../fields/index.ts";

@@ -1,4 +1,4 @@
-import { defineWorkersTestConfig } from "@crm/config/vitest";
+import { defineWorkersTestConfig } from "@relationship-os/config/vitest";
 
 export default defineWorkersTestConfig({
   workers: {

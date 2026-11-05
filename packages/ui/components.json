@@ -11,10 +11,10 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@crm/ui/components",
-    "utils": "@crm/ui/lib/utils",
-    "hooks": "@crm/ui/hooks",
-    "lib": "@crm/ui/lib",
-    "ui": "@crm/ui/components"
+    "components": "@relationship-os/ui/components",
+    "utils": "@relationship-os/ui/lib/utils",
+    "hooks": "@relationship-os/ui/hooks",
+    "lib": "@relationship-os/ui/lib",
+    "ui": "@relationship-os/ui/components"
   }
 }

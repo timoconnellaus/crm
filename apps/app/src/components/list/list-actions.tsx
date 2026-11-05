@@ -1,6 +1,6 @@
 // Shared list actions for People and Organisations: the list menu (import, export) and the bulk
 // actions for selected rows (merge two, tag, set owner, delete), over the batch operations.
-import type { ObjectDefinition } from "@crm/core/client";
+import type { ObjectDefinition } from "@relationship-os/core/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,8 +10,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@crm/ui/components/alert-dialog";
-import { Button } from "@crm/ui/components/button";
+} from "@relationship-os/ui/components/alert-dialog";
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -19,21 +19,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@crm/ui/components/dialog";
+} from "@relationship-os/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@crm/ui/components/dropdown-menu";
-import { Label } from "@crm/ui/components/label";
+} from "@relationship-os/ui/components/dropdown-menu";
+import { Label } from "@relationship-os/ui/components/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@crm/ui/components/select";
+} from "@relationship-os/ui/components/select";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {

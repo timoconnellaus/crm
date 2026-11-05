@@ -1,6 +1,6 @@
 // Build-time bundling for the extension runtime (ADR 0025):
 //
-// 1. The SDK as one ES module string (`crm-sdk` inside the sandbox): defineExtension, z,
+// 1. The SDK as one ES module string (`ros-sdk` inside the sandbox): defineExtension, z,
 //    runExtension, … with zod inlined, since Dynamic Workers cannot resolve packages.
 // 2. Every shipped extension under extensions/<id>/ as source text (its .ts files, minus tests
 //    and config), so it goes through the same transpile → check → sandbox path as runtime
@@ -8,7 +8,7 @@
 // 3. The declarations for the in-Worker type check of extension source (sdk-types.ts).
 // 4. The TypeScript compiler as an ES module (typescript.js), and the type checker's Dynamic Worker
 //    (checker.txt: the compiler, the declarations and src/checker/entry.ts in one module). The
-//    checker runs in its own Dynamic Worker (ADR 0043), so crm-runner's main bundle does not carry
+//    checker runs in its own Dynamic Worker (ADR 0043), so ros-runner's main bundle does not carry
 //    or parse the compiler; it ships checker.txt as a Text module.
 // 5. runtime-meta.ts: hashes that go into the Dynamic Workers' stable loader ids (ADR 0043).
 //
@@ -76,7 +76,7 @@ for (const entry of (await readdir(extensionsDir, { withFileTypes: true })).sort
   shipped.push({ id: entry.name, version: pkg.version, files: await sourceFiles(dir) });
 }
 
-// 3. The declarations the in-Worker type checker needs (src/extensions/typecheck.ts): @crm/sdk's
+// 3. The declarations the in-Worker type checker needs (src/extensions/typecheck.ts): @relationship-os/sdk's
 //    .d.ts (emitted from packages/sdk/src), the zod .d.ts files they reach, and the ES2022 lib
 //    files (no DOM), comments stripped, at virtual paths, plus every import's resolution between
 //    them, so the Worker needs no module resolution of its own for these files.
@@ -182,9 +182,9 @@ await writeFile(
 );
 await writeFile(
   join(out, "sdk-types.ts"),
-  `${banner}/** Declarations for the extension type checker: @crm/sdk, zod and the ES2022 libs. */\nexport const SDK_TYPES: { entry: string; files: Record<string, string>; resolutions: Record<string, Record<string, string>> } = ${sdkTypesJson};\n`,
+  `${banner}/** Declarations for the extension type checker: @relationship-os/sdk, zod and the ES2022 libs. */\nexport const SDK_TYPES: { entry: string; files: Record<string, string>; resolutions: Record<string, Record<string, string>> } = ${sdkTypesJson};\n`,
 );
-// @crm/sdk as one ES module for the sandbox (specifier `crm-sdk`), shipped as a Text module so the
+// @relationship-os/sdk as one ES module for the sandbox (specifier `ros-sdk`), shipped as a Text module so the
 // runner never parses it as code.
 await writeFile(join(out, "sdk-bundle.txt"), sdkSource);
 await writeFile(
@@ -257,5 +257,5 @@ export const SDK_TYPES_HASH = ${JSON.stringify(sha(sdkTypesJson))};
 `,
 );
 console.log(
-  `bundled crm-sdk (${(sdkSource.length / 1024).toFixed(0)} KiB), its type declarations (${Object.keys(sdkTypes.files).length} files, ${(sdkTypesJson.length / 1024).toFixed(0)} KiB), the checker worker with typescript ${typescriptVersion} (${(checkerSource.length / 1024).toFixed(0)} KiB) and ${shipped.length} shipped extension(s)`,
+  `bundled ros-sdk (${(sdkSource.length / 1024).toFixed(0)} KiB), its type declarations (${Object.keys(sdkTypes.files).length} files, ${(sdkTypesJson.length / 1024).toFixed(0)} KiB), the checker worker with typescript ${typescriptVersion} (${(checkerSource.length / 1024).toFixed(0)} KiB) and ${shipped.length} shipped extension(s)`,
 );

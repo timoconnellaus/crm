@@ -1,6 +1,6 @@
 // Small form controls for record editors: a tag input and a repeatable-row list editor.
-import { Badge } from "@crm/ui/components/badge";
-import { Button } from "@crm/ui/components/button";
+import { Badge } from "@relationship-os/ui/components/badge";
+import { Button } from "@relationship-os/ui/components/button";
 import { PlusIcon, XIcon } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useState } from "react";
 

@@ -1,7 +1,7 @@
 // The merge dialog's model: the fields a merge lets you choose per object, the default choices
 // (the server's rule: the survivor's value, or the duplicate's when the survivor's is empty), the
 // lists that are combined, and the operation input. Pure, so it is unit-tested.
-import type { CoreInput, Organisation, Person } from "@crm/core";
+import type { CoreInput, Organisation, Person } from "@relationship-os/core";
 
 export type MergeObject = "person" | "organisation";
 export type MergeSide = "survivor" | "merged";

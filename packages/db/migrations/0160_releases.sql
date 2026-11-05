@@ -1,8 +1,8 @@
 -- Stage 8: release state and update history (ADR 0160, ADR 0164).
 --
 -- core_install: what the installer chose (hostname, identity adapter, installed gatekeepers,
--- resource ids, var overrides), as JSON under key 'deployment', written by `create-crm` and
--- read by `crm upgrade` and the self-updater so every deploy of this deployment is the same.
+-- resource ids, var overrides), as JSON under key 'deployment', written by `create-relationship-os` and
+-- read by `ros upgrade` and the self-updater so every deploy of this deployment is the same.
 -- It holds no secrets.
 CREATE TABLE core_install (
   key TEXT PRIMARY KEY NOT NULL,
