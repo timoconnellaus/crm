@@ -14,12 +14,13 @@ commit**, by editing this table. Use the next free block. Unused numbers in a bl
 | C | 0250–0259 | 0230–0239 | Stage 11 (Jev) | in flight |
 | D | — | 0240–0249 | Specs, stages 12–16 (ADRs 0240–0247 used; the stages' ADRs) | in flight |
 | E | 0260–0269 | 0250–0254 | Hosted platform AI | in flight |
-| F | 0270–0279 | 0255–0259 | Core fixes (erase, automations) | in flight |
+| F | 0270–0279 | 0255–0259 | Core fixes (erase, automations) | merged |
 | G | 0280–0289 | 0260–0269 (free) | Stage 12, Import (migrations only) | specced |
 | H | 0290–0299 | 0270–0279 (free) | Stage 13, Email (migrations only) | specced |
 | I | 0300–0309 | 0280–0289 (free) | Stage 14, Teams and permissions (migrations only) | specced |
 | J | 0310–0319 | 0290–0299 (free) | Stage 15, Leads: assignment rules (migrations only) | specced |
 | K | 0320–0329 | 0300–0309 (free) | Stage 16, Duplicates (migrations only) | specced |
+| L | 0330–0339 | 0320–0329 | Erase completeness (every store) | in flight |
 
 Add more blocks of ten as needed. `CORE_SCHEMA_VERSION` is the highest migration number on `main`;
 when you merge `main`, keep the larger value.
@@ -34,7 +35,7 @@ Avoid these unless your build is the one named, because another build is changin
 | --- | --- |
 | `packages/core/src/judge/`, `adjudicator/`, `extension.check` / `propose` warnings, `evals/judge` | Stage 11 (Jev) |
 | `packages/core/src/ai/roles.ts`, `ai/client.ts`, hosted provisioning in `packages/release`, `apps/control` AI metering | Hosted platform AI |
-| `person.erase`, assistant conversation storage, `automations/summary.ts`, automation test mode | Core fixes |
+| `person.erase`, `organisation.erase`, `records/erase.ts`, `assistant/erase.ts`, sync ingest's suppression check | Erase completeness |
 | Visibility and permissions anywhere | Stage 14, once it starts |
 
 Remove a row when its build merges.
