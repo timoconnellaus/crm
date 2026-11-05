@@ -181,12 +181,14 @@ export class HostQueue extends RpcTarget {
           actionKind: description.actionKind?.tag ?? null,
           title: description.title,
         });
-        await auditOutboundApplied(db, submission, { ok: true });
+        await auditOutboundApplied(db, submission, { ok: true }, decision.judgeUsage);
       } catch (error) {
-        await auditOutboundApplied(db, submission, {
-          ok: false,
-          message: error instanceof Error ? error.message : String(error),
-        });
+        await auditOutboundApplied(
+          db,
+          submission,
+          { ok: false, message: error instanceof Error ? error.message : String(error) },
+          decision.judgeUsage,
+        );
       }
     });
     this.deferred.push(later);

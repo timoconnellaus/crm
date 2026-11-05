@@ -47,6 +47,8 @@ const placementView = z.object({
   source: z.enum(["shipped", "deploy", "admin", "fixed"]),
   /** Calls and spend over the last JUDGE_SPEND_DAYS days, from the judge's own count. */
   spend: z.object({ calls: z.number(), inputTokens: z.number(), costUsd: z.number() }),
+  /** False: its calls store nothing, so they are in the Workers logs only (ADR 0234). */
+  spendCounted: z.boolean(),
 });
 
 const judgeView = z.object({
@@ -122,6 +124,7 @@ async function view(ctx: HandlerContext, settings: JudgeSettings) {
         sendsRecordContent: p.sendsRecordContent,
         switchable: p.switchable,
         built: p.built,
+        spendCounted: p.spendCounted,
         ...resolved[p.id as JudgePlacementId],
         spend: {
           calls: s?.calls ?? 0,

@@ -483,17 +483,24 @@ function PlacementList({ view }: { view: JudgeView }) {
               <dd>{p.onFailure}</dd>
               <dt>Spend</dt>
               <dd data-testid={`judge-spend-${p.id}`}>
-                {p.spend.calls.toLocaleString()} calls, {p.spend.inputTokens.toLocaleString()} input
-                tokens, {usd(p.spend.costUsd)}
+                {p.spendCounted ? (
+                  <>
+                    {p.spend.calls.toLocaleString()} calls, {p.spend.inputTokens.toLocaleString()}{" "}
+                    input tokens, {usd(p.spend.costUsd)}
+                  </>
+                ) : (
+                  "Not counted here: it stores nothing, so its calls are in the Workers logs only"
+                )}
               </dd>
             </dl>
           </li>
         ))}
       </ul>
       <p className="text-xs text-muted-foreground">
-        Spend is the judge's own count of calls whose result is stored (the adjudicator's verdicts
-        and extension proposals). Checks whose result is not stored, such as extension.check and
-        Test, are in the Workers logs only.
+        Spend is the judge's own count of the calls behind a stored result: the adjudicator's
+        verdicts, extension proposals, summaries, outbound messages and job-change suggestions.
+        Calls that store nothing (extension.check, the widget shape in Describe a widget, and Test)
+        are in the Workers logs only.
       </p>
       <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
         <AlertDialogContent>

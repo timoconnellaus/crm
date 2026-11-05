@@ -42,6 +42,11 @@ export interface JudgePlacement {
   switchable: boolean;
   /** Built and asked in this release (false: declared for its build step, never asked yet). */
   built: boolean;
+  /**
+   * Its calls are counted in core_judge_usage, in the batch that stores their result (ADR 0234).
+   * False where nothing is stored (widget.describe writes nothing): the Workers log only.
+   */
+  spendCounted: boolean;
 }
 
 const place = <const T extends JudgePlacement>(p: T) => p;
@@ -61,6 +66,7 @@ export const JUDGE_PLACEMENTS = [
     defaultOn: true,
     switchable: true,
     built: true,
+    spendCounted: true,
   }),
   place({
     id: "adjudicator.policy",
@@ -74,6 +80,7 @@ export const JUDGE_PLACEMENTS = [
     defaultOn: true,
     switchable: false,
     built: true,
+    spendCounted: true,
   }),
   place({
     id: "summary.statements",
@@ -89,6 +96,7 @@ export const JUDGE_PLACEMENTS = [
     defaultOn: false,
     switchable: true,
     built: true,
+    spendCounted: true,
   }),
   place({
     id: "outbound.message",
@@ -104,6 +112,7 @@ export const JUDGE_PLACEMENTS = [
     defaultOn: false,
     switchable: true,
     built: true,
+    spendCounted: true,
   }),
   place({
     id: "sync.jobChange",
@@ -117,6 +126,7 @@ export const JUDGE_PLACEMENTS = [
     defaultOn: false,
     switchable: true,
     built: false,
+    spendCounted: true,
   }),
   place({
     id: "widget.shape",
@@ -130,6 +140,7 @@ export const JUDGE_PLACEMENTS = [
     defaultOn: true,
     switchable: true,
     built: true,
+    spendCounted: false,
   }),
   place({
     id: "judge.test",
@@ -143,6 +154,7 @@ export const JUDGE_PLACEMENTS = [
     defaultOn: true,
     switchable: false,
     built: true,
+    spendCounted: false,
   }),
   place({
     id: "eval.automations",
@@ -156,6 +168,7 @@ export const JUDGE_PLACEMENTS = [
     defaultOn: true,
     switchable: false,
     built: true,
+    spendCounted: false,
   }),
 ] as const satisfies readonly JudgePlacement[];
 

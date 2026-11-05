@@ -22,6 +22,7 @@ import {
   type ChoiceQuestion,
   failureOf,
   type Judge,
+  type JudgeCallUsage,
   type JudgeFault,
   type JudgeUnavailable,
   type JudgeUnavailableReason,
@@ -171,8 +172,8 @@ export interface SummaryCheck {
 export type SummaryChecked =
   /** The judge is off: store and show the summary as before stage 11. */
   | { status: "off" }
-  | { status: "checked"; text: string; check: SummaryCheck }
-  | { status: "unchecked"; text: string; check: SummaryCheck };
+  | { status: "checked"; text: string; check: SummaryCheck; usage: JudgeCallUsage }
+  | { status: "unchecked"; text: string; check: SummaryCheck; usage: JudgeCallUsage };
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
@@ -202,6 +203,7 @@ export async function checkSummary(input: {
       reason,
       checkedAt: input.now,
     },
+    usage: { calls: 1, inputTokens: 0 },
   });
   const state = statementsState({ facts: input.facts, statements, today: input.now });
   const asked = await askStatements(input.judge, state);
@@ -235,6 +237,7 @@ export async function checkSummary(input: {
       model: asked.model,
       checkedAt: input.now,
     },
+    usage: { calls: 1, inputTokens: asked.inputTokens },
   };
 }
 

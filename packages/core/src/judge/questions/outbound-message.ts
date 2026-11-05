@@ -23,6 +23,7 @@ import {
   type ChoiceQuestion,
   failureOf,
   type Judge,
+  type JudgeCallUsage,
   type JudgeFault,
   type JudgeUnavailable,
   type JudgeUnavailableReason,
@@ -244,7 +245,12 @@ const round = (n: number) => Math.round(n * 100) / 100;
 
 export type OutboundChecked =
   | { status: "off" }
-  | { status: "checked" | "unchecked"; check: Omit<OutboundCheck, "turnedToReview"> };
+  | {
+      status: "checked" | "unchecked";
+      check: Omit<OutboundCheck, "turnedToReview">;
+      /** For the spend count (ADR 0234). */
+      usage: JudgeCallUsage;
+    };
 
 /** Checks one message. Off (no judge, nothing to check, or switched off) is `off`. */
 export async function checkOutboundMessage(input: {
@@ -278,6 +284,7 @@ export async function checkOutboundMessage(input: {
         reason: asked.reason,
         checkedAt: input.now,
       },
+      usage: { calls: 1, inputTokens: 0 },
     };
   }
   const findings: OutboundFinding[] = [];
@@ -314,6 +321,7 @@ export async function checkOutboundMessage(input: {
       model: asked.model,
       checkedAt: input.now,
     },
+    usage: { calls: 1, inputTokens: asked.inputTokens },
   };
 }
 

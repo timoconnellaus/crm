@@ -21,9 +21,11 @@ import { ConfigError, OperationError } from "../errors.ts";
 import {
   checkSummary,
   parseSummaryCheck,
+  STATEMENTS_PLACEMENT,
   type SummaryCheck,
   summaryCheckMessage,
 } from "../judge/questions/summary-statements.ts";
+import { judgeUsageStatement } from "../judge/usage.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import { searchHitSchema } from "./search.ts";
 
@@ -175,6 +177,11 @@ export const summaryGenerate = defineOperation({
       facts: summary.facts,
       now: ctx.now,
     });
+    // The judge's spend (ADR 0234), counted in the batch this call already writes (the summary
+    // row and the audit row; a withheld summary still writes its audit row).
+    if (checked.status !== "off") {
+      ctx.write(judgeUsageStatement(ctx.db, STATEMENTS_PLACEMENT, checked.usage, ctx.now));
+    }
     if (checked.status === "unchecked" && summary.kind === "changeset") {
       // Fails closed: an approver must not decide from words nothing read. Nothing is stored, so
       // the next request writes and checks it again.

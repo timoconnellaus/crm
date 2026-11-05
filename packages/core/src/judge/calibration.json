@@ -55,10 +55,7 @@
       "wrong": 0,
       "close": 2,
       "unanswered": 0,
-      "closeCalls": [
-        "big-deal-alert, only open deals too",
-        "org-check-in without the wait"
-      ],
+      "closeCalls": ["big-deal-alert, only open deals too", "org-check-in without the wait"],
       "highestBelow": 0.38,
       "belowGap": 0.07,
       "lowestAbove": 0.45,
@@ -96,9 +93,7 @@
       "wrong": 0,
       "close": 1,
       "unanswered": 0,
-      "closeCalls": [
-        "org-check-in without the wait"
-      ],
+      "closeCalls": ["org-check-in without the wait"],
       "highestBelow": 0.38,
       "belowGap": 0.12,
       "lowestAbove": 0.81,
