@@ -1,0 +1,15 @@
+{
+  "$comment": "Secrets this gatekeeper needs, read by scripts/release/manifest-lib.ts into the release manifest (ADR 0160). Values are never committed.",
+  "secrets": [
+    {
+      "name": "CLIENT_ID",
+      "required": true,
+      "description": "Slack app OAuth client ID"
+    },
+    {
+      "name": "CLIENT_SECRET",
+      "required": true,
+      "description": "Slack app OAuth client secret"
+    }
+  ]
+}

@@ -71,6 +71,7 @@ import {
 } from "./principals.ts";
 import { resolveInputFilter } from "./relative.ts";
 import { loadApprovalPolicy } from "./settings.ts";
+import type { UpdaterRuntime } from "./updates.ts";
 
 /** Everything an adapter supplies for one call. */
 export interface InvocationContext {
@@ -108,6 +109,8 @@ export interface InvocationContext {
   models?: ModelRunner;
   /** Widget result cache (ADR 0057); absent means the Workers Cache API. */
   widgetCache?: WidgetCache;
+  /** The self-updater (ADR 0164): GitHub Releases and the Cloudflare API. */
+  updater?: UpdaterRuntime;
   /**
    * Where committed record changes go as automation events (ADR 0130): crm-app and crm-runner
    * pass a Queue producer. Absent: no events (tests, scripts). Nested invocations inherit it.
@@ -594,6 +597,7 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.extension ? { extension: ctx.extension } : {}),
     ...(ctx.models ? { models: ctx.models } : {}),
     ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
+    ...(ctx.updater ? { updater: ctx.updater } : {}),
     ...(ctx.vectors ? { vectors: ctx.vectors } : {}),
     ...(ctx.aiAdmin ? { aiAdmin: ctx.aiAdmin } : {}),
     ...(ctx.aiEnv ? { aiEnv: ctx.aiEnv } : {}),

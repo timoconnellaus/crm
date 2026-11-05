@@ -32,6 +32,9 @@ importers:
       '@crm/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@crm/release':
+        specifier: workspace:*
+        version: link:../../packages/release
       '@crm/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -340,6 +343,9 @@ importers:
       '@crm/db':
         specifier: workspace:*
         version: link:../db
+      '@crm/release':
+        specifier: workspace:*
+        version: link:../release
       '@crm/sdk':
         specifier: workspace:*
         version: link:../sdk
@@ -368,6 +374,27 @@ importers:
       '@crm/extension-deals':
         specifier: workspace:*
         version: link:../../extensions/deals
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/create-crm:
+    devDependencies:
+      '@crm/config':
+        specifier: workspace:*
+        version: link:../config
+      '@crm/release':
+        specifier: workspace:*
+        version: link:../release
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -904,6 +931,21 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  packages/release:
+    devDependencies:
+      '@crm/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
   packages/sdk:
     dependencies:
       zod:
@@ -977,6 +1019,25 @@ importers:
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+
+  scripts/release:
+    dependencies:
+      '@crm/release':
+        specifier: workspace:*
+        version: link:../../packages/release
+    devDependencies:
+      '@crm/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
 packages:
 

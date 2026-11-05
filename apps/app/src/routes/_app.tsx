@@ -28,11 +28,13 @@ import { getSession } from "../server/session.public.ts";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async ({ location }) => {
-    const { principal, user, signOutUrl } = await getSession();
+    const { principal, user, signOutUrl, setupOpen, identityProvider } = await getSession();
     if (!principal || !user) {
       throw redirect({ to: "/sign-in", search: { redirect: location.href } });
     }
-    return { principal, user, signOutUrl, isAdmin: user.role === "admin" };
+    // First visit after install: the admin finishes setting up first (skippable, ADR 0167).
+    if (setupOpen && location.pathname !== "/setup") throw redirect({ to: "/setup" });
+    return { principal, user, signOutUrl, identityProvider, isAdmin: user.role === "admin" };
   },
   component: AppLayout,
 });

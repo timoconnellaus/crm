@@ -407,8 +407,32 @@ The JSON a view is made of, rendered by our components: a discriminated union of
 and a chart mapping). See ADR 0056 and ADR 0057.
 
 **Release bundle**
-A versioned, prebuilt set of Workers + assets + manifest that the deploy service installs or upgrades
-in an org's account.
+One versioned, reproducible `crm-<version>.tar.gz` holding every Worker's modules, crm-app's static
+assets, the core migrations and the **release manifest** (generated from the `wrangler.jsonc` files,
+with placeholders such as `$ACCOUNT_ID` and `$D1_ID(crm)` for account-specific values). Published as
+a GitHub Release asset with SHA256SUMS and a build attestation; `create-crm` installs it and the
+**self-updater** upgrades to it. See ADR 0053 and ADR 0160.
+_Avoid_: build, artifact (for the bundle as a whole), package
+
+**Channel**
+Which releases a deployment is offered: **stable** (`X.Y.Z` only) or **beta** (also `X.Y.Z-beta.N`).
+Set in Settings → Updates. See ADR 0161.
+
+**Preflight**
+The check before an update, computed from the installed and target manifests and the database: runtime
+extensions against the new extension contract, pending core migrations, gatekeeper changes and new
+secrets or inputs. A **blocker** refuses the update and says what to do. See ADR 0164.
+
+**Self-updater**
+Settings → Updates: a deployment updating itself from GitHub Releases with an optional scoped API
+token (`CRM_UPDATE_TOKEN`). It runs the same procedure as `crm upgrade`: pause automations, take a D1
+Time Travel bookmark, migrate, switch all Workers together, smoke-check, resume; **rollback**
+redeploys the previous bundle and restores the bookmark. See ADR 0054 and ADR 0164.
+
+**Setup wizard**
+The first-run steps an admin sees after install (`/setup`): account, organisation, AI, approval policy,
+connect or import, sample data. Skippable and resumable. **Sample data** is removed in one click. See
+ADR 0167.
 
 **Stage**
 One unit of the build roadmap. Each stage has an interview, an agreed spec in `docs/stages/`, and a

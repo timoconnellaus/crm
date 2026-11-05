@@ -19,6 +19,7 @@
     "@crm/auth": "workspace:*",
     "@crm/core": "workspace:*",
     "@crm/db": "workspace:*",
+    "@crm/release": "workspace:*",
     "@crm/ui": "workspace:*",
     "@modelcontextprotocol/server": "2.4.0",
     "@tanstack/react-query": "5.105.3",
@@ -73,6 +74,9 @@
       },
       "CF_ACCESS_AUD": {
         "description": "Only with IDENTITY_PROVIDER=cloudflare-access: the Access application's AUD tag."
+      },
+      "CRM_UPDATE_TOKEN": {
+        "description": "Optional. A scoped Cloudflare API token that lets Settings → Updates update this deployment itself (docs/deploying.md). Without it, updates use the `crm upgrade` CLI."
       }
     }
   }

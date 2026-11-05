@@ -25,6 +25,7 @@ import {
   RISK_CLASSES,
   type RiskClass,
 } from "./principals.ts";
+import type { UpdaterRuntime } from "./updates.ts";
 
 /** One record touched by an operation, recorded as field diffs in core_audit_changes. */
 export interface RecordChange {
@@ -142,6 +143,8 @@ export interface HandlerContext {
   readonly models?: ModelRunner;
   /** The dashboard widget result cache (ADR 0057). Absent: the Workers Cache API. */
   readonly widgetCache?: WidgetCache;
+  /** The self-updater (ADR 0164), when the adapter provides one (update.*). */
+  readonly updater?: UpdaterRuntime;
   /** Record embeddings (ADR 0154). Absent: semantic search is not configured. */
   readonly vectors?: VectorStore;
   /** Cloudflare API access for Settings → AI (ADR 0151, 0152), when configured. */

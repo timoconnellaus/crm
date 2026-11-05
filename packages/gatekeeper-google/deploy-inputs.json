@@ -1,0 +1,30 @@
+{
+  "$comment": "Secrets this gatekeeper needs, read by scripts/release/manifest-lib.ts into the release manifest (ADR 0160). Values are never committed.",
+  "secrets": [
+    {
+      "name": "CLIENT_ID",
+      "required": true,
+      "description": "Google (Web application) OAuth client ID"
+    },
+    {
+      "name": "CLIENT_SECRET",
+      "required": true,
+      "description": "Google (Web application) OAuth client secret"
+    },
+    {
+      "name": "PUBSUB_CHAT_TOPIC",
+      "required": false,
+      "description": "Pub/Sub topic for Google Chat push hooks"
+    },
+    {
+      "name": "PUBSUB_GMAIL_TOPIC",
+      "required": false,
+      "description": "Pub/Sub topic for Gmail push hooks"
+    },
+    {
+      "name": "PUBSUB_PUSH_SERVICE_ACCOUNT",
+      "required": false,
+      "description": "Service account that signs Pub/Sub pushes"
+    }
+  ]
+}

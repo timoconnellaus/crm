@@ -11,7 +11,9 @@
 // a `vectorize` binding (`crm-records`). Neither runs locally, so the committed
 // wrangler.jsonc files leave them out (local dev and tests use stand-ins) and this script adds
 // them to a generated `wrangler.deploy.jsonc` next to each one. CRM_AI=off deploys without AI.
-// CRM_VECTORIZE_INDEX names the index (default crm-records).
+// CRM_VECTORIZE_INDEX names the index (default crm-records). The bindings and the index's
+// settings come from each app's `deploy-inputs.json` (`features.ai`, `vectorize`), which the
+// release manifest reads too, so `create-crm` installs the same thing (ADR 0160).
 //
 // crm-app's secrets are read from the environment (see docs/deploying.md). They are passed with
 // --secrets-file, which a first deploy needs; later deploys keep the secrets already set.
@@ -79,11 +81,17 @@ function parseJsonc(text) {
   return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"));
 }
 
+const deployInputs = (app) =>
+  JSON.parse(readFileSync(join(root, app, "deploy-inputs.json"), "utf8"));
+
 /** Writes <app>/wrangler.deploy.jsonc: wrangler.jsonc plus the AI bindings. Returns its name. */
-function deployConfig(app, { vectorize }) {
+function deployConfig(app) {
   const config = parseJsonc(readFileSync(join(root, app, "wrangler.jsonc"), "utf8"));
-  config.ai = { binding: "AI" };
-  if (vectorize) config.vectorize = [{ binding: "VECTORIZE", index_name: indexName }];
+  const feature = deployInputs(app).features?.ai ?? {};
+  if (feature.ai) config.ai = feature.ai;
+  if (feature.vectorize) {
+    config.vectorize = feature.vectorize.map((index) => ({ ...index, index_name: indexName }));
+  }
   const file = "wrangler.deploy.jsonc";
   writeFileSync(
     join(root, app, file),
@@ -111,20 +119,29 @@ function wranglerOk(cwd, args) {
 let runnerConfig = [];
 let appConfigEnv = {};
 if (aiOn) {
+  const index = deployInputs("apps/app").vectorize["crm-records"];
   if (dryRun) console.log(`\n(dry run: would create Vectorize index ${indexName} if missing)`);
   else if (!wranglerOk("apps/app", ["vectorize", "get", indexName])) {
-    wrangler("apps/app", ["vectorize", "create", indexName, "--dimensions=384", "--metric=cosine"]);
     wrangler("apps/app", [
       "vectorize",
-      "create-metadata-index",
+      "create",
       indexName,
-      "--property-name=object",
-      "--type=string",
+      `--dimensions=${index.dimensions}`,
+      `--metric=${index.metric}`,
     ]);
+    for (const meta of index.metadataIndexes ?? []) {
+      wrangler("apps/app", [
+        "vectorize",
+        "create-metadata-index",
+        indexName,
+        `--property-name=${meta.propertyName}`,
+        `--type=${meta.indexType}`,
+      ]);
+    }
   }
   // crm-runner's automation events consumer embeds changed records (ADR 0154 amendment).
-  runnerConfig = ["--config", deployConfig("apps/runner", { vectorize: true })];
-  appConfigEnv = { CRM_WRANGLER_CONFIG: deployConfig("apps/app", { vectorize: true }) };
+  runnerConfig = ["--config", deployConfig("apps/runner")];
+  appConfigEnv = { CRM_WRANGLER_CONFIG: deployConfig("apps/app") };
 } else {
   console.log("\nCRM_AI=off: deploying without Workers AI and Vectorize bindings");
 }

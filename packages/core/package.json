@@ -25,6 +25,7 @@
     "@ai-sdk/openai-compatible": "3.0.73",
     "@ai-sdk/provider": "4.0.30",
     "@crm/db": "workspace:*",
+    "@crm/release": "workspace:*",
     "@crm/sdk": "workspace:*",
     "ai": "7.0.145",
     "kysely": "0.29.8",

@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { FullConfig } from "@playwright/test";
+import { chromium, type FullConfig } from "@playwright/test";
 import { TEST_USER } from "./test-user.ts";
 
 const STORAGE_STATE = join(dirname(fileURLToPath(import.meta.url)), ".auth/user.json");
@@ -44,4 +44,27 @@ export default async function globalSetup(config: FullConfig) {
   });
   mkdirSync(dirname(STORAGE_STATE), { recursive: true });
   writeFileSync(STORAGE_STATE, JSON.stringify({ cookies, origins: [] }, null, 2));
+
+  // The first-run setup wizard opens for the first admin (stage 8). Skip it once here so the other
+  // specs land where they navigate; setup-wizard.spec.ts reopens it from Settings → General.
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ baseURL, storageState: STORAGE_STATE });
+    const page = await context.newPage();
+    await page.goto("/setup");
+    await page.locator("html[data-hydrated]").waitFor({ state: "attached", timeout: 60_000 });
+    // The wizard renders once setup.status loads, which on a cold `vite dev` can be well after
+    // hydration: wait for the button rather than checking once.
+    const skip = page.getByTestId("setup-skip");
+    const shown = await skip
+      .waitFor({ state: "visible", timeout: 60_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (shown) {
+      await skip.click();
+      await page.waitForURL((url) => url.pathname === "/", { timeout: 30_000 });
+    }
+  } finally {
+    await browser.close();
+  }
 }

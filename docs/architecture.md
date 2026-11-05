@@ -46,6 +46,40 @@ gatekeepers.
 - **Gatekeeper Workers**: one per external service, vendored from Cloudflare OS
   ([ADR 0007](adr/0007-integrations-are-gatekeepers.md)).
 
+#### Distribution and updates (stage 8)
+
+```
+ tag vX.Y.Z ─► release.yml: build-release (twice, hashes compared) ─► attest ─► draft ─► smoke ─► publish
+                    │ manifest generated from every wrangler.jsonc (placeholders, golden-tested)
+                    ▼
+ GitHub Release: crm-X.Y.Z.tar.gz · crm-X.Y.Z.manifest.json · SHA256SUMS · build attestation
+                    │ downloaded + verified (sha256, attestation, every file vs manifest)
+        ┌───────────┴─────────────┐
+ npx create-crm / crm upgrade    Settings → Updates (self-updater, optional CRM_UPDATE_TOKEN)
+        └───────────┬─────────────┘
+          packages/release: Cloudflare REST API (no wrangler) — provision, migrate, stage versions,
+          switch all Workers, smoke-check; bookmark + restore for rollback
+```
+
+- **Release bundle** ([ADR 0160](adr/0160-release-manifest-and-bundle.md)): `scripts/release`
+  builds every Worker with wrangler's dry run, crm-app's assets and the migrations into one
+  reproducible tar.gz; the manifest is generated from the wrangler configs, with `$ACCOUNT_ID`,
+  `$HOSTNAME`, `$SECRET(…)`, `$WORKER_NAME(…)` and resource placeholders.
+- **Versions and channels** ([ADR 0161](adr/0161-versions-channels-and-release-workflow.md)):
+  semver, stable and beta; the changelog is generated from PR titles.
+- **Verification** ([ADR 0162](adr/0162-release-verification.md)): SHA256SUMS plus GitHub's
+  attestation store; `gh attestation verify` in the CLI when available.
+- **Deploy engine** ([ADR 0163](adr/0163-deploy-engine-over-the-cloudflare-api.md)) and the
+  **create-crm** CLI ([ADR 0165](adr/0165-installer-cli-and-deployment-state.md)); installer choices
+  live in D1 (`core_install`) so every later deploy matches.
+- **Self-updater** ([ADR 0054](adr/0054-self-updater.md), [ADR 0164](adr/0164-update-procedure-preflight-and-rollback.md)):
+  `update.*` operations (human admins) behind an `UpdaterRuntime` port; preflight blocks an
+  update that would break a runtime extension; history and bookmarks in `core_update_runs`.
+- **Setup wizard** ([ADR 0167](adr/0167-first-run-setup-wizard.md)): `/setup` on the first admin
+  visit; `setup.*` and `sample.*` operations.
+- **No telemetry** ([ADR 0166](adr/0166-no-telemetry.md)). Real-account CI:
+  [ADR 0168](adr/0168-real-account-install-test.md).
+
 ### 2. Operations registry (the one API)
 
 Every thing a user or AI can do is an **operation** defined once in `packages/core`: name, zod input
@@ -393,6 +427,9 @@ packages/
   sdk/                 the extension contract (defineExtension, defineTool), formula language, test harness
   ui/                  shared shadcn/ui components and the view-spec renderer
   config/              shared tsconfig, biome and vitest presets
+  release/             release bundles, manifest types, verification, the Cloudflare API deploy
+                       engine, preflight and the update procedure (Node and Workers)
+  create-crm/          the installer CLI: npx create-crm, crm upgrade / rollback / status
   gatekeeper-interface/ the gatekeeper RPC interface (vendored from cloudflare-os, see UPSTREAMS.md)
   gatekeeper-kit/      gatekeeper building blocks (vendored)
   gatekeeper-observability/, gatekeeper-configurator-ui/, mcp-shared/
@@ -415,7 +452,8 @@ scripts/
   dev-setup.mjs        local .dev.vars + local migrations (runs before `pnpm dev`)
   vendor-gatekeepers.mjs  re-copy the vendored cloudflare-os packages from an upstream checkout
   gatekeeper-worker-types.mjs  `wrangler types` for the gatekeeper Workers (`pnpm types`)
-  release/             (later) bundle builder + manifest
+  release/             release build, manifest generator (golden test), changelog
+  setup-ci-cloudflare.sh  wizard: the CI test account and its GitHub secrets
 AGENTS.md              conventions every build session follows (CLAUDE.md points here)
 CONTEXT.md             glossary
 UPSTREAMS.md           vendored upstream code and the commit each copy tracks

@@ -23,6 +23,7 @@ import { type AiAppEnv, aiContextFor } from "./ai.ts";
 import { blobStoreFor, integrationRuntimeFor } from "./integrations.ts";
 import { deleteGrantTokens } from "./mcp/handler.ts";
 import { runner } from "./runner.ts";
+import { updaterRuntimeFor } from "./updater.ts";
 
 export interface OperationsEnv extends AiAppEnv {
   DB: D1Database;
@@ -40,6 +41,12 @@ export interface OperationsEnv extends AiAppEnv {
   CODE_MODE_RATE_LIMIT?: RateLimitBinding;
   /** Synced email bodies (R2, ADR 0112). */
   BLOBS?: R2Bucket;
+  /** Release (stage 8): the installed version, release repository and account (ADR 0164). */
+  CRM_RELEASE_VERSION?: string;
+  CRM_RELEASE_REPO?: string;
+  CRM_ACCOUNT_ID?: string;
+  /** Optional scoped token for in-app updates (a secret). */
+  CRM_UPDATE_TOKEN?: string;
 }
 
 /**
@@ -176,6 +183,7 @@ export async function runOperation(
       floor: parseFloor(env.APPROVAL_FLOOR),
       ...(extensionHost ? { extensionHost } : {}),
       ...automationWiring(env),
+      updater: updaterRuntimeFor(env),
       ...aiContextFor(env, db),
       approvalExpiryDays: Number.parseInt(env.APPROVAL_EXPIRY_DAYS ?? "", 10) || undefined,
     };

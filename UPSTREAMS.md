@@ -79,6 +79,14 @@ ADR 0114). They have no `UPSTREAM.md`, are linted normally, and use no capnweb-v
 | [`@crm/gatekeeper-slack-post`](packages/gatekeeper-slack-post/README.md) | `crm-gatekeeper-slack-post` | Posts to Slack and sends DMs as the bot of the same Slack app as the vendored read-only gatekeeper (`slack.post`, `slack.dm`) |
 | [`@crm/gatekeeper-webhook`](packages/gatekeeper-webhook/README.md) | `crm-gatekeeper-webhook` | Receives signed webhooks and delivers typed events (ADR 0113) |
 
+## Ported, not vendored: release tooling (stage 8)
+
+`scripts/release/manifest-lib.ts`, `build-release.ts` and `packages/release` follow Cloudflare OS's
+`scripts/release` (`manifest-lib.ts`, `hash-lib.ts`, the golden-file test, candidate → promote) as
+reviewed at `a3ba4746b58f1ef8e2252f8bac6b6377099202f0`. Nothing is copied: the code is ours, and
+differs where ADR 0160 says (one tarball on GitHub Releases instead of an R2 mirror, several ESM
+modules per Worker, explicit resources and secret sources, no router).
+
 ## Proposed upstream changes
 
 Found in the Cloudflare cost audit (`docs/research/cloudflare-cost-audit.md`, section 5). They can

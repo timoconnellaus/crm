@@ -16,6 +16,7 @@ import { Route as AppActivityRouteImport } from './routes/_app/activity'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
+import { Route as AppSetupRouteImport } from './routes/_app/setup'
 import { Route as AppStatusRouteImport } from './routes/_app/status'
 import { Route as AppSuggestedContactsRouteImport } from './routes/_app/suggested-contacts'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
@@ -41,6 +42,7 @@ import { Route as AppSettingsExtensionsRouteImport } from './routes/_app/setting
 import { Route as AppSettingsGeneralRouteImport } from './routes/_app/settings/general'
 import { Route as AppSettingsIntegrationsRouteImport } from './routes/_app/settings/integrations'
 import { Route as AppSettingsStorageRouteImport } from './routes/_app/settings/storage'
+import { Route as AppSettingsUpdatesRouteImport } from './routes/_app/settings/updates'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppXObjectIndexRouteImport } from './routes/_app/x/$object/index'
@@ -78,6 +80,11 @@ const AppImportRoute = AppImportRouteImport.update({
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSetupRoute = AppSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => AppRoute,
 } as any)
 const AppStatusRoute = AppStatusRouteImport.update({
@@ -207,6 +214,11 @@ const AppSettingsStorageRoute = AppSettingsStorageRouteImport.update({
   path: '/settings/storage',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsUpdatesRoute = AppSettingsUpdatesRouteImport.update({
+  id: '/settings/updates',
+  path: '/settings/updates',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsUsersRoute = AppSettingsUsersRouteImport.update({
   id: '/settings/users',
   path: '/settings/users',
@@ -235,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/approvals': typeof AppApprovalsRoute
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
+  '/setup': typeof AppSetupRoute
   '/status': typeof AppStatusRoute
   '/suggested-contacts': typeof AppSuggestedContactsRoute
   '/tasks': typeof AppTasksRoute
@@ -255,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/settings/storage': typeof AppSettingsStorageRoute
+  '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/automations/': typeof AppAutomationsIndexRoute
@@ -271,6 +285,7 @@ export interface FileRoutesByTo {
   '/approvals': typeof AppApprovalsRoute
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
+  '/setup': typeof AppSetupRoute
   '/status': typeof AppStatusRoute
   '/suggested-contacts': typeof AppSuggestedContactsRoute
   '/tasks': typeof AppTasksRoute
@@ -292,6 +307,7 @@ export interface FileRoutesByTo {
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/settings/storage': typeof AppSettingsStorageRoute
+  '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/automations': typeof AppAutomationsIndexRoute
@@ -310,6 +326,7 @@ export interface FileRoutesById {
   '/_app/approvals': typeof AppApprovalsRoute
   '/_app/import': typeof AppImportRoute
   '/_app/notifications': typeof AppNotificationsRoute
+  '/_app/setup': typeof AppSetupRoute
   '/_app/status': typeof AppStatusRoute
   '/_app/suggested-contacts': typeof AppSuggestedContactsRoute
   '/_app/tasks': typeof AppTasksRoute
@@ -331,6 +348,7 @@ export interface FileRoutesById {
   '/_app/settings/general': typeof AppSettingsGeneralRoute
   '/_app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/_app/settings/storage': typeof AppSettingsStorageRoute
+  '/_app/settings/updates': typeof AppSettingsUpdatesRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/automations/': typeof AppAutomationsIndexRoute
@@ -350,6 +368,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/import'
     | '/notifications'
+    | '/setup'
     | '/status'
     | '/suggested-contacts'
     | '/tasks'
@@ -370,6 +389,7 @@ export interface FileRouteTypes {
     | '/settings/general'
     | '/settings/integrations'
     | '/settings/storage'
+    | '/settings/updates'
     | '/settings/users'
     | '/api/auth/$'
     | '/automations/'
@@ -386,6 +406,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/import'
     | '/notifications'
+    | '/setup'
     | '/status'
     | '/suggested-contacts'
     | '/tasks'
@@ -407,6 +428,7 @@ export interface FileRouteTypes {
     | '/settings/general'
     | '/settings/integrations'
     | '/settings/storage'
+    | '/settings/updates'
     | '/settings/users'
     | '/api/auth/$'
     | '/automations'
@@ -424,6 +446,7 @@ export interface FileRouteTypes {
     | '/_app/approvals'
     | '/_app/import'
     | '/_app/notifications'
+    | '/_app/setup'
     | '/_app/status'
     | '/_app/suggested-contacts'
     | '/_app/tasks'
@@ -445,6 +468,7 @@ export interface FileRouteTypes {
     | '/_app/settings/general'
     | '/_app/settings/integrations'
     | '/_app/settings/storage'
+    | '/_app/settings/updates'
     | '/_app/settings/users'
     | '/api/auth/$'
     | '/_app/automations/'
@@ -514,6 +538,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/setup': {
+      id: '/_app/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof AppSetupRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/status': {
@@ -691,6 +722,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsStorageRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/updates': {
+      id: '/_app/settings/updates'
+      path: '/settings/updates'
+      fullPath: '/settings/updates'
+      preLoaderRoute: typeof AppSettingsUpdatesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/users': {
       id: '/_app/settings/users'
       path: '/settings/users'
@@ -727,6 +765,7 @@ interface AppRouteChildren {
   AppApprovalsRoute: typeof AppApprovalsRoute
   AppImportRoute: typeof AppImportRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
+  AppSetupRoute: typeof AppSetupRoute
   AppStatusRoute: typeof AppStatusRoute
   AppSuggestedContactsRoute: typeof AppSuggestedContactsRoute
   AppTasksRoute: typeof AppTasksRoute
@@ -745,6 +784,7 @@ interface AppRouteChildren {
   AppSettingsGeneralRoute: typeof AppSettingsGeneralRoute
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
   AppSettingsStorageRoute: typeof AppSettingsStorageRoute
+  AppSettingsUpdatesRoute: typeof AppSettingsUpdatesRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
   AppAutomationsIndexRoute: typeof AppAutomationsIndexRoute
   AppDashboardsIndexRoute: typeof AppDashboardsIndexRoute
@@ -760,6 +800,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppApprovalsRoute: AppApprovalsRoute,
   AppImportRoute: AppImportRoute,
   AppNotificationsRoute: AppNotificationsRoute,
+  AppSetupRoute: AppSetupRoute,
   AppStatusRoute: AppStatusRoute,
   AppSuggestedContactsRoute: AppSuggestedContactsRoute,
   AppTasksRoute: AppTasksRoute,
@@ -778,6 +819,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsGeneralRoute: AppSettingsGeneralRoute,
   AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
   AppSettingsStorageRoute: AppSettingsStorageRoute,
+  AppSettingsUpdatesRoute: AppSettingsUpdatesRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,
   AppAutomationsIndexRoute: AppAutomationsIndexRoute,
   AppDashboardsIndexRoute: AppDashboardsIndexRoute,

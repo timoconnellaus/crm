@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@crm/ui/components/select";
 import { Skeleton } from "@crm/ui/components/skeleton";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageLayout, SaveBar } from "#/components/layout/page-layout";
@@ -100,6 +100,80 @@ function GeneralPage() {
           {!isAdmin && <p className="text-xs text-muted-foreground">Only admins can change it.</p>}
         </CardContent>
       </Card>
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Organisation</CardTitle>
+          <CardDescription>
+            {settings.data?.orgName ?? "No name yet"} · {settings.data?.timezone ?? "UTC"} · AI:{" "}
+            {settings.data?.aiMode === "workers-ai" ? "Workers AI" : settings.data?.aiMode}
+          </CardDescription>
+        </CardHeader>
+        {settings.data?.logo && (
+          <CardContent>
+            <img
+              src={settings.data.logo}
+              alt="Organisation logo"
+              className="size-12 rounded border object-contain"
+            />
+          </CardContent>
+        )}
+      </Card>
+      {isAdmin && <SetupCard />}
     </PageLayout>
+  );
+}
+
+/** Reopen the setup wizard, and install or remove sample data (ADR 0167). */
+function SetupCard() {
+  const navigate = useNavigate();
+  const status = useOp("setup.status", {});
+  const restart = useOpMutation("setup.restart", { invalidates: ["setup."] });
+  const remove = useOpMutation("sample.remove", {
+    invalidates: ["setup.", "person.", "organisation.", "task."],
+  });
+  const samples = status.data?.sampleRecords ?? 0;
+  return (
+    <Card className="mt-4">
+      <CardHeader>
+        <CardTitle>Setup</CardTitle>
+        <CardDescription>
+          {status.data?.status === "completed"
+            ? "Setup is complete. Run it again to change the organisation, AI, policy or sample data."
+            : "Setup was skipped or is unfinished."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          onClick={async () => {
+            try {
+              await restart.mutateAsync({});
+              await navigate({ to: "/setup" });
+            } catch (error) {
+              toast.error(errorMessage(error));
+            }
+          }}
+        >
+          Open the setup wizard
+        </Button>
+        {samples > 0 && (
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                const result = await remove.mutateAsync({});
+                toast.success(`Removed ${result.removed} sample records`);
+              } catch (error) {
+                toast.error(errorMessage(error));
+              }
+            }}
+            disabled={remove.isPending}
+            data-testid="remove-sample-data"
+          >
+            Remove sample data ({samples})
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
