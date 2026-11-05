@@ -62,3 +62,10 @@ written to D1, where `query.sql`, backups, Time Travel and the audit log would a
 > also be declared in deploy config. `AI_GATEWAY_BYOK` (comma-separated providers, set by
 > `create-relationship-os --provider-key`) joins `ai_settings.byok`, so a key the installer stored in the
 > gateway is used without a Settings → AI step. The var names providers only, never keys.
+
+> Amended 2026-11-05 ([ADR 0203](0203-gateway-first-model-registry.md)): Settings → AI's key form
+> **defaults to BYOK when the deployment has a gateway** (Workers secret otherwise) and stores BYOK
+> keys with `CloudflareClient.setGatewayProviderKey`, which attaches or creates the gateway's
+> Secrets Store and replaces any existing key under `default`, instead of posting the provider
+> config itself. AI Gateway custom providers take a slug and store their key under
+> `custom-<slug>` (BYOK only). Keys still never reach D1.

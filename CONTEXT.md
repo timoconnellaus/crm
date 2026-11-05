@@ -430,8 +430,10 @@ Workers AI), deploy config (`AI_MODEL_ROLES`) and admin overrides (Settings → 
 `core_settings`, settings only). Each role declares the capabilities it needs (tool use, JSON
 output, context size, vision, embeddings); the registry rejects a model that lacks one. "JSON
 output" is met by JSON mode (`json_object`) or a JSON schema; no role sends a schema yet
-(ADR 0192). Calls run through the AI SDK and AI Gateway (ADR 0150). Provider keys are Workers
-secrets or AI Gateway BYOK, never D1 (ADR 0151).
+(ADR 0192). Calls run through the AI SDK and AI Gateway: Workers AI over the binding, other
+providers through the unified endpoint as `provider/model`, custom providers as
+`custom-<slug>/<model>` (ADR 0150, ADR 0203). Provider keys are AI Gateway BYOK or Workers
+secrets, never D1 (ADR 0151).
 _Avoid_: model config, LLM settings
 
 **Model role preset**

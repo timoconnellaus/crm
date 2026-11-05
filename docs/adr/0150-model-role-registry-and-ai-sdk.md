@@ -127,3 +127,12 @@ eval harnesses take their default model from the registry (`@relationship-os/cor
 > `assistant` needs tool use only. `params.thinking` switches a reasoning model's thinking off.
 > **Model role presets** (`ROLE_PRESETS`) are ready deploy layers that one deployment picks
 > with `create-relationship-os --model-roles <name>`. The shipped defaults are unchanged.
+
+> Amended 2026-11-05 ([ADR 0203](0203-gateway-first-model-registry.md)): **the registry is
+> gateway-first and uses the unified endpoint after all.** With a gateway, third-party chat goes
+> to `…/{gateway}/compat/chat/completions` with `provider/model` ids (`deepseek/deepseek-flash`),
+> not the provider-native paths above, which remain only for third-party embeddings. The user
+> chose compat despite its "deprecated for single-model calls" note: one endpoint for every
+> provider, custom providers (`custom-<slug>/<model>`, a new `custom` provider) and the gateway's
+> own model ids. Workers AI keeps the binding with the `gateway` option. Gateway headers are no
+> longer sent to providers called directly.
