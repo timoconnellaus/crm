@@ -393,7 +393,9 @@ describe("every trigger type", () => {
       trigger,
       steps: [{ name: "tellAdmins", notifies: [{ to: "admins", message: "Something happened" }] }],
     });
-    expect(html(automation)).toBe(`${summary}, it notifies the <b>admins</b> with “Something happened”.`);
+    expect(html(automation)).toBe(
+      `${summary}, it notifies the <b>admins</b> with “Something happened”.`,
+    );
     const [first] = automationDiagram(automation, ctx);
     expect(first?.kind).toBe("trigger");
     expect(first?.text).toBe(diagram);

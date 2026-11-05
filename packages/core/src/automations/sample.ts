@@ -42,9 +42,8 @@ export async function sampleApproval(
   trigger: ApprovalTrigger,
   record?: { object: string; id: string } | null,
 ): Promise<SampleApproval> {
-  const wanted = trigger.decision === "approved" || trigger.decision === "rejected"
-    ? trigger.decision
-    : null;
+  const wanted =
+    trigger.decision === "approved" || trigger.decision === "rejected" ? trigger.decision : null;
   let query = db
     .selectFrom("core_pending_action as p")
     .select(["p.id", "p.operation", "p.status", "p.created_at"])
@@ -67,8 +66,9 @@ export async function sampleApproval(
   const decided = (status: string) =>
     status === "rejected" ? "rejected" : status === "applied" ? "approved" : null;
   const action =
-    (wanted ? recent.find((a) => decided(a.status) === wanted) : recent.find((a) => decided(a.status))) ??
-    recent[0];
+    (wanted
+      ? recent.find((a) => decided(a.status) === wanted)
+      : recent.find((a) => decided(a.status))) ?? recent[0];
 
   if (action) {
     const records = await db
@@ -78,7 +78,8 @@ export async function sampleApproval(
       .limit(RECORDS_LIMIT)
       .execute();
     const decision = wanted ?? decided(action.status) ?? "approved";
-    const how = decided(action.status) === decision ? "" : ` (it is ${action.status}; shown as ${decision})`;
+    const how =
+      decided(action.status) === decision ? "" : ` (it is ${action.status}; shown as ${decision})`;
     return {
       approval: { actionId: action.id, operation: action.operation, decision, records },
       source: "recent",
