@@ -45,6 +45,8 @@ export interface ChatCompletionRequest {
   max_tokens?: number;
   temperature?: number;
   reasoning_effort?: string;
+  /** DeepSeek's thinking switch (and that of servers copying it); sent only when configured. */
+  thinking?: { type: "enabled" | "disabled" };
 }
 
 export interface ChatCompletionResponse {
@@ -70,6 +72,25 @@ export interface ModelParams {
   maxTokens?: number;
   /** Sent as `reasoning_effort` for models that take it (e.g. "low", "high"). */
   reasoningEffort?: string;
+  /**
+   * Sent as DeepSeek's `thinking: { type: "enabled" | "disabled" }` (--thinking, EVAL_THINKING).
+   * Unset sends nothing, so the server's default applies (DeepSeek thinks by default, and the
+   * thinking counts against max_tokens).
+   */
+  thinking?: "on" | "off";
+}
+
+/** The request fields for `params`' sampling options, shared by the agent loop and the judge. */
+export function samplingFields(
+  params: ModelParams,
+): Pick<ChatCompletionRequest, "temperature" | "reasoning_effort" | "thinking"> {
+  return {
+    ...(params.temperature !== undefined ? { temperature: params.temperature } : {}),
+    ...(params.reasoningEffort ? { reasoning_effort: params.reasoningEffort } : {}),
+    ...(params.thinking
+      ? { thinking: { type: params.thinking === "on" ? "enabled" : "disabled" } as const }
+      : {}),
+  };
 }
 
 /** A non-2xx answer from the endpoint. 401/403/404 stop the whole run (see isFatalModelError). */
@@ -167,10 +188,69 @@ export function resolveProvider(env: Record<string, string | undefined>): Provid
 }
 
 export interface ChatClientOptions {
-  /** Retries for 429 and 5xx answers and network errors, with exponential backoff. */
+  /**
+   * Retries for 429 and 5xx answers, network errors and timeouts. The backoff doubles from 2 s up
+   * to 60 s, so the default 6 retries ride out about two minutes without a network.
+   */
   retries?: number;
+  /** One attempt's limit, response headers and body together. Default 10 minutes. */
+  timeoutMs?: number;
+  /** Told about every retry and its reason (the underlying cause, not just "fetch failed"). */
+  onRetry?: (info: { attempt: number; delayMs: number; reason: string }) => void;
   fetch?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
+}
+
+/**
+ * An error's message followed by its causes. Node's fetch says only "fetch failed"; the reason
+ * (DNS, a refused or reset connection, a timeout) is in `cause`, sometimes an AggregateError.
+ */
+export function describeError(error: unknown): string {
+  const one = (value: unknown): string => {
+    if (!(value instanceof Error)) return String(value);
+    const code = (value as { code?: unknown }).code;
+    const text = value.message || value.name;
+    const own = typeof code === "string" && !text.includes(code) ? `${code}: ${text}` : text;
+    return value instanceof AggregateError && value.errors.length
+      ? `${own} [${value.errors.map(one).join("; ")}]`
+      : own;
+  };
+  const parts: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; current !== undefined && current !== null && depth < 5; depth += 1) {
+    parts.push(one(current));
+    current = current instanceof Error ? (current as { cause?: unknown }).cause : undefined;
+  }
+  return parts.join(", caused by ");
+}
+
+/** A point in time on both clocks, for sleptMs. */
+export const clockMark = () => ({ wall: Date.now(), mono: performance.now() });
+
+/**
+ * How long the machine slept since `start`: wall-clock time runs on in sleep, the monotonic clock
+ * (performance.now) does not. A laptop that sleeps mid-run has no network, and every request it
+ * makes in its brief dark wakes fails with "fetch failed".
+ */
+export function sleptMs(start: { wall: number; mono: number }): number {
+  return Math.max(0, Date.now() - start.wall - (performance.now() - start.mono));
+}
+
+/** A note for an error message when the machine slept during the failed work; else "". */
+export function sleepNote(start: { wall: number; mono: number }): string {
+  const slept = sleptMs(start);
+  return slept > 5000
+    ? ` (this machine was asleep for about ${Math.round(slept / 1000)} s meanwhile, with no ` +
+        "network: keep it awake and the lid open for the whole run)"
+    : "";
+}
+
+/** A model request that got no HTTP answer (network error, timeout), after its retries. */
+export class ModelNetworkError extends Error {
+  override name = "ModelNetworkError";
+  constructor(message: string, cause: unknown) {
+    super(message, { cause });
+  }
 }
 
 /** A ModelClient over an OpenAI-compatible chat-completions endpoint. */
@@ -180,43 +260,76 @@ export function chatCompletionsModel(
 ): ModelClient {
   const fetchImpl = options.fetch ?? fetch;
   const sleep = options.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
-  const retries = options.retries ?? 4;
+  const retries = options.retries ?? 6;
+  const timeoutMs = options.timeoutMs ?? 10 * 60_000;
+  const host = new URL(provider.url).host;
+  const backoff = (attempt: number) => Math.min(2000 * 2 ** attempt, 60_000);
   return {
     async createCompletion(request) {
       const body = JSON.stringify({ ...request, model: provider.modelId(request.model) });
+      const started = clockMark();
       for (let attempt = 0; ; attempt++) {
-        let response: Response;
+        const retry = async (reason: string) => {
+          const delayMs = backoff(attempt);
+          options.onRetry?.({ attempt: attempt + 1, delayMs, reason });
+          await sleep(delayMs);
+        };
+        let json: ChatCompletionResponse & { result?: ChatCompletionResponse };
         try {
-          response = await fetchImpl(provider.url, {
+          // The timeout covers the body too: a non-streaming answer arrives in one piece when
+          // the model is done, which for a long thinking turn takes minutes.
+          const response = await fetchImpl(provider.url, {
             method: "POST",
             headers: { "content-type": "application/json", ...provider.headers },
             body,
+            signal: AbortSignal.timeout(timeoutMs),
           });
+          if (!response.ok) {
+            const text = await response.text();
+            if ((response.status === 429 || response.status >= 500) && attempt < retries) {
+              await retry(`HTTP ${response.status}`);
+              continue;
+            }
+            throw new ModelApiError(response.status, text);
+          }
+          const text = await response.text();
+          try {
+            json = JSON.parse(text) as typeof json;
+          } catch {
+            throw new Error(`Model endpoint returned invalid JSON: ${text.slice(0, 300)}`);
+          }
         } catch (error) {
-          if (attempt >= retries) throw error;
-          await sleep(1000 * 2 ** attempt);
-          continue;
-        }
-        if (response.ok) {
-          const json = (await response.json()) as ChatCompletionResponse & {
-            result?: ChatCompletionResponse;
-          };
-          // Cloudflare's v4 envelope ({ result: … }) is unwrapped when present.
-          const data = Array.isArray(json.choices) ? json : json.result;
-          if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
-            throw new Error(
-              `Model endpoint returned no choices: ${JSON.stringify(json).slice(0, 500)}`,
+          // Only failures without an HTTP answer are retried here: network errors, timeouts.
+          if (error instanceof ModelApiError || !isNetworkFailure(error)) throw error;
+          const reason = describeError(error);
+          if (attempt >= retries) {
+            throw new ModelNetworkError(
+              `Model request to ${host} failed after ${attempt + 1} attempt(s) in ` +
+                `${Math.round((Date.now() - started.wall) / 1000)} s: ${reason}${sleepNote(started)}`,
+              error,
             );
           }
-          return data;
-        }
-        const text = await response.text();
-        if ((response.status === 429 || response.status >= 500) && attempt < retries) {
-          await sleep(1000 * 2 ** attempt);
+          await retry(reason);
           continue;
         }
-        throw new ModelApiError(response.status, text);
+        // Cloudflare's v4 envelope ({ result: … }) is unwrapped when present.
+        const data = Array.isArray(json.choices) ? json : json.result;
+        if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
+          throw new Error(
+            `Model endpoint returned no choices: ${JSON.stringify(json).slice(0, 500)}`,
+          );
+        }
+        return data;
       }
     },
   };
+}
+
+/** fetch's own failures: "fetch failed" and "terminated" (TypeError), and aborts or timeouts. */
+function isNetworkFailure(error: unknown): boolean {
+  return (
+    error instanceof TypeError ||
+    (error instanceof DOMException &&
+      (error.name === "TimeoutError" || error.name === "AbortError"))
+  );
 }

@@ -366,6 +366,13 @@ export function checkAutomation(
   const checkRecipient = (at: string, recipient: Recipient) => {
     if (typeof recipient !== "object" || "userId" in recipient) return;
     const field = "field" in recipient ? recipient.field : recipient.managerOf;
+    if ("field" in recipient && (field === "admins" || field === "actor")) {
+      contract(
+        at,
+        `Write this recipient as the plain string "${field}", not { field: "${field}" }`,
+      );
+      return;
+    }
     if (!object) {
       contract(
         at,

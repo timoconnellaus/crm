@@ -363,6 +363,8 @@ export const extensionPropose = defineOperation({
     "installed until a person approves it in the Approvals inbox. If the check fails it " +
     "returns status 'check_failed' with the issues and queues nothing: fix them with " +
     "extension.write and propose again. Bump `version` in defineExtension for each change. " +
+    "impact.triggers holds each automation's host-written summary, the text the approver " +
+    "reads: check it states everything the user asked for and nothing they did not. " +
     "dropHidden: true also queues a separate destructive item to drop data of fields removed " +
     `more than ${HIDDEN_RETENTION_DAYS} days ago.`,
   input: z.object({

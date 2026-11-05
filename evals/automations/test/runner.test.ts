@@ -38,6 +38,7 @@ describe("runner CLI", () => {
       baseUrl: "http://localhost:5173",
       only: null,
       model: DEFAULT_MODEL,
+      judgeModel: DEFAULT_MODEL,
       params: {},
       maxTurns: 30,
       approvalMinutes: 30,
@@ -50,7 +51,13 @@ describe("runner CLI", () => {
     expect(parsed.only).toEqual(["weekly-digest", "big-deal-alert"]);
     expect(parsed.approvalMinutes).toBe(5);
     expect(parsed.model).toBe("m");
+    expect(parsed.judgeModel).toBe("m");
     expect(parsed.user.email).toBe("admin@example.com");
+    const judged = parseCli(["--model", "m"], { EVAL_JUDGE_MODEL: "j", EVAL_THINKING: "off" });
+    expect(judged.judgeModel).toBe("j");
+    expect(judged.params.thinking).toBe("off");
+    expect(parseCli(["--judge-model", "k"], { EVAL_JUDGE_MODEL: "j" }).judgeModel).toBe("k");
+    expect(() => parseCli(["--thinking", "maybe"], {})).toThrow("must be on or off");
     expect(() => parseCli(["--only", "nope"], {})).toThrow("Unknown task id(s): nope");
     expect(SCOPES).toEqual(["read", "write", "admin"]);
     expect(TARGET).toBe(8);

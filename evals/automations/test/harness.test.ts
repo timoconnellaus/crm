@@ -181,6 +181,48 @@ describe("runEval", () => {
     ]);
   });
 
+  it("asks the judge model, and reports an unreachable judge as an error with its cause", async () => {
+    const c = byId("rejected-change");
+    const authoring = [
+      reply(null, [
+        toolCall("extension_write", { id: "rejectedvarodin", files: { "index.ts": "ok" } }),
+      ]),
+      reply(null, [toolCall("extension_propose", { id: "rejectedvarodin", reason: "x" })]),
+      reply("Done."),
+    ];
+    const judged = scriptedModel([...authoring, reply('{"verdict":"pass","reason":"ok"}')]);
+    const first = setup({}, judged.model);
+    const [passed] = await runEval([c], { ...first.deps, judgeModelId: "judge-model" }, async () =>
+      first.crm.approveAll(),
+    );
+    expect(passed?.judge).toEqual({ pass: true, reason: "ok" });
+    expect(judged.requests.at(-1)?.model).toBe("judge-model");
+    expect(judged.requests.at(0)?.model).toBe("@cf/test/model");
+
+    const script = scriptedModel(authoring);
+    const offline = {
+      async createCompletion(request: Parameters<typeof script.model.createCompletion>[0]) {
+        if (request.tools) return script.model.createCompletion(request);
+        throw new TypeError("fetch failed", {
+          cause: Object.assign(new Error("getaddrinfo ENOTFOUND api.example.test"), {
+            code: "ENOTFOUND",
+          }),
+        });
+      },
+    };
+    const second = setup({}, offline);
+    const [result] = await runEval([c], second.deps, async () => second.crm.approveAll());
+    expect(result?.failures).toEqual([
+      {
+        kind: "error",
+        message: "the judge failed: fetch failed, caused by getaddrinfo ENOTFOUND api.example.test",
+      },
+    ]);
+    // Grading went on past the judge: the automation was still disabled.
+    expect(result?.notes).toEqual([]);
+    expect(result?.test).not.toBeNull();
+  });
+
   it("fails when the model never proposes, or its working copy fails check", async () => {
     const c = byId("weekly-digest");
     const never = scriptedModel([reply("I would rather not.")]);

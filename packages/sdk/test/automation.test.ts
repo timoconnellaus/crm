@@ -239,6 +239,15 @@ describe("automation contract checks", () => {
     ).toEqual([
       'automations.thing.steps.0.writes.0.assignTo: A schedule trigger has no trigger record, so "owner" cannot name its user; use "admins" or { userId }',
     ]);
+    // A common slip: the "admins" string written as a field.
+    expect(
+      issues({
+        trigger: { type: "schedule", cron: "0 8 * * *" },
+        steps: [{ name: "tell", notifies: [{ to: { field: "admins" }, message: "x" }] }],
+      }),
+    ).toEqual([
+      'automations.thing.steps.0.notifies.0.to: Write this recipient as the plain string "admins", not { field: "admins" }',
+    ]);
   });
 
   it("durations, wait events and the 365-day total", () => {

@@ -15,7 +15,11 @@ import { toOpenAiTools } from "@relationship-os/evals-mcp/lib/convert.ts";
 import { callLabel, callMatches } from "@relationship-os/evals-mcp/lib/grading.ts";
 import { systemPrompt, todayUtc } from "@relationship-os/evals-mcp/lib/harness.ts";
 import { isPending, type McpSession, parseResult } from "@relationship-os/evals-mcp/lib/mcp.ts";
-import type { ChatMessage, ModelParams } from "@relationship-os/evals-mcp/lib/model.ts";
+import {
+  type ChatMessage,
+  type ModelParams,
+  samplingFields,
+} from "@relationship-os/evals-mcp/lib/model.ts";
 import type { DashboardTask } from "../prompts.ts";
 import type { DashboardFilter, DashboardsCore, WidgetSpec } from "./core.ts";
 import {
@@ -215,8 +219,7 @@ async function describeOutcome(
       model: deps.modelId,
       messages,
       max_tokens: deps.params?.maxTokens ?? 16000,
-      ...(deps.params?.temperature !== undefined ? { temperature: deps.params.temperature } : {}),
-      ...(deps.params?.reasoningEffort ? { reasoning_effort: deps.params.reasoningEffort } : {}),
+      ...samplingFields(deps.params ?? {}),
     });
     outcome.usage.inputTokens += response.usage?.prompt_tokens ?? 0;
     outcome.usage.outputTokens += response.usage?.completion_tokens ?? 0;
