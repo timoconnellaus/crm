@@ -93,3 +93,9 @@ fresh install" could only be done by an admin clicking after every install.
 > `JUDGE_PLACEMENTS='{"summary.statements":true,"outbound.message":true,"sync.jobChange":true}'`
 > on both ros-app (summaries) and ros-runner (outbound messages); `sync.jobChange` is inert until
 > step 8 is built.
+
+> Amended 2026-11-05 (stage 11 steps 5 and 10, [ADR 0233](0233-jev-policy-reviewer.md),
+> [ADR 0234](0234-judge-settings-spend-and-key.md)): the Jev reviewer is built, and the reviewer
+> setting is read. `policyRules` now lets a section heading qualify the rules beneath it ("Never:
+> Delete any record"); a level-1 title qualifies nothing. A hosted workspace sets its judge key from
+> Settings → AI over the deployment channel, which now allows `TYPESAFE_API_KEY`.

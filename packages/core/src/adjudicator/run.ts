@@ -22,6 +22,9 @@ import { emitDurably } from "../automations/outbox.ts";
 import { toOperationError } from "../errors.ts";
 import { resolveExtensionOperation } from "../extensions/tools.ts";
 import { isProvisionalId, newId, replaceIds } from "../ids.ts";
+import { jevPolicyReviewer, POLICY_PLACEMENT } from "../judge/questions/adjudicator-policy.ts";
+import type { Judge } from "../judge/types.ts";
+import { judgeUsageStatement } from "../judge/usage.ts";
 import type { AnyOperation } from "../operation.ts";
 import { type InvocationContext, invokeOperation } from "../pipeline.ts";
 import { type ActingUser, type Origin, ROLES, type Role } from "../principals.ts";
@@ -30,6 +33,8 @@ import {
   ADJUDICATOR_PRINCIPAL,
   type AdjudicatorMode,
   decideAction,
+  llmPolicyReviewer,
+  type PolicyReviewer,
   type ReviewResult,
   reviewPendingItem,
   reviewRoleReviewer,
@@ -50,9 +55,8 @@ export const adjudicatorSettingsSchema = z.object({
   /** When it was last switched on from off: the sweep looks at actions queued since. */
   enabledAt: z.string().nullable().default(null),
   /**
-   * Who reviews (ADR 0230): the `review` model role (`llm`) or Jev (`jev`). Unset: Jev when the
-   * judge has a key, else the LLM (`adjudicatorReviewer`). Stage 11's build step 5 wires the Jev
-   * reviewer; until then every verdict is the LLM's.
+   * Who reviews (ADR 0230, ADR 0233): the `review` model role (`llm`) or Jev (`jev`). Unset: Jev
+   * when the judge has a key, else the LLM (`adjudicatorReviewer`).
    */
   reviewer: z.enum(["llm", "jev"]).optional(),
 });
@@ -72,6 +76,15 @@ export function adjudicatorReviewer(
 ): AdjudicatorReviewer {
   if (!judgeHasKey) return "llm";
   return settings.reviewer ?? "jev";
+}
+
+/**
+ * Whether a judge on the context can answer (it has a key): Jev, or a scripted judge in tests. The
+ * off judge (no key) and the local-dev stand-in (`devJudge`, which answers authoring.intent only)
+ * cannot be the adjudicator's reviewer.
+ */
+export function judgeHasKey(judge: Judge | undefined): judge is Judge {
+  return judge !== undefined && judge.provider !== "off" && judge.provider !== "dev";
 }
 
 export const ADJUDICATOR_OFF: AdjudicatorSettings = {
@@ -230,6 +243,35 @@ async function resolve(deps: AdjudicatorDeps, name: string): Promise<AnyOperatio
 }
 
 /**
+ * The reviewer for this deployment (ADR 0232, ADR 0233): Jev when `adjudicatorReviewer` says so
+ * (the default while the judge has a key), else the `review` model role. Null when neither can
+ * review (no key and no AI): the adjudicator then judges nothing.
+ */
+export function policyReviewerFor(
+  deps: Pick<AdjudicatorDeps, "models" | "judge">,
+  settings: Pick<AdjudicatorSettings, "reviewer">,
+): PolicyReviewer | null {
+  const judge = deps.judge;
+  if (judgeHasKey(judge) && adjudicatorReviewer(settings, true) === "jev") {
+    return jevPolicyReviewer(judge);
+  }
+  const models: ModelRunner | undefined = deps.models;
+  if (!models) return null;
+  return llmPolicyReviewer(
+    reviewRoleReviewer((messages, options) => models.run("review", messages, options)),
+  );
+}
+
+/** A Jev reviewer that asked the judge (not one refused before asking, for its policy). */
+function judgeCalled(judged: ReviewResult): boolean {
+  const j = judged.judgement;
+  if (!j) return false;
+  return (
+    j.unavailable !== "policy_too_long" && j.unavailable !== "no_rules" && j.unavailable !== "off"
+  );
+}
+
+/**
  * Judges one pending action, records and audits the verdict, and in active mode applies an
  * approved one. Never throws (a failure is logged). Idempotent: an action gets one verdict.
  */
@@ -251,8 +293,8 @@ async function adjudicate(
   settings: AdjudicatorSettings,
 ): Promise<AdjudicationResult> {
   if (settings.mode === "off") return { status: "skipped", why: "off" };
-  const models: ModelRunner | undefined = deps.models;
-  if (!models) return { status: "skipped", why: "no_ai" };
+  const reviewer = policyReviewerFor(deps, settings);
+  if (!reviewer) return { status: "skipped", why: "no_ai" };
   const db = deps.db.query;
   const policy = await loadWrittenPolicy(db);
   if (!policy) return { status: "skipped", why: "no_policy" };
@@ -291,24 +333,20 @@ async function adjudicate(
 
   const op = await resolve(deps, row.operation);
   const dependsOn = parse<string[]>(row.depends_on, []);
-  // The reviewer seam: the `review` role as the LLM reviewer (ADR 0204). Stage 11's build step 5
-  // adds the Jev reviewer, picked by adjudicatorReviewer (ADR 0230).
-  const judged = await reviewPendingItem(
-    reviewRoleReviewer((messages, options) => models.run("review", messages, options)),
-    policy.text,
-    {
-      operation: row.operation,
-      operationDescription: op?.description,
-      risk: row.risk,
-      actor: row.actor,
-      clientName: row.client_name,
-      bulkSize: row.bulk_size,
-      reason: row.reason,
-      preview: parse(row.preview, []),
-      input: parse(row.input, {}),
-      dependsOn: dependsOn.length,
-    },
-  );
+  // The reviewer seam (ADR 0204 amendment, ADR 0233): the LLM (`review` role) or Jev, picked by
+  // adjudicatorReviewer. A Jev reviewer that cannot answer escalates; it never asks the LLM.
+  const judged = await reviewPendingItem(reviewer, policy.text, {
+    operation: row.operation,
+    operationDescription: op?.description,
+    risk: row.risk,
+    actor: row.actor,
+    clientName: row.client_name,
+    bulkSize: row.bulk_size,
+    reason: row.reason,
+    preview: parse(row.preview, []),
+    input: parse(row.input, {}),
+    dependsOn: dependsOn.length,
+  });
 
   // Every dependency must already be applied for the approval machinery to apply this one.
   let dependenciesApplied = true;
@@ -361,8 +399,20 @@ async function adjudicate(
         threshold: settings.threshold,
         error: judged.error ? JSON.stringify(judged.error) : null,
         audit_id: auditId,
+        judgement: judged.judgement ? JSON.stringify(judged.judgement) : null,
       })
       .onConflict((oc) => oc.column("action_id").doNothing()),
+    // The judge's spend (ADR 0234), counted in this batch: no write of its own.
+    ...(judgeCalled(judged)
+      ? [
+          judgeUsageStatement(
+            deps.db.query,
+            POLICY_PLACEMENT,
+            { calls: 1, inputTokens: judged.judgement?.inputTokens ?? 0 },
+            now,
+          ),
+        ]
+      : []),
     deps.db.query
       .insertInto("core_audit")
       .columns([
@@ -570,7 +620,9 @@ export async function runAdjudicatorSweep(
   options: { limit?: number } = {},
 ): Promise<{ judged: number; mode: AdjudicatorMode }> {
   const settings = await loadAdjudicatorSettings(deps.db.query);
-  if (settings.mode === "off" || !deps.models) return { judged: 0, mode: settings.mode };
+  if (settings.mode === "off" || !policyReviewerFor(deps, settings)) {
+    return { judged: 0, mode: settings.mode };
+  }
   const now = deps.clock?.() ?? new Date();
   const ids = await sweepCandidates(deps.db, settings, now, options.limit ?? 10);
   let judged = 0;

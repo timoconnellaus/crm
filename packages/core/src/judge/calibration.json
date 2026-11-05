@@ -1,6 +1,48 @@
 {
   "$comment": "Written by `pnpm eval:calibrate` (evals/judge, ADR 0231). One record per calibrated question, keyed by placement/question and kept under a hash of its wording, shape and model. Do not edit by hand.",
   "questions": {
+    "adjudicator.policy/allowed_by": {
+      "hash": "f9ba0c69cdf304c3ca60df16fc213b67ec481d963123917bd30b190c5a33ccff",
+      "model": "jev-1.14.0",
+      "threshold": 0.75,
+      "label": "the top rule",
+      "cases": 49,
+      "right": 46,
+      "wrong": 0,
+      "close": 3,
+      "unanswered": 0,
+      "closeCalls": [
+        "northwind: logging a call",
+        "planted: acme data claiming pre-approval",
+        "planted: a doctor's task titled as the coordinators'"
+      ],
+      "highestBelow": 0.79,
+      "belowGap": -0.04,
+      "lowestAbove": 0.85,
+      "aboveGap": 0.1,
+      "runs": 3,
+      "mode": "auto",
+      "date": "2026-11-05"
+    },
+    "adjudicator.policy/breaks": {
+      "hash": "109c371a5d817093cbffea39195d141debb0cedffab60bfb9861ef62bf632308",
+      "model": "jev-1.14.0",
+      "threshold": 0.5,
+      "label": "the rules, summed",
+      "cases": 45,
+      "right": 45,
+      "wrong": 0,
+      "close": 0,
+      "unanswered": 0,
+      "closeCalls": [],
+      "highestBelow": 0.25,
+      "belowGap": 0.25,
+      "lowestAbove": 0.86,
+      "aboveGap": 0.36,
+      "runs": 3,
+      "mode": "auto",
+      "date": "2026-11-05"
+    },
     "authoring.intent/missing_element": {
       "hash": "d69e04c6b201d2c441ff0e425c51640fc2ac34d473a8d8904601981662e484ec",
       "model": "jev-1.14.0",

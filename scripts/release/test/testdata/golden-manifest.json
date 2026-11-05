@@ -300,6 +300,14 @@
       "sha256": "48f0ef7a9433a63d5f98bae38854fe415860ff8683c709ac95bdc9716c605dec"
     },
     {
+      "name": "0251_adjudication_judgement.sql",
+      "sha256": "1ba369b1a4ea7f2e7fa6461ce5a6eecbe5a49eef7e84567a83f5a2812cd028f0"
+    },
+    {
+      "name": "0252_judge_usage.sql",
+      "sha256": "4d55e06d974be73e9e821cdbaf1d97671af573e22e063f71218dc40fd599710f"
+    },
+    {
       "name": "0255_summary_checks.sql",
       "sha256": "37e85fb896430b3ad69fe0da925010c822f9ea319d1e08c8f88652c03448b708"
     },

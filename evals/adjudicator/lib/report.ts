@@ -6,6 +6,8 @@ import type { CaseResult, Score } from "./harness.ts";
 export interface AdjudicatorReport {
   startedAt: string;
   finishedAt: string;
+  /** Who reviewed: the LLM (`review` role) or Jev (ADR 0233). */
+  reviewer?: "llm" | "jev";
   model: string;
   provider: string;
   maxTokens: number | null;
@@ -24,6 +26,7 @@ export function renderMarkdown(report: AdjudicatorReport): string {
     `**${s.passed ? "PASS" : "FAIL"}**: precision on auto-approve ${pct(s.precision)} ` +
       `(${s.autoApproved} auto-approved at confidence ≥ ${s.threshold}; target ≥ 95%).`,
     "",
+    `- Reviewer: ${report.reviewer === "jev" ? "Jev (the judge, ADR 0233)" : "LLM (the review model role)"}`,
     `- Model: ${report.model} (${report.provider})${report.maxTokens ? `, max tokens ${report.maxTokens}` : ""}`,
     `- Run: ${report.startedAt} → ${report.finishedAt}`,
     `- Cases: ${s.total}; invalid replies ${s.invalid}`,
@@ -56,7 +59,7 @@ export function renderMarkdown(report: AdjudicatorReport): string {
 
 export function writeReport(dir: string, report: AdjudicatorReport) {
   mkdirSync(dir, { recursive: true });
-  const stamp = report.startedAt.replace(/[:.]/g, "-");
+  const stamp = `${report.startedAt.replace(/[:.]/g, "-")}${report.reviewer ? `-${report.reviewer}` : ""}`;
   const json = join(dir, `${stamp}.json`);
   const markdown = join(dir, `${stamp}.md`);
   writeFileSync(json, `${JSON.stringify(report, null, 2)}\n`);

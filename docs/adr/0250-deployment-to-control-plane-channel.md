@@ -46,3 +46,7 @@ which is one key for all tenants.
   `https://app.relationshiposcrm.com` (a Custom Domain on the same zone). If not, route the call
   through the dispatch Worker (an outbound Worker or a service binding to `ControlRpc`), keeping
   the same signature.
+
+> Amended 2026-11-05 (stage 11, [ADR 0234](0234-judge-settings-spend-and-key.md)): the channel's
+> allow-list (`isCustomerAiSecret`) also takes `TYPESAFE_API_KEY`, the customer's own key for the
+> judge, set and removed exactly as `AI_KEY_<PROVIDER>` is.

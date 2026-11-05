@@ -349,7 +349,8 @@ review (`review_source`: the preset, the floor, `alwaysReview`, or a pending dep
 the review batch commits, calls the context's `onQueued` hook; ros-app's runs the adjudicator in
 the background (`waitUntil`), so the caller gets `pending_approval` exactly as before, and the
 10-minute cron sweeps up anything missed (ros-runner's queued actions included). With the mode off
-that is one settings read and no writes. The adjudicator asks the `review` role in JSON mode, with
+that is one settings read and no writes. Its reviewer is Jev while the judge has a key (below,
+[ADR 0233](adr/0233-jev-policy-reviewer.md)), else the LLM. The LLM reviewer asks the `review` role in JSON mode, with
 the policy and instructions as the system message and the change as fenced, escaped data
 (`reviewPendingItem`, through the `Reviewer` interface), validates the reply with zod (one repair round; invalid, empty or cut off →
 `escalate`, confidence 0), and stores one verdict per action in `core_adjudication` with an
@@ -501,8 +502,8 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
 
 - **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
   [ADR 0232](adr/0232-judge-defaults-and-user-decisions.md), [`docs/jev.md`](jev.md); stage 11,
-  the seam, `authoring.intent`, `summary.statements`, `outbound.message` and `widget.shape`
-  built, the adjudicator's Jev reviewer and `sync.jobChange` to come): a seam beside the
+  the seam, `authoring.intent`, `adjudicator.policy`, `summary.statements`, `outbound.message`,
+  `widget.shape` and the settings built, `sync.jobChange` to come): a seam beside the
   registry, not a model role (`packages/core/src/judge/`, `ctx.judge` built by `judgeFor`).
   Code asks it typed questions (Choice, Noul, Score) at a named **placement** and gets
   probabilities; code holds the thresholds and decides. Its provider is **Jev**, pinned in code,
@@ -528,6 +529,14 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   `widget.describe` asks which shape the prompt wants before generation and sends a widget of a
   type that cannot show it back once ([ADR 0239](adr/0239-widget-shape-placement.md)). On a hosted
   deployment the placements that send record content stay off in code.
+  `adjudicator.policy` ([ADR 0233](adr/0233-jev-policy-reviewer.md))
+  is the adjudicator's default reviewer while the judge has a key: two Choices over the written
+  policy's rules (which rule stops the change, which allows it), never the agent's reason; approve
+  only where nothing stops it and a rule allows it; if Jev cannot answer, a person decides. Its raw
+  answer is on the verdict row. Settings → AI's Judge section ([ADR 0234](adr/0234-judge-settings-spend-and-key.md))
+  holds the key (a Workers secret, or on a hosted workspace one set through the control plane), a
+  Test call, the placement switches, the reviewer, and spend per placement, counted in
+  `core_judge_usage` by an upsert in the batch each placement already writes.
 
 ```
  placement ── ctx.judge.ask({ placement, state, questions }) ──► off? JudgeUnavailable("off")

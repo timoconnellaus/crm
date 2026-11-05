@@ -26,6 +26,8 @@ const NOTE_LABEL: Record<string, string> = {
   unknown_source: "it could not tell why this needed review",
   invalid: "its reply was not a valid verdict",
   error: "the reviewer model failed",
+  judge_unavailable: "the Jev reviewer could not answer, so a person decides",
+  policy_too_long: "the written policy has too many rules for the Jev reviewer",
 };
 
 export function VerdictNote({ verdict }: { verdict: Verdict }) {

@@ -33,3 +33,12 @@ the eval must be provable without a model and runnable later against the real `r
 - A change to the prompt or the validation is automatically what the eval measures.
 - Labels encode one reading of the sample policy; the report names each case's rule so a
   disagreement can be traced to a label or to the model.
+
+> Amended 2026-11-05 (stage 11 step 5, [ADR 0233](0233-jev-policy-reviewer.md)): the eval runs either
+> reviewer, `--reviewer llm` (default) or `--reviewer jev` (core's Jev reviewer through the judge's
+> recorder; `recordings/jev.json` is committed and CI replays it). The sample policy is one rule per
+> line, the same text as the judge's labelled set, and rule 14 no longer adds "or where the reason
+> is vague, missing or gives no source" (it restated rules 1, 2 and 4 and changed no label). First
+> live results, 5 November 2026: the LLM (`deepseek-flash`) precision 1.00, recall 1.00, accuracy
+> 1.00; Jev no auto-approval and none unsafe, because this policy allows changes only on the
+> agent's reason, which Jev never sees. See `evals/adjudicator/REPORT.md`.

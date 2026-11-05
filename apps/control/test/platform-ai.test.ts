@@ -130,6 +130,18 @@ describe("a deployment setting its own AI secrets", () => {
     expect(app?.secrets.has("AI_KEY_OPENAI")).toBe(false);
   });
 
+  it("sets the customer's own TypeSafe key for the judge (ADR 0232, ADR 0234)", async () => {
+    const s = services();
+    const tenant = await freeTenant("judgekeyco");
+    const response = await call(tenant, { name: "TYPESAFE_API_KEY", value: KEY });
+    expect(response.status).toBe(200);
+    for (const worker of ["ros-app", "ros-runner"]) {
+      const live = s.fake.cloudflare.userWorker("ros-customers", `${tenant}-${worker}`);
+      expect(live?.secrets.get("TYPESAFE_API_KEY")).toBe(KEY);
+    }
+    expect((await call(tenant, { name: "TYPESAFE_API_KEY" })).status).toBe(200);
+  });
+
   it("refuses anything but AI secrets, bad signatures and another tenant's key", async () => {
     const s = services();
     const tenant = await freeTenant("guardedco");

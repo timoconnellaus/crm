@@ -4,48 +4,32 @@
 // this test fails until the new recordings and record are committed with it.
 import { describe, expect, it } from "vitest";
 import {
-  CALIBRATED_QUESTIONS,
+  CALIBRATED,
   CALIBRATION,
+  type ChoiceQuestion,
   calibrationFor,
   choice,
-  INTENT_THRESHOLDS,
-  type IntentQuestionId,
   JEV_MODEL,
-  OUTBOUND_CALIBRATED,
+  POLICY_TEMPLATE_RULES,
+  policyQuestions,
   questionHash,
-  SHAPE_CALIBRATED,
-  STATEMENTS_CALIBRATED,
 } from "../src/index.ts";
-
-/** Every calibrated question of every built placement, by calibration key. */
-const ALL: Record<string, { question: Parameters<typeof questionHash>[0]; threshold: number }> = {
-  ...Object.fromEntries(
-    Object.entries(CALIBRATED_QUESTIONS).map(([key, question]) => [
-      key,
-      {
-        question,
-        threshold: INTENT_THRESHOLDS[key.split("/")[1] as IntentQuestionId],
-      },
-    ]),
-  ),
-  ...STATEMENTS_CALIBRATED,
-  ...OUTBOUND_CALIBRATED,
-  ...SHAPE_CALIBRATED,
-};
 
 /** Fewest cases a question's labelled set may have (docs/jev.md, "Thresholds and calibration"). */
 const MIN_CASES: Record<string, number> = {
   "summary.statements/statement": 40,
   "outbound.message/part": 30,
   "outbound.message/recipients": 10,
+  "adjudicator.policy/breaks": 30,
+  "adjudicator.policy/allowed_by": 30,
 };
 const minCases = (key: string) => MIN_CASES[key] ?? (key.startsWith("widget.shape/") ? 24 : 25);
 
 describe("calibration records", () => {
-  it.each(Object.keys(ALL))(
+  it.each(Object.keys(CALIBRATED))(
     "%s has a record for its current wording and threshold",
     async (key) => {
-      const entry = ALL[key] as (typeof ALL)[string];
+      const entry = CALIBRATED[key] as (typeof CALIBRATED)[string];
       const record = await calibrationFor(key, entry.question);
       expect(
         record,
@@ -60,18 +44,27 @@ describe("calibration records", () => {
   );
 
   it("a reworded question has no record", async () => {
-    const [key, question] = Object.entries(CALIBRATED_QUESTIONS)[0] as [
-      string,
-      (typeof CALIBRATED_QUESTIONS)[string],
-    ];
+    const [key, entry] = Object.entries(CALIBRATED)[0] as [string, (typeof CALIBRATED)[string]];
+    const question = entry.question as ChoiceQuestion;
     const reworded = choice(`${String(question.instructions)} Be strict.`, question.criteria);
     expect(await calibrationFor(key, reworded)).toBeNull();
     // A new model is a new calibration too.
     const record = CALIBRATION.questions[key];
-    expect(record?.hash).not.toBe(await questionHash(question, "jev-9.9.9"));
+    expect(record?.hash).not.toBe(await questionHash(entry.question, "jev-9.9.9"));
+  });
+
+  it("the policy questions are kept under their template, whatever the policy's rules", async () => {
+    const template = policyQuestions(POLICY_TEMPLATE_RULES);
+    expect(await calibrationFor("adjudicator.policy/breaks", template.breaks)).not.toBeNull();
+    // A way out reworded is a new question.
+    const reworded = choice(template.allowed_by.instructions, {
+      ...template.allowed_by.criteria,
+      none_allows: "Nothing allows it",
+    });
+    expect(await calibrationFor("adjudicator.policy/allowed_by", reworded)).toBeNull();
   });
 
   it("holds no record for a question nobody asks", () => {
-    expect(Object.keys(CALIBRATION.questions).sort()).toEqual(Object.keys(ALL).sort());
+    expect(Object.keys(CALIBRATION.questions).sort()).toEqual(Object.keys(CALIBRATED).sort());
   });
 });

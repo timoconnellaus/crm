@@ -439,6 +439,22 @@ describe("policyRules", () => {
       { number: 3, text: "Tags are fine." },
     ]);
   });
+
+  it("a section heading qualifies the rules beneath it; the title does not", () => {
+    expect(
+      policyRules(
+        "# Acme policy\n\n## Approve\n- Creating a task.\n\n## Deny:\n1. Deleting records.\n   Ever.\n",
+      ),
+    ).toEqual([
+      { number: 1, text: "Approve: Creating a task." },
+      { number: 2, text: "Deny: Deleting records. Ever." },
+    ]);
+    // Level-1 headings are sections when there is more than one.
+    expect(policyRules("# Allowed\n- Tags.\n# Never\n- Deletes.")).toEqual([
+      { number: 1, text: "Allowed: Tags." },
+      { number: 2, text: "Never: Deletes." },
+    ]);
+  });
 });
 
 describe("judge.get and judge.update", () => {

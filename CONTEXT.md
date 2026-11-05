@@ -193,8 +193,9 @@ the adjudicator (`decided_by = adjudicator`); everything else, a `deny` included
 person. It never approves what the **floor** or an always-reviewed operation (extension installs)
 routed to review, nor outbound, schema or extension changes. Its **verdicts** are shown to human
 approvers only, never to the actor, and every one is stored (`core_adjudication`) and audited
-(`adjudicator.verdict`). Its **reviewer** is the LLM (model role `review`) today, or Jev
-through the **Judge** (placement `adjudicator.policy`) from stage 11 step 5 (ADR 0204, ADR 0230).
+(`adjudicator.verdict`). Its **reviewer** is the LLM (model role `review`) or Jev through the
+**Judge** (placement `adjudicator.policy`), Jev by default while the judge has a key (ADR 0204,
+ADR 0230, ADR 0233).
 _Avoid_: adjudicator alone in UI copy, AI approver
 
 **Shadow mode**
@@ -206,7 +207,11 @@ day or week) shows whether to trust it. Only an admin switches it to active, and
 **Written policy**
 The org's plain-language rules the policy adjudicator judges by: what may be approved, what must be
 denied, what needs a person. Only human admins edit it (`adjudicator.setPolicy`, audited). Each
-save is a new version with a SHA-256 hash; every verdict records the version it used.
+save is a new version with a SHA-256 hash; every verdict records the version it used. For the Jev
+reviewer it is a list of **policy rules**: one per line, split and numbered by code (`policyRules`),
+a section heading qualifying the rules beneath it ("Never: Delete any record"), at most 60. Jev
+never sees the agent's reason, so a rule that allows a change only on what the reason says is
+never met (ADR 0233).
 _Avoid_: prompt, rules file
 
 **Extension**
@@ -507,15 +512,19 @@ its provider is **Jev**. With no Jev key it is off, makes no network call, and n
 _Avoid_: reviewer (that is the adjudicator's), classifier, the `review` role
 
 **Reviewer**
-Who gives the policy adjudicator its verdict: the LLM reviewer (model role `review`, through the
-`Reviewer` interface in `adjudicator/reviewers.ts`) or, from stage 11 step 5, Jev asking the
-judge about the policy's rules. Unset, it is Jev whenever the judge has a key (ADR 0232).
+Who gives the policy adjudicator its verdict, behind the `PolicyReviewer` seam: the LLM reviewer
+(model role `review`, through the `Reviewer` interface in `adjudicator/reviewers.ts`) or the Jev
+reviewer, which asks the judge which rule stops the change and which allows it
+(`judge/questions/adjudicator-policy.ts`). Unset, it is Jev whenever the judge has a key; when
+Jev cannot answer, a person decides, never the LLM (ADR 0232, ADR 0233).
 _Avoid_: judge (that is the Jev seam)
 
 **Jev**
 TypeSafe AI's decision model, the judge's provider, pinned to one version in code
 (`JEV_MODEL`). It never writes text or acts. Reached through AI Gateway's custom provider
-`custom-typesafe`; its key is BYOK or the Worker secret `TYPESAFE_API_KEY`. See `docs/jev.md`.
+`custom-typesafe`; its key is BYOK or the Worker secret `TYPESAFE_API_KEY`, which an admin can
+store from Settings → AI (on a hosted workspace through the control plane, ADR 0234). See
+`docs/jev.md`.
 
 **Placement**
 A named place in the code that asks the judge (`authoring.intent`, `adjudicator.policy`,
@@ -523,7 +532,9 @@ A named place in the code that asks the judge (`authoring.intent`, `adjudicator.
 questions, thresholds, timeout and fail mode (open: carry on and say it was not checked; closed:
 the safe outcome, such as escalating). Code asks for a placement, never a model. A placement that
 sends record content is off by default; a deployment turns it on with the `JUDGE_PLACEMENTS` var,
-and admins switch placements in Settings → AI (`judge.update`, human admins only; ADR 0232).
+and admins switch placements in Settings → AI's Judge section (`judge.update`, human admins only;
+ADR 0232), which also shows each placement's **judge spend**: calls and input tokens counted in
+`core_judge_usage` by a statement in the batch the placement already writes (ADR 0234).
 _Avoid_: check (too general), hook
 
 **Labelled set**

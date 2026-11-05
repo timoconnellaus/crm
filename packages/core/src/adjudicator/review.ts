@@ -18,6 +18,7 @@
 // zod. One repair round; a reply that still does not validate (empty, cut off at the token limit,
 // not JSON) is an `escalate` with confidence 0, never an approval.
 import { z } from "zod";
+import type { PolicyJudgement } from "../judge/questions/adjudicator-policy.ts";
 import {
   type LlmReviewerOptions,
   llmReviewer,
@@ -97,15 +98,45 @@ export type ReviewModel = (
 export interface ReviewResult extends VerdictReply {
   /** False when no reply validated (or the model failed): verdict escalate, confidence 0. */
   valid: boolean;
-  /** Why it is not valid. */
-  error?: { code: "invalid_reply" | "model_error"; message: string } | undefined;
+  /**
+   * Why it is not valid. `judge_unavailable`: the Jev reviewer could not answer (ADR 0233);
+   * `policy_too_long`: the written policy has no rules, or more than the Jev reviewer takes.
+   */
+  error?:
+    | {
+        code: "invalid_reply" | "model_error" | "judge_unavailable" | "policy_too_long";
+        message: string;
+      }
+    | undefined;
   provider?: string | undefined;
   model?: string | undefined;
   /** Model calls made (1, or 2 with the repair round). */
   attempts: number;
   /** The judge's probability per verdict, when it answered. */
   probabilities?: Record<Verdict, number> | undefined;
+  /** The Jev reviewer's raw answer (core_adjudication.judgement): labels and numbers only. */
+  judgement?: PolicyJudgement | undefined;
 }
+
+/**
+ * The adjudicator's reviewer of one pending action (ADR 0204 amendment, ADR 0233): the LLM
+ * (`review` model role, `llmPolicyReviewer`) or Jev (`jevPolicyReviewer`, in
+ * judge/questions/adjudicator-policy.ts). It only reviews: it returns a verdict, a confidence and
+ * a reason, or an escalation with `valid: false`. What happens next is decideAction's.
+ */
+export interface PolicyReviewer {
+  readonly kind: "llm" | "jev";
+  review(
+    policyText: string,
+    item: ReviewItem,
+    options?: { maxTokens?: number },
+  ): Promise<ReviewResult>;
+}
+
+const isPolicyReviewer = (value: unknown): value is PolicyReviewer =>
+  typeof value === "object" &&
+  value !== null &&
+  typeof (value as { review?: unknown }).review === "function";
 
 /** Longest JSON text of one field of the change shown to the reviewer. */
 const FIELD_CHARS = 12_000;
@@ -183,11 +214,12 @@ export function reviewRoleReviewer(model: ReviewModel): Reviewer {
  * never approves.
  */
 export async function reviewPendingItem(
-  reviewerOrModel: Reviewer | ReviewModel,
+  reviewerOrModel: Reviewer | ReviewModel | PolicyReviewer,
   policyText: string,
   item: ReviewItem,
   options: { maxTokens?: number } = {},
 ): Promise<ReviewResult> {
+  if (isPolicyReviewer(reviewerOrModel)) return reviewerOrModel.review(policyText, item, options);
   const reviewer =
     typeof reviewerOrModel === "function" ? reviewRoleReviewer(reviewerOrModel) : reviewerOrModel;
   const answer = await reviewer.choice({
@@ -222,6 +254,15 @@ export async function reviewPendingItem(
   };
 }
 
+/** The LLM reviewer (the `review` model role, or any Reviewer) as a PolicyReviewer. */
+export function llmPolicyReviewer(reviewerOrModel: Reviewer | ReviewModel): PolicyReviewer {
+  return {
+    kind: "llm",
+    review: (policyText, item, options) =>
+      reviewPendingItem(reviewerOrModel, policyText, item, options),
+  };
+}
+
 // --- What a verdict does --------------------------------------------------------------------
 
 export const ADJUDICATOR_MODES = ["off", "shadow", "active"] as const;
@@ -246,7 +287,11 @@ export type ActionNote =
   | "unknown_source"
   | "risk"
   | "low_confidence"
-  | "dependency";
+  | "dependency"
+  /** The Jev reviewer could not answer (any JudgeUnavailable reason or a fault): a person decides. */
+  | "judge_unavailable"
+  /** The written policy has no rules, or more than the Jev reviewer takes. */
+  | "policy_too_long";
 
 export interface ActionDecision {
   /** Active mode: apply the action now, attributed to the adjudicator. */
@@ -272,7 +317,16 @@ export function decideAction(input: {
   dependenciesApplied: boolean;
 }): ActionDecision {
   const no = (note: ActionNote): ActionDecision => ({ approve: false, note });
-  if (!input.valid) return no(input.error?.code === "model_error" ? "error" : "invalid");
+  if (!input.valid) {
+    const code = input.error?.code;
+    return no(
+      code === "model_error"
+        ? "error"
+        : code === "judge_unavailable" || code === "policy_too_long"
+          ? code
+          : "invalid",
+    );
+  }
   if (input.verdict === "deny") return no("deny");
   if (input.verdict === "escalate") return no("escalate");
   if (input.reviewSource === "floor") return no("floor");

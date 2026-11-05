@@ -181,6 +181,18 @@ extension field questions (`unrequested_field`, `missing_field`); the gateway ch
 (no gateway was reachable: direct probe only); and steps 5 to 10. Migrations of this stage use
 0250 to 0259 (0250: `intent_check`), the range assigned to this build so parallel builds do not collide.
 
+**Steps 5 and 10 (5 November 2026, ADR 0233 and 0234):** the Jev reviewer (`adjudicator.policy`),
+calibrated live on 52 cases over three policies (none wrong), wired as the default reviewer with a
+key and no LLM fallback; Settings → AI's Judge section (key status and route, Test, the key itself,
+placement switches, the reviewer, spend per placement); migrations 0251 (`core_adjudication.judgement`)
+and 0252 (`core_judge_usage`). The questions changed from the plan above (ADR 0233): `breaks` asks
+which rule *stops* an AI making the change on its own, and each question has a way out for every
+other thing a rule can say. **AC 6's adjudicator-eval bar is not met by Jev**: on ADR 0205's
+sample policy, whose allow rules depend on the agent's reason (which Jev never sees), it approves
+none of the 30 cases (none unsafely); the LLM reviewer scores precision 1.00. Over the labelled
+set's change-based policies, Jev approves 28 of 30 approvable runs, none unsafely. Still to come:
+steps 6 to 9.
+
 Steps 1 to 3 come first and in order. After them, the placements are independent and can be built
 in parallel worktrees, each with its labelled sets, its live calibration and its recordings in the
 same PR.

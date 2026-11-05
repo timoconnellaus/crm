@@ -26,6 +26,55 @@ test("Settings → AI lists the model roles and tests one", async ({ page }) => 
   await expect(page).toHaveURL(/\/settings\/ai$/);
 });
 
+test("Settings → AI's Judge section: key status, reviewer, placement switches and spend", async ({
+  page,
+}) => {
+  // Local dev has no TypeSafe key: the judge is off and says how to add one.
+  await open(page, "/settings/ai");
+  const judge = page.getByTestId("ai-judge");
+  await expect(judge.getByRole("heading", { name: "Judge (Jev)" })).toBeVisible();
+  await expect(judge.getByTestId("judge-key-status")).toHaveText("No key");
+  await expect(judge.getByTestId("judge-route")).toContainText("No TypeSafe key");
+  // No key: the LLM reviews, and Jev cannot be chosen.
+  await expect(judge.getByTestId("judge-reviewer-current")).toHaveText("the LLM (review role)");
+  // Each placement with what it sends, what happens without an answer, and its spend.
+  const intent = judge.getByTestId("judge-placement-authoring.intent");
+  await expect(intent).toContainText("The person's request words");
+  await expect(intent).toContainText("intent/unchecked");
+  await expect(judge.getByTestId("judge-spend-authoring.intent")).toContainText("calls");
+  await expect(judge.getByTestId("judge-placement-adjudicator.policy")).toContainText(
+    "Off: the LLM reviews",
+  );
+  await expect(judge.getByTestId("judge-spend-total")).toContainText("Last 30 days");
+
+  // A switch is an audited admin change; Reset returns it to its default.
+  const widget = judge.getByTestId("judge-placement-widget.shape");
+  const toggle = widget.getByRole("switch");
+  await expect(toggle).toBeChecked();
+  await toggle.click();
+  await expect(widget.getByRole("switch")).not.toBeChecked();
+  await expect(widget).toContainText("Set here");
+  await widget.getByRole("button", { name: "Reset" }).click();
+  await expect(widget.getByRole("switch")).toBeChecked();
+  await expect(widget).toContainText("Default");
+
+  // Turning off a check that holds things for a person asks first.
+  const outbound = judge.getByTestId("judge-placement-outbound.message");
+  await expect(outbound).toContainText("Sends record content");
+  if (!(await outbound.getByRole("switch").isChecked())) {
+    await outbound.getByRole("switch").click();
+    await expect(outbound.getByRole("switch")).toBeChecked();
+  }
+  await outbound.getByRole("switch").click();
+  await expect(page.getByRole("alertdialog")).toContainText("more will go through");
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(outbound.getByRole("switch")).toBeChecked();
+  if (await outbound.getByRole("button", { name: "Reset" }).isVisible()) {
+    await outbound.getByRole("button", { name: "Reset" }).click();
+    await expect(outbound).not.toContainText("Set here");
+  }
+});
+
 test("summarise a person from their record page", async ({ page }) => {
   const token = unique("sum");
   await createPerson(page, { given: "Grace", family: `Hopper${token}` });

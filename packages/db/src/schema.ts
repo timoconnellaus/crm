@@ -1105,6 +1105,8 @@ export interface CoreAdjudicationTable {
   threshold: number;
   error: Defaulted<JsonText | null>;
   audit_id: string;
+  /** Migration 0251 (ADR 0233): the Jev reviewer's raw answer; NULL for the LLM reviewer. */
+  judgement: Defaulted<JsonText | null>;
 }
 
 /** Cached `summarise` output (migration 0150, ADR 0153). */
@@ -1179,8 +1181,20 @@ export interface CoreAiUsageTable {
   tokens_out: number;
 }
 
+/**
+ * Migration 0252 (ADR 0234): judge calls and input tokens per day and placement, counted by a
+ * statement in the batch a placement already writes.
+ */
+export interface CoreJudgeUsageTable {
+  day: string;
+  placement: string;
+  calls: number;
+  input_tokens: number;
+}
+
 export interface CoreDatabase {
   core_ai_usage: CoreAiUsageTable;
+  core_judge_usage: CoreJudgeUsageTable;
   core_entitlements: CoreEntitlementsTable;
   core_support_grants: CoreSupportGrantsTable;
   core_install: CoreInstallTable;

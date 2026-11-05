@@ -73,7 +73,7 @@ export const JUDGE_PLACEMENTS = [
     sendsRecordContent: true,
     defaultOn: true,
     switchable: false,
-    built: false,
+    built: true,
   }),
   place({
     id: "summary.statements",

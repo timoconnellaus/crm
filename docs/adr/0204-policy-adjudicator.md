@@ -190,3 +190,11 @@ threshold applied by code, an unavailable judge escalating, the LLM judge's JSON
 > `breaks` and `allowed_by` questions over the policy's rules. The adjudicator's settings gain an
 > optional `reviewer` (`llm` | `jev`; unset: Jev when the judge has a key, ADR 0232), which nothing
 > reads until step 5.
+
+> Amended 2026-11-05 (stage 11 step 5, [ADR 0233](0233-jev-policy-reviewer.md)): the reviewer seam
+> is now `PolicyReviewer` (`review(policyText, item)`), with `llmPolicyReviewer` (this ADR's LLM
+> reviewer, unchanged) and `jevPolicyReviewer`. The adjudicator picks one with `adjudicatorReviewer`:
+> Jev while the judge has a key, unless an admin chose the LLM; the hook and the sweep run with Jev
+> alone. Two notes join `decideAction`'s: `judge_unavailable` (Jev could not answer: a person
+> decides) and `policy_too_long` (no rules, or more than 60, for Jev). Jev's raw answer is kept on
+> the verdict row (`core_adjudication.judgement`, migration 0251).

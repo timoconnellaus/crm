@@ -101,7 +101,16 @@ export interface AiAdmin {
   usage(days: number): Promise<UsageReport>;
   /** Hosted only: connect (or, with null, disconnect) the customer's own AI Gateway. */
   setCustomerGateway?(gateway: CustomerGateway | null): Promise<void>;
+  /**
+   * The judge's key (ADR 0230, ADR 0234): the secret TYPESAFE_API_KEY on ros-app and ros-runner
+   * (self-hosted, through the Cloudflare API) or on the workspace's Workers (hosted, through the
+   * control plane). Null removes it. The key is only ever in the request that sets it.
+   */
+  setJudgeKey?(key: string | null): Promise<{ targets: string[] }>;
 }
+
+/** The judge's key, as a Worker secret (ADR 0230). */
+export const JUDGE_KEY_SECRET = "TYPESAFE_API_KEY";
 
 export class AiAdminError extends Error {
   override name = "AiAdminError";
@@ -225,6 +234,24 @@ export function cloudflareAiAdmin(
           if (!(error instanceof AiAdminError) || !/404/.test(error.message)) throw error;
         }
       }
+    },
+    async setJudgeKey(key) {
+      for (const script of scripts) {
+        if (key === null) {
+          try {
+            await call("DELETE", `/workers/scripts/${script}/secrets/${JUDGE_KEY_SECRET}`);
+          } catch (error) {
+            if (!(error instanceof AiAdminError) || !/404/.test(error.message)) throw error;
+          }
+        } else {
+          await call("PUT", `/workers/scripts/${script}/secrets`, {
+            name: JUDGE_KEY_SECRET,
+            text: key,
+            type: "secret_text",
+          });
+        }
+      }
+      return { targets: scripts };
     },
     async usage(days) {
       const now = options.now?.() ?? new Date();
