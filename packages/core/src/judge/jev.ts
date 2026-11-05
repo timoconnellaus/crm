@@ -209,14 +209,27 @@ export function outcomeOfStatus(status: number, detail: string): JudgeUnavailabl
 
 const RETRYABLE = new Set<string>(["rate-limited", "server-error", "timeout", "unreachable"]);
 
-/** Short, key-free text of an error body for the log. */
-function detailOf(text: string): string {
-  return text.replace(/Bearer\s+\S+/gi, "Bearer …").slice(0, 300);
+/**
+ * Short, key-free text of an error body or message for the log: every credential this judge
+ * sends is cut out wherever it appears (a proxy may echo headers back), and so is any bearer token.
+ */
+function redactor(secrets: string[]): (text: string) => string {
+  const known = secrets.filter((s) => s.length >= 8);
+  return (text) => {
+    let out = text;
+    for (const secret of known) out = out.split(secret).join("…");
+    return out.replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer …").slice(0, 300);
+  };
 }
 
 /** The production judge. Never throws: every failure is an outcome. */
 export function jevJudge(options: JevJudgeOptions): Judge {
   const { route } = options;
+  const detailOf = redactor(
+    Object.values(route.headers("judge.test"))
+      .filter((v) => /^Bearer\s/i.test(v))
+      .map((v) => v.replace(/^Bearer\s+/i, "")),
+  );
   const now = options.now ?? Date.now;
   const log = options.log ?? ((line: JudgeCallLog) => console.log(JSON.stringify(line)));
   const sleep = options.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));

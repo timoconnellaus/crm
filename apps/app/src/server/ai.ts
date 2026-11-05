@@ -15,11 +15,13 @@ import {
   backfillEmbeddingQueue,
   type CommitEvent,
   cloudflareAiAdmin,
+  devJudge,
   drainAllEmbeddings,
   fakeModels,
   type InvocationContext,
   type Judge,
   judgeFor,
+  judgeRoute,
   loadAiSettings,
   loadJudgeSettings,
   type ModelRunner,
@@ -71,6 +73,9 @@ export function modelsFor(env: AiAppEnv, db: CrmDb): ModelRunner | undefined {
  * only when a placement first asks: building it costs nothing.
  */
 export function judgeOf(env: AiAppEnv, db: CrmDb): Judge {
+  // Local dev and e2e only, as fakeModels: a keyword stand-in for authoring.intent, so the
+  // approval screen's intent check works without TypeSafe. Never with a real key or AI binding.
+  if (env.AI_FAKE_MODEL === "true" && !env.AI && !judgeRoute(env).ready) return devJudge;
   return judgeFor(env, { loadSettings: () => loadJudgeSettings(db.query) });
 }
 

@@ -23,6 +23,7 @@ import {
   installExtension,
   requireHost,
 } from "../extensions/install.ts";
+import { authoringIntent, intentRequestInput, parseIntentCheck } from "../extensions/intent.ts";
 import {
   capDiff,
   computeImpact,
@@ -144,6 +145,7 @@ const checkSummarySchema = z.object({
   issues: z.array(
     z.object({
       stage: z.string(),
+      severity: z.enum(["error", "warning", "info"]).optional(),
       code: z.string(),
       path: z.string(),
       message: z.string(),
@@ -364,13 +366,16 @@ export const extensionPropose = defineOperation({
     "returns status 'check_failed' with the issues and queues nothing: fix them with " +
     "extension.write and propose again. Bump `version` in defineExtension for each change. " +
     "impact.triggers holds each automation's host-written summary, the text the approver " +
-    "reads: check it states everything the user asked for and nothing they did not. " +
+    "reads: check it states everything the user asked for and nothing they did not. Pass " +
+    "request (the user's own words) and each automation is also checked against it; findings " +
+    "come back as warning issues (intent/…) and are shown to the approver. " +
     "dropHidden: true also queues a separate destructive item to drop data of fields removed " +
     `more than ${HIDDEN_RETENTION_DAYS} days ago.`,
   input: z.object({
     id: extensionId,
     message: z.string().trim().min(1).max(500).optional().describe("Commit message"),
     dropHidden: z.boolean().default(false),
+    request: intentRequestInput,
   }),
   output: z.discriminatedUnion("status", [
     z.object({
@@ -447,6 +452,13 @@ export const extensionPropose = defineOperation({
       diff,
       eject,
     });
+    // authoring.intent (ADR 0230): asked again here and stored with the proposal row, in the
+    // batch that already writes it. Warnings only; off or unavailable never blocks a proposal.
+    const intent = await authoringIntent(ctx, {
+      manifest: check.manifest,
+      request: input.request,
+      previous,
+    });
     let ai: { text: string; model: string } | null = null;
     try {
       ai = await host.describeChange({
@@ -502,6 +514,7 @@ export const extensionPropose = defineOperation({
         check_result: JSON.stringify({ ok: checkResult.ok, issues, plan: checkResult.plan }),
         ai_summary: ai?.text ?? null,
         ai_model: ai?.model ?? null,
+        intent_check: intent.check ? JSON.stringify(intent.check) : null,
         created_by: ctx.user.id,
         created_at: ctx.now,
       }),
@@ -513,7 +526,7 @@ export const extensionPropose = defineOperation({
       commit,
       version: check.manifest.version,
       impact: impact as unknown as Record<string, unknown>,
-      check: { ok: true, issues },
+      check: { ok: true, issues: [...issues, ...intent.issues] },
       aiSummary: ai?.text ?? null,
       dropActionId,
       expiresAt: pending.expiresAt,
@@ -546,6 +559,29 @@ export const extensionProposal = defineOperation({
     impact: impactSchema,
     check: z.record(z.string(), z.unknown()),
     aiSummary: z.object({ text: z.string(), model: z.string().nullable() }).nullable(),
+    /**
+     * The authoring.intent check (ADR 0230): each automation against the request, with findings
+     * code wrote from the manifest; null when none ran. Stored at propose, never asked here.
+     */
+    intentCheck: z
+      .object({
+        status: z.enum(["checked", "unchecked"]),
+        requestSource: z.enum(["person", "client"]),
+        request: z.string(),
+        reason: z.string().optional(),
+        automations: z.array(
+          z.object({
+            id: z.string(),
+            findings: z.array(
+              z.object({ question: z.string(), code: z.string(), message: z.string() }),
+            ),
+            faults: z.record(z.string(), z.number()).nullable(),
+          }),
+        ),
+        model: z.string().optional(),
+        checkedAt: z.string(),
+      })
+      .nullable(),
     createdBy: z.string(),
     createdAt: z.string(),
   }),
@@ -576,6 +612,7 @@ export const extensionProposal = defineOperation({
       impact: JSON.parse(row.impact) as ExtensionImpact as unknown as Record<string, unknown>,
       check: JSON.parse(row.check_result) as Record<string, unknown>,
       aiSummary: row.ai_summary ? { text: row.ai_summary, model: row.ai_model } : null,
+      intentCheck: parseIntentCheck(row.intent_check),
       createdBy: row.created_by,
       createdAt: row.created_at,
     };

@@ -7,6 +7,7 @@ import { EMPTY_JUDGE_SETTINGS, type JudgeSettings, resolvePlacements } from "./s
 import type { Judge, JudgeOutcome, JudgeRequest, Questions } from "./types.ts";
 
 export * from "./calibration.ts";
+export * from "./dev.ts";
 export * from "./fake.ts";
 export * from "./jev.ts";
 export * from "./placements.ts";

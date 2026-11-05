@@ -1,8 +1,9 @@
 // The approval screen for an extension proposal (stage 3b, AC7): the AI-written summary (clearly
 // labelled), the host-computed impact (schema changes, permissions requested or widened, host
-// modules, tools, triggers), the check result, and the git diff per file, syntax-highlighted.
+// modules, tools, triggers), the authoring.intent check against the request (ADR 0230, when one
+// ran), the check result, and the git diff per file, syntax-highlighted.
 // Everything but the AI summary is computed by the host from the manifests and the reconcile plan.
-import type { ExtensionImpact, FileDiff } from "@relationship-os/core";
+import type { CoreOutput, ExtensionImpact, FileDiff } from "@relationship-os/core";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { cn } from "@relationship-os/ui/lib/utils";
@@ -61,9 +62,54 @@ export function ExtensionProposal({
       <AiSummary summary={p.aiSummary} />
       {status === "applied" && <BindAfterApproval impact={impact} />}
       <Impact impact={impact} />
+      <IntentCheck check={p.intentCheck} />
       <CheckResult check={check} />
       <Diff diff={diff} />
     </div>
+  );
+}
+
+type IntentCheckView = NonNullable<CoreOutput<"extension.proposal">["intentCheck"]>;
+
+/**
+ * The authoring.intent check (ADR 0230): each automation against the request, with findings code
+ * wrote from the manifest. Shown only when a check ran: nothing when the judge is off.
+ */
+function IntentCheck({ check }: { check: IntentCheckView | null }) {
+  if (!check) return null;
+  const findings = check.automations.flatMap((a) => a.findings);
+  const source =
+    check.requestSource === "person" ? "the person's own words" : "as the client reported it";
+  return (
+    <Section title="Checked against the request" testId="intent-check">
+      <p className="text-xs text-muted-foreground">
+        Request ({source}): <q className="italic">{check.request}</q>
+      </p>
+      {check.status === "unchecked" ? (
+        <p className="text-sm text-muted-foreground" data-testid="intent-unchecked">
+          Not checked: the judge could not answer ({check.reason ?? "unavailable"}). Read the
+          summary against the request yourself.
+        </p>
+      ) : findings.length === 0 ? (
+        <p className="flex items-center gap-1.5 text-sm text-green-800 dark:text-green-300">
+          <CheckCircle2Icon className="size-4" aria-hidden />
+          Nothing found that the request did not ask for, or that it asked for and is missing.
+        </p>
+      ) : (
+        <ul className="grid gap-1">
+          {findings.map((f) => (
+            <li
+              key={`${f.code}:${f.message}`}
+              className="flex items-start gap-1.5 text-sm text-amber-800 dark:text-amber-300"
+              data-testid="intent-finding"
+            >
+              <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
+              {f.message}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
 
