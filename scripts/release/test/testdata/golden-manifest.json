@@ -20,7 +20,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 172,
+  "coreSchemaVersion": 221,
   "extensionContract": {
     "supported": [
       1
@@ -97,6 +97,15 @@
       "workers": [
         "ros-app",
         "ros-runner"
+      ]
+    },
+    {
+      "default": "",
+      "description": "Hosted SaaS only: the control plane's Ed25519 public key (raw, base64url) for support-access tokens; empty means no support access (ADR 0212)",
+      "kind": "var",
+      "name": "ROS_SUPPORT_PUBLIC_KEY",
+      "workers": [
+        "ros-app"
       ]
     }
   ],
@@ -237,6 +246,14 @@
     {
       "name": "0172_notification_delivery.sql",
       "sha256": "cdd5e527fcebdbe6450704f9996ce08fc30f2de1fc3288f25c72f294ed59cdc4"
+    },
+    {
+      "name": "0220_entitlements.sql",
+      "sha256": "dcf0e456d1a771e0e8db60e8bdfd33659ce947d4875ed817b9ac498c97e0721e"
+    },
+    {
+      "name": "0221_support_grants.sql",
+      "sha256": "8e1824e45475d2e1831cdaff758c04a90557fa4ba23afdbe15906910885c8fbc"
     }
   ],
   "product": "relationship-os",
@@ -546,6 +563,11 @@
           "type": "plain_text"
         },
         {
+          "name": "ROS_SUPPORT_PUBLIC_KEY",
+          "text": "",
+          "type": "plain_text"
+        },
+        {
           "name": "VECTORIZE_DIMENSIONS",
           "text": "384",
           "type": "plain_text"
@@ -682,7 +704,7 @@
           "source": "installer"
         }
       ],
-      "sha256": "317da63e8d66ee693e66f4da698f897c9106d7f65d331d801ed632afb4884710"
+      "sha256": "3a1468a4ead8dc9b2c20d02673a5d93946a587028c0cec896ce5bf7e22546460"
     },
     {
       "bindings": [
