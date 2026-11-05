@@ -57,6 +57,7 @@ export * from "./models.ts";
 export * from "./notifications/channels.ts";
 export * from "./notifications/delivery.ts";
 export * from "./notifications/digest.ts";
+export * from "./notifications/digest-content.ts";
 export * from "./notifications/ledger.ts";
 export * from "./notifications/preferences.ts";
 export * from "./notifications/purge.ts";

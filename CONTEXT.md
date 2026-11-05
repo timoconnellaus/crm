@@ -343,8 +343,17 @@ _Avoid_: alert, message (when you mean the stored notification)
 
 **Notification preference**
 A person's choice, per notification type, of whether a notice also reaches them by email or Slack
-DM (in-app is always on), and whether they get a daily email digest of unread notices and pending
-approvals.
+DM (in-app is always on), and whether they get the daily digest in the app (on by default) and by
+email (off by default).
+
+**Daily digest**
+Once a day, from the admin's digest hour in the automation timezone, one summary per person:
+changes others (including the assistant and automations) made to records they own or are assigned
+in the last 24 hours, their tasks due today or overdue, the approvals waiting (for people who can
+approve) and their unread notices. It arrives as an in-app `digest` notification when there is
+news, and by email when they asked for it, at most once a day, optionally opening with a labelled
+AI overview (ADR 0206). Activities are never part of it.
+_Avoid_: daily summary, newsletter
 
 **Channel route**
 An admin rule that posts a short message with a link to a Slack channel when a record of an object

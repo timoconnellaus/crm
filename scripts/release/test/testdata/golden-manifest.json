@@ -20,7 +20,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 172,
+  "coreSchemaVersion": 210,
   "extensionContract": {
     "supported": [
       1
@@ -237,6 +237,10 @@
     {
       "name": "0172_notification_delivery.sql",
       "sha256": "cdd5e527fcebdbe6450704f9996ce08fc30f2de1fc3288f25c72f294ed59cdc4"
+    },
+    {
+      "name": "0210_daily_digest.sql",
+      "sha256": "c89ba91b9d6b7436601a11bc74d78fc9d2b909369d93d8f514fd9f1fe009a988"
     }
   ],
   "product": "relationship-os",

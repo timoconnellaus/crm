@@ -1,6 +1,7 @@
 // Notifications inbox (ADR 0029): the signed-in user's notifications, newest first, in a
 // virtualised list that loads more as you scroll. All or Unread; Mark all read. Each opens its
-// record, approval or automation run and is marked read.
+// record, approval or automation run and is marked read; the daily digest shows in full, its
+// sections linking into the app (ADR 0206).
 import { Button } from "@relationship-os/ui/components/button";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
@@ -11,6 +12,7 @@ import { useMarkRead, useNotifications } from "#/components/automations/hooks";
 import { EmptyState, ErrorState } from "#/components/empty-state";
 import { VirtualFeed } from "#/components/layout/infinite";
 import { PageCount, PageLayout } from "#/components/layout/page-layout";
+import { DigestEntry, isDigest } from "#/components/notifications/digest-entry";
 import { NotificationEntry } from "#/components/notifications/notification-bell";
 import { errorMessage } from "#/lib/query";
 
@@ -98,7 +100,9 @@ function NotificationsPage() {
           source={query}
           className="rounded-md border"
           itemClassName="border-b last:border-b-0"
-          renderItem={(item) => <NotificationEntry item={item} />}
+          renderItem={(item) =>
+            isDigest(item) ? <DigestEntry item={item} /> : <NotificationEntry item={item} />
+          }
         />
       )}
     </PageLayout>

@@ -1,7 +1,7 @@
 // Settings → Notifications (stage 6b, ADR 0172): your own preferences. For each notification type,
-// whether it also reaches you by email or Slack DM (in-app is always on), and the daily email
-// digest. A change saves at once. Channels an admin has not set up yet are shown but disabled.
-// Admins also get links to the org's delivery settings and Slack channel routes.
+// whether it also reaches you by email or Slack DM (in-app is always on), and the daily digest in
+// the app (on by default) and by email (ADR 0206). A change saves at once. Channels an admin has
+// not set up yet are shown but disabled. Admins also get links to the org's delivery settings and Slack channel routes.
 import type { CoreOutput } from "@relationship-os/core";
 import {
   Card,
@@ -188,35 +188,54 @@ function channelLabel(channel: Channel): string {
 
 function DigestCard({ prefs }: { prefs: Preferences }) {
   const save = useOpMutation("notification.setPreferences");
-  async function set(digest: boolean) {
+  async function set(change: { digest?: boolean; digestInApp?: boolean }, message: string) {
     try {
-      await save.mutateAsync({ digest });
-      toast.success(digest ? "Daily digest on" : "Daily digest off");
+      await save.mutateAsync(change);
+      toast.success(message);
     } catch (error) {
       toast.error(errorMessage(error));
     }
   }
   return (
-    <Card>
+    <Card data-testid="notification-digest">
       <CardHeader>
         <CardTitle>Daily digest</CardTitle>
         <CardDescription>
-          One email a day with your unread notifications and the approvals waiting for you.
+          Once a day: changes others made to records you own or are assigned, your tasks due today
+          or overdue, the approvals waiting for you and your unread notifications. When AI is set up
+          it starts with a short overview, labelled AI-generated.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex items-center gap-3">
-        <Switch
-          id="notification-digest"
-          checked={prefs.digest}
-          disabled={save.isPending}
-          onCheckedChange={(v) => void set(v)}
-        />
-        <Label htmlFor="notification-digest" className="font-normal">
-          Email me a daily digest
-        </Label>
-        {!prefs.available.email && (
-          <span className="text-xs text-muted-foreground">(email is not set up yet)</span>
-        )}
+      <CardContent className="grid gap-3">
+        <div className="flex items-center gap-3">
+          <Switch
+            id="notification-digest-in-app"
+            checked={prefs.digestInApp}
+            disabled={save.isPending}
+            onCheckedChange={(v) =>
+              void set({ digestInApp: v }, v ? "In-app digest on" : "In-app digest off")
+            }
+          />
+          <Label htmlFor="notification-digest-in-app" className="font-normal">
+            Show a daily digest in my notifications
+          </Label>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Switch
+            id="notification-digest"
+            checked={prefs.digest}
+            disabled={save.isPending}
+            onCheckedChange={(v) =>
+              void set({ digest: v }, v ? "Email digest on" : "Email digest off")
+            }
+          />
+          <Label htmlFor="notification-digest" className="font-normal">
+            Email me a daily digest
+          </Label>
+          {!prefs.available.email && (
+            <span className="text-xs text-muted-foreground">(email is not set up yet)</span>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

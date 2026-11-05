@@ -3,6 +3,12 @@
 Status: accepted, 2026-11-05 (stage 7a build). The daily digest (stage 7 scope) is stage 7b: it
 needs stage 5's notifications.
 
+> Amended 2026-11-05 (stage 7b): the daily digest is built ([ADR 0206](0206-daily-digest.md)). Its
+> AI overview is one `summarise` call per digest sent, made by ros-runner's cron, from the
+> digest's facts (titles, field labels, counts; never activity text). It is not cached in
+> `core_ai_summary`: the digest is written once a day and the overview lives in it, labelled
+> AI-generated. Without AI, or on any error, the digest goes out without it.
+
 ## Context
 Stage 7 adds four summaries made by the `summarise` role: a record summary for people,
 organisations and deals; meeting prep for a meeting (including calendar events synced in stage

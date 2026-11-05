@@ -11,6 +11,7 @@ import { getField, getObject } from "../fields/index.ts";
 import { newId } from "../ids.ts";
 import { CHANNEL_VENDORS, resolveChannelTarget } from "../notifications/channels.ts";
 import {
+  DEFAULT_PREFERENCES,
   type DeliverySettings,
   deliverySettingsSchema,
   deliveryStateStatement,
@@ -32,9 +33,9 @@ import { UNROUTABLE_OBJECTS } from "../notifications/routes.ts";
 import {
   EXTERNAL_CHANNELS,
   type ExternalChannelId,
-  NOTIFICATION_TYPE_NAMES,
   NOTIFICATION_TYPES,
   type NotificationType,
+  ROUTABLE_NOTIFICATION_TYPES,
 } from "../notifications/types.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 
@@ -43,14 +44,17 @@ import { defineOperation, type HandlerContext } from "../operation.ts";
 const preferencesOutput = z.object({
   types: z.array(
     z.object({
-      type: z.enum(NOTIFICATION_TYPE_NAMES),
+      type: z.enum(ROUTABLE_NOTIFICATION_TYPES),
       label: z.string(),
       category: z.string(),
       /** External channels chosen for this type (in-app is always on). */
       channels: z.array(externalChannelSchema),
     }),
   ),
+  /** The daily digest by email. */
   digest: z.boolean(),
+  /** The daily digest in the app (on by default, ADR 0206). */
+  digestInApp: z.boolean(),
   /** Whether an admin has set up each channel (choices for an unset channel wait for it). */
   available: z.object({ email: z.boolean(), slack: z.boolean() }),
 });
@@ -67,13 +71,14 @@ function preferencesView(
   settings: DeliverySettings,
 ): PreferencesOutput {
   return {
-    types: NOTIFICATION_TYPE_NAMES.map((type) => ({
+    types: ROUTABLE_NOTIFICATION_TYPES.map((type) => ({
       type,
       label: NOTIFICATION_TYPES[type].label,
       category: NOTIFICATION_TYPES[type].category,
       channels: (prefs.channels[type] ?? []).filter((c): c is ExternalChannelId => c !== "inApp"),
     })),
     digest: prefs.digest,
+    digestInApp: prefs.digestInApp,
     available: { email: settings.email !== null, slack: settings.slack !== null },
   };
 }
@@ -172,8 +177,9 @@ export const notificationPreferences = defineOperation({
   name: "notification.preferences",
   description:
     "Your notification preferences: for each notification type, whether it also reaches you by " +
-    "email or Slack DM (in-app is always on), whether you get a daily email digest, and which " +
-    "channels an admin has set up. Read-only.",
+    "email or Slack DM (in-app is always on), whether you get the daily digest in the app " +
+    "(digestInApp, on by default) and by email (digest), and which channels an admin has set " +
+    "up. Read-only.",
   input: z.object({}),
   output: preferencesOutput,
   permission: "records:read",
@@ -185,7 +191,7 @@ export const notificationPreferences = defineOperation({
       loadPreferences(ctx.db, [ctx.user.id]),
       loadDeliverySettings(ctx.db),
     ]);
-    return preferencesView(prefs.get(ctx.user.id) ?? { channels: {}, digest: false }, settings);
+    return preferencesView(prefs.get(ctx.user.id) ?? { ...DEFAULT_PREFERENCES }, settings);
   },
 });
 
@@ -194,11 +200,12 @@ export const notificationSetPreferences = defineOperation({
   description:
     "Change your notification preferences: `channels` maps a notification type to the external " +
     "channels it should also reach you on (`email`, `slack`; an empty list means in-app only; " +
-    "types you leave out keep their setting), and `digest` turns the daily email digest on or " +
-    "off. Only your own preferences change.",
+    "types you leave out keep their setting), `digest` turns the daily email digest on or off " +
+    "and `digestInApp` the daily digest in the app. Only your own preferences change.",
   input: z.object({
     channels: preferenceChannelsSchema.optional(),
     digest: z.boolean().optional(),
+    digestInApp: z.boolean().optional(),
   }),
   output: preferencesOutput,
   permission: "records:read",
@@ -212,14 +219,18 @@ export const notificationSetPreferences = defineOperation({
       loadPreferences(ctx.db, [ctx.user.id]),
       loadDeliverySettings(ctx.db),
     ]);
-    const current = prefs.get(ctx.user.id) ?? { channels: {}, digest: false };
+    const current = prefs.get(ctx.user.id) ?? { ...DEFAULT_PREFERENCES };
     const channels = { ...current.channels };
     for (const [type, chosen] of Object.entries(input.channels ?? {})) {
       const unique = [...new Set(chosen ?? [])];
       if (unique.length) channels[type as NotificationType] = unique;
       else delete channels[type as NotificationType];
     }
-    const next: UserNotificationPreferences = { channels, digest: input.digest ?? current.digest };
+    const next: UserNotificationPreferences = {
+      channels,
+      digest: input.digest ?? current.digest,
+      digestInApp: input.digestInApp ?? current.digestInApp,
+    };
     ctx.write(savePreferencesStatement(ctx.db, ctx.user.id, next, ctx.now));
     return preferencesView(next, settings);
   },

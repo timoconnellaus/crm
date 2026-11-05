@@ -9,19 +9,23 @@
 //    written go out on `escalationChannels`, unless the notice already went out externally by
 //    preference or its change set has nothing pending any more. Escalations are not notices, so
 //    an escalation is never escalated (cost audit U8).
-// 3. The daily digest, from `digestHour` in the automation timezone, by email, for people who
-//    asked for it: their unread notices from the last 24 hours and the approvals waiting.
+// 3. The daily digest (ADR 0206), from `digestHour` in the automation timezone: changes others
+//    made to the person's records, tasks due, approvals waiting and unread notices, in the app
+//    (on unless turned off; only when there is news) and by email (when asked for and email is
+//    configured), with an optional AI overview. Runs even with no channel configured.
 //
 // Every send is claimed in the ledger first (`n:<notificationId>:<channel>`,
 // `esc:<notificationId>:<channel>`, `digest:<date>:<userId>`), so a repeated tick never sends
-// twice. A failed or pending send never touches the in-app row. Notices that link to an activity
+// twice (the digest's claim covers its in-app copy, its email and its one model call). A failed or pending send never touches the in-app row. Notices that link to an activity
 // that is private (or gone) are never delivered externally or digested: synced email and meetings
 // marked private stay in the CRM (ADR 0052). The cursors and the digest day live in one settings
 // row, written at most once per tick and only when it changed.
 import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, sql } from "kysely";
+import type { ModelRunner } from "../ai/client.ts";
 import { zonedTime } from "../automations/cron.ts";
 import { loadAutomationSettings } from "../automations/registry.ts";
+import { newId } from "../ids.ts";
 import { notificationHref } from "../operations/notification.ts";
 import { roleHasPermission } from "../principals.ts";
 import { jsonList } from "../records/common.ts";
@@ -33,7 +37,23 @@ import {
   sendEmail,
   slackChannel,
 } from "./channels.ts";
-import { DIGEST_ITEMS, type DigestComposer, type DigestItem, plainDigest } from "./digest.ts";
+import {
+  DIGEST_ITEMS,
+  type DigestComposer,
+  type DigestInput,
+  type DigestItem,
+  digestHasNews,
+  digestMarkdown,
+  digestOverview,
+  plainDigest,
+} from "./digest.ts";
+import {
+  changesFor,
+  dueBound,
+  loadRecentChanges,
+  type RecentChanges,
+  tasksDueFor,
+} from "./digest-content.ts";
 import { claimDelivery, type DeliveryKind, type DeliveryResult, settleDelivery } from "./ledger.ts";
 import {
   type DeliverySettings,
@@ -42,8 +62,10 @@ import {
   loadDeliverySettings,
   loadDeliveryState,
   loadPreferences,
+  type UserNotificationPreferences,
 } from "./preferences.ts";
 import {
+  type DeliveryOutcome,
   EXTERNAL_CHANNELS,
   type ExternalChannelId,
   NOTIFICATION_TYPES,
@@ -69,8 +91,10 @@ export interface DeliveryDeps {
   /** The app's public origin (`https://crm.example.com`), for absolute links; null: no links. */
   appOrigin: string | null;
   callIntegration: CallIntegration;
-  /** The digest's composer (stage 7a may pass a summarising one). Default: plainDigest. */
+  /** The digest email's composer. Default: plainDigest. */
   composeDigest?: DigestComposer;
+  /** Model roles for the digest's AI overview (`summarise`); none: the plain digest. */
+  models?: ModelRunner | null;
   /** Preloaded settings (tests). */
   settings?: DeliverySettings;
 }
@@ -434,7 +458,7 @@ async function pendingApprovalCount(db: Kysely<CoreDatabase>, now: string): Prom
   return Number(result.rows[0]?.n ?? 0);
 }
 
-/** Pass 3: the daily digest. */
+/** Pass 3: the daily digest (ADR 0172, ADR 0206). */
 async function digest(
   deps: DeliveryDeps,
   settings: DeliverySettings,
@@ -442,7 +466,6 @@ async function digest(
   state: DeliveryState,
   report: DeliveryReport,
 ): Promise<void> {
-  if (!targets.email) return;
   const { timezone } = await loadAutomationSettings(deps.db);
   const local = zonedTime(deps.now, timezone);
   if (local.hour < settings.digestHour) return;
@@ -453,79 +476,106 @@ async function digest(
   if (day.done) return;
   const nowIso = deps.now.toISOString();
   const since = new Date(deps.now.getTime() - 86_400_000).toISOString();
+  // Everyone gets the in-app digest unless they turned it off, so the pass walks people by
+  // primary key (at most 50 a tick, resumable), not the email-digest preference.
   let query = deps.db
-    .selectFrom("core_notification_preference")
-    .select("user_id")
-    .where("digest", "=", 1);
-  if (day.after) query = query.where("user_id", ">", day.after);
-  const people = await query.orderBy("user_id").limit(DIGEST_USERS_PER_TICK).execute();
-  const recipients = await loadRecipients(
-    deps.db,
-    people.map((p) => p.user_id),
-  );
+    .selectFrom("core_user")
+    .select(["id", "name", "email", "role"])
+    .where("kind", "=", "human")
+    .where("deactivated_at", "is", null);
+  if (day.after) query = query.where("id", ">", day.after);
+  const people = await query.orderBy("id").limit(DIGEST_USERS_PER_TICK).execute();
+  const preferences = people.length
+    ? await loadPreferences(
+        deps.db,
+        people.map((p) => p.id),
+      )
+    : new Map<string, UserNotificationPreferences>();
+  const origin = deps.appOrigin ? deps.appOrigin.replace(/\/+$/, "") : null;
+  const bound = dueBound(local.date, deps.now, local);
   let pending: number | null = null;
+  let recent: RecentChanges | null = null;
   const compose = deps.composeDigest ?? plainDigest;
-  for (const { user_id: userId } of people) {
+  for (const recipient of people as Recipient[]) {
+    const userId = recipient.id;
     day.after = userId;
-    const recipient = recipients.get(userId);
-    if (!recipient?.email) continue;
-    const rows = await deps.db
-      .selectFrom("core_notifications")
-      .select(["id", "user_id", "type", "title", "body", "link", "source", "read_at", "created_at"])
-      .where("user_id", "=", userId)
-      .where("created_at", ">=", since)
-      .where("read_at", "is", null)
-      .orderBy("created_at", "desc")
-      .limit(DIGEST_ITEMS * 2)
-      .execute();
-    const unread = await sql<{ n: number }>`SELECT count(*) AS n FROM (
-        SELECT 1 FROM core_notifications INDEXED BY core_notifications_user_idx
-        WHERE user_id = ${userId} AND created_at >= ${since} AND read_at IS NULL
-        LIMIT 1000)`.execute(deps.db);
-    const items: DigestItem[] = [];
-    let hidden = 0;
-    for (const row of rows) {
-      const notice = toNotificationRecord(row);
-      if (!(await disclosable(deps.db, notice))) {
-        hidden += 1;
-        continue;
-      }
-      if (items.length < DIGEST_ITEMS) {
-        items.push({
-          type: notice.type,
-          title: notice.title,
-          body: notice.body,
-          url: absoluteUrl(deps.appOrigin, notice.link),
-          createdAt: notice.createdAt,
-        });
-      }
-    }
+    const prefs = preferences.get(userId);
+    const wantsInApp = prefs?.digestInApp ?? true;
+    const wantsEmail = Boolean(prefs?.digest && targets.email && recipient.email);
+    if (!wantsInApp && !wantsEmail) continue;
+
+    recent ??= await loadRecentChanges(deps.db, since, nowIso);
+    const changes = changesFor(recent, userId, origin);
+    const tasks = await tasksDueFor(deps.db, userId, {
+      localDate: local.date,
+      bound,
+      now: nowIso,
+      appOrigin: origin,
+    });
+    const notices = await unreadNotices(deps, userId, since);
     const canApprove = roleHasPermission(recipient.role, "records:write");
     if (canApprove) pending ??= await pendingApprovalCount(deps.db, nowIso);
-    const pendingApprovals = canApprove ? (pending ?? 0) : 0;
-    const unreadTotal = Math.max(0, Number(unread.rows[0]?.n ?? 0) - hidden);
-    if (!unreadTotal && !pendingApprovals) continue;
+    const input: DigestInput = {
+      recipient: { userId, name: recipient.name, email: recipient.email },
+      date: day.date,
+      changes: changes.changes,
+      changesTotal: changes.total,
+      tasks: tasks.tasks,
+      tasksTotal: tasks.total,
+      items: notices.items,
+      unreadTotal: notices.total,
+      pendingApprovals: canApprove ? (pending ?? 0) : 0,
+      approvalsUrl: origin ? `${origin}/approvals` : null,
+      overview: null,
+    };
+    // In the app only when there is news (unread notices are in the inbox already); by email
+    // also for unread notices alone, as before.
+    const inApp = wantsInApp && digestHasNews(input);
+    const email = wantsEmail && (digestHasNews(input) || input.unreadTotal > 0);
+    if (!inApp && !email) continue;
+
+    // One claim per person per day covers both copies and the model call.
     const key = `digest:${day.date}:${userId}`;
-    if (
-      !(await claimDelivery(deps.db, { key, kind: "digest", channel: "email", userId }, nowIso))
-    ) {
+    const channel = email ? "email" : "inApp";
+    if (!(await claimDelivery(deps.db, { key, kind: "digest", channel, userId }, nowIso))) {
       report.digests.push({ key, status: "duplicate" });
       continue;
     }
     try {
-      const message = await compose({
-        recipient: { userId, name: recipient.name, email: recipient.email },
-        date: day.date,
-        items,
-        unreadTotal,
-        pendingApprovals,
-        approvalsUrl: deps.appOrigin ? `${deps.appOrigin.replace(/\/+$/, "")}/approvals` : null,
-      });
-      const outcome = await sendEmail(deps.callIntegration, targets.email, {
-        to: recipient.email,
-        subject: message.subject,
-        text: message.text,
-      });
+      input.overview = await digestOverview(deps.models, input);
+      if (inApp) {
+        const message = digestMarkdown(input);
+        await deps.db
+          .insertInto("core_notifications")
+          .orIgnore()
+          .values({
+            id: newId("notification"),
+            user_id: userId,
+            type: "digest",
+            title: message.title,
+            body: message.body,
+            link: null,
+            source: JSON.stringify({
+              actor: "system",
+              ...(input.overview ? { aiGenerated: true } : {}),
+            }),
+            dedupe_key: `digest:${day.date}`,
+            read_at: null,
+            created_at: nowIso,
+          })
+          .execute();
+      }
+      let outcome: DeliveryOutcome = { status: "sent", detail: "in-app" };
+      if (email && targets.email) {
+        const message = await compose(input);
+        const sent = await sendEmail(deps.callIntegration, targets.email, {
+          to: recipient.email,
+          subject: message.subject,
+          text: message.text,
+        });
+        const detail = [inApp ? "in-app" : null, sent.detail ?? null].filter(Boolean).join("; ");
+        outcome = { status: sent.status, ...(detail ? { detail } : {}) };
+      }
       report.digests.push(await settleDelivery(deps.db, key, outcome));
     } catch (error) {
       report.digests.push(await settleDelivery(deps.db, key, error));
@@ -534,24 +584,72 @@ async function digest(
   if (people.length < DIGEST_USERS_PER_TICK) day.done = true;
 }
 
+/** A person's unread notices of the last day that may be listed, and how many there are. */
+async function unreadNotices(
+  deps: DeliveryDeps,
+  userId: string,
+  since: string,
+): Promise<{ items: DigestItem[]; total: number }> {
+  const rows = await deps.db
+    .selectFrom("core_notifications")
+    .select(["id", "user_id", "type", "title", "body", "link", "source", "read_at", "created_at"])
+    .where("user_id", "=", userId)
+    .where("created_at", ">=", since)
+    .where("read_at", "is", null)
+    .where("type", "<>", "digest")
+    .orderBy("created_at", "desc")
+    .limit(DIGEST_ITEMS * 2)
+    .execute();
+  const unread = await sql<{ n: number }>`SELECT count(*) AS n FROM (
+      SELECT 1 FROM core_notifications INDEXED BY core_notifications_user_idx
+      WHERE user_id = ${userId} AND created_at >= ${since} AND read_at IS NULL
+        AND type <> 'digest'
+      LIMIT 1000)`.execute(deps.db);
+  const items: DigestItem[] = [];
+  let hidden = 0;
+  for (const row of rows) {
+    const notice = toNotificationRecord(row);
+    if (!(await disclosable(deps.db, notice))) {
+      hidden += 1;
+      continue;
+    }
+    if (items.length < DIGEST_ITEMS) {
+      items.push({
+        type: notice.type,
+        title: notice.title,
+        body: notice.body,
+        url: absoluteUrl(deps.appOrigin, notice.link),
+        href: notificationHref(notice.link),
+        createdAt: notice.createdAt,
+      });
+    }
+  }
+  return { items, total: Math.max(0, Number(unread.rows[0]?.n ?? 0) - hidden) };
+}
+
 /**
- * One delivery tick. Does nothing (no reads beyond the settings row) while no channel is
- * configured. Returns what it sent, for logs and tests.
+ * One delivery tick. While no channel is configured it runs only the digest pass (in-app), which
+ * reads the settings, the cron state and the automation timezone and stops there outside the
+ * digest window. Returns what it sent, for logs and tests.
  */
 export async function runNotificationDelivery(deps: DeliveryDeps): Promise<DeliveryReport> {
   const report: DeliveryReport = { notifications: [], escalations: [], digests: [], problems: [] };
   const settings = deps.settings ?? (await loadDeliverySettings(deps.db));
-  if (!settings.email && !settings.slack) return report;
-  const targets = await resolveTargets(deps.db, settings);
+  const targets: Targets =
+    settings.email || settings.slack
+      ? await resolveTargets(deps.db, settings)
+      : { channels: {}, email: null, problems: [] };
   report.problems.push(...targets.problems);
-  if (!Object.keys(targets.channels).length) return report;
+  const external = Object.keys(targets.channels).length > 0;
   const state = await loadDeliveryState(deps.db);
   const before = JSON.stringify(state);
-  const passes: [string, () => Promise<void>][] = [
-    ["notifications", () => deliverNew(deps, targets, state, report)],
-    ["escalation", () => escalate(deps, settings, targets, state, report)],
-    ["digest", () => digest(deps, settings, targets, state, report)],
-  ];
+  const passes: [string, () => Promise<void>][] = [];
+  if (external) {
+    passes.push(["notifications", () => deliverNew(deps, targets, state, report)]);
+    passes.push(["escalation", () => escalate(deps, settings, targets, state, report)]);
+  }
+  // The daily digest also goes in-app, so it runs with no channel configured (ADR 0206).
+  passes.push(["digest", () => digest(deps, settings, targets, state, report)]);
   for (const [name, pass] of passes) {
     try {
       await pass();

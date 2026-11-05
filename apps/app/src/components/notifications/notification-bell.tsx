@@ -17,6 +17,7 @@ import {
   useUnreadCount,
 } from "#/components/automations/hooks";
 import { compactRelative, notificationHref } from "#/components/automations/model";
+import { DigestEntry, isDigest } from "#/components/notifications/digest-entry";
 import { errorMessage } from "#/lib/query";
 
 export function NotificationBell() {
@@ -96,7 +97,11 @@ function RecentNotifications({ onNavigate }: { onNavigate: () => void }) {
         <ul className="max-h-[min(24rem,60dvh)] overflow-y-auto" aria-label="Recent notifications">
           {items.map((item) => (
             <li key={item.id} className="border-b last:border-b-0">
-              <NotificationEntry item={item} onNavigate={onNavigate} />
+              {isDigest(item) ? (
+                <DigestEntry item={item} compact onNavigate={onNavigate} />
+              ) : (
+                <NotificationEntry item={item} onNavigate={onNavigate} />
+              )}
             </li>
           ))}
         </ul>
