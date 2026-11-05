@@ -42,6 +42,65 @@ export interface ScriptInfo {
   migration_tag?: string;
 }
 
+/** An AI Gateway as the API returns it (the fields this package reads or writes back). */
+export interface AiGateway {
+  id: string;
+  collect_logs?: boolean;
+  authentication?: boolean;
+  cache_ttl?: number;
+  cache_invalidate_on_update?: boolean;
+  rate_limiting_interval?: number;
+  rate_limiting_limit?: number;
+  rate_limiting_technique?: string;
+  store_id?: string | null;
+  [key: string]: unknown;
+}
+
+export interface CustomProviderInfo {
+  id: string;
+  slug: string;
+  name: string;
+  base_url: string;
+  enable?: boolean;
+}
+
+export interface ProviderConfigInfo {
+  id: string;
+  provider_slug: string;
+  alias: string;
+  default_config?: boolean;
+  secret_preview?: string;
+}
+
+/** Settings an update sends back unchanged (the update API replaces them all). */
+const GATEWAY_SETTING_KEYS = [
+  "authentication",
+  "byok_only",
+  "cache_invalidate_on_update",
+  "cache_ttl",
+  "collect_logs",
+  "log_management",
+  "log_management_strategy",
+  "logpush",
+  "rate_limiting_interval",
+  "rate_limiting_limit",
+  "rate_limiting_technique",
+  "retry_backoff",
+  "retry_delay",
+  "retry_max_attempts",
+  "store_id",
+  "zdr",
+] as const;
+
+/** A gateway's settings, for sending back in an update with some of them changed. */
+export function gatewaySettingsOf(gateway: AiGateway): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of GATEWAY_SETTING_KEYS) {
+    if (gateway[key] !== undefined && gateway[key] !== null) out[key] = gateway[key];
+  }
+  return out;
+}
+
 export interface CloudflareClientOptions {
   token: string;
   apiBase?: string;
@@ -462,6 +521,180 @@ export class CloudflareClient {
       zone_id: zoneId,
       environment: "production",
     });
+  }
+
+  // ---- AI Gateway (ADR 0180) -----------------------------------------------------------------
+
+  /** A gateway by id, or null when there is none. Needs AI Gateway Read or Edit. */
+  async getAiGateway(accountId: string, id: string): Promise<AiGateway | null> {
+    try {
+      return (
+        await this.request<AiGateway>("GET", `/accounts/${accountId}/ai-gateway/gateways/${id}`)
+      ).result;
+    } catch (error) {
+      if (error instanceof CloudflareApiError && error.status === 404) return null;
+      throw error;
+    }
+  }
+
+  async createAiGateway(accountId: string, settings: Record<string, unknown> & { id: string }) {
+    return (
+      await this.request<AiGateway>("POST", `/accounts/${accountId}/ai-gateway/gateways`, settings)
+    ).result;
+  }
+
+  /** Replaces a gateway's settings (send them all: omitted ones fall back to defaults). */
+  async updateAiGateway(accountId: string, id: string, settings: Record<string, unknown>) {
+    return (
+      await this.request<AiGateway>(
+        "PUT",
+        `/accounts/${accountId}/ai-gateway/gateways/${id}`,
+        settings,
+      )
+    ).result;
+  }
+
+  async deleteAiGateway(accountId: string, id: string) {
+    await this.request("DELETE", `/accounts/${accountId}/ai-gateway/gateways/${id}`);
+  }
+
+  /** The account's custom providers (account-wide, shared by every gateway). */
+  listCustomProviders(accountId: string) {
+    return this.all<CustomProviderInfo>(`/accounts/${accountId}/ai-gateway/custom-providers`);
+  }
+
+  async createCustomProvider(accountId: string, provider: Record<string, unknown>) {
+    return (
+      await this.request<CustomProviderInfo>(
+        "POST",
+        `/accounts/${accountId}/ai-gateway/custom-providers`,
+        provider,
+      )
+    ).result;
+  }
+
+  async updateCustomProvider(accountId: string, id: string, changes: Record<string, unknown>) {
+    return (
+      await this.request<CustomProviderInfo>(
+        "PATCH",
+        `/accounts/${accountId}/ai-gateway/custom-providers/${id}`,
+        changes,
+      )
+    ).result;
+  }
+
+  /** A gateway's stored provider keys (BYOK); only previews of the keys come back. */
+  async listProviderConfigs(accountId: string, gatewayId: string) {
+    return (
+      await this.request<ProviderConfigInfo[]>(
+        "GET",
+        `/accounts/${accountId}/ai-gateway/gateways/${gatewayId}/provider_configs`,
+      )
+    ).result;
+  }
+
+  async deleteProviderConfig(accountId: string, gatewayId: string, id: string) {
+    await this.request(
+      "DELETE",
+      `/accounts/${accountId}/ai-gateway/gateways/${gatewayId}/provider_configs/${id}`,
+    );
+  }
+
+  listSecretsStores(accountId: string) {
+    return this.all<{ id: string; name: string }>(`/accounts/${accountId}/secrets_store/stores`);
+  }
+
+  async createSecretsStore(accountId: string, name: string) {
+    return (
+      await this.request<{ id: string; name: string }>(
+        "POST",
+        `/accounts/${accountId}/secrets_store/stores`,
+        { name },
+      )
+    ).result;
+  }
+
+  /**
+   * Stores a provider key in a gateway as BYOK (the `default` alias), replacing any key already
+   * stored for that provider. `provider` is the gateway's provider slug: a built-in one
+   * (`openai`, `google-ai-studio`, …) or `custom-<slug>` for a custom provider. The key goes in
+   * the request body only: it is never logged, returned or put in an error message.
+   *
+   * The key lands in the Secrets Store the gateway uses; a gateway without one is pointed at the
+   * account's store (created if the account has none). Needs AI Gateway Edit and Secrets Store
+   * Write. Used by `create-crm --provider-key` and meant for Settings → AI.
+   */
+  async setGatewayProviderKey(
+    accountId: string,
+    gatewayId: string,
+    provider: string,
+    key: string,
+  ): Promise<{ provider: string; alias: string }> {
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(provider)) throw new Error(`bad provider slug ${provider}`);
+    if (!key.trim()) throw new Error("the provider key is empty");
+    const gateway = await this.getAiGateway(accountId, gatewayId);
+    if (!gateway) throw new Error(`AI Gateway ${gatewayId} does not exist`);
+    if (!gateway.store_id) {
+      const store =
+        (await this.listSecretsStores(accountId))[0] ??
+        (await this.createSecretsStore(accountId, "default_secrets_store"));
+      await this.updateAiGateway(accountId, gatewayId, {
+        ...gatewaySettingsOf(gateway),
+        store_id: store.id,
+      });
+    }
+    const alias = "default";
+    for (const config of await this.listProviderConfigs(accountId, gatewayId)) {
+      // One key per provider and alias: replace, since provider configs cannot be updated.
+      if (config.provider_slug === provider && config.alias === alias) {
+        await this.deleteProviderConfig(accountId, gatewayId, config.id);
+      }
+    }
+    await this.request(
+      "POST",
+      `/accounts/${accountId}/ai-gateway/gateways/${gatewayId}/provider_configs`,
+      { provider_slug: provider, alias, default_config: true, secret: key },
+    );
+    return { provider, alias };
+  }
+
+  // ---- Account API tokens ---------------------------------------------------------------------
+
+  /** Permission groups an account token can be given, by exact name. Needs Account API Tokens Read. */
+  async permissionGroups(accountId: string, name: string) {
+    return (
+      await this.request<{ id: string; name: string; scopes?: string[] }[]>(
+        "GET",
+        `/accounts/${accountId}/tokens/permission_groups?name=${encodeURIComponent(name)}`,
+      )
+    ).result.filter((g) => g.name === name);
+  }
+
+  /** Creates an account-owned API token. Returns its id and value (shown once). */
+  async createAccountToken(
+    accountId: string,
+    name: string,
+    permissionGroupIds: string[],
+  ): Promise<{ id: string; value: string }> {
+    const { result } = await this.request<{ id: string; value: string }>(
+      "POST",
+      `/accounts/${accountId}/tokens`,
+      {
+        name,
+        policies: [
+          {
+            effect: "allow",
+            resources: { [`com.cloudflare.api.account.${accountId}`]: "*" },
+            permission_groups: permissionGroupIds.map((id) => ({ id })),
+          },
+        ],
+      },
+    );
+    return { id: result.id, value: result.value };
+  }
+
+  async deleteAccountToken(accountId: string, id: string) {
+    await this.request("DELETE", `/accounts/${accountId}/tokens/${id}`);
   }
 
   // ---- Static assets (direct upload) ----------------------------------------------------------

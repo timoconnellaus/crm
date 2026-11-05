@@ -26,18 +26,22 @@ import {
   type ExtraVerifier,
   fetchReleaseManifest,
   fetchVerifiedRelease,
+  GATEWAY_TOKEN_SECRET,
   type GitHubOptions,
+  gatewayProviderSlug,
   getRelease,
   healthSmoke,
   installedExtensionsViaApi,
   killSwitchControl,
   listReleases,
   locateDeployment,
+  mergeSecrets,
   neededResources,
   newRunId,
   openBundle,
   type PreflightResult,
   preflight,
+  provisionAiGateway,
   provisionResources,
   type ReleaseBundle,
   type RunRecord,
@@ -67,8 +71,10 @@ Usage
 Options
   --token <t>            Cloudflare API token (or CLOUDFLARE_API_TOKEN). Needs, on the account:
                          Workers Scripts Edit, D1 Edit, Workers R2 Storage Edit, Workers KV
-                         Storage Edit, Queues Edit, Vectorize Edit, Account Settings Read; and for
-                         a custom hostname, Zone Read + Workers Routes Edit on that zone.
+                         Storage Edit, Queues Edit, Vectorize Edit, Account Settings Read; with AI
+                         on, AI Gateway Edit, Account API Tokens Edit (to generate the gateway's
+                         token) and Secrets Store Edit (for --provider-key); and for a custom
+                         hostname, Zone Read + Workers Routes Edit on that zone.
   --account <id>         account id (or CLOUDFLARE_ACCOUNT_ID); asked when the token sees several
   --version <x.y.z>      release to install or upgrade to (default: newest on the channel)
   --channel <c>          stable (default) or beta
@@ -79,7 +85,12 @@ Options
   --ai <on|off>          in-app AI: Workers AI and the crm-records Vectorize index (default on,
                          or CRM_AI). Off: AI features say "AI is not configured". Upgrades keep
                          the choice; re-run install with --ai to change it
-  --ai-gateway <id>      AI Gateway every model call goes through (sets AI_GATEWAY_ID)
+  --ai-gateway <id|off>  AI Gateway every model call goes through (default: one named after the
+                         install, e.g. crm, created with logging and authentication on and its
+                         token stored as AI_GATEWAY_TOKEN). off: call Workers AI directly
+  --provider-key P=KEY   store a provider key in the gateway as BYOK (repeatable), e.g.
+                         together=… (the custom-together provider) or openai=…. Never logged.
+                         Keys can also be added later in Settings → AI
   --ai-admin-token <t>   Settings → AI's token (or CRM_AI_ADMIN_TOKEN), stored on crm-app as
                          CLOUDFLARE_API_TOKEN; permissions in docs/deploying.md "In-app AI"
   --secret NAME=VALUE    a secret to set (repeatable); WORKER:NAME=VALUE for a gatekeeper's
@@ -133,6 +144,8 @@ export function parseArgs(argv: string[]): { command: string; flags: Flags } {
       if (value === undefined) throw new Error(`--${key} needs a value`);
     }
     if (key === "secret") flags.secret = [...(flags.secret ?? []), String(value)];
+    else if (key === "provider-key")
+      flags["provider-key"] = [...((flags["provider-key"] as string[]) ?? []), String(value)];
     else flags[key] = value;
   }
   return { command: command || "install", flags };
@@ -287,6 +300,18 @@ function parseSecrets(flags: Flags, redactor: Redactor): Record<string, Record<s
   return out;
 }
 
+/** `--provider-key PROVIDER=KEY` entries. Keys go to the redactor before anything can print them. */
+function parseProviderKeys(flags: Flags, redactor: Redactor): { provider: string; key: string }[] {
+  const out: { provider: string; key: string }[] = [];
+  for (const entry of (flags["provider-key"] as string[] | undefined) ?? []) {
+    const match = /^([a-z0-9][a-z0-9-]*)=(.+)$/is.exec(entry);
+    if (match?.[2]) redactor.add(match[2]);
+    if (!match) throw new CliError("--provider-key expects PROVIDER=KEY, e.g. together=…");
+    out.push({ provider: (match[1] as string).toLowerCase(), key: match[2] as string });
+  }
+  return out;
+}
+
 /** `--ai` / CRM_AI: true, false, or undefined when neither says. */
 function aiChoice(flags: Flags, env: Env): boolean | undefined {
   const value = (str(flags, "ai") ?? env.CRM_AI)?.trim().toLowerCase();
@@ -397,6 +422,21 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
 
   // In-app AI (Workers AI + Vectorize): on unless turned off, now or by an earlier install.
   const ai = aiChoice(flags, deps.env) ?? previous?.ai ?? true;
+  // AI Gateway: the one chosen now or before; by default one named after the install.
+  const gatewayFlag = str(flags, "ai-gateway")?.trim();
+  if (
+    gatewayFlag !== undefined &&
+    gatewayFlag !== "off" &&
+    !/^[a-z0-9][a-z0-9-_]{0,63}$/i.test(gatewayFlag)
+  ) {
+    throw new CliError("--ai-gateway is a gateway id (letters, digits, - and _) or off");
+  }
+  const aiGateway: DeploymentState["aiGateway"] =
+    gatewayFlag === "off" ? false : (gatewayFlag ?? previous?.aiGateway);
+  const providerKeys = parseProviderKeys(flags, deps.redactor);
+  if (providerKeys.length && (!ai || aiGateway === false)) {
+    throw new CliError("--provider-key stores keys in AI Gateway: it needs AI and a gateway on");
+  }
 
   // Secrets: values only for what this run sets; stored ones are kept.
   const secrets = parseSecrets(flags, deps.redactor);
@@ -455,10 +495,13 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
   const vars: DeploymentState["vars"] = { ...(previous?.vars ?? {}) };
   if (identity !== "better-auth")
     vars[app.name] = { ...vars[app.name], IDENTITY_PROVIDER: identity };
-  const gateway = str(flags, "ai-gateway");
-  if (gateway !== undefined) {
-    const users = manifest.inputs.find((i) => i.name === "AI_GATEWAY_ID")?.workers ?? [app.name];
-    for (const worker of users) vars[worker] = { ...vars[worker], AI_GATEWAY_ID: gateway };
+  if (aiGateway === false) {
+    // Turned off: clear a gateway an earlier install set.
+    for (const [worker, values] of Object.entries(vars)) {
+      if (values.AI_GATEWAY_ID === undefined) continue;
+      const { AI_GATEWAY_ID: _gone, ...rest } = values;
+      vars[worker] = rest;
+    }
   }
 
   io.out(`\nInstalling crm ${version} into account ${s.accountId} at https://${hostname}`);
@@ -473,7 +516,7 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
       (l) => io.out(l),
     )),
   };
-  const state: DeploymentState = {
+  const base: DeploymentState = {
     version,
     accountId: s.accountId,
     hostname,
@@ -483,6 +526,9 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
     channel,
     gatekeepers,
     ai,
+    ...(aiGateway !== undefined ? { aiGateway } : {}),
+    ...(previous?.aiGatewayCreated ? { aiGatewayCreated: true } : {}),
+    ...(previous?.aiGatewayTokenId ? { aiGatewayTokenId: previous.aiGatewayTokenId } : {}),
     workerNames: previous?.workerNames ?? {},
     vars,
     resources,
@@ -490,6 +536,32 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
     installedAt: previous?.installedAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+  if (ai && aiGateway !== false) io.out("AI Gateway:");
+  const suppliedToken = Object.values(secrets).find((v) => v[GATEWAY_TOKEN_SECRET])?.[
+    GATEWAY_TOKEN_SECRET
+  ];
+  const gateway = await provisionAiGateway({
+    api: s.api,
+    manifest,
+    state: base,
+    ...(suppliedToken ? { token: suppliedToken } : {}),
+    log: (l) => io.out(l),
+  });
+  for (const values of Object.values(gateway.secrets)) {
+    for (const value of Object.values(values)) deps.redactor.add(value);
+  }
+  Object.assign(secrets, mergeSecrets(secrets, gateway.secrets));
+  const state: DeploymentState = { ...base, vars: gateway.vars, ...gateway.state };
+  if (providerKeys.length) {
+    if (!gateway.gatewayId) {
+      throw new CliError("--provider-key: no AI Gateway could be set up (see the warning above).");
+    }
+    for (const { provider, key } of providerKeys) {
+      const slug = gatewayProviderSlug(manifest, provider);
+      await s.api.setGatewayProviderKey(s.accountId, gateway.gatewayId, slug, key);
+      io.out(`  provider key ${slug}: stored in AI Gateway ${gateway.gatewayId} (BYOK)`);
+    }
+  }
   const databaseId = databaseIdOf(manifest, resources);
   io.out("Core migrations:");
   const applied = await applyBundleMigrations(
@@ -800,6 +872,14 @@ async function uninstall(flags: Flags, deps: Deps): Promise<number> {
       if (queue)
         await attempt(`Queue ${value}`, () => s.api.deleteQueue(s.accountId, queue.queue_id));
     }
+  }
+  if (typeof state.aiGateway === "string" && state.aiGatewayCreated) {
+    const gatewayId = state.aiGateway;
+    await attempt(`AI Gateway ${gatewayId}`, () => s.api.deleteAiGateway(s.accountId, gatewayId));
+  }
+  if (state.aiGatewayTokenId) {
+    const tokenId = state.aiGatewayTokenId;
+    await attempt("the AI Gateway token", () => s.api.deleteAccountToken(s.accountId, tokenId));
   }
   for (const failure of failures) io.err(`  could not delete ${failure}`);
   return failures.length ? 1 : 0;

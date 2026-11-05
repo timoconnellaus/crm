@@ -354,7 +354,9 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   deploy config (`AI_MODEL_ROLES`) and admin overrides (`core_settings.ai_settings`), rejecting
   models without the role's capabilities, with one fallback per role. crm-app passes the runner to
   operations as `ctx.models`; crm-runner uses the same registry for `codemode:ai` and proposal
-  summaries. Every call goes through AI Gateway when `AI_GATEWAY_ID` is set, tagged with its role.
+  summaries. Every call goes through AI Gateway when `AI_GATEWAY_ID` is set, tagged with its role;
+  the installer and the updater create a gateway per deployment and set it
+  ([ADR 0180](adr/0180-ai-gateway-provisioned-per-deployment.md)).
 - **Settings → AI** (`ai.*` operations, admins): per role provider, model, fallback, capability
   badges and a Test button; provider keys stored as Workers secrets through the Cloudflare API or
   as AI Gateway BYOK, **never in D1** ([ADR 0151](adr/0151-provider-keys-as-workers-secrets-or-byok.md));

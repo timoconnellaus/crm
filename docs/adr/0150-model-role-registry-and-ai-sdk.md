@@ -111,3 +111,11 @@ eval harnesses take their default model from the registry (`@crm/core/ai-roles`,
   starts suffer, the runner could load the SDK lazily or call crm-app for model roles.
 - Deprecated Workers AI models are a recurring risk: the catalogue is data, and a role whose model
   disappears falls back once and shows the error in Settings → AI.
+
+> Amended 2026-11-05 ([ADR 0180](0180-ai-gateway-provisioned-per-deployment.md)): **all AI calls
+> route through AI Gateway by default; keys via BYOK.** `AI_GATEWAY_ID` is no longer optional in
+> practice: `create-crm` and the updater set it to a gateway they create (`--ai-gateway off` opts
+> out), along with a generated `AI_GATEWAY_TOKEN`, so the "When `AI_GATEWAY_ID` is set" paths
+> above are the default. Custom providers (`custom-together` for Together AI) are created from
+> `deploy-inputs.json`. Stage 7b makes the registry gateway-first, including addressing models
+> as `custom-<slug>/<model>`.

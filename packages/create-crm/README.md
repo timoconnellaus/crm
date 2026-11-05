@@ -17,7 +17,9 @@ npx create-crm --help           # every option, and the API token permissions
 ```
 
 The token needs, on the account: Workers Scripts Edit, D1 Edit, Workers R2 Storage Edit, Workers KV
-Storage Edit, Queues Edit, Vectorize Edit and Account Settings Read; for a custom hostname also Zone
-Read and Workers Routes Edit on its zone. The CLI never prints secret values.
+Storage Edit, Queues Edit, Vectorize Edit and Account Settings Read; with in-app AI (the default)
+also AI Gateway Edit and Account API Tokens Edit (the install creates an AI Gateway and its token),
+plus Secrets Store Edit for `--provider-key`; for a custom hostname also Zone Read and Workers
+Routes Edit on its zone. The CLI never prints secret values.
 
 Full guide: [docs/deploying.md](https://github.com/timoconnellaus/crm/blob/main/docs/deploying.md).

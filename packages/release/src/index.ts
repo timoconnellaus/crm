@@ -6,6 +6,7 @@ export * from "./attestation.ts";
 export * from "./bundle.ts";
 export * from "./cloudflare.ts";
 export * from "./deploy.ts";
+export * from "./gateway.ts";
 export * from "./github.ts";
 export * from "./hash.ts";
 export * from "./manifest.ts";

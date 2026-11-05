@@ -4,7 +4,8 @@
 //   1. pause automations          (AutomationControl: the automations kill switch)
 //   2. take a D1 Time Travel bookmark
 //   3. apply core migrations
-//   4. create resources the new release adds, then switch all Workers together
+//   4. create resources the new release adds (and the AI Gateway, ADR 0180), then switch all
+//      Workers together
 //   5. smoke check the new version
 //   6. resume automations
 //
@@ -26,6 +27,7 @@ import {
   provisionResources,
   writeDeploymentState,
 } from "./deploy.ts";
+import { GATEWAY_TOKEN_SECRET, mergeSecrets, provisionAiGateway } from "./gateway.ts";
 
 /** Pauses and resumes automations around an update. */
 export interface AutomationControl {
@@ -145,6 +147,15 @@ export interface UpdateInput {
   log?: Log;
 }
 
+/** An AI_GATEWAY_TOKEN the caller sets in this deploy, if any (then none is generated). */
+function suppliedGatewayToken(secrets: UpdateInput["secrets"]): { token?: string } {
+  for (const values of Object.values(secrets ?? {})) {
+    const token = values[GATEWAY_TOKEN_SECRET];
+    if (token) return { token };
+  }
+  return {};
+}
+
 export async function runUpdate(input: UpdateInput): Promise<UpdateOutcome> {
   const log = input.log ?? (() => {});
   const automations = input.automations ?? noAutomationControl;
@@ -187,12 +198,25 @@ export async function runUpdate(input: UpdateInput): Promise<UpdateOutcome> {
         log,
       )),
     };
-    const switched: DeploymentState = { ...state, resources };
+    // AI Gateway (with AI on): created or checked, so an upgrade adds what an install would.
+    const gateway = await provisionAiGateway({
+      api,
+      manifest: target.manifest,
+      state: { ...state, resources },
+      ...suppliedGatewayToken(input.secrets),
+      log,
+    });
+    const switched: DeploymentState = {
+      ...state,
+      resources,
+      vars: gateway.vars,
+      ...gateway.state,
+    };
     await deployWorkers({
       api,
       bundle: target,
       state: switched,
-      secrets: input.secrets ?? {},
+      secrets: mergeSecrets(input.secrets ?? {}, gateway.secrets),
       log,
     });
     phase = "switched";

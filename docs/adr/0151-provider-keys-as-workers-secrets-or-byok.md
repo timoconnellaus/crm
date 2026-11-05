@@ -51,3 +51,9 @@ written to D1, where `query.sql`, backups, Time Travel and the audit log would a
   `settings:manage`), audited, and the token itself is env-only, like the auth secrets.
 - Because AI Gateway BYOK on the binding path uses only the `default` alias, we always store keys
   under `default`.
+
+> Amended 2026-11-05 ([ADR 0180](0180-ai-gateway-provisioned-per-deployment.md)): BYOK in AI
+> Gateway is now the default home for provider keys. Every deployment has a gateway, and
+> `create-crm --provider-key <provider>=<key>` stores a key there with
+> `CloudflareClient.setGatewayProviderKey` (from `@crm/release`, which Settings → AI can use too).
+> Workers secrets remain possible, but they are no longer the recommended path.

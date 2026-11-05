@@ -18,3 +18,10 @@ Status: accepted, 2026-11-04 (stage 0 architecture interview).
 > Settings → AI ([ADR 0151](0151-provider-keys-as-workers-secrets-or-byok.md)); usage and spend
 > per role come from AI Gateway ([ADR 0152](0152-usage-and-spend-per-role.md)). The shipped
 > defaults are listed in ADR 0150; every one is a Workers AI model.
+
+> Amended 2026-11-05 ([ADR 0180](0180-ai-gateway-provisioned-per-deployment.md)): **all AI calls
+> route through AI Gateway by default; keys via BYOK.** The installer and the updater create a
+> gateway per deployment (logging and authentication on) and wire `AI_GATEWAY_ID` and
+> `AI_GATEWAY_TOKEN`. Default models stay on Workers AI, reached through the gateway. Provider keys
+> are stored in the gateway as BYOK rather than as Workers secrets. Providers the gateway does not
+> have built in are custom providers (the first is `custom-together`).

@@ -54,7 +54,15 @@ export interface FixtureOptions {
   /** Change the gatekeeper's code (so preflight reports it changed). */
   gatekeeperRevision?: number;
   repository?: string;
+  /** false: a release older than ADR 0180, with no AI Gateway set-up. */
+  aiGateway?: false;
 }
+
+/** The AI Gateway set-up fixture releases carry (the shape of apps/app/deploy-inputs.json). */
+export const FIXTURE_AI_GATEWAY = {
+  settings: { collect_logs: true, cache_ttl: 0 },
+  customProviders: [{ slug: "together", name: "Together AI", baseUrl: "https://api.together.xyz" }],
+};
 
 const enc = new TextEncoder();
 
@@ -109,6 +117,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       { type: "plain_text", name: "IDENTITY_PROVIDER", text: "better-auth" },
       { type: "plain_text", name: "CRM_RELEASE_VERSION", text: version },
       { type: "plain_text", name: "CRM_ACCOUNT_ID", text: "$ACCOUNT_ID" },
+      { type: "plain_text", name: "AI_GATEWAY_ID", text: "" },
       { type: "secret_text", name: "BETTER_AUTH_SECRET", text: "$SECRET(BETTER_AUTH_SECRET)" },
       { type: "secret_text", name: "BETTER_AUTH_URL", text: "$SECRET(BETTER_AUTH_URL)" },
       ...(options.appSecrets ?? []).map((s) => ({
@@ -176,6 +185,7 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
       },
       { type: "ai", name: "AI", feature: "ai" },
       { type: "plain_text", name: "APP_ORIGIN", text: "https://$HOSTNAME" },
+      { type: "plain_text", name: "AI_GATEWAY_ID", text: "" },
     ],
     secrets: [],
     crons: [],
@@ -311,8 +321,16 @@ export async function buildFixtureRelease(options: FixtureOptions): Promise<Fixt
         default: "better-auth",
         description: "Identity adapter",
       },
+      {
+        name: "AI_GATEWAY_ID",
+        kind: "var",
+        workers: ["crm-app", "crm-runner"],
+        default: "",
+        description: "AI Gateway every model call goes through",
+      },
     ],
     assets: Object.fromEntries([...assets].map(([hash, bytes]) => [hash, { size: bytes.length }])),
+    ...(options.aiGateway === false ? {} : { aiGateway: FIXTURE_AI_GATEWAY }),
   };
   const { bytes, manifestText } = await writeBundle({
     manifest,
