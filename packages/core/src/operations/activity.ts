@@ -340,6 +340,31 @@ export const activityLog = defineOperation({
   },
 });
 
+export const activityProposeNote = defineOperation({
+  name: "activity.proposeNote",
+  description:
+    "Propose a note on a record for the person to OK, instead of adding it straight away. Use it " +
+    "for a fact about a customer the person wants kept: memory.propose refuses those, and this " +
+    "puts them on the record, where the team can see them. It always waits in the person's " +
+    "approvals, with Approve and Reject shown right here, and nothing is added until then.",
+  input: z.object({
+    record: z
+      .object({ object: z.string().min(1).max(100), id: z.string().min(1).max(100) })
+      .describe("The record the note goes on, e.g. { object: 'person', id: 'per_…' }"),
+    body: z.string().trim().min(1).max(10_000).describe("The note, in plain words"),
+  }),
+  output: activitySchema,
+  permission: "records:write",
+  risk: "write",
+  alwaysReview: true,
+  async handler(input, ctx) {
+    return activityLog.handler(
+      activityLog.input.parse({ type: "note", body: input.body, links: [input.record] }),
+      ctx,
+    );
+  },
+});
+
 export const activityGet = defineOperation({
   name: "activity.get",
   description:
@@ -655,6 +680,7 @@ export const activityOperations = [
   activitySetPrivate,
   activityGetBody,
   activityLog,
+  activityProposeNote,
   activityGet,
   activityUpdate,
   activityDelete,

@@ -191,3 +191,10 @@ in facet storage only vendored code can read, and `packages/gatekeeper-*`, `gate
 > whenever the installer has given the gateway token Workers AI Read (`AI_GATEWAY_REST`). Prompts
 > are still logged only on the binding fallback (a hand-set or older token that could not be
 > replaced), and the installer warns when that is the case.
+
+> **Amended 2026-11-06 ([ADR 0342](0342-assistant-memory.md)):** the store list gains `core_memory`.
+> An erase deletes the memory lines that name the subject, in its own batch: found through
+> `core_memory_refs` (ids, hashed emails, and customers a line named when it was saved), or by a
+> term or the full name in a line's text, condition or team history. A single given name alone is
+> not matched. The thread a line was said in is scrubbed too, even if its turn looked up no record.
+> `person.erase` and `organisation.erase` report `memoryLinesDeleted`.

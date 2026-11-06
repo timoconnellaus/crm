@@ -8,6 +8,7 @@ import { sql } from "kysely";
 import { z } from "zod";
 import { cacheEstimateSchema, cacheReviewSchema, writeCacheReview } from "../ai/cache-review.ts";
 import { type AssistantContext, assistantContextSchema } from "../assistant/context.ts";
+import { queueDeleteMemoryFromMessages } from "../assistant/memory.ts";
 import { conversationRefPattern, MAX_REFS_PER_TURN } from "../assistant/scrub.ts";
 import { ConfigError, NotFoundError } from "../errors.ts";
 import { newId } from "../ids.ts";
@@ -232,7 +233,7 @@ export const threadDeleteMessage = defineOperation({
   description:
     "Delete a message from your assistant chat: one of yours, or a whole reply (its text, tool " +
     "calls and results). It leaves the chat and its search, and the assistant no longer sees it. " +
-    "Changes it made or proposed are not undone.",
+    "Memory lines saved from it are deleted too. Changes it made or proposed are not undone.",
   input: z.object({ seq: z.number().int().min(1).describe("The message's seq") }),
   output: z.object({ deleted: z.array(z.number()) }),
   permission: "records:read",
@@ -243,6 +244,8 @@ export const threadDeleteMessage = defineOperation({
   async handler(input, ctx) {
     const result = await threads(ctx).deleteMessage(ctx.user.id, input.seq);
     if (!result.deleted.length) throw new NotFoundError("message", String(input.seq));
+    const own = await loadOwn(ctx);
+    if (own) await queueDeleteMemoryFromMessages(ctx, own.id, result.deleted);
     return result;
   },
 });

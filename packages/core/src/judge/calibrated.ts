@@ -8,6 +8,8 @@ import {
   INTENT_THRESHOLDS,
   type IntentQuestionId,
 } from "./questions/authoring-intent.ts";
+import { MEMORY_CONDITION_CALIBRATED } from "./questions/memory-condition.ts";
+import { MEMORY_WRITE_CALIBRATED } from "./questions/memory-write.ts";
 import { OUTBOUND_CALIBRATED } from "./questions/outbound-message.ts";
 import { STATEMENTS_CALIBRATED } from "./questions/summary-statements.ts";
 import { JOB_CHANGE_CALIBRATED } from "./questions/sync-job-change.ts";
@@ -26,4 +28,6 @@ export const CALIBRATED: Record<string, { question: Question; threshold: number 
   ...OUTBOUND_CALIBRATED,
   ...SHAPE_CALIBRATED,
   ...JOB_CHANGE_CALIBRATED,
+  ...MEMORY_WRITE_CALIBRATED,
+  ...MEMORY_CONDITION_CALIBRATED,
 };
