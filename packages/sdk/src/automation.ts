@@ -390,6 +390,11 @@ export interface AutomationSpec<T extends AutomationTrigger = AutomationTrigger>
   rails?: AutomationRails;
   /** Connections it needs, bound by a person when it is approved or installed. */
   connections?: readonly AutomationConnection[];
+  /**
+   * `false`: installed turned off; a person turns it on under Automations (ADR 0246). Only the
+   * first install reads it; after that, on or off is the person's choice.
+   */
+  enabled?: boolean;
   run(event: AutomationEvent, step: AutomationStepApi, ctx: AutomationContext): Promise<unknown>;
 }
 
@@ -607,6 +612,7 @@ export const automationManifestSchema = z.object({
   onRejected: onRejectedSchema.optional(),
   rails: automationRailsSchema.optional(),
   connections: z.array(automationConnectionSchema).max(10).optional(),
+  enabled: z.boolean().optional(),
 });
 export type AutomationManifest = z.infer<typeof automationManifestSchema>;
 

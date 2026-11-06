@@ -167,6 +167,9 @@ export function planFromState(
       ...(object.indexes?.length ? { indexes: object.indexes } : {}),
       ...(object.timelineLinks?.length ? { timelineLinks: object.timelineLinks } : {}),
       ...(object.stages ? { stages: object.stages } : {}),
+      ...(object.owner ? { owner: object.owner } : {}),
+      ...(object.navigationOrder !== undefined ? { navigationOrder: object.navigationOrder } : {}),
+      ...(object.requireOneOf?.length ? { requireOneOf: object.requireOneOf } : {}),
     };
     let existing = next.objects.find((o) => o.name === name);
     if (!existing && object.renamedFrom) {

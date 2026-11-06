@@ -307,7 +307,12 @@ export const importRecordsCommit = defineOperation({
       }
       try {
         created.push(
-          await createRecord(ctx, object, row.values, { cache, checkReferences: false }),
+          await createRecord(ctx, object, row.values, {
+            cache,
+            checkReferences: false,
+            // Bulk: the audit diff names the rule; no timeline post per row.
+            assignmentTimeline: false,
+          }),
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

@@ -54,10 +54,21 @@ interface FieldBase {
   /** Refuse records without a value. */
   required?: boolean;
   /**
-   * Maintained by the host (for example a stage behaviour's won/lost date), never written by
-   * record operations. Shown, filtered and sorted like any field.
+   * Maintained by the host (for example a stage behaviour's won/lost date) or by this
+   * extension's own tools and automations, never written by other callers of record operations.
+   * Shown, filtered and sorted like any field.
    */
   readOnly?: boolean;
+  /**
+   * The value a new record gets when none is given (ADR 0246): a text, number, boolean, date or
+   * select value of the field's type. Fields of your own objects only.
+   */
+  default?: string | number | boolean;
+  /**
+   * Like `default`, but read from one of this extension's settings when the record is created,
+   * so admins choose it (a lead's source). Wins over `default` when the setting has a value.
+   */
+  defaultSetting?: string;
 }
 
 export type SelectOption =
@@ -72,6 +83,11 @@ export type SelectOption =
        * so a board drag asks for it.
        */
       requires?: string[];
+      /**
+       * With `editableOptions`: admins can relabel, recolour and reorder this option but not
+       * remove it (the extension's code relies on it).
+       */
+      fixed?: boolean;
     };
 
 export type FieldSpec =
@@ -94,7 +110,15 @@ export type FieldSpec =
       /** ISO 4217 code shown with the value. Default USD. */
       currency?: string;
     })
-  | (FieldBase & { type: "select" | "multiSelect"; options: readonly SelectOption[] })
+  | (FieldBase & {
+      type: "select" | "multiSelect";
+      options: readonly SelectOption[];
+      /**
+       * Admins can edit the options in Settings → Extensions (ADR 0246): add, relabel, recolour,
+       * reorder, and remove options not marked `fixed`. The declared options are the defaults.
+       */
+      editableOptions?: boolean;
+    })
   | (FieldBase & {
       type: "relation";
       /** Target object: `person`, `organisation`, `task`, or `<extension>.<object>`. */
@@ -142,6 +166,18 @@ export interface ObjectSpec {
   timelineLinks?: readonly string[];
   /** A pipeline-like stage behaviour (see StagesSpec). */
   stages?: StagesSpec;
+  /**
+   * The record's owner: a `user` field of this object (ADR 0246, stage 14). Assignment rules set
+   * it when a record is created without one, and stage 14's visibility policies read it.
+   */
+  owner?: string;
+  /** Position in the sidebar among extension objects (lower first). Default 100. */
+  navigationOrder?: number;
+  /**
+   * Groups of fields of which a record must have at least one (ADR 0246): `[["person",
+   * "organisation"]]` refuses a lead with neither. Checked by the host on every create and update.
+   */
+  requireOneOf?: readonly (readonly string[])[];
   /**
    * Records created once, when the object is first installed (default pipelines and stages).
    * Keyed by a seed key (camelCase); a relation value `{ seed: "<key>" }` points at another seed
@@ -369,7 +405,24 @@ export interface ToolSpec<In extends z.ZodType = z.ZodType, Out extends z.ZodTyp
   output: Out;
   /** Default `write`. */
   risk?: ToolRisk;
+  /**
+   * Shows the tool as a button on the record page of `object` (ADR 0246). The host calls it with
+   * the record's id in the `idInput` field. If the output has `open: { object, id }`, the app
+   * opens that record afterwards.
+   */
+  recordAction?: RecordActionSpec;
   handler(input: z.output<In>, ctx: ExtensionContext): Promise<z.input<Out>> | z.input<Out>;
+}
+
+/** A tool shown as a button on a record page. */
+export interface RecordActionSpec {
+  /** The object whose record pages show the button (`leads.lead`). */
+  object: string;
+  label: string;
+  /** The input field that receives the record id. */
+  idInput: string;
+  /** A confirmation question shown before running it. */
+  confirm?: string;
 }
 
 export function defineTool<In extends z.ZodType, Out extends z.ZodType>(

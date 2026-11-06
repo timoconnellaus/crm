@@ -4,6 +4,7 @@
 import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
+import { assignOwner, recordAssignment } from "../assignment/index.ts";
 import { assertRecordCapacity } from "../entitlements.ts";
 import { ConflictError, NotFoundError, ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
@@ -417,6 +418,13 @@ export const personCreate = defineOperation({
       created_by: ctx.user.id,
       updated_at: ctx.now,
     };
+    // No owner given: assignment rules choose one, in this same insert (ADR 0246).
+    const assignment = row.owner_id
+      ? null
+      : await assignOwner(ctx, getObject("person") ?? personObject, {
+          get: (field) => newPersonValue(field, row, emails, phones),
+        });
+    if (assignment?.ownerId) row.owner_id = assignment.ownerId;
     ctx.write(ctx.db.insertInto("core_person").values(row));
     queueEmails(ctx, id, emails);
     queuePhones(ctx, id, phones);
@@ -444,10 +452,52 @@ export const personCreate = defineOperation({
       deletedAt: null,
       mergedIntoId: null,
     };
-    ctx.recordChange({ object: "person", id, action: "create", after: personSnapshot(person) });
+    const assigned = assignment
+      ? recordAssignment(ctx, getObject("person") ?? personObject, id, assignment)
+      : undefined;
+    ctx.recordChange({
+      object: "person",
+      id,
+      action: "create",
+      after: personSnapshot(person),
+      assignment: assigned,
+    });
     return person;
   },
 });
+
+/** A new person's value of a registry field, for assignment rule conditions. */
+export function newPersonValue(
+  field: string,
+  row: {
+    display_name: string;
+    given_name: string | null;
+    family_name: string | null;
+    location: string | null;
+    timezone: string | null;
+  },
+  emails: readonly { email: string; primary: boolean }[],
+  phones: readonly { number: string; primary: boolean }[],
+): unknown {
+  switch (field) {
+    case "displayName":
+      return row.display_name;
+    case "givenName":
+      return row.given_name;
+    case "familyName":
+      return row.family_name;
+    case "location":
+      return row.location;
+    case "timezone":
+      return row.timezone;
+    case "primaryEmail":
+      return (emails.find((e) => e.primary) ?? emails[0])?.email ?? null;
+    case "primaryPhone":
+      return (phones.find((p) => p.primary) ?? phones[0])?.number ?? null;
+    default:
+      return null;
+  }
+}
 
 export const personGet = defineOperation({
   name: "person.get",

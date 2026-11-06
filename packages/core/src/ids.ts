@@ -43,6 +43,8 @@ export const ID_PREFIXES = {
   assistantConversation: "asc",
   /** Policy adjudicator verdicts (ADR 0204). */
   adjudication: "adj",
+  /** Assignment rules (ADR 0246). */
+  assignmentRule: "asr",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

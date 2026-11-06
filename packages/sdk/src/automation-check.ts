@@ -102,8 +102,13 @@ function fieldsOf(
   object: string,
 ): Record<string, FieldTypeName> | null {
   const m = ctx.manifest;
+  // Fields this extension adds to another object, by local name and by registry name
+  // (`<ext>.<field>`, what record changes and so fieldChanged triggers use).
   const added = Object.fromEntries(
-    Object.entries(m.fields[object] ?? {}).map(([name, field]) => [name, field.type]),
+    Object.entries(m.fields[object] ?? {}).flatMap(([name, field]) => [
+      [name, field.type],
+      [`${m.id}.${name}`, field.type],
+    ]),
   );
   if (object.startsWith(`${m.id}.`)) {
     const own = m.objects[object.slice(m.id.length + 1)];

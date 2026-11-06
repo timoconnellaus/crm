@@ -1,7 +1,7 @@
 // What extensions declare for the host's UI to render (ADR 0058): record tabs and panels on any
 // object's record page (`view.recordViews`), and typed settings (`extensionSettings.*`).
 // Extensions ship no UI; these read active extensions' manifests and return plain view specs.
-import type { RecordViewManifest, SettingManifest } from "@relationship-os/sdk";
+import type { RecordViewManifest, SettingManifest, ToolManifest } from "@relationship-os/sdk";
 import { z } from "zod";
 import { ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
@@ -17,6 +17,7 @@ interface ActiveManifest {
     recordTabs?: Record<string, RecordViewManifest>;
     recordPanels?: Record<string, RecordViewManifest>;
     settings?: Record<string, SettingManifest>;
+    tools?: Record<string, ToolManifest>;
   };
 }
 
@@ -48,6 +49,18 @@ const recordViewSchema = z.object({
   error: z.string().nullable(),
 });
 export type RecordView = z.infer<typeof recordViewSchema>;
+
+const recordActionSchema = z.object({
+  id: z.string().describe("<extension>.<tool>"),
+  extension: z.string(),
+  /** The operation to call: x.<extension>.<tool>. */
+  operation: z.string(),
+  label: z.string(),
+  /** The input field that takes the record's id. */
+  idInput: z.string(),
+  confirm: z.string().nullable(),
+});
+export type RecordAction = z.infer<typeof recordActionSchema>;
 
 /** A record tab or panel declaration → a validated object view spec (without the record filter). */
 function toRecordView(
@@ -99,16 +112,34 @@ export const viewRecordViews = defineOperation({
   description:
     "List the tabs and side panels extensions add to an object's record page: each is a view " +
     "spec (table, board, calendar or gallery) of another object, to be filtered to records " +
-    "whose `relation` field equals the record's id. Read-only.",
+    "whose `relation` field equals the record's id. Also lists the record actions (extension " +
+    "tools shown as buttons on the page, such as Convert to deal). Read-only.",
   input: z.object({ object: viewObjectName }),
-  output: z.object({ tabs: z.array(recordViewSchema), panels: z.array(recordViewSchema) }),
+  output: z.object({
+    tabs: z.array(recordViewSchema),
+    panels: z.array(recordViewSchema),
+    actions: z.array(recordActionSchema),
+  }),
   permission: "records:read",
   risk: "read",
   mcp: { idempotent: true },
   async handler(input, ctx) {
     const tabs: RecordView[] = [];
     const panels: RecordView[] = [];
+    const actions: RecordAction[] = [];
     for (const { id, manifest } of await activeManifests(ctx)) {
+      for (const [name, tool] of Object.entries(manifest.tools ?? {})) {
+        const action = tool.recordAction;
+        if (action?.object !== input.object) continue;
+        actions.push({
+          id: `${id}.${name}`,
+          extension: id,
+          operation: `x.${id}.${name}`,
+          label: action.label,
+          idInput: action.idInput,
+          confirm: action.confirm ?? null,
+        });
+      }
       for (const [name, entry] of Object.entries(manifest.recordTabs ?? {})) {
         if (entry.on === input.object) tabs.push(toRecordView(id, name, "tab", entry));
       }
@@ -117,7 +148,7 @@ export const viewRecordViews = defineOperation({
       }
     }
     const byOrder = (a: RecordView, b: RecordView) => a.order - b.order || a.id.localeCompare(b.id);
-    return { tabs: tabs.sort(byOrder), panels: panels.sort(byOrder) };
+    return { tabs: tabs.sort(byOrder), panels: panels.sort(byOrder), actions };
   },
 });
 

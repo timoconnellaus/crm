@@ -1,0 +1,30 @@
+{
+  "name": "@relationship-os/extension-leads",
+  "version": "1.0.0",
+  "license": "FSL-1.1-ALv2",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "description": "Leads: inbound interest linked to a person and an organisation, worked from an inbox and converted into deals (stage 15, ADR 0246). Requires Deals. Bundled as source into ros-runner.",
+  "relationshipOs": {
+    "label": "Leads",
+    "description": "Inbound interest worked from a leads inbox, qualified or disqualified, and converted into deals. Requires Deals."
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@relationship-os/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@cloudflare/workers-types": "5.20261104.1",
+    "@relationship-os/config": "workspace:*",
+    "@relationship-os/extension-deals": "workspace:*",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

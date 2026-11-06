@@ -51,6 +51,11 @@ export interface RecordChange {
     links?: RecordRef[];
     labels?: Record<string, { before: string | null; after: string | null }>;
   };
+  /**
+   * The owner was set by an assignment rule (ADR 0246): the owner field's diff entry records the
+   * rule's name as `assignedBy`.
+   */
+  assignment?: { field: string; rule: string } | undefined;
 }
 
 /** A link from an activity or task to a record. */

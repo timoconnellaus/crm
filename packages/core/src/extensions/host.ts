@@ -46,6 +46,14 @@ export interface ExtensionVersion {
 export interface ShippedExtension {
   id: string;
   version: string;
+  /**
+   * Opt-in (ADR 0246): not installed at boot; an admin installs it from Settings → Extensions
+   * (`extension.install { shipped: true }`), and from then on releases upgrade it like any other.
+   */
+  optional?: boolean;
+  /** For the Available list before it is installed (package.json `relationshipOs`). */
+  label?: string;
+  description?: string;
 }
 
 /** An extension's working copy in the workspace (stage 3b, ADR 0041): edited, not committed. */

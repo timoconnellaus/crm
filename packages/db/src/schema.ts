@@ -676,6 +676,49 @@ export interface CoreErasedAddressTable {
   erased_by: string | null;
 }
 
+/** Migration 0310 (ADR 0246): an assignment rule, ordered per object. */
+export interface CoreAssignmentRuleTable {
+  id: string;
+  object_type: string;
+  name: string;
+  position: number;
+  enabled: number;
+  /** JSON array of { field, op, value?, via? }. */
+  conditions: string;
+  method: "roundRobin" | "user";
+  /** JSON array of user ids. */
+  user_ids: string;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+}
+
+/** Migration 0310: a round-robin rule's rotation index (CHECK next_index >= 0 guards it). */
+export interface CoreAssignmentStateTable {
+  rule_id: string;
+  next_index: number;
+  updated_at: string | null;
+}
+
+/** Migration 0310: the owner used when no rule matches, per object. */
+export interface CoreAssignmentFallbackTable {
+  object_type: string;
+  user_id: string | null;
+  updated_at: string;
+  updated_by: string;
+}
+
+/** Migration 0310: admin-edited options of an extension select field (`editableOptions`). */
+export interface CoreFieldOptionsTable {
+  object_type: string;
+  field: string;
+  /** JSON array of { value, label, color? }. */
+  options: string;
+  updated_at: string;
+  updated_by: string;
+}
+
 /** Migration 0330 (ADR 0320): R2 objects to delete after a commit, drained with retries. */
 export interface CoreBlobDeletionTable {
   key: string;
@@ -1272,6 +1315,10 @@ export interface CoreDatabase {
   core_assistant_conversation_refs: CoreAssistantConversationRefsTable;
   core_erased_address: CoreErasedAddressTable;
   core_blob_deletion: CoreBlobDeletionTable;
+  core_assignment_rule: CoreAssignmentRuleTable;
+  core_assignment_state: CoreAssignmentStateTable;
+  core_assignment_fallback: CoreAssignmentFallbackTable;
+  core_field_options: CoreFieldOptionsTable;
   crm_stage_history: CrmStageHistoryView;
   crm_users: CrmUsersView;
   crm_people: CrmPeopleView;
