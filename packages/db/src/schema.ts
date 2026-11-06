@@ -129,6 +129,11 @@ export interface CorePersonTable extends RecordColumns {
   description: Defaulted<string | null>;
   created_by: Defaulted<string | null>;
   merged_into_id: Defaulted<string | null>;
+  /**
+   * Normalised display name for duplicate rules (stage 16, ADR 0247). Required on insert, so every
+   * writer sets it; null for a name that has nothing to compare (an email standing in for one).
+   */
+  name_key: ColumnType<string | null, string | null, string | null>;
 }
 
 export interface CorePersonEmailsTable {
@@ -164,6 +169,24 @@ export interface CoreOrganisationTable extends RecordColumns {
   description: Defaulted<string | null>;
   created_by: Defaulted<string | null>;
   merged_into_id: Defaulted<string | null>;
+  /** Normalised name for duplicate rules (stage 16, ADR 0247). Required on insert. */
+  name_key: ColumnType<string | null, string | null, string | null>;
+}
+
+/** A likely duplicate pair found by the scan (stage 16, ADR 0247). a_id < b_id. */
+export interface CoreDuplicatePairTable {
+  object: "person" | "organisation";
+  a_id: string;
+  b_id: string;
+  /** JSON array of rule ids. */
+  rules: JsonText;
+  /** JSON object: what each rule matched (organisation, domain, number). */
+  details: Defaulted<JsonText>;
+  status: Defaulted<"open" | "dismissed" | "merged">;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  decided_at: Defaulted<Timestamp | null>;
+  decided_by: Defaulted<string | null>;
 }
 
 export interface CoreOrganisationDomainsTable {
@@ -1218,6 +1241,7 @@ export interface CoreDatabase {
   core_person_emails: CorePersonEmailsTable;
   core_person_phones: CorePersonPhonesTable;
   core_organisation: CoreOrganisationTable;
+  core_duplicate_pair: CoreDuplicatePairTable;
   core_organisation_domains: CoreOrganisationDomainsTable;
   core_organisation_addresses: CoreOrganisationAddressesTable;
   core_affiliation: CoreAffiliationTable;

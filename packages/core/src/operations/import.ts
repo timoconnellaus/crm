@@ -12,6 +12,7 @@ import type { CoreDatabase } from "@relationship-os/db";
 import { type Compilable, type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { diffRecords } from "../diff.ts";
+import { organisationNameKey, personNameKey } from "../duplicates/normalise.ts";
 import { assertRecordCapacity } from "../entitlements.ts";
 import { ValidationError } from "../errors.ts";
 import { newId } from "../ids.ts";
@@ -913,8 +914,13 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
     queueInsert(
       ctx,
       "core_organisation",
-      ["id", "name", "created_at", "created_by", "updated_at"],
-      createdOrgs.map((o) => ({ id: o.id, name: o.name, ...stamp })),
+      ["id", "name", "name_key", "created_at", "created_by", "updated_at"],
+      createdOrgs.map((o) => ({
+        id: o.id,
+        name: o.name,
+        name_key: organisationNameKey(o.name),
+        ...stamp,
+      })),
     );
     queueInsert(
       ctx,
@@ -943,6 +949,7 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
         "given_name",
         "family_name",
         "display_name",
+        "name_key",
         "location",
         "timezone",
         "description",
@@ -950,13 +957,14 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
         "created_by",
         "updated_at",
       ],
-      personInserts.map((p) => ({ ...p, ...stamp })),
+      personInserts.map((p) => ({ ...p, name_key: personNameKey(String(p.display_name)), ...stamp })),
     );
     queueUpdate(
       ctx,
       "core_person",
       [
         "display_name",
+        "name_key",
         "given_name",
         "family_name",
         "location",
@@ -964,7 +972,11 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
         "description",
         "updated_at",
       ],
-      personUpdates.map((p) => ({ ...p, updated_at: ctx.now })),
+      personUpdates.map((p) => ({
+        ...p,
+        name_key: personNameKey(String(p.display_name)),
+        updated_at: ctx.now,
+      })),
     );
     queueInsert(
       ctx,
@@ -1252,6 +1264,7 @@ async function planOrganisations(db: Kysely<CoreDatabase>, input: ImportInput): 
       [
         "id",
         "name",
+        "name_key",
         "website",
         "industry",
         "description",
@@ -1259,7 +1272,7 @@ async function planOrganisations(db: Kysely<CoreDatabase>, input: ImportInput): 
         "created_by",
         "updated_at",
       ],
-      orgInserts.map((o) => ({ ...o, ...stamp })),
+      orgInserts.map((o) => ({ ...o, name_key: organisationNameKey(String(o.name)), ...stamp })),
     );
     queueUpdate(
       ctx,

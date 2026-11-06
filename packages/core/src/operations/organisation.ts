@@ -4,6 +4,10 @@
 import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
+import { checkOrganisation } from "../duplicates/check.ts";
+import { organisationNameKey } from "../duplicates/normalise.ts";
+import { possibleDuplicatesSchema } from "../duplicates/rules.ts";
+import { queueClosePairs } from "../duplicates/pairs.ts";
 import { assertRecordCapacity } from "../entitlements.ts";
 import { ConflictError, NotFoundError, ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
@@ -32,6 +36,7 @@ import {
 } from "../records/erase.ts";
 import { organisationSubject } from "../records/erase-subject.ts";
 import { countLinks, queueClearTags, queueMoveLinks } from "../records/links.ts";
+import { queueRepointRelations } from "../records/relations.ts";
 import { loadTags, queueSetTags, tagsInputSchema } from "../records/tags.ts";
 
 // --- Schemas -----------------------------------------------------------------------------------
@@ -455,9 +460,12 @@ export const organisationCreate = defineOperation({
     "with organisation.list or search first: domains must be unique across live " +
     "organisations (they power email → organisation matching), and a taken domain fails with " +
     "a conflict. Domains are normalised (scheme, www. and paths stripped). Unknown tags are " +
-    "created. Returns the created organisation.",
+    "created. Returns the created organisation. Check possibleDuplicates in the result: " +
+    "existing organisations this one may duplicate by plain rules (same name, or a website at a " +
+    "domain another holds), each with its reason. If one is the same organisation, merge them " +
+    "with organisation.merge.",
   input: z.object({ ...organisationWritableFields, name: shortText(200).min(1) }),
-  output: organisationSchema,
+  output: organisationSchema.extend({ possibleDuplicates: possibleDuplicatesSchema.default([]) }),
   permission: "records:write",
   risk: "write",
   mcp: { curated: true },
@@ -470,12 +478,17 @@ export const organisationCreate = defineOperation({
     );
     await assertUserExists(ctx.db, input.ownerId);
     await assertRecordCapacity(ctx.db, 1);
+    const { warnings: possibleDuplicates } = await checkOrganisation(ctx.db, {
+      name: input.name,
+      website: input.website ?? null,
+    });
     const id = newId("organisation");
     const parentName = await assertParentAllowed(ctx.db, input.parentId, [id]);
 
     const row = {
       id,
       name: input.name,
+      name_key: organisationNameKey(input.name),
       website: blankToNull(input.website) ?? null,
       industry: blankToNull(input.industry) ?? null,
       parent_id: input.parentId ?? null,
@@ -516,7 +529,7 @@ export const organisationCreate = defineOperation({
       action: "create",
       after: organisationSnapshot(organisation),
     });
-    return organisation;
+    return { ...organisation, possibleDuplicates };
   },
 });
 
@@ -570,6 +583,7 @@ export const organisationUpdate = defineOperation({
     if (input.name !== undefined) {
       after.name = input.name;
       set.name = input.name;
+      set.name_key = organisationNameKey(input.name);
     }
     if (input.ownerId !== undefined) {
       await assertUserExists(ctx.db, input.ownerId);
@@ -1005,6 +1019,7 @@ export const organisationMerge = defineOperation({
         .updateTable("core_organisation")
         .set({
           name: after.name,
+          name_key: organisationNameKey(after.name),
           website: after.website,
           industry: after.industry,
           parent_id: after.parentId,
@@ -1023,6 +1038,8 @@ export const organisationMerge = defineOperation({
     ]);
     queueClearTags(ctx, "organisation", merged.id);
     queueMoveLinks(ctx, "organisation", merged.id, survivor.id);
+    await queueRepointRelations(ctx, "organisation", merged.id, survivor.id);
+    queueClosePairs(ctx, "organisation", survivor.id, merged.id);
 
     ctx.recordChange({
       object: "organisation",
