@@ -81,13 +81,13 @@ These reuse the dashboard widget renderers, so a chart in chat equals a widget.
 | Approval card | A pending change set: diff, reason, and "Agent's reason" shown separately | Approve, Reject, Review |
 | Routine read-back | "Every weekday at 8am I'll…" with trigger, gates (plain plus Jev), and the **backtest** (fired N times in 30 days, examples that pass and fail) | Turn on, Edit, Cancel |
 | Routine list | Your routines, with status, last run and next run | Pause, Edit, Delete, Test |
-| "Why this?" panel | Routine, trigger, Jev check and score | Pause routine, Edit, Not useful |
+| "Why this?" panel | Routine, trigger, the checks that passed and the Jev check | Pause routine, Edit, Not useful |
 | Memory saved | "Saved to memory", with the line and its condition if any | Undo, Edit |
 | Conditional memory read-back | "When on an organisation with > 500 employees: …" | Confirm, Edit |
 | Plugin install | What it adds (skills, saved code, routines, connections), the scopes and needed extensions | Install, Cancel |
 | Plugin update / merge | Upstream changes and your edits, with the AI's merged proposal as a diff | Apply, Keep mine, Review |
 | Connection needed | "This needs your Gmail", with status | Connect (sign in) |
-| Agent connection request | "Sam wants to connect agents", with the proposed rules | Accept, Decline, Edit rules |
+| Agent connection request | "Sam wants to connect assistants", with the proposed rules | Accept, Decline, Edit rules |
 | Agent request | "Sam's agent asks: create a task for Acme follow-up" | Accept, Decline, Ask Sam |
 | Agent-to-agent log entry | What was shared, under which rule, and its Jev verdict | Open log |
 

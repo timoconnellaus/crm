@@ -56,9 +56,9 @@ visibility (stage 14) and erase (ADR 0320). Memory that copies those facts would
 
 ## Consequences
 - Memory writes depend on the judge. With no judge key, or where a placement is off (on hosted
-  deployments the placements that send record content stay off), the build must pick a fallback
-  for `memory.write` and `memory.condition`. The spec does not say which; it is an open point for
-  the build to raise.
+  deployments the placements that send record content stay off), memory falls back to deterministic checks
+  (no record ids or customer names in a line; duplicate text) and every save is read back for the
+  person to confirm (spec, "When the judge is off").
 - Every saved line costs one Jev call.
 - The memory block is part of the prefix, so editing memory on the settings page breaks the cache
   once. That is acceptable.

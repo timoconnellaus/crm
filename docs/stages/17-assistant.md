@@ -118,7 +118,7 @@ The full record is in "Decided (2026-11-05/06, user interview)" at the end. In s
 ```
 
 Durable Object costs: `AssistantAgent` uses hibernatable WebSockets and alarms only for
-compaction, routine delivery and job reminders. `AgentJob` objects delete their storage when
+compaction and approval reminders (routine delivery comes from the runner's `AutomationWorkflow`). `AgentJob` objects delete their storage when
 done (results are copied to the parent and to D1).
 
 ## Scope
@@ -392,7 +392,7 @@ never forces. Single lookups stay direct tool calls.
   set per deployment and in Settings → AI. Agent profiles may name another role, never a model.
 - The registry exposes prices (uncached, cache write, cached read, output) and published cache
   lifetime per model for the planner; unknown prices mean "treat cached as uncached".
-- Your deployment (memory: deepseek-flash for every text role) stays as configured.
+- Deployments that already set every text role to one model keep it; the new roles inherit the old `assistant` mapping.
 
 ## Operations (new or changed)
 
@@ -405,8 +405,8 @@ never forces. Single lookups stay direct tool calls.
 `a2ui.produce` (run a saved producer); `plugin.list`, `plugin.get`, `plugin.install`,
 `plugin.update`, `plugin.compare`, `plugin.mergeProposal`, `plugin.applyMerge`, `plugin.detach`,
 `plugin.reattach`, `plugin.uninstall`, `plugin.propose` (from chat), `plugin.publish`
-(marketplace submission), `marketplace.search`; `connection.request`, `connection.accept`,
-`connection.decline`, `contract.propose`, `contract.update`, `agentMessage.send` (internal),
+(marketplace submission), `marketplace.search`; `assistantConnection.request`, `assistantConnection.accept`,
+`assistantConnection.decline`, `contract.propose`, `contract.update`, `agentMessage.send` (internal),
 `agentMessage.log`; `voice.prefs.get/update`, `dictation.cleanup`. Each with zod schemas, a
 model-facing description, a permission and a risk class.
 
@@ -416,6 +416,17 @@ model-facing description, a permission and a risk class.
 `grant.leastPrivilege`, `approval.intent` (plain yes and exact phrase), `plugin.risk`,
 `plugin.preset`, `agent.message`. Calibrated with labelled sets under `evals/judge` and committed
 recordings, as in stage 11. Placements that send record content stay off on hosted deployments.
+
+**When the judge is off** (no key, or the placement disabled), each feature falls back safely:
+
+| Placement | Without the judge |
+| --- | --- |
+| `memory.write`, `memory.condition`, `plugin.preset` | Deterministic checks only (no record ids or customer names in the line; duplicate text check), and every save is read back for the person to confirm |
+| `routine.gate` | Routines can use plain gates only; Jev gates are unavailable |
+| `orchestrator.suggest`, `plugin.risk` | Skipped (advice only) |
+| `grant.leastPrivilege` | The grant is shown to the person to confirm before the agent starts |
+| `approval.intent` | Typed and spoken approvals are off; approve by tapping (high risk: the two-step button) |
+| `agent.message` | Connected assistants are unavailable (fail closed) |
 
 ## Out of scope
 

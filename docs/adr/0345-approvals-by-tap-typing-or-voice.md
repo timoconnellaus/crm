@@ -42,8 +42,7 @@ for deleting repositories, slows the person down at the right moment.
 
 ## Consequences
 - Each typed or spoken approval costs one Jev call. Taps do not.
-- If the judge is off, the build must decide whether typed and spoken approvals fall back to tap
-  only. The spec does not say; it is an open point for the build to raise.
+- If the judge is off, typed and spoken approvals are off: approval is by tap only, and high risk uses the two-step button (fail closed; spec, "When the judge is off").
 - The approval suite gains cases for each `via`, the ambiguous yes, the two-step button and the
   phrase with transcription variants.
 

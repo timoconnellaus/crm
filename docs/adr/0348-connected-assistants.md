@@ -13,7 +13,7 @@ can end up in a message to someone else's assistant. Asking a person to approve 
 would bury them.
 
 ## Decision
-1. **Same workspace only.** A person asks to connect (`connection.request`); the other accepts or
+1. **Same workspace only.** A person asks to connect (`assistantConnection.request`); the other accepts or
    declines.
 2. **A contract in plain English.** The two assistants propose numbered rules, each tagged
    **Automatic**, **Asks you** or **Never**, shaped by what the people said and by their existing
@@ -41,10 +41,7 @@ would bury them.
 - Each message costs one Jev call.
 - Because every message must pass Jev, connected assistants need the judge. With it off, the
   build should keep messages from being delivered and say why.
-- The operation names `connection.request`, `connection.accept` and `connection.decline` sit in
-  the same namespace as the integration `connection.*` operations. They do not collide by name,
-  but "Connection" in `CONTEXT.md` means a gatekeeper account. The build should confirm the names
-  or prefix them (for example `assistantConnection.*`) and record the choice here.
+- The operations are named `assistantConnection.request`, `.accept` and `.decline`, so they don't share the integration `connection.*` namespace ("Connection" means a gatekeeper account in `CONTEXT.md`).
 
 ## Alternatives considered
 - **Direct access to the colleague's records through one's own assistant.** Rejected: it bypasses
