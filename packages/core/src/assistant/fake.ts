@@ -438,6 +438,38 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
   const record = lineValue(page, "Current record");
   const selection = lineValue(page, "Selected records");
   const reason = `Asked in the assistant: ${text.slice(0, 120)}`;
+  // A spoken or typed answer about something waiting (ADR 0345).
+  if (hasTool(body, "decide_approval") && /^(yes|yeah|yep|ok|maybe|i approve|reject|no)\b/i.test(text)) {
+    const actionIds = latestPending(body);
+    if (actionIds.length) {
+      return withReasoning({
+        toolCalls: [
+          {
+            name: "decide_approval",
+            arguments: { actionIds, decision: /^(reject|no)\b/i.test(text) ? "reject" : "approve" },
+          },
+        ],
+      });
+    }
+  }
+  // Longer work goes to an agent (ADR 0344).
+  const research = /\bresearch\b.*\b(accounts|organisations)\b/i.test(text);
+  if (research && hasTool(body, "start_agent")) {
+    const ids = (selection ?? "").split(/\s+/).filter((part) => part.startsWith("org_"));
+    return withReasoning({
+      toolCalls: [
+        {
+          name: "start_agent",
+          arguments: {
+            title: "Account research",
+            brief: `${text}\n\nFind each organisation's website and fill it in if it is empty.`,
+            profile: "researcher",
+            records: ids.map((id) => ({ object: "organisation", id })),
+          },
+        },
+      ],
+    });
+  }
 
   if (selection && /\b(selected|these|them)\b/i.test(text)) {
     const [object, ...ids] = selection.split(/\s+/);
@@ -561,38 +593,6 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
             name: "dashboard.create",
             input: { title: `${String(widget.title)} dashboard`, widgets: [widget] },
             reason,
-          },
-        },
-      ],
-    });
-  }
-  // A spoken or typed answer about something waiting (ADR 0345).
-  if (hasTool(body, "decide_approval") && /^(yes|yeah|yep|ok|maybe|i approve|reject|no)\b/i.test(text)) {
-    const actionIds = latestPending(body);
-    if (actionIds.length) {
-      return withReasoning({
-        toolCalls: [
-          {
-            name: "decide_approval",
-            arguments: { actionIds, decision: /^(reject|no)\b/i.test(text) ? "reject" : "approve" },
-          },
-        ],
-      });
-    }
-  }
-  // Longer work goes to an agent (ADR 0344).
-  const research = /\bresearch\b.*\b(accounts|organisations)\b/i.test(text);
-  if (research && hasTool(body, "start_agent")) {
-    const ids = (selection ?? "").split(/\s+/).filter((part) => part.startsWith("org_"));
-    return withReasoning({
-      toolCalls: [
-        {
-          name: "start_agent",
-          arguments: {
-            title: "Account research",
-            brief: `${text}\n\nFind each organisation's website and fill it in if it is empty.`,
-            profile: "researcher",
-            records: ids.map((id) => ({ object: "organisation", id })),
           },
         },
       ],

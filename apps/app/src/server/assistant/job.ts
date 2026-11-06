@@ -15,6 +15,7 @@ import { type A2uiPart, prepareCard } from "@relationship-os/agent-a2ui";
 import {
   finishedJob,
   type JobBudget,
+  type JobMessage,
   type JobUsage,
   jobResult,
   reachedLimit,
@@ -58,7 +59,6 @@ import {
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { getAgentByName } from "agents";
-import type { ModelMessage } from "ai";
 import { aiContextFor } from "../ai.ts";
 import { blobStoreFor, integrationRuntimeFor } from "../integrations.ts";
 import { curatedToolName, type McpCaller } from "../mcp/tools.ts";
@@ -144,14 +144,14 @@ export class AgentJob extends DurableObject<Cloudflare.Env> {
     );
   }
 
-  #messages(): ModelMessage[] {
+  #messages(): JobMessage[] {
     return this.#sql
       .exec<{ message: string }>("SELECT message FROM job_messages ORDER BY seq")
       .toArray()
-      .map((r) => JSON.parse(r.message) as ModelMessage);
+      .map((r) => JSON.parse(r.message) as JobMessage);
   }
 
-  #append(messages: readonly ModelMessage[]) {
+  #append(messages: readonly JobMessage[]) {
     for (const message of messages) {
       this.#sql.exec("INSERT INTO job_messages (message) VALUES (?)", JSON.stringify(message));
     }
@@ -212,7 +212,7 @@ export class AgentJob extends DurableObject<Cloudflare.Env> {
       .exec<{ seq: number; message: string }>("SELECT seq, message FROM job_messages")
       .toArray();
     for (const row of rows) {
-      const message = JSON.parse(row.message) as ModelMessage;
+      const message = JSON.parse(row.message) as JobMessage;
       const scrubbed = JSON.stringify(scrubMessage(message, pattern));
       if (scrubbed !== row.message) {
         this.#sql.exec("UPDATE job_messages SET message = ? WHERE seq = ?", scrubbed, row.seq);

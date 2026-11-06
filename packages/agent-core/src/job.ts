@@ -4,6 +4,9 @@
 import type { ModelMessage } from "ai";
 import type { StepUsage } from "./turn.ts";
 
+/** A message of a job's history. */
+export type JobMessage = ModelMessage;
+
 /** A job's limits. The host charges them to whatever started it. */
 export interface JobBudget {
   /** Model steps. */
