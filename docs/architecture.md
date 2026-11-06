@@ -110,11 +110,19 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
   people, organisations, activities and tasks after 30 days through the operations pipeline
   (`trash.purge`), and admin erase redacts the append-only audit log through a sanctioned path
   ([ADR 0019](adr/0019-audit-redaction-for-erasure.md)).
+- **Duplicates** ([ADR 0247](adr/0247-duplicate-rules-and-scan.md)): plain rules in code with a
+  stated reason, no score. Every write that sets a name writes `name_key`, so `duplicate.check` at
+  creation and the scan are indexed lookups. ros-runner's minute cron runs a bounded
+  `duplicate.scan`: the one-off name-key backfill, a full scan in progress, the nightly incremental
+  scan (records changed since a cursor) and the scan after an import. Pairs live in
+  `core_duplicate_pair`; dismissals are kept. `duplicate.mergeMany` calls `person.merge` or
+  `organisation.merge` once per duplicate, and merge re-points extension relation fields
+  generically.
 - **Erase reaches every store** ([ADR 0320](adr/0320-erase-reaches-every-store.md)): besides the
   record and the audit log, an erase scrubs or deletes shared activities, pending actions, AI
   summaries and vectors, assistant threads, sync's suggestions and signatures, extension
   data (generically, through relation metadata), automation run history, notifications,
-  integration events and the outbox, and the R2 bodies of synced email (through
+  integration events and the outbox, duplicate pairs, and the R2 bodies of synced email (through
   `core_blob_deletion`, drained after the commit and by the 10-minute cron). Erased people's
   addresses go on the **erased-address list** (`core_erased_address`, SHA-256 hashes only), which
   `sync.ingest` checks so they are not collected again. Each erase writes an **erase log** entry

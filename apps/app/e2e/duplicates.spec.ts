@@ -93,7 +93,10 @@ test("a scan lists duplicates with reasons; they are dismissed or merged in bulk
 
   // The kept record has both emails.
   await open(page, `/people?q=${encodeURIComponent(likelyFamily)}`);
-  await page.getByRole("link", { name: new RegExp(likelyFamily) }).first().click();
+  await page
+    .getByRole("link", { name: new RegExp(likelyFamily) })
+    .first()
+    .click();
   const details = page.getByTestId("details-card");
   await expect(details).toContainText(`g@${domain}`);
   await expect(details).toContainText(`grace@${domain}`);

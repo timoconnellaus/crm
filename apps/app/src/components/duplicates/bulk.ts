@@ -3,11 +3,9 @@
 // a Worker's limits; every merge inside still runs through person.merge / organisation.merge.
 import type { CoreOutput } from "@relationship-os/core";
 import { callOp } from "#/lib/operations";
+import { type MergeGroup, mergeBatches } from "./merge-batches.ts";
 
-export interface MergeGroup {
-  survivorId: string;
-  mergedIds: string[];
-}
+export type { MergeGroup };
 
 export interface MergeFailure {
   id: string;
@@ -23,28 +21,6 @@ export interface BulkResult {
   merged: number;
   queued: number;
   failed: MergeFailure[];
-}
-
-const GROUPS_PER_CALL = 10;
-const RECORDS_PER_CALL = 40;
-
-/** Splits groups into calls of at most 10 groups and about 40 records. */
-export function mergeBatches(groups: readonly MergeGroup[]): MergeGroup[][] {
-  const batches: MergeGroup[][] = [];
-  let current: MergeGroup[] = [];
-  let records = 0;
-  for (const group of groups) {
-    const size = group.mergedIds.length + 1;
-    if (current.length && (current.length >= GROUPS_PER_CALL || records + size > RECORDS_PER_CALL)) {
-      batches.push(current);
-      current = [];
-      records = 0;
-    }
-    current.push(group);
-    records += size;
-  }
-  if (current.length) batches.push(current);
-  return batches;
 }
 
 type MergeMany = CoreOutput<"duplicate.mergeMany">;

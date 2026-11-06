@@ -293,12 +293,10 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
   // whose stored reason names them (a shared organisation, domain or number).
   const subjectIds = jsonList(recordIds);
   ctx.write(
-    ctx.db
-      .deleteFrom("core_duplicate_pair")
-      .where(
-        sql<SqlBool>`(object = ${object} AND (a_id IN ${subjectIds} OR b_id IN ${subjectIds}))
+    ctx.db.deleteFrom("core_duplicate_pair").where(
+      sql<SqlBool>`(object = ${object} AND (a_id IN ${subjectIds} OR b_id IN ${subjectIds}))
           OR ${mentionsSql(terms, sql`details`)}`,
-      ),
+    ),
   );
 
   // 4. The records. Merged-away records first: they point at the survivor.

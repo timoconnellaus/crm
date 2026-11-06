@@ -3,6 +3,7 @@
 // assertions look only at the records each test made.
 import { env } from "cloudflare:workers";
 import { beforeAll, describe, expect, it } from "vitest";
+import { loadScanState } from "../src/duplicates/scan.ts";
 import {
   type ActingUser,
   invoke,
@@ -11,7 +12,6 @@ import {
   runDuplicateCron,
   runTrashPurge,
 } from "../src/index.ts";
-import { loadScanState } from "../src/duplicates/scan.ts";
 import { auditRows, context, createUser, db, setPreset, unique } from "./helpers.ts";
 
 let admin: ActingUser;
@@ -410,7 +410,10 @@ describe("the scan", () => {
     const existing = await person({ displayName: name });
 
     // The dry run flags the row, which still creates.
-    const input = { object: "person" as const, csv: `name,email\n${name},${unique("i")}@x.example\n` };
+    const input = {
+      object: "person" as const,
+      csv: `name,email\n${name},${unique("i")}@x.example\n`,
+    };
     const preview = await invoke("import.csv.preview", input, context(member));
     expect(preview.rows[0]).toMatchObject({
       action: "create",
@@ -442,7 +445,9 @@ describe("the scan", () => {
     expect(await pair("person", b.id, c.id)).toMatchObject({ status: "open" });
 
     await invoke("person.delete", { id: c.id }, context(member));
-    await env.DB.prepare("UPDATE core_person SET deleted_at = '2020-01-01T00:00:00.000Z' WHERE id = ?")
+    await env.DB.prepare(
+      "UPDATE core_person SET deleted_at = '2020-01-01T00:00:00.000Z' WHERE id = ?",
+    )
       .bind(c.id)
       .run();
     await runTrashPurge(db);
