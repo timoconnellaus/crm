@@ -6,8 +6,10 @@ import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
 import { Card, CardContent } from "@relationship-os/ui/components/card";
 import { Input } from "@relationship-os/ui/components/input";
+import { Label } from "@relationship-os/ui/components/label";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@relationship-os/ui/components/tabs";
+import { Textarea } from "@relationship-os/ui/components/textarea";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { LockIcon, SparklesIcon } from "lucide-react";
 import { useState } from "react";
@@ -316,9 +318,14 @@ function CopyCard({ copy }: { copy: Copy }) {
             </Button>
           )}
           {copy.waiting.length > 0 && (
-            <Button size="sm" variant="outline" onClick={() => check.mutate({ id: copy.id }, on)}>
-              Check again
-            </Button>
+            <>
+              <Button asChild size="sm">
+                <Link to="/settings/integrations">Connect</Link>
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => check.mutate({ id: copy.id }, on)}>
+                Check again
+              </Button>
+            </>
           )}
           {copy.offered.map((key) => (
             <Button
@@ -415,18 +422,60 @@ const MARKETPLACE_WORDS: Record<string, string> = {
   rejected: "Not accepted",
 };
 
-function Workspace({ list, isAdmin }: { list: List; isAdmin: boolean }) {
+/** Adds a plugin.json to the workspace's private registry: a new plugin or a new version. */
+function AddToWorkspace() {
   const publish = useOpMutation("plugin.publish", PLUGIN_INVALIDATES);
-  if (!list.workspace.length) {
-    return (
-      <EmptyState
-        title="Nothing made here yet"
-        description='Ask your assistant to "bundle this as a plugin", then publish it for your workspace.'
-      />
+  const [text, setText] = useState("");
+  function add() {
+    let manifest: Record<string, unknown>;
+    try {
+      manifest = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      toast.error("That isn't valid JSON");
+      return;
+    }
+    publish.mutate(
+      { to: "workspace", manifest },
+      {
+        onSuccess: (out) => {
+          toast.success(`${out.plugin} ${out.version} is in your workspace`);
+          setText("");
+        },
+        onError: (error) => toast.error(errorMessage(error)),
+      },
     );
   }
   return (
+    <Card>
+      <CardContent className="grid gap-2">
+        <Label htmlFor="plugin-json">Add a plugin.json</Label>
+        <Textarea
+          id="plugin-json"
+          rows={4}
+          className="font-mono text-xs"
+          placeholder='{ "id": "partner-deals", "name": "Partner deals", "version": "1.0.0", … }'
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <Button size="sm" className="w-fit" disabled={!text.trim()} onClick={add}>
+          Add to your workspace
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Workspace({ list, isAdmin }: { list: List; isAdmin: boolean }) {
+  const publish = useOpMutation("plugin.publish", PLUGIN_INVALIDATES);
+  return (
     <div className="grid gap-2">
+      {isAdmin && <AddToWorkspace />}
+      {!list.workspace.length && (
+        <EmptyState
+          title="Nothing made here yet"
+          description='Ask your assistant to "bundle this as a plugin", then add it here.'
+        />
+      )}
       {list.workspace.map((p) => (
         <Card key={`${p.plugin}@${p.version}`}>
           <CardContent className="flex flex-wrap items-center gap-2">

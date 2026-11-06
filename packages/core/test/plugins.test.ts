@@ -988,6 +988,33 @@ describe("the marketplace", () => {
   });
 });
 
+describe("the Agent Plugins format", () => {
+  it("publishes a folder's skills, and its MCP server as a connection to make", async () => {
+    const id = unique("p").toLowerCase();
+    const out = await call<{ plugin: string }>(
+      "plugin.publish",
+      {
+        to: "workspace",
+        files: {
+          ".claude-plugin/plugin.json": JSON.stringify({ name: id, version: "1.2.0" }),
+          "skills/review/SKILL.md": "---\nname: review\ndescription: Review it\n---\nRead it.",
+          ".mcp.json": JSON.stringify({
+            mcpServers: { pricing: { type: "http", url: "https://pricing.example.com/mcp" } },
+          }),
+        },
+      },
+      context(admin),
+    );
+    const got = await call<CoreOutput<"plugin.get">>(
+      "plugin.get",
+      { plugin: out.plugin },
+      context(member),
+    );
+    expect(got.manifest.items.map((i) => i.kind)).toEqual(["Skill", "Connection"]);
+    expect(got.manifest.connections).toEqual(["mcp:pricing"]);
+  });
+});
+
 describe("erase", () => {
   it("reaches items, base manifests, proposals and merges, and stops updates", async () => {
     const id = unique("p").toLowerCase();

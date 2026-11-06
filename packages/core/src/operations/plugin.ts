@@ -12,6 +12,7 @@ import {
   canInstall,
   compareItems,
   effectiveInstalls,
+  loadAgentPlugin,
   type ItemCompare,
   manifestFingerprint,
   MERGE_INSTRUCTIONS,
@@ -42,7 +43,7 @@ import { askPluginPreset, pluginPresetState } from "../judge/questions/plugin-pr
 import { placementAvailable } from "../judge/types.ts";
 import { judgeUsageStatement } from "../judge/usage.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
-import { adapt, assertAdaptations, childrenOf, copyState, type CopyState, currentItems, holdersOf, moveTo, needStatus, normalise, proposeExtensions, queueInstallRow, queueNeedStates, queueNewCopy, queueRemoveCopy, sameItems, upstreamOf } from "../plugins/engine.ts";
+import { adapt, assertAdaptations, childrenOf, copyState, type CopyState, currentItems, holdersOf, moveTo, type NeedStatus, needStatus, normalise, proposeExtensions, queueInstallRow, queueNeedStates, queueNewCopy, queueRemoveCopy, sameItems, upstreamOf } from "../plugins/engine.ts";
 import { FIRST_PARTY_PLUGINS } from "../plugins/first-party.ts";
 import { EXTENSION_KINDS, itemName, pluginKinds, } from "../plugins/kinds.ts";
 import { createTarget, MATERIALISERS, targetsOf } from "../plugins/materialise.ts";
@@ -861,8 +862,16 @@ export const pluginInstall = defineOperation({
       }
     }
     if (scope.kind === "org") await proposeExtensions(ctx, id, manifest.items);
+    const missing = (await needStatus(ctx.db, manifest.items, ctx.user.id)).filter((n) => !n.met);
     return ctx.afterCommit(async () => {
       const install = await loadInstall(ctx.db, id);
+      if (ctx.assistantThreads) {
+        for (const need of missing) {
+          await ctx.assistantThreads
+            .postCard(ctx.user.id, connectionCard(clean.name, need, isAdmin(ctx)))
+            .catch(() => undefined);
+        }
+      }
       return {
         status: "installed" as const,
         install: await viewOf(ctx, install as Install),
@@ -871,6 +880,29 @@ export const pluginInstall = defineOperation({
     });
   },
 });
+
+/** "Meeting prep needs your calendar": the person signs in; a workspace one needs an admin. */
+function connectionCard(name: string, need: NeedStatus, admin: boolean): A2uiPart {
+  const canConnect = need.level === "personal" || admin;
+  const reason = canConnect
+    ? need.reason
+    : `${need.reason} This is a workspace connection, so an admin has to add it.`;
+  return prepareCard(
+    {
+      a2ui: 1,
+      root: {
+        type: "connectionNeeded",
+        service: `${name} needs ${need.label}`.slice(0, 80),
+        reason: reason.slice(0, 300),
+        status: "missing",
+        ...(canConnect
+          ? { connect: { kind: "open", label: "Connect", href: "/settings/integrations" } }
+          : {}),
+      },
+    },
+    { source: "host", text: reason },
+  );
+}
 
 async function previewChecks(ctx: HandlerContext, manifest: PluginManifest) {
   const coming = comingNames(manifest.items);
@@ -1707,11 +1739,18 @@ export const pluginPublish = defineOperation({
     .object({
       to: z.enum(["workspace", "marketplace"]),
       manifest: draftSchema.optional().describe("A plugin.json, to publish to the workspace"),
+      files: z
+        .record(z.string().min(1).max(200), z.string().max(200_000))
+        .optional()
+        .describe("A plugin in the open Agent Plugins format, by file path"),
       plugin: pluginIdSchema.optional().describe("One already in the workspace registry"),
       version: pluginVersionSchema.optional(),
       note: z.string().trim().max(1_000).optional(),
     })
-    .refine((v) => Boolean(v.manifest) !== Boolean(v.plugin), "Give a manifest or a plugin"),
+    .refine(
+      (v) => [v.manifest, v.plugin, v.files].filter(Boolean).length === 1,
+      "Give a manifest, files or a plugin",
+    ),
   output: z.object({
     plugin: z.string(),
     version: z.string(),
@@ -1724,7 +1763,20 @@ export const pluginPublish = defineOperation({
   async handler(input, ctx) {
     let manifest: PluginManifest;
     if (input.manifest) {
-      manifest = pluginManifestSchema.parse(input.manifest);
+      const parsed = pluginManifestSchema.safeParse(input.manifest);
+      if (!parsed.success) {
+        const first = parsed.error.issues[0];
+        throw new ValidationError(`${first?.path.join(".") || "plugin.json"}: ${first?.message}`, {
+          field: "manifest",
+        });
+      }
+      manifest = parsed.data;
+    } else if (input.files) {
+      try {
+        manifest = loadAgentPlugin(input.files).manifest;
+      } catch (error) {
+        throw new ValidationError(error instanceof Error ? error.message : "It cannot be read");
+      }
     } else {
       const row = await ctx.db
         .selectFrom("core_plugin_registry")
