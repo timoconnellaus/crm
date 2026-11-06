@@ -44,11 +44,11 @@ const settingsOutput = z.object({
       createdByName: z.string().nullable(),
     })
     .nullable(),
-  /** The models behind the `review` and `assistant` roles, when the deployment has AI. */
+  /** The models behind the `review` and `assistant.core` roles (as `assistant`), with AI. */
   models: z.object({ review: roleRef, assistant: roleRef }).nullable(),
   /**
    * ADR 0031 wants the reviewer independent of the actor: true when `review` resolves to the
-   * same provider and model as `assistant`. A warning, not a block.
+   * same provider and model as `assistant.core` (ADR 0351). A warning, not a block.
    */
   sameModelAsAssistant: z.boolean(),
   /** Who reviews (ADR 0232, ADR 0233): Jev by default while the judge has a key, else the LLM. */
@@ -90,7 +90,10 @@ async function settingsView(ctx: HandlerContext, settings: AdjudicatorSettings) 
     if (roles) {
       models = {
         review: { provider: roles.review.provider, model: roles.review.model },
-        assistant: { provider: roles.assistant.provider, model: roles.assistant.model },
+        assistant: {
+          provider: roles["assistant.core"].provider,
+          model: roles["assistant.core"].model,
+        },
       };
     }
   } catch {

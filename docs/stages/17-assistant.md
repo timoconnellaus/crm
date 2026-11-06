@@ -158,6 +158,11 @@ done (results are copied to the parent and to D1).
 - Page context (page, record, selection) is sent with each turn as today, as a **tail block**, never
   in the cached prefix.
 
+> Amended 2026-11-06 (wave 1 as built): the refs live in a new `core_assistant_thread_refs`
+> table, the tail is stored with its user message, deleting a reply deletes the whole reply, and
+> there are `thread.status`, `thread.open` and `thread.finishTurn` besides the three operations
+> above. Details and reasons: ADR 0340's amendment of the same date.
+
 ### W2. Context, compaction and cache learning (ADR 0341)
 
 **Context order** (prefix stable for caching): system instructions → tool definitions → memory

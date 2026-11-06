@@ -55,7 +55,7 @@ export function parseEvents(body: string): StreamEvent[] {
     .map((l) => JSON.parse(l.slice(6)) as StreamEvent);
 }
 
-/** Runs a task's prompts as turns of one assistant conversation. */
+/** Runs a task's prompts as turns of the eval user's one assistant thread (ADR 0340). */
 export async function runViaAssistant(
   d: AssistantDriver,
   prompts: readonly string[],
@@ -70,18 +70,16 @@ export async function runViaAssistant(
   };
   const fetchFn = d.fetch ?? fetch;
   const origin = new URL(d.baseUrl).origin;
-  let conversationId: string | null = null;
   for (const [promptIndex, text] of prompts.entries()) {
     const response = await fetchFn(new URL("/api/assistant/turn", d.baseUrl), {
       method: "POST",
       headers: { "content-type": "application/json", cookie: d.cookie, origin },
-      body: JSON.stringify({ ...(conversationId ? { conversationId } : {}), text }),
+      body: JSON.stringify({ text }),
     });
     if (!response.ok) {
       run.error = `assistant turn failed: HTTP ${response.status} ${await response.text()}`;
       break;
     }
-    conversationId = response.headers.get("x-conversation-id") ?? conversationId;
     const events = parseEvents(await response.text());
     const calls = new Map<string, RecordedCall>();
     let reply = "";

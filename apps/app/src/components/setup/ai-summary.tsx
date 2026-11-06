@@ -10,13 +10,15 @@ type Role = Settings["roles"][number];
 /** How the wizard names a role in a sentence. `embed` is what semantic search runs on. */
 const ROLE_NAMES: Record<string, string> = {
   build: "build",
-  assistant: "assistant",
+  "assistant.core": "assistant",
+  "assistant.subagent": "agents",
   summarise: "summarise",
   extract: "extract",
   classify: "classify",
   embed: "search",
   vision: "vision",
   review: "review",
+  "dictation.cleanup": "dictation",
 };
 
 const SOURCE_PHRASES: Record<Role["source"], string> = {
@@ -42,6 +44,11 @@ export interface AiSetupSummary {
   sentences: string[];
   /** Readiness problems, one per provider in use that is not ready. */
   problems: { provider: string; label: string; reason: string; roles: string[] }[];
+  /**
+   * Voice (the speech roles, ADR 0351): optional, so never a readiness problem. Null when the
+   * deployment has no speech roles.
+   */
+  voice: { provider: string; label: string; ready: boolean; sentence: string } | null;
 }
 
 function list(items: string[]): string {
@@ -66,11 +73,14 @@ function modelWithProvider(model: string, provider: string): string {
 /** Describes the resolved role table in plain words: what runs where, and from which layer. */
 export function describeAiSetup(settings: Settings): AiSetupSummary {
   const providerLabel = (id: string) => settings.providers.find((p) => p.id === id)?.label ?? id;
-  const all = settings.roles.map((r) => ROLE_NAMES[r.role] ?? r.role);
+  // Voice is described on its own: it is optional and off until its key is set.
+  const speech = settings.roles.filter((r) => r.kind === "speech");
+  const textRoles = settings.roles.filter((r) => r.kind !== "speech");
+  const all = textRoles.map((r) => ROLE_NAMES[r.role] ?? r.role);
   // One line per provider, largest first: Workers AI runs a different model per role, so it is
   // named as a provider; another provider with one model for all its roles is named by model.
   const byProvider = new Map<string, Role[]>();
-  for (const role of settings.roles) {
+  for (const role of textRoles) {
     byProvider.set(role.provider, [...(byProvider.get(role.provider) ?? []), role]);
   }
   const lines = [...byProvider.entries()]
@@ -113,7 +123,22 @@ export function describeAiSetup(settings: Settings): AiSetupSummary {
       },
     ];
   });
-  return { configured: settings.configured, lines, sentences, problems };
+  const voiceProvider = speech[0]?.provider;
+  const voice = voiceProvider
+    ? (() => {
+        const label = providerLabel(voiceProvider);
+        const ready = speech.every((r) => r.ready);
+        return {
+          provider: voiceProvider,
+          label,
+          ready,
+          sentence: ready
+            ? `Voice uses ${label}.`
+            : `Voice is off until the ${label} key is set. It is optional.`,
+        };
+      })()
+    : null;
+  return { configured: settings.configured, lines, sentences, problems, voice };
 }
 
 /** The AI step's body: the summary, each provider's roles, and readiness problems. */
@@ -146,6 +171,11 @@ export function AiSetupSummaryView({ settings }: { settings: Settings }) {
             AI is not configured for this deployment yet: it needs the Workers AI binding or a
             provider key. AI features say so until then.
           </span>
+        </p>
+      )}
+      {summary.voice && (
+        <p className="text-sm text-muted-foreground" data-testid="setup-ai-voice">
+          {summary.voice.sentence}
         </p>
       )}
       {summary.problems.length > 0 ? (

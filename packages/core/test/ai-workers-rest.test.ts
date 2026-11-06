@@ -97,7 +97,7 @@ describe("Workers AI over REST through the gateway", () => {
   it("routes the chatModels seam (the assistant's loop) and the Settings test the same way", async () => {
     const server = fakeOpenAiServer();
     const { models } = testRunner({ env: REST, fetch: server.fetch });
-    const [chat] = (await models.chatModels?.("assistant")) ?? [];
+    const [chat] = (await models.chatModels?.("assistant.core")) ?? [];
     expect(chat?.provider).toBe("workers-ai");
     await generateText({ model: chat?.model as never, prompt: "hi", headers: chat?.headers });
     await models.test?.("review");
@@ -107,7 +107,7 @@ describe("Workers AI over REST through the gateway", () => {
       `${BASE}/chat/completions`,
       `${BASE}/embeddings`,
     ]);
-    expectGatewayRest(server.calls[0], "assistant");
+    expectGatewayRest(server.calls[0], "assistant.core");
     expectGatewayRest(server.calls[1], "review");
     expectGatewayRest(server.calls[2], "embed");
   });
@@ -121,7 +121,7 @@ describe("Workers AI over REST through the gateway", () => {
       collectLog: true,
     } as never);
     // A host caller driving the model itself with hostile headers, generated and streamed.
-    const [chat] = (await models.chatModels?.("assistant")) ?? [];
+    const [chat] = (await models.chatModels?.("assistant.core")) ?? [];
     const hostile = {
       "cf-aig-collect-log-payload": "true",
       "CF-AIG-Collect-Log-Payload": "true",
@@ -142,7 +142,7 @@ describe("Workers AI over REST through the gateway", () => {
       expect(call.headers.authorization).toBe("Bearer aig-and-workers-ai-token");
     }
     expectGatewayRest(server.calls[0], "extract");
-    expectGatewayRest(server.calls[1], "assistant");
+    expectGatewayRest(server.calls[1], "assistant.core");
   });
 
   it("forces the headers on a Request as well as on init headers", async () => {

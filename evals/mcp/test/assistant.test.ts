@@ -40,7 +40,7 @@ function fakeFetch() {
         { seq: 5, type: "text", delta: `Created Ada (${turn}).` },
         { seq: 6, type: "turn-end", status: "done" },
       ]),
-      { headers: { "x-conversation-id": "asc_01TESTCONVERSATION0" } },
+      { headers: { "x-thread-id": "ath_01TESTTHREAD000000" } },
     );
   }) as typeof fetch;
   return { requests, fn };
@@ -54,7 +54,7 @@ describe("running eval tasks through the in-app assistant", () => {
     expect(configureVia("http://localhost:5173", "c=1", { EVAL_VIA: "assistant" })).toBe(true);
   });
 
-  it("records the assistant's tool calls and replies, one conversation per task", async () => {
+  it("records the assistant's tool calls and replies, in the one thread", async () => {
     const { requests, fn } = fakeFetch();
     const run = await runViaAssistant(
       { baseUrl: "http://localhost:5173", cookie: "session=abc", fetch: fn },
@@ -68,7 +68,8 @@ describe("running eval tasks through the in-app assistant", () => {
     expect(run.replies).toEqual(["Created Ada (1).", "Created Ada (2)."]);
     expect(run.stopReason).toBe("done");
     expect(requests[0]?.headers.get("cookie")).toBe("session=abc");
-    expect(requests[1]?.body.conversationId).toBe("asc_01TESTCONVERSATION0");
+    // One thread per user: no conversation id to carry between prompts.
+    expect(requests[1]?.body).toEqual({ text: "And again" });
   });
 
   it("is what runAgent uses once configured", async () => {

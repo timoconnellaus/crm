@@ -12,18 +12,59 @@
 
 export const MODEL_ROLES = [
   "build",
-  "assistant",
+  // Stage 17 (ADR 0351): the front agent and the background agents replace `assistant`.
+  "assistant.core",
+  "assistant.subagent",
   "summarise",
   "extract",
   "classify",
   "embed",
   "vision",
   "review",
+  "dictation.cleanup",
+  // Speech (ADR 0349, ADR 0351): not text models; their own capability checks and price units.
+  "transcribe",
+  "speak",
 ] as const;
 export type ModelRole = (typeof MODEL_ROLES)[number];
 
+/** Roles that move audio, not text: never run through the text runner. */
+export const SPEECH_ROLES: readonly ModelRole[] = ["transcribe", "speak"];
+
+export function isSpeechRole(role: ModelRole): boolean {
+  return SPEECH_ROLES.includes(role);
+}
+
 export function isModelRole(value: unknown): value is ModelRole {
   return typeof value === "string" && (MODEL_ROLES as readonly string[]).includes(value);
+}
+
+/**
+ * Old role names still accepted in configuration (ADR 0351): `assistant` became `assistant.core`.
+ * AI_MODEL_ROLES, admin settings stored before migration 0351 and old usage rows may use them.
+ */
+export const LEGACY_ROLES: Readonly<Record<string, ModelRole>> = { assistant: "assistant.core" };
+
+/** A role name, or an old one mapped to its replacement; null when it is neither. */
+export function normalizeRole(value: unknown): ModelRole | null {
+  if (isModelRole(value)) return value;
+  return typeof value === "string" ? (LEGACY_ROLES[value] ?? null) : null;
+}
+
+const warnedLegacy = new Set<string>();
+
+/** Warns once per process and source that a configuration uses an old role name. */
+function warnLegacyRole(name: string, where: string): void {
+  if (warnedLegacy.has(`${where}:${name}`)) return;
+  warnedLegacy.add(`${where}:${name}`);
+  console.warn(
+    `${where}: the model role "${name}" is deprecated; use "${LEGACY_ROLES[name]}" (ADR 0351)`,
+  );
+}
+
+/** Tests only: forget which deprecation warnings were shown. */
+export function resetLegacyRoleWarnings(): void {
+  warnedLegacy.clear();
 }
 
 /** Providers a role can use. Workers AI is the default for every role; the rest are optional. */
@@ -37,6 +78,8 @@ export const PROVIDERS = [
   "anthropic",
   "openai-compatible",
   "custom",
+  // Speech only (ADR 0349): speech-to-text and text-to-speech, one key.
+  "assemblyai",
 ] as const;
 export type ProviderId = (typeof PROVIDERS)[number];
 
@@ -56,6 +99,8 @@ export interface ProviderInfo {
   gatewaySlug?: string;
   /** Reachable only through AI Gateway (custom providers): no direct base URL, key is BYOK. */
   gatewayOnly?: boolean;
+  /** Serves only the speech roles: its key alone does not make text AI "configured". */
+  speechOnly?: boolean;
 }
 
 export const PROVIDER_INFO: Record<ProviderId, ProviderInfo> = {
@@ -135,6 +180,18 @@ export const PROVIDER_INFO: Record<ProviderId, ProviderInfo> = {
     needsKey: true,
     gatewayOnly: true,
   },
+  // AssemblyAI (ADR 0349): Universal-Streaming speech-to-text and AssemblyAI-TTS-1 text-to-speech
+  // over streaming WebSockets. Configured when the AI_KEY_ASSEMBLYAI secret is set. Called
+  // directly for now (no gateway slug): whether AI Gateway can proxy the streaming sockets is
+  // checked when voice is built (stage 17 W9). Wiring only: nothing calls it yet.
+  assemblyai: {
+    id: "assemblyai",
+    label: "AssemblyAI",
+    needsKey: true,
+    secretName: "AI_KEY_ASSEMBLYAI",
+    baseURL: "https://api.assemblyai.com",
+    speechOnly: true,
+  },
 };
 
 /** A custom provider's model id: `custom-<slug>/<model>` (the gateway's own naming). */
@@ -179,6 +236,29 @@ export interface ModelCapabilities {
   dimensions?: number;
   /** Batch limit for embeddings (texts per call). */
   maxBatch?: number;
+  /** Speech-to-text over a streaming audio connection (the `transcribe` role). */
+  streamingAudioIn?: boolean;
+  /** Text-to-speech with a choice of voices (the `speak` role). */
+  voicesOut?: boolean;
+  /** Text-to-speech: the speaking speed can be set (Settings → Voice shows speed only then). */
+  supportsSpeed?: boolean;
+}
+
+/**
+ * USD per million tokens (ADR 0351). `cacheWrite` and `cachedInput` are the provider's prompt
+ * cache prices; unknown means cached input is priced as uncached (modelPricing).
+ */
+export interface ModelPrice {
+  input: number;
+  output: number;
+  cacheWrite?: number;
+  cachedInput?: number;
+}
+
+/** Speech prices: per hour of audio (speech-to-text) or per million characters (speech). */
+export interface SpeechPrice {
+  unit: "audio-hour" | "million-characters";
+  usd: number;
 }
 
 export interface CatalogueModel {
@@ -186,8 +266,12 @@ export interface CatalogueModel {
   model: string;
   label: string;
   capabilities: ModelCapabilities;
-  /** USD per million input / output tokens, when the provider publishes it. */
-  price?: { input: number; output: number };
+  /** USD per million tokens, when the provider publishes it. */
+  price?: ModelPrice;
+  /** The provider's published prompt-cache lifetime in seconds, when it publishes one (ADR 0341). */
+  cacheLifetimeSeconds?: number;
+  /** Speech models (ADR 0351): their own price unit. */
+  speechPrice?: SpeechPrice;
   note?: string;
 }
 
@@ -201,6 +285,17 @@ const chat = (
   vision: false,
   embedding: false,
   contextTokens,
+  ...extra,
+});
+
+/** A speech model: no text, no context window; the flags say which way the audio goes. */
+const speech = (extra: Partial<ModelCapabilities>): ModelCapabilities => ({
+  chat: false,
+  toolUse: false,
+  jsonSchema: false,
+  vision: false,
+  embedding: false,
+  contextTokens: 0,
   ...extra,
 });
 
@@ -324,6 +419,9 @@ export const MODEL_CATALOGUE: readonly CatalogueModel[] = [
     model: "gpt-4.1-mini",
     label: "GPT-4.1 mini",
     capabilities: chat(1_000_000, { toolUse: true, jsonSchema: true, vision: true }),
+    // https://openai.com/api/pricing/: cached input is a quarter of input, with no separate write
+    // price. OpenAI publishes no fixed cache lifetime, so the learner estimates it (ADR 0341).
+    price: { input: 0.4, cachedInput: 0.1, output: 1.6 },
   },
   {
     provider: "openai",
@@ -350,6 +448,22 @@ export const MODEL_CATALOGUE: readonly CatalogueModel[] = [
     label: "Gemini 2.5 Flash",
     capabilities: chat(1_000_000, { toolUse: true, jsonSchema: true, vision: true }),
   },
+  // Speech (ADR 0349). No prices until checked against AssemblyAI's pricing page; usage is still
+  // counted.
+  {
+    provider: "assemblyai",
+    model: "universal-streaming",
+    label: "AssemblyAI Universal-Streaming",
+    capabilities: speech({ streamingAudioIn: true }),
+    note: "Streaming speech-to-text with its own end-of-turn detection.",
+  },
+  {
+    provider: "assemblyai",
+    model: "assemblyai-tts-1",
+    label: "AssemblyAI TTS-1",
+    capabilities: speech({ voicesOut: true, supportsSpeed: false }),
+    note: "Streaming text-to-speech with word timestamps. No speed control at launch.",
+  },
 ];
 
 /** What each role needs from its model. */
@@ -366,6 +480,10 @@ export interface RoleRequirements {
   jsonSchema?: boolean;
   vision?: boolean;
   embedding?: boolean;
+  /** Speech-to-text over streaming audio. */
+  streamingAudioIn?: boolean;
+  /** Text-to-speech with voices. */
+  voicesOut?: boolean;
   /** Minimum context window, in tokens. */
   minContextTokens: number;
 }
@@ -378,10 +496,17 @@ export const ROLE_REQUIREMENTS: Record<ModelRole, RoleRequirements> = {
     json: true,
     minContextTokens: 16_000,
   },
-  assistant: {
-    description: "The in-app assistant: a multi-turn agent calling the CRM's tools",
+  "assistant.core": {
+    description:
+      "The assistant you chat with: answers, calls the CRM's tools and hands longer work to agents",
     chat: true,
     // Its structured output is the tool calls themselves (ADR 0192).
+    toolUse: true,
+    minContextTokens: 64_000,
+  },
+  "assistant.subagent": {
+    description: "Agents the assistant starts for longer work in the background",
+    chat: true,
     toolUse: true,
     minContextTokens: 64_000,
   },
@@ -420,18 +545,40 @@ export const ROLE_REQUIREMENTS: Record<ModelRole, RoleRequirements> = {
     json: true,
     minContextTokens: 16_000,
   },
+  "dictation.cleanup": {
+    description:
+      "Tidies dictated text: removes fillers, fixes punctuation, applies self-corrections",
+    chat: true,
+    minContextTokens: 4_000,
+  },
+  transcribe: {
+    description: "Speech to text for voice chat and dictation (streaming)",
+    streamingAudioIn: true,
+    minContextTokens: 0,
+  },
+  speak: {
+    description: "Text to speech for voice chat",
+    voicesOut: true,
+    minContextTokens: 0,
+  },
 };
+
+/** How much a model thinks: off, on (the provider's default amount) or a level. */
+export const THINKING_LEVELS = ["low", "medium", "high"] as const;
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
+export type Thinking = boolean | ThinkingLevel;
 
 export interface ModelParams {
   /** Upper bound on generated tokens (a reasoning model's thinking tokens count against it). */
   maxTokens?: number;
   temperature?: number;
   /**
-   * Reasoning models: false asks the provider to skip thinking (DeepSeek:
-   * `thinking: {"type":"disabled"}`). Unset keeps the provider's default. Providers without such
-   * a switch ignore it, including the Workers AI fallbacks.
+   * Reasoning models (ADR 0351): false asks the provider to skip thinking (DeepSeek:
+   * `thinking: {"type":"disabled"}`), true turns it on, and a level also says how much
+   * (`reasoning_effort` on OpenAI-compatible providers). Unset keeps the provider's default.
+   * Providers without such a switch ignore it, including the Workers AI fallbacks.
    */
-  thinking?: boolean;
+  thinking?: Thinking;
 }
 
 export interface ModelRef {
@@ -439,6 +586,10 @@ export interface ModelRef {
   model: string;
   /** Declared capabilities for a model the catalogue does not know (custom endpoints). */
   capabilities?: ModelCapabilities;
+  /** Declared prices for a model the catalogue does not know (the catalogue's win). */
+  price?: ModelPrice;
+  /** Declared prompt-cache lifetime in seconds, for a model the catalogue does not know. */
+  cacheLifetimeSeconds?: number;
 }
 
 /** One role's configuration, at any layer. */
@@ -458,7 +609,14 @@ export const SHIPPED_ROLES: Record<ModelRole, RoleConfig> = {
     params: { maxTokens: 1200, temperature: 0.1 },
     fallback: { provider: "workers-ai", model: "@cf/openai/gpt-oss-120b" },
   },
-  assistant: {
+  "assistant.core": {
+    provider: "workers-ai",
+    model: "@cf/moonshotai/kimi-k2.6",
+    params: { maxTokens: 2000, temperature: 0.2 },
+    fallback: { provider: "workers-ai", model: "@cf/openai/gpt-oss-120b" },
+  },
+  // The same as the front agent unless a deployment chooses otherwise (ADR 0351).
+  "assistant.subagent": {
     provider: "workers-ai",
     model: "@cf/moonshotai/kimi-k2.6",
     params: { maxTokens: 2000, temperature: 0.2 },
@@ -499,6 +657,16 @@ export const SHIPPED_ROLES: Record<ModelRole, RoleConfig> = {
     params: { maxTokens: 400, temperature: 0 },
     fallback: { provider: "workers-ai", model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast" },
   },
+  // Quick and literal: thinking off (ADR 0351).
+  "dictation.cleanup": {
+    provider: "workers-ai",
+    model: "@cf/zai-org/glm-4.7-flash",
+    params: { maxTokens: 1000, temperature: 0, thinking: false },
+    fallback: { provider: "workers-ai", model: "@cf/openai/gpt-oss-20b" },
+  },
+  // Voice is off until AI_KEY_ASSEMBLYAI is set (ADR 0349).
+  transcribe: { provider: "assemblyai", model: "universal-streaming", fallback: null },
+  speak: { provider: "assemblyai", model: "assemblyai-tts-1", fallback: null },
 };
 
 /** The shipped default model id for a role (eval harnesses, docs). */
@@ -585,6 +753,10 @@ export function capabilityProblems(
     problems.push(`${name} does not support JSON output`);
   }
   if (need.vision && !caps.vision) problems.push(`${name} cannot read images`);
+  if (need.streamingAudioIn && !caps.streamingAudioIn) {
+    problems.push(`${name} cannot transcribe streaming audio`);
+  }
+  if (need.voicesOut && !caps.voicesOut) problems.push(`${name} cannot speak`);
   if (caps.contextTokens < need.minContextTokens) {
     problems.push(
       `${name} has a ${caps.contextTokens.toLocaleString("en")}-token context; the ${role} role ` +
@@ -627,6 +799,41 @@ export function assertCapable(
   if (problems.length) throw new ModelCapabilityError(role, problems);
 }
 
+/**
+ * What the compaction planner prices a model at (ADR 0341, ADR 0351), USD per million tokens,
+ * with every cache price filled in: an unknown cached-read price means cached input costs the
+ * same as uncached, and an unknown cache-write price means a write costs the uncached input
+ * price. `cacheKnown` says whether the provider's cache prices were known.
+ */
+export interface ModelPricing {
+  input: number;
+  cacheWrite: number;
+  cachedInput: number;
+  output: number;
+  cacheKnown: boolean;
+  /** The published cache lifetime in seconds; null when unpublished (the learner estimates it). */
+  cacheLifetimeSeconds: number | null;
+}
+
+/** A model's prices for the planner, from the catalogue or the configuration; null when unknown. */
+export function modelPricing(ref: ModelRef): ModelPricing | null {
+  const listed = catalogueModel(ref.provider, ref.model);
+  const price = listed?.price ?? ref.price;
+  const lifetime = listed?.cacheLifetimeSeconds ?? ref.cacheLifetimeSeconds;
+  const cacheLifetimeSeconds =
+    typeof lifetime === "number" && Number.isFinite(lifetime) && lifetime > 0 ? lifetime : null;
+  if (!price) return null;
+  const cacheKnown = typeof price.cachedInput === "number";
+  return {
+    input: price.input,
+    cacheWrite: price.cacheWrite ?? price.input,
+    cachedInput: price.cachedInput ?? price.input,
+    output: price.output,
+    cacheKnown,
+    cacheLifetimeSeconds,
+  };
+}
+
 /** Where a resolved role's setting came from. */
 export type ConfigLayer = "shipped" | "deploy" | "admin";
 
@@ -637,6 +844,8 @@ export interface ResolvedRole {
   capabilities: ModelCapabilities;
   params: Required<Pick<ModelParams, "maxTokens" | "temperature">> & Pick<ModelParams, "thinking">;
   fallback: (ModelRef & { capabilities: ModelCapabilities }) | null;
+  /** The primary model's prices for the compaction planner (ADR 0351); null when unknown. */
+  pricing: ModelPricing | null;
   source: ConfigLayer;
   /** Problems with a layer that was skipped (e.g. an admin override for a model now rejected). */
   ignored: { layer: ConfigLayer; problems: string[] }[];
@@ -663,6 +872,28 @@ function mergeRole(base: RoleConfig, layer: Partial<RoleConfig> | undefined): Ro
 }
 
 /**
+ * The roles that follow `assistant.core` within a layer that does not set them (ADR 0351): a
+ * deployment that chose a model for the old `assistant` role keeps it for agents and dictation
+ * too. Dictation cleanup keeps its own quick params (thinking off) unless the layer sets them.
+ */
+const FOLLOWS_ASSISTANT_CORE = ["assistant.subagent", "dictation.cleanup"] as const;
+
+/** A layer with `assistant.core`'s choice copied to the roles that follow it. */
+export function withInheritedRoles(layer: RoleLayer | undefined): RoleLayer | undefined {
+  const core = layer?.["assistant.core"];
+  if (!layer || !core || (core.provider === undefined && core.model === undefined)) return layer;
+  const out: RoleLayer = { ...layer };
+  for (const role of FOLLOWS_ASSISTANT_CORE) {
+    if (out[role]) continue;
+    out[role] =
+      role === "dictation.cleanup"
+        ? { ...core, params: { ...SHIPPED_ROLES[role].params } }
+        : { ...core };
+  }
+  return out;
+}
+
+/**
  * Resolves every role through the layers. A layer whose model fails the role's capability check
  * is ignored (and reported in `ignored`) rather than breaking the role; the shipped defaults
  * always pass. A fallback that fails is dropped the same way.
@@ -677,8 +908,8 @@ export function resolveRoles(
     let source: ConfigLayer = "shipped";
     const ignored: ResolvedRole["ignored"] = [];
     for (const [layer, values] of [
-      ["deploy", layers.deploy],
-      ["admin", layers.admin],
+      ["deploy", withInheritedRoles(layers.deploy)],
+      ["admin", withInheritedRoles(layers.admin)],
     ] as const) {
       const next = mergeRole(config, values?.[role]);
       if (next === config) continue;
@@ -709,6 +940,7 @@ export function resolveRoles(
       capabilities,
       params: { ...DEFAULT_PARAMS, ...config.params } as ResolvedRole["params"],
       fallback,
+      pricing: modelPricing(config),
       source,
       ignored,
     };
@@ -717,14 +949,24 @@ export function resolveRoles(
 }
 
 /** Parses a role layer from JSON (deploy config or the admin setting); bad input is dropped. */
-export function parseRoleLayer(json: string | null | undefined): RoleLayer {
+export function parseRoleLayer(
+  json: string | null | undefined,
+  where = "AI_MODEL_ROLES",
+): RoleLayer {
   if (!json?.trim()) return {};
   try {
     const value = JSON.parse(json) as unknown;
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
     const out: RoleLayer = {};
-    for (const [role, config] of Object.entries(value as Record<string, unknown>)) {
-      if (!isModelRole(role) || !config || typeof config !== "object") continue;
+    const entries = Object.entries(value as Record<string, unknown>);
+    for (const [name, config] of entries) {
+      const role = normalizeRole(name);
+      if (!role || !config || typeof config !== "object") continue;
+      if (role !== name) {
+        warnLegacyRole(name, where);
+        // The new name wins when both are given.
+        if (entries.some(([other]) => other === role)) continue;
+      }
       out[role] = config as Partial<RoleConfig>;
     }
     return out;
@@ -755,16 +997,20 @@ export interface RolePreset {
 }
 
 export const ROLE_PRESETS: Record<string, RolePreset> = {
-  // Every role but `embed` on deepseek-flash, with thinking off where a short, direct answer is
-  // wanted (it costs tokens and latency, and counts against maxTokens). The assistant and the
-  // reviewer keep thinking, with room for it. `embed` stays on Workers AI (bge-small, 384 dims),
-  // because DeepSeek has no embedding model.
+  // Every text role on deepseek-flash, with thinking off where a short, direct answer is wanted
+  // (it costs tokens and latency, and counts against maxTokens). The assistant, its agents and
+  // the reviewer keep thinking, with room for it. `embed` stays on Workers AI (bge-small, 384
+  // dims), because DeepSeek has no embedding model; the speech roles stay on AssemblyAI.
   "deepseek-flash": {
     description:
-      "DeepSeek V4.1 Flash for every role except embed, each with its Workers AI default as the fallback; embed stays on Workers AI",
+      "DeepSeek V4.1 Flash for every text role, each with its Workers AI default as the fallback; embed stays on Workers AI and voice on AssemblyAI",
     roles: {
       build: onDeepSeekFlash("build", { maxTokens: 1200, temperature: 0.1, thinking: false }),
-      assistant: onDeepSeekFlash("assistant", { maxTokens: 8000, temperature: 0.2 }),
+      "assistant.core": onDeepSeekFlash("assistant.core", { maxTokens: 8000, temperature: 0.2 }),
+      "assistant.subagent": onDeepSeekFlash("assistant.subagent", {
+        maxTokens: 8000,
+        temperature: 0.2,
+      }),
       summarise: onDeepSeekFlash("summarise", {
         maxTokens: 500,
         temperature: 0.2,
@@ -774,6 +1020,11 @@ export const ROLE_PRESETS: Record<string, RolePreset> = {
       classify: onDeepSeekFlash("classify", { maxTokens: 64, temperature: 0, thinking: false }),
       vision: onDeepSeekFlash("vision", { maxTokens: 800, temperature: 0.1, thinking: false }),
       review: onDeepSeekFlash("review", { maxTokens: 4000, temperature: 0 }),
+      "dictation.cleanup": onDeepSeekFlash("dictation.cleanup", {
+        maxTokens: 1000,
+        temperature: 0,
+        thinking: false,
+      }),
     },
   },
 };
@@ -782,14 +1033,14 @@ export const ROLE_PRESETS: Record<string, RolePreset> = {
 
 /**
  * ADR 0031 wants the policy adjudicator (`review`) on a different model from the actor's (the
- * `assistant`), so one model's blind spot is not both the change and its review. Not enforced:
+ * assistant's front agent, `assistant.core` since ADR 0351), so one model's blind spot is not both the change and its review. Not enforced:
  * the `deepseek-flash` preset knowingly shares one model (ADR 0192). Settings → AI shows the
  * message as a warning on the review role; saving is never blocked.
  */
 export function reviewIndependence(
-  roles: Record<"review" | "assistant", { provider: ProviderId; model: string }>,
+  roles: Record<"review" | "assistant.core", { provider: ProviderId; model: string }>,
 ): { ok: boolean; message?: string } {
-  const { review, assistant } = roles;
+  const { review, "assistant.core": assistant } = roles;
   if (review.provider !== assistant.provider || review.model.trim() !== assistant.model.trim()) {
     return { ok: true };
   }
@@ -840,14 +1091,22 @@ export function modelRolesVar(input: string, options: { vectorDimensions?: numbe
     throw new RoleLayerError(["expected a JSON object of role → configuration"]);
   }
   const problems: string[] = [];
-  for (const [role, config] of Object.entries(value as Record<string, unknown>)) {
-    if (!isModelRole(role)) problems.push(`unknown role "${role}"`);
+  const layer: RoleLayer = {};
+  const entries = Object.entries(value as Record<string, unknown>);
+  for (const [name, config] of entries) {
+    const role = normalizeRole(name);
+    if (!role) problems.push(`unknown role "${name}"`);
     else if (!config || typeof config !== "object" || Array.isArray(config)) {
-      problems.push(`${role}: expected an object`);
+      problems.push(`${name}: expected an object`);
+    } else {
+      if (role !== name) {
+        warnLegacyRole(name, "AI_MODEL_ROLES");
+        if (entries.some(([other]) => other === role)) continue;
+      }
+      layer[role] = config as Partial<RoleConfig>;
     }
   }
   if (problems.length) throw new RoleLayerError(problems);
-  const layer = value as RoleLayer;
   const resolved = resolveRoles({ deploy: layer }, options);
   for (const role of MODEL_ROLES) {
     for (const ignored of resolved[role].ignored) {

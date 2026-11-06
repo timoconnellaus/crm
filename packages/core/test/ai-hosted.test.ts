@@ -88,6 +88,8 @@ describe("Platform AI on a hosted deployment", () => {
     const { models } = hostedRunner();
     const roles = await models.roles?.();
     for (const role of Object.values(roles ?? {})) {
+      // Voice is AssemblyAI with the workspace's own key (ADR 0349), never Platform AI.
+      if (role.provider === "assemblyai") continue;
       expect(role.provider).toBe("platform");
       if (role.fallback) expect(role.fallback.provider).toBe("platform");
     }
@@ -139,12 +141,12 @@ describe("Platform AI on a hosted deployment", () => {
       } as never,
     );
     // A host caller driving the model itself (the assistant's loop) with hostile headers.
-    const [chat] = (await models.chatModels?.("assistant")) ?? [];
+    const [chat] = (await models.chatModels?.("assistant.core")) ?? [];
     await generateText({
       model: chat?.model as never,
       prompt: "hi",
       headers: {
-        "cf-aig-metadata": '{"role":"assistant","tenant":"tother00000","plan":"business"}',
+        "cf-aig-metadata": '{"role":"assistant.core","tenant":"tother00000","plan":"business"}',
         "cf-aig-gateway-id": "someone-elses-gateway",
         authorization: "Bearer stolen",
       },
