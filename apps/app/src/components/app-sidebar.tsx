@@ -26,8 +26,19 @@ import {
 import { MAIN_NAV, type NavItem, SETTINGS_NAV } from "#/lib/nav";
 import { useExtensionObjects } from "#/lib/schema";
 import { usePendingCount } from "./approvals/hooks.ts";
+import { useDuplicateCount } from "./duplicates/hooks.ts";
 
-function NavLink({ item, badge }: { item: NavItem; badge?: number | undefined }) {
+function NavLink({
+  item,
+  badge,
+  badgeLabel = "waiting for review",
+  badgeTestId = "approvals-count",
+}: {
+  item: NavItem;
+  badge?: number | undefined;
+  badgeLabel?: string;
+  badgeTestId?: string;
+}) {
   const { setOpenMobile } = useSidebar();
   return (
     <SidebarMenuItem>
@@ -45,8 +56,8 @@ function NavLink({ item, badge }: { item: NavItem; badge?: number | undefined })
       {badge ? (
         <SidebarMenuBadge
           className="rounded-full bg-primary text-primary-foreground peer-hover/menu-button:text-primary-foreground peer-data-[active=true]/menu-button:text-primary-foreground"
-          aria-label={`${badge} waiting for review`}
-          data-testid="approvals-count"
+          aria-label={`${badge} ${badgeLabel}`}
+          data-testid={badgeTestId}
         >
           {badge > 99 ? "99+" : badge}
         </SidebarMenuBadge>
@@ -99,6 +110,7 @@ function ExtensionObjectsNav() {
 export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
   const pendingCount = usePendingCount();
+  const duplicateCount = useDuplicateCount();
   return (
     <Sidebar
       aria-label="Main navigation"
@@ -111,13 +123,23 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {MAIN_NAV.map((item) => (
-                <NavLink
-                  key={item.to}
-                  item={item}
-                  badge={item.to === "/approvals" ? pendingCount : undefined}
-                />
-              ))}
+              {MAIN_NAV.map((item) =>
+                item.to === "/duplicates" ? (
+                  <NavLink
+                    key={item.to}
+                    item={item}
+                    badge={duplicateCount}
+                    badgeLabel="possible duplicates to review"
+                    badgeTestId="duplicates-count"
+                  />
+                ) : (
+                  <NavLink
+                    key={item.to}
+                    item={item}
+                    badge={item.to === "/approvals" ? pendingCount : undefined}
+                  />
+                ),
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

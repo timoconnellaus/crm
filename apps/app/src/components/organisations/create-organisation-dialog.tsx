@@ -15,6 +15,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { errorMessage, useOpMutation } from "#/lib/query";
+import { DuplicateWarnings, useDuplicateCheck } from "../duplicates/duplicate-warnings.tsx";
 
 export interface CreateOrganisationDialogProps {
   open: boolean;
@@ -31,6 +32,23 @@ export function CreateOrganisationDialog({
   const navigate = useNavigate();
   const create = useOpMutation("organisation.create");
   const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ name: "", domains: "" });
+  const check = useDuplicateCheck(
+    {
+      object: "organisation",
+      values: { name: draft.name, domains: draft.domains.split(/[\s,;]+/).filter(Boolean) },
+    },
+    open,
+  );
+  const warned = check.warnings.length > 0;
+
+  function onFormChange(event: FormEvent<HTMLFormElement>) {
+    const form = new FormData(event.currentTarget);
+    setDraft({
+      name: String(form.get("name") ?? ""),
+      domains: String(form.get("domains") ?? ""),
+    });
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,12 +79,20 @@ export function CreateOrganisationDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) setError(null);
+        if (!next) {
+          setError(null);
+          setDraft({ name: "", domains: "" });
+        }
         onOpenChange(next);
       }}
     >
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={onSubmit} className="grid gap-4" aria-label="New organisation">
+        <form
+          onSubmit={onSubmit}
+          onChange={onFormChange}
+          className="grid gap-4"
+          aria-label="New organisation"
+        >
           <DialogHeader>
             <DialogTitle>New organisation</DialogTitle>
             <DialogDescription>
@@ -90,6 +116,11 @@ export function CreateOrganisationDialog({
             <Label htmlFor="new-org-industry">Industry</Label>
             <Input id="new-org-industry" name="industry" maxLength={100} />
           </div>
+          <DuplicateWarnings
+            object="organisation"
+            check={check}
+            onOpen={() => onOpenChange(false)}
+          />
           {error && (
             <p className="text-sm text-destructive" role="alert">
               {error}
@@ -100,7 +131,7 @@ export function CreateOrganisationDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? "Creating…" : "Create organisation"}
+              {create.isPending ? "Creating…" : warned ? "Create anyway" : "Create organisation"}
             </Button>
           </DialogFooter>
         </form>
