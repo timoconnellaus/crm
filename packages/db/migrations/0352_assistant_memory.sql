@@ -29,8 +29,8 @@ CREATE TABLE core_memory (
   kind TEXT NOT NULL CHECK (kind IN ('personal', 'shortcut', 'style', 'conditional', 'team')),
   text TEXT NOT NULL CHECK (length(text) BETWEEN 1 AND 1000),
   condition TEXT CHECK (condition IS NULL OR json_valid(condition)),
-  -- The condition in words, composed by code from the field registry ("Organisation: Employees
-  -- is more than 500"), for the read-back and the memory page.
+  -- The condition in words, composed by code from the field registry ("Organisations where
+  -- People is more than 500"), for the read-back and the memory page.
   condition_label TEXT,
   status TEXT NOT NULL CHECK (status IN ('active', 'proposed', 'paused')),
   -- The person's message the line came from: deleting that message deletes the line.

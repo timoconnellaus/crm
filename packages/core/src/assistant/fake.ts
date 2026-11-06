@@ -284,13 +284,16 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
     return withReasoning({
       toolCalls: [
         {
-          name: "memory_propose",
+          name: "call_operation",
           arguments: {
-            text: conditional[3].replace(/[.!?]+$/, ""),
-            kind: "conditional",
-            condition: {
-              object: conditional[1]?.toLowerCase(),
-              filter: { field: "currentPeopleCount", op: "gt", value: Number(conditional[2]) },
+            name: "memory.propose",
+            input: {
+              text: conditional[3].replace(/[.!?]+$/, ""),
+              kind: "conditional",
+              condition: {
+                object: conditional[1]?.toLowerCase(),
+                filter: { field: "currentPeopleCount", op: "gt", value: Number(conditional[2]) },
+              },
             },
           },
         },
@@ -302,8 +305,11 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
     return withReasoning({
       toolCalls: [
         {
-          name: "memory_propose",
-          arguments: { text: remember[1].replace(/[.!?]+$/, "").slice(0, 200) },
+          name: "call_operation",
+          arguments: {
+            name: "memory.propose",
+            input: { text: remember[1].replace(/[.!?]+$/, "").slice(0, 200) },
+          },
         },
       ],
     });

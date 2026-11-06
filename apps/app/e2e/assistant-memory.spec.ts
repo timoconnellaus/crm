@@ -34,7 +34,7 @@ test("a preference saves inline, with undo, and shows on the memory page", async
   await expect(saved).toContainText("Saved to memory");
 
   // The newest save in the thread, whatever state its line is in.
-  const item = panel.locator('[data-tool="memory_propose"]').last();
+  const item = panel.getByTestId("assistant-tool").filter({ hasText: "memory.propose" }).last();
   await item.getByRole("button", { name: "Undo" }).click();
   await expect(item.getByTestId("memory-removed")).toContainText("Removed from memory");
   await item.getByRole("button", { name: "Redo" }).click();

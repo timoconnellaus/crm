@@ -320,7 +320,7 @@ export const memoryPropose = defineOperation({
   risk: "write",
   bookkeeping: true,
   actors: ["human", "assistant"],
-  mcp: { curated: true, title: "Save to memory" },
+  mcp: { title: "Save to memory" },
   async handler(input, ctx) {
     assertChat(ctx);
     if ((input.kind === "conditional") !== Boolean(input.condition)) {
