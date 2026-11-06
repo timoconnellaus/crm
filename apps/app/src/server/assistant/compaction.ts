@@ -16,32 +16,37 @@
 import {
   advanceDecisions,
   type CompactionCut,
+  cacheObservations,
   ceilingCut,
   compactedTokens,
   compactionCut,
   contextTokensAfter,
-  cacheObservations,
   emptyUsageState,
   historyForModel,
   type LastRequest,
   messageChars,
   NOTE_REQUEST,
   NOTE_TOKENS,
-  observeTurn,
   type OpenDecision,
+  observeTurn,
   type PlanDecision,
   type PlanInput,
   planCompaction,
   runTurn,
   type SqliteMessageStore,
   type StepUsage,
-  turnCost,
   type TurnModel,
   type TurnTool,
+  turnCost,
   type UsageState,
   usageProfile,
 } from "@relationship-os/agent-core";
-import type { CacheEstimate, CacheRails, CacheReview } from "@relationship-os/core";
+import {
+  type CacheEstimate,
+  type CacheRails,
+  type CacheReview,
+  scrubText,
+} from "@relationship-os/core";
 
 /** The role compaction runs on: the front agent's own, so the summary call reads its cache. */
 export const COMPACTION_ROLE = "assistant.core";
@@ -54,6 +59,9 @@ const NOTE_MAX_CHARS = 4_000;
 
 /** Roughly four characters a token, for a provider that reports no usage. */
 const CHARS_PER_TOKEN = 4;
+
+/** A cautious count for fitting a thread that has outgrown its window into a summary call. */
+const OVERFLOW_CHARS_PER_TOKEN = 3;
 
 /** A model as the planner needs it. */
 export interface PlanModel {
@@ -134,7 +142,7 @@ export interface FinishedTurn {
   model: PlanModel;
   /** The compaction seq the turn's context was assembled with. */
   since: number;
-  /** The turn's own first message: where its history ended. */
+  /** When the turn finished (epoch ms). */
   now: number;
 }
 
@@ -179,7 +187,9 @@ export class ThreadCompaction {
 
   #state(): CompactionState {
     const raw = this.host.meta("compaction_state");
-    return raw ? { ...emptyState(), ...(JSON.parse(raw) as Partial<CompactionState>) } : emptyState();
+    return raw
+      ? { ...emptyState(), ...(JSON.parse(raw) as Partial<CompactionState>) }
+      : emptyState();
   }
 
   #save(state: CompactionState) {
@@ -271,10 +281,7 @@ export class ThreadCompaction {
     // Only the ceiling may keep fewer than the usual exchanges: the context must fit.
     const cut =
       plan.rule === "ceiling"
-        ? ceilingCut(
-            live,
-            (c) => size(c.keptChars) + usage.addedTokensPerTurn < plan.ceilingTokens,
-          )
+        ? ceilingCut(live, (c) => size(c.keptChars) + usage.addedTokensPerTurn < plan.ceilingTokens)
         : normal;
     return { input, plan, cut };
   }
@@ -327,8 +334,7 @@ export class ThreadCompaction {
       this.host.store.list({ afterSeq: turn.since }).reduce((n, m) => n + messageChars(m), 0);
     const measured = contextTokensAfter(turn.steps);
     const before = usageProfile(state.usage);
-    const tokens =
-      measured ?? Math.round((turn.prefixChars + historyChars()) / CHARS_PER_TOKEN);
+    const tokens = measured ?? Math.round((turn.prefixChars + historyChars()) / CHARS_PER_TOKEN);
     const first = turn.steps[0];
     if (first) {
       const added =
@@ -481,13 +487,14 @@ export class ThreadCompaction {
     let note: string;
     try {
       const window = before.model?.contextTokens || UNKNOWN_WINDOW_TOKENS;
+      const overflowing = before.contextTokens >= window;
       const result = await runTurn({
         models: request.models,
         system: request.system,
         // The same bytes the last turn sent, then the request. Trimmed only when the thread has
-        // outgrown the window, when no cache is worth keeping.
+        // outgrown the window: nothing else would fit, and there is no cache worth keeping.
         messages: [
-          ...historyForModel(live, window * CHARS_PER_TOKEN * 0.8),
+          ...historyForModel(live, overflowing ? window * OVERFLOW_CHARS_PER_TOKEN : undefined),
           { role: "user", content: NOTE_REQUEST },
         ],
         tools: request.tools,
@@ -521,7 +528,7 @@ export class ThreadCompaction {
 
     const commit = Boolean(note) && !flight.abandoned;
     if (commit) {
-      for (const pattern of flight.scrubs) note = note.replace(pattern, "[erased]");
+      for (const pattern of flight.scrubs) note = scrubText(note, pattern);
     }
     this.host.transaction(() => {
       const next: CompactionState = { ...state, last: newest, open: advanced.open };
@@ -543,7 +550,7 @@ export class ThreadCompaction {
       }
       this.#save(next);
     });
-    if (review && review.observations.length) await this.host.record(review);
+    if (review?.observations.length) await this.host.record(review);
     if (!commit) console.warn("assistant: compaction wrote no note; the thread stays as it is");
   }
 
@@ -565,7 +572,7 @@ export class ThreadCompaction {
     this.#flight?.scrubs.push(pattern);
     const note = this.note();
     if (!note) return;
-    const scrubbed = note.replace(pattern, "[erased]");
+    const scrubbed = scrubText(note, pattern);
     if (scrubbed !== note) this.host.setMeta("compaction_note", scrubbed);
   }
 }

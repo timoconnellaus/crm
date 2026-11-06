@@ -1,6 +1,8 @@
 // ai.* operations for prompt caching and compaction (ADR 0341): Settings → AI's read-only cache
 // lifetimes and the admin rails, the review export, and the bookkeeping write the thread uses when
 // it has no turn to ride on (an idle alarm, a compaction).
+
+import { cacheReportExportSchema } from "@relationship-os/agent-core/compaction";
 import { z } from "zod";
 import {
   buildCacheReport,
@@ -14,7 +16,6 @@ import {
   loadCacheRails,
   writeCacheReview,
 } from "../ai/cache-review.ts";
-import { cacheReportExportSchema } from "@relationship-os/agent-core/compaction";
 import { defineOperation } from "../operation.ts";
 import { toCsv } from "./import.ts";
 

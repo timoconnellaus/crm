@@ -16,11 +16,11 @@
 // points here; it holds the object's one idle alarm.
 import {
   assembleContext,
+  prefixHash as hashPrefix,
   messagesFromResponse,
   messageText,
   type PendingLine,
   pendingTailBlock,
-  prefixHash as hashPrefix,
   runTurn,
   SqliteMessageStore,
   type StepUsage,
@@ -42,8 +42,8 @@ import {
   assistantTail,
   type CacheEstimate,
   type CacheReview,
-  type ConversationScrub,
   type ChatModel,
+  type ConversationScrub,
   conversationRefs,
   describeAssistantResult,
   errorForLog,

@@ -5,6 +5,7 @@ export * from "./cache-lifetime.ts";
 export * from "./export.ts";
 export * from "./plan.ts";
 export * from "./replay.ts";
+export * from "./thread.ts";
 export {
   bucketIndex,
   DEFAULT_HALF_LIFE_DAYS,
@@ -15,4 +16,3 @@ export {
   SESSION_END_GAP_SECONDS,
 } from "./types.ts";
 export * from "./usage.ts";
-export * from "./thread.ts";

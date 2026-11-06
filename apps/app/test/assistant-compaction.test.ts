@@ -412,7 +412,7 @@ describe("compaction in the live thread", () => {
     await settled(m);
     // Rules out a long horizon: fix it at two turns.
     const stub = await stubFor(m);
-  await runInDurableObject(stub, async (_agent, s) => {
+    await runInDurableObject(stub, async (_agent, s) => {
       const row = s.storage.sql
         .exec<{ value: string }>("SELECT value FROM thread_meta WHERE key = 'compaction_state'")
         .one();

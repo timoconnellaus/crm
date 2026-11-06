@@ -10,9 +10,9 @@ import {
   cacheObservationRecordSchema,
   compactionDecisionRecordSchema,
   DEFAULT_RAILS,
+  type EstimateChange,
   emptyCacheLifetimeState,
   estimateCacheLifetime,
-  type EstimateChange,
   observeCache,
   parseCacheReportExport,
 } from "@relationship-os/agent-core/compaction";
@@ -119,7 +119,9 @@ export async function writeCacheReview(
     prefix_tokens: o.prefixTokens ?? null,
   }));
   for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
-    ctx.write(ctx.db.insertInto("core_ai_cache_observation").values(rows.slice(i, i + INSERT_CHUNK)));
+    ctx.write(
+      ctx.db.insertInto("core_ai_cache_observation").values(rows.slice(i, i + INSERT_CHUNK)),
+    );
   }
   for (const d of review.decisions) {
     ctx.write(
@@ -234,24 +236,32 @@ export async function writeCacheReview(
       ctx.write(
         ctx.db
           .insertInto("core_ai_cache_estimate_history")
-          .columns(["provider", "model", "at", "from_seconds", "to_seconds", "reason", "sample_size"])
+          .columns([
+            "provider",
+            "model",
+            "at",
+            "from_seconds",
+            "to_seconds",
+            "reason",
+            "sample_size",
+          ])
           .expression(
-          ctx.db
-            .selectFrom("core_ai_cache_estimate")
-            .select((eb) => [
-              eb.val(provider).as("provider"),
-              eb.val(model).as("model"),
-              eb.val(new Date(change.at).toISOString()).as("at"),
-              eb.val(change.fromSeconds).as("from_seconds"),
-              eb.val(change.toSeconds).as("to_seconds"),
-              eb.val(change.reason).as("reason"),
-              eb.val(change.sampleSize).as("sample_size"),
-            ])
-            .where("provider", "=", provider)
-            .where("model", "=", model)
-            .where("version", "=", version)
-            .where("updated_at", "=", ctx.now),
-        ),
+            ctx.db
+              .selectFrom("core_ai_cache_estimate")
+              .select((eb) => [
+                eb.val(provider).as("provider"),
+                eb.val(model).as("model"),
+                eb.val(new Date(change.at).toISOString()).as("at"),
+                eb.val(change.fromSeconds).as("from_seconds"),
+                eb.val(change.toSeconds).as("to_seconds"),
+                eb.val(change.reason).as("reason"),
+                eb.val(change.sampleSize).as("sample_size"),
+              ])
+              .where("provider", "=", provider)
+              .where("model", "=", model)
+              .where("version", "=", version)
+              .where("updated_at", "=", ctx.now),
+          ),
       );
     }
   }
@@ -452,9 +462,7 @@ export async function purgeCacheReview(
   now: string,
   { chunk = 500, maxChunks = 20 }: { chunk?: number; maxChunks?: number } = {},
 ): Promise<{ deleted: number; more: boolean }> {
-  const cutoff = new Date(
-    Date.parse(now) - CACHE_REVIEW_RETENTION_DAYS * 86_400_000,
-  ).toISOString();
+  const cutoff = new Date(Date.parse(now) - CACHE_REVIEW_RETENTION_DAYS * 86_400_000).toISOString();
   let deleted = 0;
   let more = false;
   for (let i = 0; i < maxChunks; i++) {
