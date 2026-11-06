@@ -106,3 +106,11 @@ Built as decided, with these details and deviations:
 - **Evals.** `EVAL_VIA=assistant` sends every task to the eval user's single thread, so earlier
   tasks stay in the context, as in a real person's chat. No assistant report existed before this
   change to compare against.
+
+## Amendment, 2026-11-06 (stage 17 W2 wiring)
+Compaction replaces the character budget: the model is sent every message after the last compaction,
+and `HISTORY_CHAR_BUDGET` is gone. `historyForModel` keeps an optional budget, used only by a summary
+call on a thread that has outgrown its window. The object's first alarm is compaction's idle alarm
+(ADR 0341 amendment). The words `authoring.intent` checks against still come from the newest 200
+messages, whatever was compacted. Deleting a message the compaction note covers also drops the note,
+so "gone from what the model sees" stays true.
