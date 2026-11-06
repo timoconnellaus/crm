@@ -23,7 +23,7 @@ export function adminHome(input: {
   flash?: string | undefined;
 }): Raw {
   return html`<h1>Admin</h1>${input.flash ? html`<p class="ok">${input.flash}</p>` : ""}
-<p><a href="/admin/audit">Audit log</a> · <a href="/admin/enterprise">New enterprise customer</a></p>
+<p><a href="/admin/audit">Audit log</a> · <a href="/admin/enterprise">New enterprise customer</a> · <a href="/admin/marketplace">Marketplace</a></p>
 <h2>Customers (${input.customers.length})</h2>
 <div class="table-wrap"><table><tr><th>Workspace</th><th>Owner</th><th>Plan</th><th>Billing</th><th>Status</th><th>Release</th><th>Last active</th></tr>
 ${input.customers.map(

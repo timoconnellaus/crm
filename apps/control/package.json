@@ -13,6 +13,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@relationship-os/agent-plugins": "workspace:*",
     "@relationship-os/core": "workspace:*",
     "@relationship-os/release": "workspace:*"
   },

@@ -144,6 +144,9 @@ importers:
 
   apps/control:
     dependencies:
+      '@relationship-os/agent-plugins':
+        specifier: workspace:*
+        version: link:../../packages/agent-plugins
       '@relationship-os/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -650,6 +653,9 @@ importers:
       '@relationship-os/agent-core':
         specifier: workspace:*
         version: link:../agent-core
+      '@relationship-os/agent-plugins':
+        specifier: workspace:*
+        version: link:../agent-plugins
       '@relationship-os/db':
         specifier: workspace:*
         version: link:../db

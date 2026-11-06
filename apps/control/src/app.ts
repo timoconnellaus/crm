@@ -34,6 +34,16 @@ import {
 import { intVar, isLive } from "./env.ts";
 import { changeLifecycle, type LifecycleChange, publishRoute } from "./instances.ts";
 import { cancelDeletion, type ExportRow, requestDeletion, requestExport } from "./lifecycle.ts";
+import {
+  approveSubmission,
+  delistPlugin,
+  handleMarketplace,
+  isMarketplacePath,
+  issueToken,
+  rejectSubmission,
+  reviewPageData,
+  revokeToken,
+} from "./marketplace.ts";
 import { monthUsage } from "./metering.ts";
 import {
   adminHome,
@@ -44,6 +54,7 @@ import {
 } from "./pages/admin.ts";
 import { accountPage, signInPage, signUpPage } from "./pages/customer.ts";
 import { html, page, redirect } from "./pages/layout.ts";
+import { adminMarketplace, tokenIssued } from "./pages/marketplace.ts";
 import { PLANS, slugProblem } from "./plans.ts";
 import { handleAiSecret } from "./platform-ai.ts";
 import {
@@ -96,6 +107,8 @@ export async function handle(
     if (path === "/api/health") return Response.json({ ok: true, mode: s.env.PLATFORM_MODE });
     // A hosted deployment's signed call back to us (ADR 0250): no cookie, no form.
     if (path === AI_SECRET_PATH && method === "POST") return await handleAiSecret(s, request);
+    // The plugin marketplace's API (ADR 0347): signed, or a workspace token. No cookie, no form.
+    if (isMarketplacePath(path)) return await handleMarketplace(s, request);
     // Forms are same-origin only (SameSite=Lax cookies plus this check).
     if (method === "POST") {
       const origin = request.headers.get("origin");
@@ -402,6 +415,9 @@ async function adminRoutes(
     if (method === "GET") return page("Enterprise", enterpriseForm(), opts);
     return await createEnterprise(s, await form(request), staff);
   }
+  if (path === "/admin/marketplace" || path.startsWith("/admin/marketplace/")) {
+    return await marketplaceAdmin(s, request, url, staff);
+  }
   if (path === "/admin/rollouts" && method === "POST") {
     const values = await form(request);
     const id = await startRollout(s, {
@@ -471,6 +487,54 @@ async function adminRoutes(
       }),
       opts,
     );
+  }
+  throw new HttpError(404, "Not found.");
+}
+
+async function marketplaceAdmin(
+  s: Services,
+  request: Request,
+  url: URL,
+  staff: string,
+): Promise<Response> {
+  const path = url.pathname;
+  const opts = { signedIn: true, staff: true };
+  if (request.method === "GET" && path === "/admin/marketplace") {
+    const flash = url.searchParams.get("flash") ?? undefined;
+    const error = url.searchParams.get("error") ?? undefined;
+    return page(
+      "Marketplace",
+      adminMarketplace({ ...(await reviewPageData(s)), flash, error }),
+      opts,
+    );
+  }
+  if (request.method !== "POST") throw new HttpError(405, "Method not allowed.");
+  const values = await form(request);
+  const back = (problem: string | null, done: string) =>
+    redirect(
+      `/admin/marketplace?${problem ? "error" : "flash"}=${encodeURIComponent(problem ?? done)}`,
+    );
+  if (path === "/admin/marketplace/tokens") {
+    const label = (values.label ?? "").slice(0, 120);
+    if (!label) return back("Say who the token is for.", "");
+    const token = await issueToken(s, label, staff);
+    return page("Workspace token", tokenIssued({ label, token, origin: s.origin }), opts);
+  }
+  let m = /^\/admin\/marketplace\/submissions\/([\w-]+)\/(approve|reject)$/.exec(path);
+  if (m) {
+    const id = m[1] as string;
+    if (m[2] === "approve") return back(await approveSubmission(s, id, staff), "Published.");
+    return back(await rejectSubmission(s, id, staff, values.reason ?? ""), "Rejected.");
+  }
+  m = /^\/admin\/marketplace\/listings\/([\w.-]+)\/delist$/.exec(path);
+  if (m) {
+    const done = await delistPlugin(s, m[1] as string, staff);
+    return back(done ? null : "That plugin is not listed.", "Delisted.");
+  }
+  m = /^\/admin\/marketplace\/tokens\/([\w-]+)\/revoke$/.exec(path);
+  if (m) {
+    const done = await revokeToken(s, m[1] as string, staff);
+    return back(done ? null : "That token is not active.", "Token revoked.");
   }
   throw new HttpError(404, "Not found.");
 }
