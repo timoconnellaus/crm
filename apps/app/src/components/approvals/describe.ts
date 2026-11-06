@@ -4,8 +4,6 @@
 import { getObject, noun, type PreviewEntry } from "@relationship-os/core/client";
 import { diffValue } from "#/lib/format";
 
-export type { PreviewEntry };
-
 export {
   actionTitle,
   noun,
@@ -13,6 +11,7 @@ export {
   outboundTitle,
   verbOf,
 } from "@relationship-os/core/client";
+export type { PreviewEntry };
 
 export type LineKind = "add" | "remove" | "change" | "note";
 

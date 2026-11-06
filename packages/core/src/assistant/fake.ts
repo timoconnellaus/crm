@@ -290,13 +290,15 @@ function scriptedAgent(body: ChatRequestBody): ScriptedReply {
       return { toolCalls: [{ name: "organisation_get", arguments: { id } }] };
     }
     if (!called("organisation_update", id)) {
+      // What it just read: a website already there gets a new value, which waits for review.
+      const found = /"website":"http/.test(textOf(messages.at(-1)?.content)) ? "moved" : "found";
       return {
         toolCalls: [
           {
             name: "organisation_update",
             arguments: {
               id,
-              website: `https://found-${id.slice(-6).toLowerCase()}.example.com`,
+              website: `https://${found}-${id.slice(-6).toLowerCase()}.example.com`,
               reason: "From the company's own site",
             },
           },
@@ -440,7 +442,10 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
   const selection = lineValue(page, "Selected records");
   const reason = `Asked in the assistant: ${text.slice(0, 120)}`;
   // A spoken or typed answer about something waiting (ADR 0345).
-  if (hasTool(body, "decide_approval") && /^(yes|yeah|yep|ok|maybe|i approve|reject|no)\b/i.test(text)) {
+  if (
+    hasTool(body, "decide_approval") &&
+    /^(yes|yeah|yep|ok|maybe|i approve|reject|no)\b/i.test(text)
+  ) {
     const actionIds = latestPending(body);
     if (actionIds.length) {
       return withReasoning({

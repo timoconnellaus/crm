@@ -72,6 +72,7 @@ import {
   loadGeneralSettings,
   memoryForTurn,
   memorySaveOf,
+  orchestratorHint,
   parseFloor,
   personsWordsInThread,
   type RateLimitBinding,
@@ -84,7 +85,6 @@ import {
   scrubText,
   scrubValue,
   spokenTail,
-  orchestratorHint,
   type ThreadClientFrame,
   type ThreadMemoryState,
   type ThreadSearchHit,
@@ -767,9 +767,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
         ),
       ) + 1;
     const now = new Date().toISOString();
-    const [message] = store.append([
-      { turn, role: "assistant", via, parts, createdAt: now },
-    ]);
+    const [message] = store.append([{ turn, role: "assistant", via, parts, createdAt: now }]);
     this.ctx.storage.sql.exec(
       "INSERT INTO thread_turns (turn, status, started_at, finished_at) VALUES (?, 'done', ?, ?)",
       turn,

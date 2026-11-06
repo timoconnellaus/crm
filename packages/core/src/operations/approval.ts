@@ -835,9 +835,7 @@ function beingApplied(
   now: string,
 ): boolean {
   return (
-    row.execution_id !== null &&
-    row.execution_at !== null &&
-    row.execution_at >= leaseCutoff(now)
+    row.execution_id !== null && row.execution_at !== null && row.execution_at >= leaseCutoff(now)
   );
 }
 
@@ -969,10 +967,7 @@ async function approveActions(
       .where("id", "in", jsonList([...targetIds]))
       .where("status", "=", "pending")
       .where((eb) =>
-        eb.or([
-          eb("execution_id", "is", null),
-          eb("execution_at", "<", leaseCutoff(ctx.now)),
-        ]),
+        eb.or([eb("execution_id", "is", null), eb("execution_at", "<", leaseCutoff(ctx.now))]),
       ),
   );
   closeSets(
@@ -1086,22 +1081,18 @@ async function approveActions(
         const user = await loadUser(ctx.db, action.user_id);
         if (!user) throw new ValidationError(`The user ${action.user_id} no longer exists`);
         const granted = parse<string[] | null>(action.granted_permissions, null);
-        await ctx.pipeline.invoke(
-          action.operation,
-          replaceIds(parse(action.input, {}), bindings),
-          {
-            actor: action.actor,
-            user,
-            origin: parse<Origin>(action.origin, { surface: "mcp" }),
-            grantedPermissions: granted as never,
-            approval: {
-              actionId: action.id,
-              approvedBy: approver,
-              provisional: parse(action.provisional, []),
-              preview: replaceIds(parse(action.preview, []), bindings),
-            },
+        await ctx.pipeline.invoke(action.operation, replaceIds(parse(action.input, {}), bindings), {
+          actor: action.actor,
+          user,
+          origin: parse<Origin>(action.origin, { surface: "mcp" }),
+          grantedPermissions: granted as never,
+          approval: {
+            actionId: action.id,
+            approvedBy: approver,
+            provisional: parse(action.provisional, []),
+            preview: replaceIds(parse(action.preview, []), bindings),
           },
-        );
+        });
         const applied = await ctx.db
           .selectFrom("core_pending_action")
           .select(["bindings", "status"])
@@ -1264,10 +1255,7 @@ async function rejectActions(
         .where("status", "=", "pending")
         // Being applied by an approval that got here first: that decision stands.
         .where((eb) =>
-          eb.or([
-            eb("execution_id", "is", null),
-            eb("execution_at", "<", leaseCutoff(ctx.now)),
-          ]),
+          eb.or([eb("execution_id", "is", null), eb("execution_at", "<", leaseCutoff(ctx.now))]),
         ),
     );
     results.push({
@@ -1427,7 +1415,8 @@ export const approvalDecide = defineOperation({
   // The words stay in the person's thread.
   redact: ["words"],
   mcp: { curated: true, title: "Decide on pending changes", toolName: "decide_approval" },
-  auditSummary: (output) => (output.status === "decided" ? { counts: output.counts } : output.reason),
+  auditSummary: (output) =>
+    output.status === "decided" ? { counts: output.counts } : output.reason,
   async handler(input, ctx) {
     const assistant = ctx.actor === "assistant";
     const told = assistant ? viaOfTurn(ctx) : { via: input.via, words: input.words ?? "" };
@@ -1507,11 +1496,7 @@ async function checkWords(
       .where("user_id", "=", ctx.user.id)
       .where("status", "=", "pending")
       .where("expires_at", ">", ctx.now)
-      .where(
-        "id",
-        "not in",
-        jsonList(open.map((r) => r.id)),
-      )
+      .where("id", "not in", jsonList(open.map((r) => r.id)))
       .orderBy("id", "desc")
       .limit(10)
       .execute()

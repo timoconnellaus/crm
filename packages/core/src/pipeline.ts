@@ -743,7 +743,8 @@ async function invokeOnce<O extends AnyOperation>(
   const guard = ctx.approval || ctx.simulate ? undefined : ctx.grantGuard;
   let origin = ctx.origin;
   let guardRouted = false;
-  if (guard && op.risk === "read") {
+  if (guard && (op.risk === "read" || op.bookkeeping)) {
+    // Neither can wait for review: bookkeeping is never queued, so it needs the grant as a read does.
     if (!guard.allowsRead(op)) {
       const error = new ForbiddenError(
         `${op.name} is not part of this agent's grant. Carry on without it, or say what you need in your report.`,
@@ -752,7 +753,7 @@ async function invokeOnce<O extends AnyOperation>(
       await auditAlone({ ...base, gate: decision, outcome: "forbidden", error });
       throw error;
     }
-  } else if (guard && !op.bookkeeping) {
+  } else if (guard) {
     let planned: RecordChange[] = [];
     if (op.risk !== "outbound" && !op.name.startsWith("x.") && guard.needsChanges(op)) {
       try {

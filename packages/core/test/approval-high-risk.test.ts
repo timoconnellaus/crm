@@ -63,11 +63,9 @@ const inChat = (text: string, via = "text") => ({
 });
 
 const decide = (actionId: string, ctx: ReturnType<typeof inChat>) =>
-  invokeByName(
-    "approval.decide",
-    { actionIds: [actionId], decision: "approve" },
-    ctx,
-  ) as Promise<CoreOutput<"approval.decide">>;
+  invokeByName("approval.decide", { actionIds: [actionId], decision: "approve" }, ctx) as Promise<
+    CoreOutput<"approval.decide">
+  >;
 
 beforeEach(async () => {
   person = await createUser("member");

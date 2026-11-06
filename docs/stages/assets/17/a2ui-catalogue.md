@@ -92,6 +92,9 @@ These reuse the dashboard widget renderers, so a chart in chat equals a widget.
 | Agent connection request | "Sam wants to connect assistants", with the proposed rules | Accept, Decline, Edit rules |
 | Agent request | "Sam's agent asks: create a task for Acme follow-up" | Accept, Decline, Ask Sam |
 | Agent-to-agent log entry | What was shared, under which rule, and its Jev verdict | Open log |
+| Agent progress (`agentJob`) | One live card per background agent: how far along, fields filled, "N changes to review" | Stop, Review, Details; paused: Allow $X more |
+| Agent grant (`agentGrant`) | What it can do alone, what it puts aside and its budget, before it starts | Start, Start but ask me for every change, Cancel |
+| Change review (`changeReview`) | An agent's staged changes as one diff, with its reason on each row | Approve or reject each row, Approve all, Reject all |
 
 ## Stage 12–16 flows (when built)
 | Component | Use |

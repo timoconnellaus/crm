@@ -46,8 +46,8 @@ import {
   loadGeneralSettings,
   memoryForAgent,
   parseFloor,
-  pendingOf,
   parseToolOutput,
+  pendingOf,
   type RateLimitBinding,
   RateLimitedError,
   ROLES,
@@ -119,7 +119,9 @@ export class AgentJob extends DurableObject<Cloudflare.Env> {
   get #sql() {
     if (!this.#ready) {
       const sql = this.ctx.storage.sql;
-      sql.exec(`CREATE TABLE IF NOT EXISTS job_meta (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)`);
+      sql.exec(
+        `CREATE TABLE IF NOT EXISTS job_meta (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)`,
+      );
       sql.exec(`CREATE TABLE IF NOT EXISTS job_messages (
         seq INTEGER PRIMARY KEY AUTOINCREMENT,
         message TEXT NOT NULL
@@ -396,7 +398,7 @@ export class AgentJob extends DurableObject<Cloudflare.Env> {
     extra: {
       end?: { state: "done" | "failed" | "stopped" | "paused"; result?: string; error?: string };
       refs?: string[];
-      remind?: boolean;
+      remind?: string;
     } = {},
   ): Promise<string> {
     const usage = this.#meta<JobUsage>("usage") as JobUsage;
@@ -625,7 +627,7 @@ export class AgentJob extends DurableObject<Cloudflare.Env> {
     const spec = this.#meta<JobSpec>("spec") as JobSpec;
     if (!(await this.#pendingCount(spec))) return this.#cleanUp();
     const user = await this.#user(spec.userId);
-    await this.#report(spec, user, { remind: true });
+    await this.#report(spec, user, spec.changeSetId ? { remind: spec.changeSetId } : {});
     await this.#scheduleReminder();
   }
 

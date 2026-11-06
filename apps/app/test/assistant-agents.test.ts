@@ -2,7 +2,7 @@
 // and the spoken approval of 12): the person's AssistantAgent, AgentJob objects with their alarms,
 // the in-process tools and the scripted model, over real D1. The stand-in judge answers
 // `grant.leastPrivilege` and `approval.intent` (AI_FAKE_MODEL).
-import { runInDurableObject } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import type { Principal } from "@relationship-os/auth";
 import {
@@ -10,7 +10,9 @@ import {
   type AssistantThreadState,
   type CoreOutput,
   devJudge,
+  EMPTY_GRANT_USAGE,
   fakeStandIn,
+  grantGuard,
   invokeByName,
   resolveActingUser,
 } from "@relationship-os/core";
@@ -103,7 +105,11 @@ const orgOf = async (m: Member, id: string) =>
   };
 
 const status = async (m: Member, jobId: string) => {
-  const out = (await invokeByName("agent.status", { jobId }, human(m.user))) as CoreOutput<"agent.status">;
+  const out = (await invokeByName(
+    "agent.status",
+    { jobId },
+    human(m.user),
+  )) as CoreOutput<"agent.status">;
   const [job] = out.jobs;
   if (!job) throw new Error("no job");
   return job;
@@ -182,7 +188,7 @@ describe("agents", () => {
       human(m.user),
     )) as CoreOutput<"approval.decide">;
     expect(applied.status).toBe("decided");
-    expect((await orgOf(m, filled.id)).website).toContain("found-");
+    expect((await orgOf(m, filled.id)).website).toContain("moved-");
     expect((await status(m, job.id)).toReview).toBe(0);
   });
 
@@ -256,7 +262,9 @@ describe("what an agent is told and may do", () => {
     const start = started(await research(m, [org.id]));
     await finished(m, start.jobId);
     const sent = JSON.stringify(
-      fakeStandIn.requests.filter((r) => JSON.stringify(r.messages).includes("You are an agent of")),
+      fakeStandIn.requests.filter((r) =>
+        JSON.stringify(r.messages).includes("You are an agent of"),
+      ),
     );
     fakeStandIn.requests = null;
     expect(sent).toContain("I prefer calls before 10");
@@ -298,6 +306,114 @@ describe("what an agent is told and may do", () => {
       human(m.user),
     )) as CoreOutput<"approval.list">;
     expect(pendings.pendingCount).toBeGreaterThan(0);
+
+    // The reminder: the person hears about it, and it comes back while changes wait.
+    const stub = (appEnv as unknown as { AGENT_JOB: DurableObjectNamespace }).AGENT_JOB;
+    const object = stub.get(stub.idFromName(`job:${waiting.jobId}`));
+    await runDurableObjectAlarm(object);
+    const notice = await env.DB.prepare(
+      "SELECT title FROM core_notifications WHERE user_id = ? AND type = 'approval.pending' AND title LIKE '%has changes waiting%'",
+    )
+      .bind(m.user.id)
+      .first<{ title: string }>();
+    expect(notice?.title).toContain("Account research");
+    expect((await stored(waiting.jobId)).alarm).not.toBeNull();
+
+    // Once decided, nothing is left: the next alarm deletes the rest.
+    const job = await status(m, waiting.jobId);
+    await invokeByName(
+      "approval.decide",
+      { changeSetId: job.changeSetId, decision: "reject", via: "tap" },
+      human(m.user),
+    );
+    await runDurableObjectAlarm(object);
+    expect((await stored(waiting.jobId)).tables).toBe(0);
+  });
+
+  it("an awaited agent answers inside the reply, with no card", async () => {
+    const m = await member();
+    const org = await orgIn(m, "Awaited Ltd");
+    const out = (await invokeByName(
+      "agent.start",
+      {
+        title: "Quick look",
+        brief: "Find the website of this organisation and fill it in.",
+        records: [{ object: "organisation", id: org.id }],
+        profile: "researcher",
+        mode: "awaited",
+      },
+      { ...human(m.user), actor: "assistant", judge: devJudge },
+    )) as { status: string; result: string };
+    expect(out.status).toBe("done");
+    expect(out.result).toContain("Researched 1");
+  });
+
+  it("an awaited agent past the limit moves to the background with a card", async () => {
+    const m = await member("admin");
+    const org = await orgIn(m, "Slow Ltd");
+    const before = (await invokeByName(
+      "agent.settings",
+      {},
+      human(m.user),
+    )) as CoreOutput<"agent.settings">;
+    const { defaults: _defaults, ...settings } = before;
+    await invokeByName("agent.updateSettings", { ...settings, awaitSeconds: 1 }, human(m.user));
+    let release = () => {};
+    fakeStandIn.holdAgent = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    try {
+      const out = (await invokeByName(
+        "agent.start",
+        {
+          title: "Slow look",
+          brief: "Find the website of this organisation and fill it in.",
+          records: [{ object: "organisation", id: org.id }],
+          profile: "researcher",
+          mode: "awaited",
+        },
+        { ...human(m.user), actor: "assistant", judge: devJudge },
+      )) as { status: string; jobId: string };
+      expect(out.status).toBe("a2ui_card");
+      expect((await status(m, out.jobId)).mode).toBe("background");
+      release();
+      await finished(m, out.jobId);
+      await vi.waitFor(
+        async () =>
+          expect(JSON.stringify((await state(m.principal)).items)).toContain("Researched"),
+        { timeout: 5_000 },
+      );
+    } finally {
+      release();
+      await invokeByName("agent.updateSettings", settings, human(m.user));
+    }
+  });
+
+  it("cannot reach bookkeeping outside its grant", async () => {
+    const m = await member();
+    const guard = grantGuard({
+      jobId: "job_x",
+      grant: {
+        operations: ["organisation.get"],
+        target: { ids: ["org_x"] },
+        caps: { changes: 0, notes: 0, tasks: 0 },
+        expiresAt: "2099-01-01T00:00:00.000Z",
+      },
+      reviewEverything: false,
+      used: EMPTY_GRANT_USAGE,
+    });
+    await expect(
+      invokeByName(
+        "changeset.begin",
+        { title: "Mine now" },
+        {
+          ...human(m.user),
+          actor: "assistant",
+          origin: { surface: "assistant", sessionId: "job:job_x", jobId: "job_x" },
+          grantGuard: guard,
+        },
+      ),
+    ).rejects.toMatchObject({ code: "forbidden" });
   });
 
   it("brings something outside the grant back as its own card, and carries on", async () => {
@@ -360,10 +476,9 @@ describe("what an agent is told and may do", () => {
         { jobId: out.jobId, decision: "start" },
         human(m.user),
       );
-      await vi.waitFor(
-        async () => expect((await status(m, out.jobId)).state).toBe("paused"),
-        { timeout: 10_000 },
-      );
+      await vi.waitFor(async () => expect((await status(m, out.jobId)).state).toBe("paused"), {
+        timeout: 10_000,
+      });
       fakeStandIn.pricing = null;
       await invokeByName("agent.allowSpend", { jobId: out.jobId, usd: 5 }, human(m.user));
       const job = await finished(m, out.jobId);
@@ -419,7 +534,9 @@ describe("what an agent is told and may do", () => {
       human(m.user),
     )) as { jobId: string };
     await invokeByName("person.erase", { id: person.id }, human(m.user));
-    const row = await env.DB.prepare("SELECT title, brief, records FROM core_agent_job WHERE id = ?")
+    const row = await env.DB.prepare(
+      "SELECT title, brief, records FROM core_agent_job WHERE id = ?",
+    )
       .bind(job.jobId)
       .first<{ title: string; brief: string; records: string }>();
     expect(JSON.stringify(row)).not.toContain(person.displayName);
@@ -436,7 +553,7 @@ describe("approvals in the chat", () => {
   const pendingNote = async (m: Member) => {
     const person = (await invokeByName(
       "person.create",
-      { givenName: "Ade", familyName: `Okafor${Date.now()}${(n += 1)}` },
+      { givenName: "Ade", familyName: `Okafor${Date.now()}${Math.random()}` },
       human(m.user),
     )) as { id: string };
     const events = await turn(m.principal, {
@@ -488,7 +605,9 @@ describe("approvals in the chat", () => {
     const stub = await threadStub(appEnv.ASSISTANT as never, m.user.id);
     const start = await (
       stub as unknown as {
-        startTurn(request: Record<string, unknown>): Promise<{ ok: boolean; stream: ReadableStream }>;
+        startTurn(
+          request: Record<string, unknown>,
+        ): Promise<{ ok: boolean; stream: ReadableStream }>;
       }
     ).startTurn({ userId: m.user.id, text: "yeah do it", via: "voice", spoken: "short" });
     expect(start.ok).toBe(true);
@@ -604,4 +723,3 @@ describe("approvals in the chat", () => {
     ).rejects.toMatchObject({ code: "forbidden" });
   });
 });
-

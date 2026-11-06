@@ -94,7 +94,8 @@ function nextAllowance(job: Job): number {
 
 function headline(job: Job): string {
   const { progress } = job;
-  if (job.state === "queued") return `Waiting for a free slot${job.placeLabel ? `, ${job.placeLabel}` : ""}.`;
+  if (job.state === "queued")
+    return `Waiting for a free slot${job.placeLabel ? `, ${job.placeLabel}` : ""}.`;
   if (job.state === "paused") {
     return `It used its whole spend limit: ${money(job.spentUsd)} of ${money(job.budget.spendUsd)}.`;
   }
@@ -184,7 +185,10 @@ export function AgentJobComponent({ props }: RendererProps<"agentJob">) {
           </Button>
         )}
         {job.toReview > 0 && job.changeSetId && (
-          <LinkButton href={`/approvals?set=${encodeURIComponent(job.changeSetId)}`} label="Review" />
+          <LinkButton
+            href={`/approvals?set=${encodeURIComponent(job.changeSetId)}`}
+            label="Review"
+          />
         )}
         <Button
           size="xs"

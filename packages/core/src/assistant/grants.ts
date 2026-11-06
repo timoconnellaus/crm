@@ -19,12 +19,7 @@ import { ForbiddenError, ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
 import { type Filter, filterSchema } from "../filter.ts";
 import { evaluateGate, type GateFloor } from "../gate.ts";
-import type {
-  AnyOperation,
-  ExtensionCaller,
-  HandlerContext,
-  RecordChange,
-} from "../operation.ts";
+import type { AnyOperation, ExtensionCaller, HandlerContext, RecordChange } from "../operation.ts";
 import { type ActingUser, type Actor, roleHasPermission } from "../principals.ts";
 import { loadApprovalPolicy } from "../settings.ts";
 import { recordMatches } from "./memory.ts";

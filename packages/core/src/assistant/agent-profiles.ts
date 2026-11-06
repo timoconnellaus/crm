@@ -133,6 +133,5 @@ export const SHIPPED_AGENT_PROFILES: readonly AgentProfile[] = [
 ];
 
 /** Every profile this deployment can start. */
-export const agentProfiles: AgentProfileRegistry = createAgentProfileRegistry(
-  SHIPPED_AGENT_PROFILES,
-);
+export const agentProfiles: AgentProfileRegistry =
+  createAgentProfileRegistry(SHIPPED_AGENT_PROFILES);

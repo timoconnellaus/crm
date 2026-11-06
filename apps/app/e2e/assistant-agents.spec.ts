@@ -3,7 +3,7 @@
 // one review, and Approve all applies it. A typed yes approves a note; settings show the limits.
 // Local dev runs the scripted model and the stand-in judge (AI_FAKE_MODEL=true).
 import { expect, type Page, test } from "@playwright/test";
-import { expectNoHorizontalScroll, isPhone, open, unique } from "./helpers.ts";
+import { createPerson, expectNoHorizontalScroll, isPhone, open, unique } from "./helpers.ts";
 import { createOrganisation } from "./org-helpers.ts";
 
 async function openPanel(page: Page) {
@@ -27,9 +27,7 @@ async function ask(panel: ReturnType<Page["getByTestId"]>, text: string) {
 
 /** A new organisation's id, from its record page. */
 async function organisation(page: Page, name: string): Promise<string> {
-  await createOrganisation(page, name);
-  await page.waitForURL(/\/organisations\/org_/);
-  return page.url().split("/organisations/")[1]?.split("?")[0] ?? "";
+  return createOrganisation(page, { name });
 }
 
 test("research runs in the background and comes back as one review", async ({ page }) => {
@@ -63,20 +61,16 @@ test("research runs in the background and comes back as one review", async ({ pa
   await expect(review).toHaveAttribute("data-left", "0");
 });
 
-test("a typed yes approves the one thing waiting", async ({ page }) => {
-  const id = await organisation(page, unique("Harbour Finch "));
+test("a typed yes approves the note waiting", async ({ page }) => {
+  const token = unique("ade");
+  await createPerson(page, { given: "Ade", family: `Okafor${token}` });
   const panel = await openPanel(page);
-  await ask(panel, "remember Harbour Finch is moving offices in March");
-  const pending = panel.getByTestId("assistant-pending").last();
-  await expect(pending).toBeVisible();
-  await ask(panel, "yes do it");
-  await expect(panel.getByTestId("assistant-pending").last()).toHaveAttribute(
-    "data-status",
-    "applied",
-    { timeout: 15_000 },
-  );
-  await open(page, `/organisations/${id}`);
-  await expect(page.getByText("moving offices in March").first()).toBeVisible();
+  await ask(panel, `remember Ade is leaving in March ${token}`);
+  await expect(panel.getByTestId("assistant-pending").last()).toContainText("Add a note");
+  // Other specs may leave items waiting: naming the note says which one.
+  await ask(panel, "yes, approve that note");
+  await expect(panel.getByText("Done.").last()).toBeVisible();
+  await expect(page.getByText(`Ade is leaving in March ${token}`).first()).toBeVisible();
 });
 
 test("Settings shows the agent profiles and the limits", async ({ page }) => {

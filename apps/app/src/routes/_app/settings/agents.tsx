@@ -171,7 +171,9 @@ function ProfilesCard() {
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{profile.label}</span>
-                  {profile.source !== "shipped" && <Badge variant="outline">{profile.source}</Badge>}
+                  {profile.source !== "shipped" && (
+                    <Badge variant="outline">{profile.source}</Badge>
+                  )}
                 </div>
                 <p>{profile.description}</p>
                 <p className="text-xs text-muted-foreground">

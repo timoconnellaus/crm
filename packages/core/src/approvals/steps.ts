@@ -71,12 +71,11 @@ export async function secondSteps(
     const input = (row.input ?? {}) as Partial<OutboundInput>;
     const record = single.get(row.id);
     const name = record ? names.get(`${record.object}:${record.id}`) : undefined;
-    const title =
-      row.outbound
-        ? outboundTitle(input)
-        : name
-          ? `${verbOf(row.operation)} ${name}`
-          : actionTitle(row.operation, row.preview, input);
+    const title = row.outbound
+      ? outboundTitle(input)
+      : name
+        ? `${verbOf(row.operation)} ${name}`
+        : actionTitle(row.operation, row.preview, input);
     out.set(
       row.id,
       secondStep(

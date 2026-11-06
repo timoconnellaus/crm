@@ -2,12 +2,13 @@
 // agents. In code they are jobs. `agent.start` checks the grant in code (never wider than the
 // starter), asks the judge whether it fits the brief, and queues the job; the AgentJob object does
 // the work and reports through `agent.report`. People can stop an agent, not chat with it.
-import { type JobBudget, ordinal } from "@relationship-os/agent-core";
+
 import { a2uiPartSchema, prepareCard } from "@relationship-os/agent-a2ui";
+import { type JobBudget, ordinal } from "@relationship-os/agent-core";
 import type { AgentJobState, CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
-import { MODEL_ROLES, type ModelRole, isModelRole } from "../ai/roles.ts";
+import { isModelRole, MODEL_ROLES, type ModelRole } from "../ai/roles.ts";
 import {
   AGENT_SETTINGS,
   agentSettingsSchema,
@@ -265,7 +266,10 @@ function grantCard(job: {
         title: job.title,
         brief: job.brief.slice(0, 2_000),
         can: grantWords(job.grant),
-        aside: ["Changing a value that's already filled in", "Anything else, like emails or deleting"],
+        aside: [
+          "Changing a value that's already filled in",
+          "Anything else, like emails or deleting",
+        ],
         budget: `${budgetWords(job.budget)} Runs in the background, so you can keep chatting.`,
         ...(job.note ? { note: job.note } : {}),
       },
@@ -696,7 +700,12 @@ export const agentReport = defineOperation({
       })
       .optional(),
     refs: z.array(z.string().max(100)).max(100).default([]),
-    remind: z.boolean().default(false).describe("Tell the person changes are still waiting"),
+    remind: z
+      .string()
+      .startsWith("chs_")
+      .max(64)
+      .optional()
+      .describe("Tell the person this change set is still waiting"),
   }),
   output: z.object({ state: z.enum(JOB_STATES) }),
   permission: "records:read",
@@ -740,6 +749,7 @@ export const agentReport = defineOperation({
       }
     }
     if (input.remind) {
+      const changeSetId = input.remind;
       const plan = await notifyStatements(
         ctx.db,
         {
@@ -747,7 +757,7 @@ export const agentReport = defineOperation({
           type: "approval.pending",
           title: `${row.title} has changes waiting for you`,
           body: "Review them in the Approvals inbox.",
-          link: { kind: "approval", changeSetId: "" },
+          link: { kind: "approval", changeSetId },
           dedupeKey: `agent-review:${row.id}:${ctx.now.slice(0, 10)}`,
           source: { actor: "assistant", userId: row.user_id },
         },

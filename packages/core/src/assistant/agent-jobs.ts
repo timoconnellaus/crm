@@ -9,7 +9,7 @@ import { ConfigError } from "../errors.ts";
 import { errorForLog } from "../log.ts";
 import type { HandlerContext } from "../operation.ts";
 import { chunk, jsonList } from "../records/common.ts";
-import { emailRef, mentions, type ConversationScrub, scrubPattern, scrubText } from "./scrub.ts";
+import { type ConversationScrub, emailRef, mentions, scrubPattern, scrubText } from "./scrub.ts";
 
 /** The row in core_settings (admin settings, ADR 0344). */
 export const AGENT_SETTINGS = "agents";
