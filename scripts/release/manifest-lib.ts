@@ -130,6 +130,13 @@ export function readDeployablePackages(root: string): DeployablePackage[] {
       }
       if (inputsText !== null) {
         const inputs = JSON.parse(inputsText);
+        // Bindings for local development only (scripts/deploy.mjs leaves them out too).
+        const devOnly = new Set<string>(inputs.devOnly?.services ?? []);
+        if (config.services) {
+          config.services = config.services.filter(
+            (service: { binding: string }) => !devOnly.has(service.binding),
+          );
+        }
         inputSecrets = inputs.secrets ?? [];
         vectorize = inputs.vectorize ?? {};
         features = inputs.features ?? {};

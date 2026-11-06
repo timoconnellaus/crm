@@ -48,19 +48,13 @@
   // first deploy, like the D1 database.
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
   // The in-app assistant (ADR 0340): one AssistantAgent Durable Object per user (`user:<id>`),
-  // on the Agents SDK, with SQLite storage for the thread and hibernatable WebSockets. v2 replaces
-  // the per-conversation objects of ADR 0200 and deletes their storage.
+  // on the Agents SDK, with SQLite storage for the thread and hibernatable WebSockets.
   "durable_objects": {
     "bindings": [{ "name": "ASSISTANT", "class_name": "AssistantAgent" }]
   },
-  "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["AssistantConversation"] },
-    {
-      "tag": "v2",
-      "new_sqlite_classes": ["AssistantAgent"],
-      "deleted_classes": ["AssistantConversation"]
-    }
-  ],
+  // Tagged with the last of the history it replaced (ADR 0352): a new account never had the
+  // per-conversation class of ADR 0200 that v1 created and v2 deleted.
+  "migrations": [{ "tag": "v2", "new_sqlite_classes": ["AssistantAgent"] }],
   // Workers Rate Limiting (ADR 0056, docs/deploying.md). Limits are per Cloudflare location and
   // approximate; change them here and redeploy. namespace_id must be an integer unique within
   // the account: change these if another Worker in your account already uses them.

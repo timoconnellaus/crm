@@ -2,10 +2,16 @@
 // Deploys a whole deployment to the Cloudflare account wrangler is logged in to (or that
 // CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID point at):
 //
-//   1. the Vectorize index for semantic search (when AI is on and the index does not exist yet),
-//   2. ros-runner (wrangler provisions the `ros` D1 database by name on a fresh account),
+//   0. checks that stop a first deploy before it changes anything, and ros-runner's generated
+//      modules (apps/runner/src/generated is gitignored, so a fresh checkout has none),
+//   1. what wrangler will not create by itself, idempotently: every queue both Workers name
+//      (producers, consumers and dead-letter queues), the OAUTH_KV namespace, and the Vectorize
+//      index for semantic search (when AI is on),
+//   2. ros-runner (wrangler provisions the `ros` D1 database and `ros-blobs` by name),
 //   3. core migrations on that database,
 //   4. ros-app (bound to the same database and to ros-runner).
+//
+// Every step looks before it creates, so a first deploy that stops part way can simply be re-run.
 //
 // In-app AI (ADRs 0150-0155) is on by default: both Workers get an `ai` binding (Workers AI) and
 // a `vectorize` binding (`ros-records`). Neither runs locally, so the committed
@@ -18,10 +24,17 @@
 // This deployment's model roles (ADR 0192), also written into wrangler.deploy.jsonc, so nothing is
 // committed: ROS_AI_MODEL_ROLES is a preset (`deepseek-flash`), a JSON file, inline JSON or
 // `default`, and becomes AI_MODEL_ROLES on both Workers. ROS_AI_GATEWAY_BYOK lists providers whose
-// key is stored in AI Gateway (e.g. `deepseek`) and becomes AI_GATEWAY_BYOK.
+// key is stored in AI Gateway (e.g. `deepseek`) and becomes AI_GATEWAY_BYOK. ROS_AI_GATEWAY_ID
+// (with CLOUDFLARE_ACCOUNT_ID) sends every model call through that gateway, and
+// ROS_AI_GATEWAY_REST=true takes Workers AI over REST through it (ADR 0330). All of these become
+// vars, and a deploy without them resets the vars, so keep them in one env file.
 //
-// ros-app's secrets are read from the environment (see docs/deploying.md). They are passed with
-// --secrets-file, which a first deploy needs; later deploys keep the secrets already set.
+// `deploy-inputs.json` `devOnly.services` names service bindings for local development only
+// (GATEKEEPER_FAKE, ros-runner bound to itself); they are left out of the generated config.
+//
+// Secrets are read from the environment (see docs/first-deploy.md) and passed with --secrets-file,
+// which a first deploy needs; later deploys keep the secrets already set. APP_SECRETS go on ros-app
+// and SHARED_SECRETS on both Workers, because ros-runner makes model calls too.
 //
 // A deployment made from source before the rename to Relationship OS (ADR 0190) has Workers
 // `crm-app` / `crm-runner`, the D1 database `crm` and `crm-*` resources. Renaming a deployed
@@ -67,6 +80,16 @@ async function aiVars() {
   }
   const byok = process.env.ROS_AI_GATEWAY_BYOK?.trim();
   if (byok !== undefined) vars.AI_GATEWAY_BYOK = byok;
+  const gateway = process.env.ROS_AI_GATEWAY_ID?.trim();
+  const account = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
+  if (gateway) {
+    if (!account) throw new Error("ROS_AI_GATEWAY_ID needs CLOUDFLARE_ACCOUNT_ID");
+    vars.AI_GATEWAY_ID = gateway;
+  }
+  // Settings → AI's Cloudflare API calls need the account id with or without a gateway.
+  if (account) vars.CLOUDFLARE_ACCOUNT_ID = account;
+  const rest = process.env.ROS_AI_GATEWAY_REST?.trim();
+  if (rest) vars.AI_GATEWAY_REST = rest;
   return vars;
 }
 const extraVars = aiOn ? await aiVars() : {};
@@ -78,13 +101,27 @@ const APP_SECRETS = [
   "GOOGLE_CLIENT_SECRET",
   "CF_ACCESS_TEAM_DOMAIN",
   "CF_ACCESS_AUD",
+  "ROS_UPDATE_TOKEN",
+];
+// Both Workers call models: ros-runner for automations, summaries, the judge and embeddings.
+const SHARED_SECRETS = [
   // An authenticated AI Gateway's token (cf-aig-authorization).
   "AI_GATEWAY_TOKEN",
+  "AI_KEY_OPENAI",
+  "AI_KEY_GOOGLE",
+  "AI_KEY_OPENROUTER",
+  "AI_KEY_DEEPSEEK",
+  "AI_KEY_ANTHROPIC",
+  "AI_KEY_CUSTOM",
+  "AI_KEY_ASSEMBLYAI",
+  "TYPESAFE_API_KEY",
 ];
 // Settings → AI (ADR 0151) stores provider keys as Workers secrets and reads AI Gateway usage
 // with its own narrowly scoped token. It is read from ROS_AI_ADMIN_TOKEN (not the deploy token
 // in CLOUDFLARE_API_TOKEN) and set as ros-app's CLOUDFLARE_API_TOKEN secret.
 const RENAMED_SECRETS = { ROS_AI_ADMIN_TOKEN: "CLOUDFLARE_API_TOKEN" };
+// Local stand-ins (.dev.vars). The committed values are off; this catches a fork's edit.
+const DEV_ONLY_VARS = ["AI_FAKE_MODEL", "AI_FAKE_VOICE", "INTEGRATIONS_FAKE_PROVIDER"];
 
 function run(cwd, command, args, env = {}) {
   console.log(`\n$ (${cwd}) ${command} ${args.join(" ")}`);
@@ -126,8 +163,8 @@ const deployInputs = (app) =>
   JSON.parse(readFileSync(join(root, app, "deploy-inputs.json"), "utf8"));
 
 /**
- * Writes <app>/wrangler.deploy.jsonc: wrangler.jsonc plus the AI bindings and this deployment's
- * AI vars. Returns its name.
+ * <app>'s wrangler.jsonc for this deployment: its deployed names, the AI bindings and this
+ * deployment's AI vars, without the bindings for local development.
  */
 function deployConfig(app) {
   let config = parseJsonc(readFileSync(join(root, app, "wrangler.jsonc"), "utf8"));
@@ -141,18 +178,54 @@ function deployConfig(app) {
         .replace(/crm-app,ros-runner/g, "crm-app,crm-runner"),
     );
   }
-  const feature = aiOn ? (deployInputs(app).features?.ai ?? {}) : {};
+  const inputs = deployInputs(app);
+  const devOnly = new Set(inputs.devOnly?.services ?? []);
+  if (config.services) {
+    config.services = config.services.filter((service) => !devOnly.has(service.binding));
+  }
+  const feature = aiOn ? (inputs.features?.ai ?? {}) : {};
   if (feature.ai) config.ai = feature.ai;
   if (feature.vectorize) {
     config.vectorize = feature.vectorize.map((index) => ({ ...index, index_name: indexName }));
   }
   if (Object.keys(extraVars).length) config.vars = { ...config.vars, ...extraVars };
+  const origin = process.env.BETTER_AUTH_URL?.trim();
+  if (origin && "APP_ORIGIN" in (config.vars ?? {})) config.vars.APP_ORIGIN = origin;
+  for (const name of DEV_ONLY_VARS) {
+    if (config.vars?.[name] === "true") {
+      throw new Error(`${app}/wrangler.jsonc: ${name} is for local development only`);
+    }
+  }
+  return config;
+}
+
+/** Writes <app>/wrangler.deploy.jsonc from deployConfig. Returns its name. */
+function writeDeployConfig(app, config) {
   const file = "wrangler.deploy.jsonc";
   writeFileSync(
     join(root, app, file),
-    `// Generated by scripts/deploy.mjs from wrangler.jsonc, with the AI bindings. Do not edit.\n${JSON.stringify(config, null, 2)}\n`,
+    `// Generated by scripts/deploy.mjs from wrangler.jsonc. Do not edit.\n${JSON.stringify(config, null, 2)}\n`,
   );
   return file;
+}
+
+/** Every queue a config names: producers, consumers and dead-letter queues. */
+function queuesOf(config) {
+  const { producers = [], consumers = [] } = config.queues ?? {};
+  return [
+    ...producers.map((p) => p.queue),
+    ...consumers.flatMap((c) => [c.queue, c.dead_letter_queue]),
+  ].filter(Boolean);
+}
+
+function wranglerJson(cwd, args) {
+  const out = execFileSync("pnpm", ["exec", "wrangler", ...args], {
+    cwd: join(root, cwd),
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+    env: { ...process.env, CI: "true" },
+  });
+  return JSON.parse(out.slice(out.indexOf("[")));
 }
 
 function wranglerOk(cwd, args) {
@@ -169,9 +242,12 @@ function wranglerOk(cwd, args) {
 }
 
 // 0. A pre-rename deployment must keep its names (see the top of this file).
-if (!legacyNames && !dryRun) {
-  const exists = (name) => wranglerOk("apps/app", ["deployments", "list", "--name", name]);
-  if (exists("crm-app") && !exists("ros-app")) {
+const appConfigObject = deployConfig("apps/app");
+const runnerConfigObject = deployConfig("apps/runner");
+const exists = (name) => wranglerOk("apps/app", ["deployments", "list", "--name", name]);
+if (!dryRun) {
+  const appExists = exists(appConfigObject.name);
+  if (!legacyNames && !appExists && exists("crm-app")) {
     console.error(
       "\nThis account has a deployment from before the rename (crm-app) and no ros-app. Deploying\n" +
         "would create a second, empty deployment. Re-run with ROS_LEGACY_NAMES=on to update it in\n" +
@@ -179,25 +255,67 @@ if (!legacyNames && !dryRun) {
     );
     process.exit(1);
   }
+  // wrangler would only refuse at the very end, after everything else had been created.
+  if (!appExists && (process.env.BETTER_AUTH_SECRET ?? "").length < 32) {
+    console.error(
+      "\nA first deploy needs BETTER_AUTH_SECRET, at least 32 characters. Generate one with\n" +
+        "`openssl rand -hex 32`, keep it in your env file and run this again (docs/first-deploy.md).",
+    );
+    process.exit(1);
+  }
 }
 
-// 1. The Vectorize index (ADR 0154). Its dimensions must match the embed role's model (384 for
+// ros-runner's generated modules (the SDK bundle, shipped extensions, the checker).
+run("apps/runner", "node", ["scripts/bundle.mjs"]);
+
+// 1a. Queues. wrangler creates a producer's queue, but not a dead-letter queue, and it refuses a
+// consumer's queue that does not exist.
+for (const queue of new Set([...queuesOf(runnerConfigObject), ...queuesOf(appConfigObject)])) {
+  if (dryRun) console.log(`\n(dry run: would create queue ${queue} if missing)`);
+  else if (!wranglerOk("apps/app", ["queues", "info", queue])) {
+    wrangler("apps/app", ["queues", "create", queue]);
+  }
+}
+
+// 1b. OAUTH_KV. wrangler creates it on a first deploy but fails on the title if that deploy is
+// re-run after the namespace was made, so find it by title, as create-relationship-os does.
+for (const kv of appConfigObject.kv_namespaces ?? []) {
+  const title = `${appConfigObject.name}-${kv.binding.toLowerCase().replace(/_/g, "-")}`;
+  if (dryRun) {
+    console.log(`\n(dry run: would create KV namespace ${title} if missing)`);
+    continue;
+  }
+  const find = () =>
+    wranglerJson("apps/app", ["kv", "namespace", "list"]).find((n) => n.title === title);
+  if (!find()) wrangler("apps/app", ["kv", "namespace", "create", title]);
+  kv.id = find()?.id;
+  if (!kv.id) throw new Error(`KV namespace ${title} was not created`);
+}
+
+// 1c. The Vectorize index (ADR 0154). Its dimensions must match the embed role's model (384 for
 // the shipped bge-small-en-v1.5) and VECTORIZE_DIMENSIONS; the `object` metadata index lets
 // queries filter by object type.
-let runnerConfig = [];
-let appConfigEnv = {};
 if (aiOn) {
   const index = deployInputs("apps/app").vectorize["ros-records"];
   if (dryRun) console.log(`\n(dry run: would create Vectorize index ${indexName} if missing)`);
-  else if (!wranglerOk("apps/app", ["vectorize", "get", indexName])) {
-    wrangler("apps/app", [
+  else {
+    if (!wranglerOk("apps/app", ["vectorize", "get", indexName])) {
+      wrangler("apps/app", [
+        "vectorize",
+        "create",
+        indexName,
+        `--dimensions=${index.dimensions}`,
+        `--metric=${index.metric}`,
+      ]);
+    }
+    const have = wranglerJson("apps/app", [
       "vectorize",
-      "create",
+      "list-metadata-index",
       indexName,
-      `--dimensions=${index.dimensions}`,
-      `--metric=${index.metric}`,
-    ]);
+      "--json",
+    ]).map((meta) => meta.propertyName);
     for (const meta of index.metadataIndexes ?? []) {
+      if (have.includes(meta.propertyName)) continue;
       wrangler("apps/app", [
         "vectorize",
         "create-metadata-index",
@@ -210,17 +328,41 @@ if (aiOn) {
 } else {
   console.log("\nROS_AI=off: deploying without Workers AI and Vectorize bindings");
 }
-let appConfig = [];
-if (aiOn || legacyNames) {
-  // ros-runner's automation events consumer embeds changed records (ADR 0154 amendment).
-  runnerConfig = ["--config", deployConfig("apps/runner")];
-  const file = deployConfig("apps/app");
-  appConfig = ["--config", file];
-  appConfigEnv = { ROS_WRANGLER_CONFIG: file };
+const runnerFile = writeDeployConfig("apps/runner", runnerConfigObject);
+const appFile = writeDeployConfig("apps/app", appConfigObject);
+const runnerConfig = ["--config", runnerFile];
+const appConfig = ["--config", appFile];
+const appConfigEnv = { ROS_WRANGLER_CONFIG: appFile };
+
+/** `--secrets-file <tmp>` for these values, with a cleanup. Nothing when there are none. */
+function secretsArgs(worker, secrets) {
+  if (Object.keys(secrets).length === 0) return { args: [], cleanup() {} };
+  const dir = mkdtempSync(join(tmpdir(), "ros-deploy-"));
+  const file = join(dir, "secrets.json");
+  writeFileSync(file, JSON.stringify(secrets), { mode: 0o600 });
+  console.log(`\nsetting ${worker} secrets: ${Object.keys(secrets).join(", ")}`);
+  return {
+    args: ["--secrets-file", file],
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  };
 }
 
+const fromEnv = (names) =>
+  Object.fromEntries(names.filter((n) => process.env[n]).map((n) => [n, process.env[n]]));
+const sharedSecrets = fromEnv(SHARED_SECRETS);
+
 // 2. ros-runner first: ros-app's service binding needs it, and it provisions the D1 database.
-wrangler("apps/runner", ["deploy", ...runnerConfig, ...(dryRun ? ["--dry-run"] : [])]);
+const runnerSecrets = secretsArgs(runnerConfigObject.name, sharedSecrets);
+try {
+  wrangler("apps/runner", [
+    "deploy",
+    ...runnerConfig,
+    ...runnerSecrets.args,
+    ...(dryRun ? ["--dry-run"] : []),
+  ]);
+} finally {
+  runnerSecrets.cleanup();
+}
 
 // 3. Core migrations, before ros-app serves traffic.
 if (dryRun) console.log("\n(dry run: skipping `wrangler d1 migrations apply DB --remote`)");
@@ -228,23 +370,20 @@ else wrangler("apps/app", ["d1", "migrations", "apply", "DB", "--remote", ...app
 
 // 4. ros-app. The Vite build writes the deploy config (with the AI bindings) into dist/.
 run("apps/app", "pnpm", ["exec", "vite", "build"], appConfigEnv);
-const secrets = Object.fromEntries([
-  ...APP_SECRETS.filter((name) => process.env[name]).map((name) => [name, process.env[name]]),
-  ...Object.entries(RENAMED_SECRETS)
-    .filter(([from]) => process.env[from])
-    .map(([from, to]) => [to, process.env[from]]),
-]);
-const args = ["deploy", ...(dryRun ? ["--dry-run"] : [])];
-let secretsDir;
-if (Object.keys(secrets).length > 0) {
-  secretsDir = mkdtempSync(join(tmpdir(), "ros-deploy-"));
-  const file = join(secretsDir, "secrets.json");
-  writeFileSync(file, JSON.stringify(secrets), { mode: 0o600 });
-  args.push("--secrets-file", file);
-  console.log(`\nsetting ros-app secrets: ${Object.keys(secrets).join(", ")}`);
-}
+const appSecrets = secretsArgs(appConfigObject.name, {
+  ...fromEnv(APP_SECRETS),
+  ...sharedSecrets,
+  ...Object.fromEntries(
+    Object.entries(RENAMED_SECRETS)
+      .filter(([from]) => process.env[from])
+      .map(([from, to]) => [to, process.env[from]]),
+  ),
+});
 try {
-  wrangler("apps/app", args);
+  wrangler("apps/app", ["deploy", ...appSecrets.args, ...(dryRun ? ["--dry-run"] : [])]);
 } finally {
-  if (secretsDir) rmSync(secretsDir, { recursive: true, force: true });
+  appSecrets.cleanup();
+}
+if (!dryRun) {
+  console.log("\nDeployed. Check it with: node scripts/smoke-deployment.mjs <url>");
 }
