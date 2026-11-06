@@ -30,6 +30,7 @@ import {
 } from "../components/assistant/assistant-provider.tsx";
 import { SHELL_HEADER_HEIGHT } from "../components/assistant/dock-state.ts";
 import { ThreadProvider, useThreadUnread } from "../components/assistant/thread-provider.tsx";
+import { VoiceProvider } from "../components/assistant/voice.tsx";
 import { CommandPalette } from "../components/command-palette.tsx";
 import { NotificationBell } from "../components/notifications/notification-bell.tsx";
 import { CreateOrganisationDialog } from "../components/organisations/create-organisation-dialog.tsx";
@@ -71,6 +72,7 @@ function AppLayout() {
     <AppCommandsProvider>
       <AssistantProvider>
         <ThreadProvider>
+          <VoiceProvider>
           <a
             href="#main"
             className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
@@ -93,6 +95,7 @@ function AppLayout() {
             <AssistantPanel canApprove={user.role !== "viewer"} />
           </SidebarProvider>
           <AppOverlays />
+          </VoiceProvider>
         </ThreadProvider>
       </AssistantProvider>
     </AppCommandsProvider>

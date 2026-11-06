@@ -7,6 +7,7 @@ import type {
   AssistantPending,
   TranscriptItem,
 } from "@relationship-os/core/client";
+import { splitSpoken } from "@relationship-os/agent-voice/text";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
 import { Input } from "@relationship-os/ui/components/input";
@@ -19,6 +20,7 @@ import {
   CircleAlertIcon,
   FlaskConicalIcon,
   LoaderCircleIcon,
+  MicIcon,
   SearchIcon,
   SendIcon,
   SquareIcon,
@@ -31,6 +33,7 @@ import { toast } from "sonner";
 import { Markdown } from "#/components/markdown";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
 import type { ThreadView } from "./thread-provider.tsx";
+import { DictationButton, DictationStatus, useComposerDictation, VoiceBar } from "./voice.tsx";
 
 /** A tool call's name for people: `person_get` → "person get", call_operation → its operation. */
 function toolLabel(item: Extract<TranscriptItem, { kind: "tool" }>): string {
@@ -178,6 +181,38 @@ function ToolItem({
   );
 }
 
+/** Under a spoken reply: what was said aloud, and how much of it was heard (ADR 0349). */
+function SpokenLine({
+  say,
+  item,
+}: {
+  say: string | null;
+  item: Extract<TranscriptItem, { kind: "assistant" }>;
+}) {
+  const playout = item.playout;
+  if (!item.spoken && !say) return null;
+  return (
+    <div className="mt-1 space-y-1 text-xs text-muted-foreground" data-testid="assistant-spoken">
+      {say ? (
+        <p>
+          <span className="font-medium">Said:</span> {say}
+        </p>
+      ) : (
+        playout?.state === "spoken" && <p>Said all of it.</p>
+      )}
+      {playout?.state === "partly_spoken" && (
+        <p data-testid="assistant-partly-heard">
+          <Badge variant="outline" className="mr-1 font-normal">
+            Partly heard
+          </Badge>
+          You spoke over the rest, so I'll treat only the first part as heard.
+        </p>
+      )}
+      {playout?.state === "unspoken" && <p>You spoke over this before hearing it.</p>}
+    </div>
+  );
+}
+
 /** "Today", "Yesterday", or the date, for the divider before a new day's messages. */
 function dayLabel(at: string): string {
   const day = new Date(at);
@@ -282,7 +317,16 @@ export function Transcript({
                 data-testid="assistant-user"
                 {...seqAttr}
               >
-                <div className="max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm whitespace-pre-wrap text-primary-foreground">
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm whitespace-pre-wrap text-primary-foreground",
+                    item.via === "voice" && "italic",
+                  )}
+                  data-via={item.via ?? "text"}
+                >
+                  {item.via === "voice" && (
+                    <MicIcon className="mr-1.5 inline size-3.5" role="img" aria-label="Spoken" />
+                  )}
                   {item.text}
                 </div>
                 <Meta
@@ -295,15 +339,18 @@ export function Transcript({
               </li>
             );
             break;
-          case "assistant":
+          case "assistant": {
+            const { say, shown } = splitSpoken(item.text);
             row = (
               <li className="group/msg" data-testid="assistant-reply" {...seqAttr}>
                 <span className="sr-only">{name}: </span>
-                <Markdown>{item.text}</Markdown>
+                <Markdown>{shown || say || ""}</Markdown>
+                <SpokenLine say={shown ? say : null} item={item} />
                 <Meta at={item.at} seq={item.seq} onDelete={onDelete} label={`${name}'s reply`} />
               </li>
             );
             break;
+          }
           case "tool":
             row = (
               <li {...seqAttr}>
@@ -514,18 +561,27 @@ export function Composer({
   autoFocus?: boolean | number;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const dictation = useComposerDictation({ draft, onDraftChange, context });
   useEffect(() => {
     if (autoFocus) ref.current?.focus();
   }, [autoFocus]);
 
   async function submit() {
     const text = draft.trim();
-    if (!text || conversation.running) return;
+    if (!text || conversation.running || dictation.listening) return;
+    const dictated = dictation.dictated;
     onDraftChange("");
-    await conversation.send(text, context);
+    dictation.clear();
+    await conversation.send(text, context, dictated ? { dictated } : undefined);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Escape" && dictation.listening) {
+      event.preventDefault();
+      event.stopPropagation();
+      dictation.cancel();
+      return;
+    }
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       void submit();
@@ -540,11 +596,14 @@ export function Composer({
         void submit();
       }}
     >
+      <VoiceBar />
       <ContextChip context={context} />
+      <DictationStatus dictation={dictation} />
       <div className="flex items-end gap-2">
         <Textarea
           ref={ref}
-          value={draft}
+          value={dictation.listening ? dictation.shown : draft}
+          readOnly={dictation.listening}
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={onKeyDown}
           placeholder={`Ask ${name}…`}
@@ -553,6 +612,7 @@ export function Composer({
           className="max-h-40 min-h-10 resize-none"
           data-testid="assistant-input"
         />
+        <DictationButton dictation={dictation} />
         {conversation.running ? (
           <Button
             type="button"

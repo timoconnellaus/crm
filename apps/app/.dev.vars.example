@@ -31,3 +31,6 @@ ROS_UPDATE_TOKEN=
 # AI_KEY_OPENAI=
 # Voice (speech roles transcribe and speak, ADR 0351): off until set.
 # AI_KEY_ASSEMBLYAI=
+# Local only, never in production: "true" uses stand-in speech (no key, no network), even with
+# the key above. `pnpm dev` adds it when there is no key.
+# AI_FAKE_VOICE=

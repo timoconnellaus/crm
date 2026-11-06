@@ -44,6 +44,7 @@ export default mergeConfig(
           // The scripted stand-ins answer every model role (the assistant's conversation object
           // reads its env from here; tests that need "no AI" pass their own env).
           AI_FAKE_MODEL: "true",
+          AI_FAKE_VOICE: "true",
           ...liveVoiceBindings(),
         },
         serviceBindings: { RUNNER: "ros-runner" },

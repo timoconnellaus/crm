@@ -11,6 +11,7 @@ import {
   GavelIcon,
   LifeBuoyIcon,
   ListOrderedIcon,
+  MicIcon,
   PlugIcon,
   PlugZapIcon,
   PuzzleIcon,
@@ -47,6 +48,7 @@ function Section({
     | "/settings/storage"
     | "/settings/updates"
     | "/settings/ai"
+    | "/settings/voice"
     | "/settings/general"
     | "/settings/automations"
     | "/settings/plan"
@@ -124,6 +126,12 @@ function SettingsPage() {
             title="General"
             description="Organisation name, logo, timezone and base currency; setup and sample data."
             to="/settings/general"
+          />
+          <Section
+            icon={<MicIcon className="size-5" />}
+            title="Voice"
+            description="How the assistant sounds and how you talk to it."
+            to="/settings/voice"
           />
           <Section
             icon={<ShieldCheckIcon className="size-5" />}

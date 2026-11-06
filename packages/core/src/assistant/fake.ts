@@ -292,9 +292,11 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
     const [object, id] = record.split(/\s+/);
     if (object && id) return withReasoning({ toolCalls: [readTool(object, id, body)] });
   }
+  // A spoken turn on a visible screen asks for a short spoken version first (ADR 0349).
+  const say = /<say>…<\/say>/.test(page) ? "<say>Here is the short version.</say>\n" : "";
   return withReasoning({
     content:
-      `I'm ${name}. I can look up and change records, build dashboards and widgets, and write ` +
+      `${say}I'm ${name}. I can look up and change records, build dashboards and widgets, and write ` +
       'extensions and automations for approval. Try "Create a task to call Ada tomorrow".',
   });
 }

@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
     "./react": "./src/react.ts",
-    "./fake": "./src/fake.ts"
+    "./fake": "./src/fake.ts",
+    "./text": "./src/speech-text.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

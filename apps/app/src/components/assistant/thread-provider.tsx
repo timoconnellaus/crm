@@ -42,7 +42,11 @@ export interface ThreadView {
   /** A message to scroll to (after "Jump to"); cleared by the view once it has scrolled. */
   jumpTarget: number | null;
   clearJump: () => void;
-  send: (text: string, context: AssistantContext) => Promise<void>;
+  send: (
+    text: string,
+    context: AssistantContext,
+    options?: { dictated?: boolean },
+  ) => Promise<void>;
   stop: () => Promise<void>;
   loadEarlier: () => void;
   jumpTo: (seq: number) => void;
@@ -189,6 +193,17 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
           case "deleted":
             ws.send(JSON.stringify({ type: "sync" } satisfies ThreadClientFrame));
             break;
+          case "playout": {
+            const { turn, playout } = data;
+            setItems((current) =>
+              current.map((item) =>
+                item.kind === "assistant" && item.turn === turn
+                  ? { ...item, spoken: true, playout }
+                  : item,
+              ),
+            );
+            break;
+          }
           case "error":
             setError(data.message);
             break;
@@ -228,9 +243,9 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
   }, [visible, loading, unread > 0, frame]);
 
   const send = useCallback(
-    async (text: string, context: AssistantContext) => {
+    async (text: string, context: AssistantContext, options?: { dictated?: boolean }) => {
       setError(null);
-      if (frame({ type: "send", text, context })) return;
+      if (frame({ type: "send", text, context, ...options })) return;
       // No socket (a network that blocks WebSockets): the HTTP turn, read as server-sent events.
       setRunning(true);
       try {

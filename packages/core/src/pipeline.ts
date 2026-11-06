@@ -22,6 +22,7 @@ import {
   simulatedTitle,
 } from "./approvals/simulation.ts";
 import type { AssistantThreadStore } from "./assistant/threads.ts";
+import type { VoiceRuntime } from "./operations/voice.ts";
 import { eventOriginOf, isBulkOperation, recordEventMessages } from "./automations/events.ts";
 import {
   deliverOutbox,
@@ -135,6 +136,8 @@ export interface InvocationContext {
   automationHost?: AutomationHost;
   /** The assistant threads (ros-app): thread.* operations and erase reach them (ADR 0340). */
   assistantThreads?: AssistantThreadStore;
+  /** Speech providers (ADR 0349). Absent: voice is off. */
+  voice?: VoiceRuntime;
   /**
    * Test mode (ADR 0133): the call is simulated against this in-memory overlay. The gate is
    * evaluated and recorded, writes are dry-run, nothing is written and no events are sent.
@@ -645,6 +648,7 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.events && !ctx.simulate ? { events: ctx.events } : {}),
     ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
     ...(ctx.assistantThreads ? { assistantThreads: ctx.assistantThreads } : {}),
+    ...(ctx.voice ? { voice: ctx.voice } : {}),
     pipeline: {
       crm: ctx.db,
       invoke: (name, nestedInput, nested) => {
@@ -677,6 +681,7 @@ export async function invokeOperation<O extends AnyOperation>(
           ...(ctx.events ? { events: ctx.events } : {}),
           ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
           ...(ctx.assistantThreads ? { assistantThreads: ctx.assistantThreads } : {}),
+          ...(ctx.voice ? { voice: ctx.voice } : {}),
           ...(ctx.simulate ? { simulate: ctx.simulate } : {}),
         });
       },
