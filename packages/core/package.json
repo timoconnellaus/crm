@@ -37,6 +37,7 @@
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.73",
     "@ai-sdk/provider": "4.0.30",
+    "@relationship-os/agent-a2ui": "workspace:*",
     "@relationship-os/agent-core": "workspace:*",
     "@relationship-os/db": "workspace:*",
     "@relationship-os/release": "workspace:*",

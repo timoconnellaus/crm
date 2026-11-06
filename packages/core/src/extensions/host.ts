@@ -91,7 +91,8 @@ export interface WorkspaceEntry {
 
 /** Who a Code Mode script acts as (ADR 0042): the connected user's MCP (or assistant) actor. */
 export interface CodeCaller {
-  actor: "mcp" | "assistant";
+  /** `human` and `automation` only for saved A2UI producers, which can only read. */
+  actor: "mcp" | "assistant" | "human" | "automation";
   user: { id: string; email: string; name: string; role: "admin" | "member" | "viewer" };
   origin: {
     surface: "mcp" | "ui";
@@ -138,6 +139,28 @@ export interface CodeResult {
   durationMs: number;
   /** Set when logs, operations or the value were cut to the runtime limits. */
   truncated?: boolean;
+}
+
+/** One run of a saved A2UI producer (ADR 0346). */
+export interface ProducerRun {
+  /** `tasks.overdueCard@1`: with the source, what the stable worker id is made from. */
+  ref: string;
+  /** The script. The same `ref` always has the same source. */
+  source: string;
+  input: Record<string, unknown>;
+  now: string;
+  timezone: string;
+  caller: CodeCaller;
+}
+
+export interface ProducerResult {
+  ok: boolean;
+  /** What the script returned: an A2UI document, not yet validated. */
+  value?: unknown;
+  error?: { code: string; message: string };
+  /** The stable id it ran on (`LOADER.get`). */
+  workerId?: string;
+  durationMs: number;
 }
 
 export interface ExtensionHost {
@@ -198,6 +221,11 @@ export interface ExtensionHost {
    * second concurrent run returns error code `concurrency_limit`.
    */
   runCode(input: { code: string; caller: CodeCaller }): Promise<CodeResult>;
+  /**
+   * Runs a saved A2UI producer as `caller` on a stable worker (`LOADER.get`, ADR 0043): no model,
+   * no network, and only read operations.
+   */
+  runProducer(input: ProducerRun): Promise<ProducerResult>;
   /**
    * Runs model role `build` on `prompt` (the AI-written summary of a proposal of `commit` against
    * `base`), cached by (id, commit, base). Null when no AI is configured or the call fails.

@@ -1,5 +1,6 @@
 // What the in-app assistant streams to the UI and how its thread is shown (ADR 0200, ADR 0340).
 // Browser-safe: no Workers or AI SDK imports, so the app's client bundle can use these types.
+import type { A2uiPart } from "@relationship-os/agent-a2ui";
 import type { Playout } from "@relationship-os/agent-core";
 import type { AssistantContext } from "./context.ts";
 
@@ -27,6 +28,8 @@ export type AssistantEvent =
       output: unknown;
       isError: boolean;
       pending?: AssistantPending;
+      /** The card this tool call made (ADR 0346). */
+      card?: A2uiPart;
     }
   | { seq: number; type: "step"; model: string; fellBack?: boolean }
   | { seq: number; type: "error"; message: string }
@@ -68,6 +71,8 @@ export type TranscriptItem =
       isError?: boolean;
       pending?: AssistantPending;
     } & Placed)
+  /** A card (ADR 0346), or just its text fallback when it cannot be drawn. */
+  | ({ kind: "card"; turn: number; part: A2uiPart } & Placed)
   | ({ kind: "error"; turn: number; message: string } & Placed);
 
 /** The thread for the UI: a window of stored items, plus the live turn if one is running. */
@@ -118,6 +123,8 @@ export type ThreadServerFrame =
   | { type: "deleted"; seqs: number[] }
   /** What was heard of a turn's spoken reply. */
   | { type: "playout"; turn: number; playout: Playout }
+  /** Something was added outside a turn (a card a routine posted): read the thread again. */
+  | { type: "appended" }
   | { type: "error"; message: string };
 
 /** Recognises an MCP `pending_approval` tool result (PendingApproval in errors.ts). */
@@ -133,6 +140,36 @@ export function pendingOf(output: unknown): AssistantPending | undefined {
     message: typeof o.message === "string" ? o.message : "Waiting for approval",
     ...(typeof o.expiresAt === "string" ? { expiresAt: o.expiresAt } : {}),
   };
+}
+
+/** What an operation that makes a card returns (`a2ui.show`, `a2ui.produce`). */
+export const CARD_STATUS = "a2ui_card" as const;
+
+export interface CardResult {
+  status: typeof CARD_STATUS;
+  part: A2uiPart;
+}
+
+/** Recognises a card in a tool result. */
+export function cardOf(output: unknown): A2uiPart | undefined {
+  if (!output || typeof output !== "object") return undefined;
+  const o = output as Partial<CardResult>;
+  if (o.status !== CARD_STATUS) return undefined;
+  const part = o.part as Partial<A2uiPart> | undefined;
+  if (part?.type !== "a2ui" || typeof part.fallback !== "string") return undefined;
+  return part as A2uiPart;
+}
+
+/**
+ * What the model reads for a card: its text fallback, so it can refer to "the second task", and
+ * the problems when its card was not shown. Never the document: the model does not need it again.
+ */
+export function cardModelText(part: A2uiPart): string {
+  return JSON.stringify(
+    part.document
+      ? { status: "shown", text: part.fallback }
+      : { status: "not_shown", shownAsText: part.fallback, problems: part.problems ?? [] },
+  );
 }
 
 /** A memory line as a tool result carries it, for the line under a reply. */
@@ -211,8 +248,8 @@ export function applyEvent(items: TranscriptItem[], event: AssistantEvent): Tran
           input: event.input,
         },
       ];
-    case "tool-result":
-      return items.map((item) =>
+    case "tool-result": {
+      const updated = items.map((item) =>
         item.kind === "tool" && item.id === event.id
           ? {
               ...item,
@@ -222,6 +259,10 @@ export function applyEvent(items: TranscriptItem[], event: AssistantEvent): Tran
             }
           : item,
       );
+      return event.card
+        ? [...updated, { kind: "card", turn: currentTurn(items), part: event.card }]
+        : updated;
+    }
     case "error":
       return [...items, { kind: "error", turn: currentTurn(items), message: event.message }];
     default:

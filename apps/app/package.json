@@ -16,6 +16,7 @@
     "test:e2e": "node ../../scripts/dev-setup.mjs && playwright test"
   },
   "dependencies": {
+    "@relationship-os/agent-a2ui": "workspace:*",
     "@cloudflare/workers-oauth-provider": "1.2.4",
     "@relationship-os/agent-core": "workspace:*",
     "@relationship-os/agent-voice": "workspace:*",
@@ -79,7 +80,7 @@
         "description": "Only with IDENTITY_PROVIDER=cloudflare-access: the Access application's AUD tag."
       },
       "ROS_UPDATE_TOKEN": {
-        "description": "Optional. A scoped Cloudflare API token that lets Settings → Updates update this deployment itself (docs/deploying.md). Without it, updates use the `ros upgrade` CLI."
+        "description": "Optional. A scoped Cloudflare API token that lets Settings \u2192 Updates update this deployment itself (docs/deploying.md). Without it, updates use the `ros upgrade` CLI."
       }
     }
   }

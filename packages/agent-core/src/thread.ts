@@ -4,6 +4,7 @@
 // notices. The parts map one to one onto AI SDK model messages, so what was sent to the model is
 // what is replayed to it on the next turn (reasoning included, ADR 0201), and the prefix of the
 // conversation stays byte-stable for prompt caching (ADR 0341).
+import type { A2uiPart } from "@relationship-os/agent-a2ui";
 import type { ModelMessage } from "ai";
 
 /** How a message reached the thread. */
@@ -53,7 +54,13 @@ export type MessagePart =
       output: unknown;
     }
   /** A line the host shows in the thread ("Saved to memory · undo"); not sent to the model. */
-  | { type: "notice"; kind: string; text: string; data?: unknown };
+  | { type: "notice"; kind: string; text: string; data?: unknown }
+  /**
+   * A card (ADR 0346) with its text fallback. In a tool message it sits beside the result that
+   * made it, and the model already read the fallback there. In an assistant message (a card the
+   * host posted) the model reads the fallback in its place.
+   */
+  | A2uiPart;
 
 export interface ThreadMessage {
   seq: number;
@@ -80,6 +87,23 @@ export function messageText(message: Pick<ThreadMessage, "parts">): string {
     .map((p) => p.text)
     .join("")
     .trim();
+}
+
+/**
+ * Everything of a message a person can read as words: its text, and its cards' fallbacks. What
+ * search indexes and what makes a message count as unread.
+ */
+export function readableText(message: Pick<ThreadMessage, "parts">): string {
+  const cards = message.parts
+    .filter((p): p is A2uiPart => p.type === "a2ui")
+    .map((p) => p.fallback);
+  return [messageText(message), ...cards].filter(Boolean).join("\n").trim();
+}
+
+/** Does search index this message? The person's and assistant's words, and cards. */
+export function isSearchable(message: Pick<ThreadMessage, "role" | "parts">): boolean {
+  if (message.role === "user" || message.role === "assistant") return true;
+  return message.parts.some((p) => p.type === "a2ui");
 }
 
 /** The tail block a user message is sent with, wrapped so the model can tell it from the words. */
@@ -142,8 +166,8 @@ export function toModelMessage(message: ThreadMessage): ModelMessage | null {
         if (part.type === "text") {
           const text = index === lastText ? heardReply(part.text, message.playout) : part.text;
           content.push({ type: "text", text });
-        }
-        if (part.type === "reasoning") {
+        } else if (part.type === "a2ui") content.push({ type: "text", text: part.fallback });
+        else if (part.type === "reasoning") {
           content.push(withOptions({ type: "reasoning", text: part.text }, part.providerOptions));
         } else if (part.type === "tool-call") {
           content.push(
@@ -226,6 +250,25 @@ export function partsFromModelMessage(message: ModelMessage): MessagePart[] {
     }
   }
   return parts;
+}
+
+/**
+ * Puts each card beside the tool result that made it, in the turn's stored messages. `cards` is
+ * by tool call id; a card with no matching result is dropped.
+ */
+export function attachCards(
+  messages: readonly NewMessage[],
+  cards: ReadonlyMap<string, A2uiPart>,
+): NewMessage[] {
+  if (!cards.size) return [...messages];
+  return messages.map((message) => {
+    if (message.role !== "tool") return message;
+    const parts = message.parts.flatMap((part) => {
+      const card = part.type === "tool-result" ? cards.get(part.toolCallId) : undefined;
+      return card ? [part, card] : [part];
+    });
+    return { ...message, parts };
+  });
 }
 
 /** Thread messages for a turn's response messages (assistant and tool). */

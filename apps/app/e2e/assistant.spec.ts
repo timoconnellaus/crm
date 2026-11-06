@@ -69,7 +69,9 @@ test("approves a pending change inline", async ({ page }) => {
   const pending = panel.getByTestId("assistant-pending").last();
   await expect(pending).toHaveAttribute("data-status", "pending");
   await expect(panel.getByTestId("assistant-reply").last()).toContainText("waiting for approval");
-  await pending.getByRole("button", { name: "Approve" }).click();
+  // Destructive, so high risk: a deliberate second step (ADR 0345).
+  await pending.getByRole("button", { name: "Delete person", exact: true }).click();
+  await pending.getByRole("button", { name: "Confirm: delete person" }).click();
   await expect(pending).toHaveAttribute("data-status", "applied");
   await page.keyboard.press("Escape");
   await page.reload();

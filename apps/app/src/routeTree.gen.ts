@@ -25,6 +25,7 @@ import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ConnectHandoffRouteImport } from './routes/connect.handoff'
 import { Route as GatekeeperSplatRouteImport } from './routes/gatekeeper/$'
+import { Route as AppAssistantCardsRouteImport } from './routes/_app/assistant_.cards'
 import { Route as AppAutomationsIndexRouteImport } from './routes/_app/automations/index'
 import { Route as AppAutomationsIdRouteImport } from './routes/_app/automations/$id'
 import { Route as AppDashboardsIndexRouteImport } from './routes/_app/dashboards/index'
@@ -139,6 +140,11 @@ const GatekeeperSplatRoute = GatekeeperSplatRouteImport.update({
   id: '/gatekeeper/$',
   path: '/gatekeeper/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppAssistantCardsRoute = AppAssistantCardsRouteImport.update({
+  id: '/assistant_/cards',
+  path: '/assistant/cards',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppAutomationsIndexRoute = AppAutomationsIndexRouteImport.update({
   id: '/automations/',
@@ -340,6 +346,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/connect/handoff': typeof ConnectHandoffRoute
   '/gatekeeper/$': typeof GatekeeperSplatRoute
+  '/assistant/cards': typeof AppAssistantCardsRoute
   '/automations/$id': typeof AppAutomationsIdRoute
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
@@ -392,6 +399,7 @@ export interface FileRoutesByTo {
   '/connect/handoff': typeof ConnectHandoffRoute
   '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/': typeof AppIndexRoute
+  '/assistant/cards': typeof AppAssistantCardsRoute
   '/automations/$id': typeof AppAutomationsIdRoute
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
@@ -446,6 +454,7 @@ export interface FileRoutesById {
   '/connect/handoff': typeof ConnectHandoffRoute
   '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/assistant_/cards': typeof AppAssistantCardsRoute
   '/_app/automations/$id': typeof AppAutomationsIdRoute
   '/_app/dashboards/$id': typeof AppDashboardsIdRoute
   '/_app/organisations/$id': typeof AppOrganisationsIdRoute
@@ -500,6 +509,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/connect/handoff'
     | '/gatekeeper/$'
+    | '/assistant/cards'
     | '/automations/$id'
     | '/dashboards/$id'
     | '/organisations/$id'
@@ -552,6 +562,7 @@ export interface FileRouteTypes {
     | '/connect/handoff'
     | '/gatekeeper/$'
     | '/'
+    | '/assistant/cards'
     | '/automations/$id'
     | '/dashboards/$id'
     | '/organisations/$id'
@@ -605,6 +616,7 @@ export interface FileRouteTypes {
     | '/connect/handoff'
     | '/gatekeeper/$'
     | '/_app/'
+    | '/_app/assistant_/cards'
     | '/_app/automations/$id'
     | '/_app/dashboards/$id'
     | '/_app/organisations/$id'
@@ -766,6 +778,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/gatekeeper/$'
       preLoaderRoute: typeof GatekeeperSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/assistant_/cards': {
+      id: '/_app/assistant_/cards'
+      path: '/assistant/cards'
+      fullPath: '/assistant/cards'
+      preLoaderRoute: typeof AppAssistantCardsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/automations/': {
       id: '/_app/automations/'
@@ -1027,6 +1046,7 @@ interface AppRouteChildren {
   AppTasksRoute: typeof AppTasksRoute
   AppTrashRoute: typeof AppTrashRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAssistantCardsRoute: typeof AppAssistantCardsRoute
   AppAutomationsIdRoute: typeof AppAutomationsIdRoute
   AppDashboardsIdRoute: typeof AppDashboardsIdRoute
   AppOrganisationsIdRoute: typeof AppOrganisationsIdRoute
@@ -1071,6 +1091,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTasksRoute: AppTasksRoute,
   AppTrashRoute: AppTrashRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAssistantCardsRoute: AppAssistantCardsRoute,
   AppAutomationsIdRoute: AppAutomationsIdRoute,
   AppDashboardsIdRoute: AppDashboardsIdRoute,
   AppOrganisationsIdRoute: AppOrganisationsIdRoute,

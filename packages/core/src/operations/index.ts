@@ -3,6 +3,7 @@
 // One line per object so parallel changes merge cleanly.
 
 import { syncOperations } from "../sync/ingest.ts";
+import { a2uiOperations } from "./a2ui.ts";
 import { activityOperations } from "./activity.ts";
 import { adjudicatorOperations } from "./adjudicator.ts";
 import { affiliationOperations } from "./affiliation.ts";
@@ -93,6 +94,7 @@ export const coreOperations = [
   ...notificationDeliveryOperations,
   ...assistantOperations,
   ...voiceOperations,
+  ...a2uiOperations,
   ...memoryOperations,
   ...aiCacheOperations,
   ...planOperations,

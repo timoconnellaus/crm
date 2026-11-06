@@ -17,8 +17,10 @@
 //
 // Memory (ADR 0342) lives in D1 and is read live each turn (core's `memoryForTurn`); the object
 // keeps only when the memory block was last folded, which compaction moves on.
+import type { A2uiPart } from "@relationship-os/agent-a2ui";
 import {
   assembleContext,
+  attachCards,
   prefixHash as hashPrefix,
   type MessageVia,
   messagesFromResponse,
@@ -48,7 +50,7 @@ import {
   type AssistantContext,
   type AssistantEvent,
   type AssistantEventInput,
-  type AssistantPending,
+  type AssistantResultExtras,
   type AssistantThreadState,
   type AssistantThreadStore,
   type AssistantTool,
@@ -88,6 +90,7 @@ import {
   type ThreadServerFrame,
   type TranscriptItem,
   transcriptFromThread,
+  withCardText,
   withSavedLines,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
@@ -689,6 +692,52 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
     return running;
   }
 
+  /**
+   * Posts a card outside a turn (ADR 0346): a saved producer run by a routine or an app button.
+   * It waits for a running turn, is stored with its text fallback, and is indexed for erase.
+   */
+  async postCard(userId: string, part: A2uiPart): Promise<{ seq: number }> {
+    this.#assertOwner(userId);
+    await this.#running?.done;
+    const store = this.#messages;
+    const turn =
+      Math.max(
+        store.lastTurn(),
+        Number(
+          this.ctx.storage.sql
+            .exec<{ turn: number | null }>("SELECT MAX(turn) AS turn FROM thread_turns")
+            .toArray()[0]?.turn ?? 0,
+        ),
+      ) + 1;
+    const now = new Date().toISOString();
+    const [message] = store.append([
+      { turn, role: "assistant", via: "routine", parts: [part], createdAt: now },
+    ]);
+    this.ctx.storage.sql.exec(
+      "INSERT INTO thread_turns (turn, status, started_at, finished_at) VALUES (?, 'done', ?, ?)",
+      turn,
+      now,
+      now,
+    );
+    if (this.#anyoneWatching()) this.#setMeta("last_seen_seq", String(store.lastSeq()));
+    const unread = this.#unread();
+    const user = await this.#actingUser(userId);
+    const db = createCrmDb(this.#env.DB);
+    await invokeByName(
+      "thread.finishTurn",
+      {
+        id: await this.#threadId(user),
+        preview: part.fallback,
+        unread,
+        refs: await conversationRefs([part]),
+      },
+      { actor: "human", user, origin: { surface: "ui" }, db },
+    );
+    this.#broadcast({ type: "appended" });
+    this.#broadcast({ type: "unread", unread, lastSeenSeq: this.#lastSeen() });
+    return { seq: message?.seq ?? store.lastSeq() };
+  }
+
   #emit(input: AssistantEventInput) {
     const running = this.#running;
     if (!running) return;
@@ -827,6 +876,9 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
         throw new ThreadError(403, "The assistant cannot delete messages");
       },
       markSeen: async () => ({ unread: this.#unread(), lastSeenSeq: this.#lastSeen() }),
+      postCard: async () => {
+        throw new ThreadError(403, "A turn's cards come from its tool results");
+      },
       scrub: async (_userId, scrub) => {
         await this.scrub(scrub);
       },
@@ -1035,12 +1087,14 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
         // The user message is kept exactly as it is sent, tail and all, so history replays byte
         // for byte on the next turn.
         store.replace(running.userSeq, assembled.userMessage.parts);
-        const result = await runTurn<{ pending: AssistantPending }>({
+        const cards = new Map<string, A2uiPart>();
+        const result = await runTurn<AssistantResultExtras>({
           models: chatModels,
           system: assembled.system,
           messages: assembled.messages,
-          tools: mcp.tools,
+          tools: withCardText(mcp.tools),
           emit: (event) => {
+            if (event.type === "tool-result" && event.card) cards.set(event.id, event.card);
             this.#emit(event as AssistantEventInput);
             const save = event.type === "tool-result" ? memorySaveOf(event.output) : undefined;
             if (save) {
@@ -1055,6 +1109,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
         if (request.spoken && result.status === "stopped") {
           newMessages = withCutOffText(newMessages, running);
         }
+        newMessages = attachCards(newMessages, cards);
         steps = result.steps;
         planModel = this.#planModel(
           chatModels.find((m) => m.modelId === result.model) ?? chatModels[0],

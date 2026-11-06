@@ -2,7 +2,13 @@
 // sits next to the thread's single writer (a Durable Object's SQLite), so it is synchronous.
 // `SqliteMessageStore` works over any SQLite with FTS5 that has the Durable Object `exec` shape;
 // `MemoryMessageStore` is for tests and tools.
-import { messageText, type NewMessage, type Playout, type ThreadMessage } from "./thread.ts";
+import {
+  isSearchable,
+  type NewMessage,
+  type Playout,
+  readableText,
+  type ThreadMessage,
+} from "./thread.ts";
 
 export interface ListOptions {
   /** Only messages after this seq. */
@@ -156,9 +162,7 @@ export class SqliteMessageStore implements MessageStore {
         ...(message.playout ? { playout: message.playout } : {}),
         createdAt,
       };
-      if (message.role === "user" || message.role === "assistant") {
-        this.#index(stored.seq, messageText(stored));
-      }
+      if (isSearchable(stored)) this.#index(stored.seq, readableText(stored));
       out.push(stored);
     }
     return out;
@@ -226,12 +230,8 @@ export class SqliteMessageStore implements MessageStore {
       seq,
     );
     const message = this.get(seq);
-    if (
-      message &&
-      !message.deletedAt &&
-      (message.role === "user" || message.role === "assistant")
-    ) {
-      this.#index(seq, messageText(message));
+    if (message && !message.deletedAt && isSearchable(message)) {
+      this.#index(seq, readableText(message));
     }
   }
 
@@ -340,9 +340,9 @@ export class MemoryMessageStore implements MessageStore {
     const terms = searchTerms(query);
     if (!terms.length) return [];
     return this.#messages
-      .filter((m) => !m.deletedAt && (m.role === "user" || m.role === "assistant"))
+      .filter((m) => !m.deletedAt && isSearchable(m))
       .filter((m) => {
-        const words = searchTerms(messageText(m));
+        const words = searchTerms(readableText(m));
         return terms.every((t) => words.some((w) => w.startsWith(t)));
       })
       .reverse()
@@ -352,7 +352,7 @@ export class MemoryMessageStore implements MessageStore {
         turn: m.turn,
         role: m.role,
         createdAt: m.createdAt,
-        text: excerpt(messageText(m), terms),
+        text: excerpt(readableText(m), terms),
       }));
   }
 

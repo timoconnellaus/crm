@@ -244,5 +244,11 @@ export function compactedTokens(input: {
 
 /** Characters of a message as the model is sent it (for `compactedTokens`). */
 export function messageChars(message: ThreadMessage): number {
-  return JSON.stringify(message.parts).length;
+  // A card's document is never sent: the model reads its fallback, in a tool message through the
+  // tool result beside it (ADR 0346).
+  const sent = message.parts.flatMap((part): unknown[] => {
+    if (part.type !== "a2ui") return [part];
+    return message.role === "tool" ? [] : [part.fallback];
+  });
+  return JSON.stringify(sent).length;
 }

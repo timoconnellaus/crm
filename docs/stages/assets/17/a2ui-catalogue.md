@@ -1,4 +1,6 @@
-# A2UI catalogue for the assistant (proposal)
+# A2UI catalogue for the assistant
+
+Built in stage 17 W6: `packages/agent-a2ui/src/catalogue.ts` is the source of truth, and ADR 0346's amendment records where the build differs from this page.
 
 The assistant (and routines, plugins, other agents) can send rich messages as **A2UI JSON**. The app renders them **only from this catalogue**, using our own shadcn components. No model-written code runs, and every button calls an **operation**, so the normal permissions and approval rules always apply. Each rich message is stored in the thread with a **text fallback**, so the model can still say "the second task" later.
 

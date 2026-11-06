@@ -99,9 +99,9 @@ export function scrubMessage(message: ModelMessage, pattern: RegExp | null): Mod
 }
 
 /**
- * A thread message's parts with the subject removed: whole tool inputs and outputs that mention
- * them, and mentions in text, tail blocks, reasoning and notices. Returns the same array when
- * nothing matched.
+ * A thread message's parts with the subject removed: whole tool inputs, outputs and cards that
+ * mention them, and mentions in text, tail blocks, reasoning, notices and cards' text fallbacks.
+ * Returns the same array when nothing matched.
  */
 export function scrubParts(parts: MessagePart[], pattern: RegExp | null): MessagePart[] {
   if (!pattern || !mentions(parts, pattern)) return parts;
@@ -117,6 +117,16 @@ export function scrubParts(parts: MessagePart[], pattern: RegExp | null): Messag
       case "context":
       case "reasoning":
         return { ...part, text: scrubText(part.text, pattern) };
+      case "a2ui":
+        // A card that mentions the subject goes as a whole; its text stays, with them removed.
+        return mentions(part, pattern)
+          ? {
+              type: "a2ui",
+              source: part.source,
+              document: null,
+              fallback: scrubText(part.fallback, pattern),
+            }
+          : part;
       default:
         return scrubValue(part, pattern);
     }

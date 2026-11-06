@@ -580,6 +580,15 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   read-only and the admin rails (`ai.cacheSettings`, `ai.updateCacheRails`).
   In the app (ADR 0030 amendment) the panel is docked on the right of the shell on tablets and
   desktops, beside the page, and stays mounted across page changes; on phones it is a sheet.
+- **Cards** ([ADR 0346](adr/0346-a2ui-catalogue-and-saved-producers.md)): rich messages are A2UI from
+  the versioned catalogue in `agent-a2ui`, drawn by the app's component map
+  (`apps/app/src/components/assistant/cards/`, charts through the dashboard widget renderers). A
+  card is an `a2ui` message part stored with its text fallback, which is all the model reads. The
+  model sends one with `show_card` (`a2ui.show`); a saved producer makes one with `a2ui.produce` and
+  no model, on a stable `LOADER.get` worker that can only read, as the viewer. Invalid cards show
+  their fallback. A button on a host card calls its operation as the viewer; a button on a model's or
+  producer's card calls `a2ui.act`, which runs it as actor `assistant` so the gate applies. The
+  approval card (`cards/approval.tsx`) asks a second tap for high-risk items (ADR 0345).
 
 - **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
   [ADR 0232](adr/0232-judge-defaults-and-user-decisions.md), [`docs/jev.md`](jev.md); stage 11,

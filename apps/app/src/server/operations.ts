@@ -78,6 +78,9 @@ export function assistantThreadsFor(env: OperationsEnv): AssistantThreadStore | 
     async markSeen(userId, seq) {
       return (await stub(userId)).markSeen(userId, seq);
     },
+    async postCard(userId, part) {
+      return (await stub(userId)).postCard(userId, part);
+    },
     async scrub(userId, scrub) {
       await (await stub(userId)).scrub(scrub);
     },
@@ -134,6 +137,7 @@ function rpcHost(stub: ExtensionHost): ExtensionHost {
     commitWorkingCopy: (input) => stub.commitWorkingCopy(input),
     eject: (id) => stub.eject(id),
     runCode: (input) => stub.runCode(input),
+    runProducer: (input) => stub.runProducer(input),
     describeChange: (input) => stub.describeChange(input),
   };
 }

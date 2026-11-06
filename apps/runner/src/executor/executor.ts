@@ -15,6 +15,8 @@ import {
   type EvaluateResult,
   extensionPrincipalId,
   newId,
+  type ProducerResult,
+  type ProducerRun,
   type RunToolInput,
   type RunToolResult,
   type SourceIssue,
@@ -33,6 +35,7 @@ import {
   CODE_TIMEOUT_MS,
   codeWorkerCode,
 } from "../extensions/code-mode.ts";
+import { buildProducer, producerWorkerCode, producerWorkerId } from "../extensions/producers.ts";
 import { recordRun } from "../extensions/runs.ts";
 import { type BuildEnv, prepare, workspaceStub } from "./build-cache.ts";
 import type { CodeModeGate } from "./code-gate.ts";
@@ -111,6 +114,13 @@ interface CodeEntrypoint {
   run(
     host: RunHost,
   ): Promise<RunResponse & { logs?: { level: string; message: string }[]; dropped?: boolean }>;
+}
+
+interface ProducerEntrypoint {
+  run(
+    request: { input: unknown; now: string; timezone: string },
+    host: RunHost,
+  ): Promise<RunResponse>;
 }
 
 /** Symbol.dispose (workerd has it; this lib target does not declare it). */
@@ -599,6 +609,57 @@ export class Executor {
       durationMs: Date.now() - started,
       ...(truncated ? { truncated: true } : {}),
     };
+  }
+
+  /**
+   * Runs a saved A2UI producer (ADR 0346) as `caller`, on its stable worker (`LOADER.get`): the
+   * same version reuses the cached worker for every viewer. The worker keeps nothing between runs;
+   * the viewer is in this run's host, which answers only read operations.
+   */
+  async runProducer(input: ProducerRun): Promise<ProducerResult> {
+    const started = Date.now();
+    const workerId = await producerWorkerId(input.ref, input.source);
+    let buildError: string | null = null;
+    const worker = this.#loader.get(workerId, () => {
+      const built = buildProducer(input.source);
+      if (!built.ok) {
+        buildError = built.message;
+        throw new Error(built.message);
+      }
+      return producerWorkerCode(built.script);
+    });
+    const run: RunState = {
+      runId: `producer-${crypto.randomUUID()}`,
+      extensionId: `(producer ${input.ref})`,
+      code: { caller: input.caller, pending: [], calls: 0, readOnly: true },
+      modules: new Set(["crm"]),
+      user: input.caller.user,
+      permissions: { read: [], write: [], operations: [], modules: ["crm"] },
+      deadline: Date.now() + this.#codeTimeoutMs,
+      logs: [],
+      operations: [],
+    };
+    const host = new RunHost(this.#env, run);
+    const { input: scriptInput, now, timezone } = input;
+    const outcome = await invoke<ProducerEntrypoint, RunResponse>(
+      worker,
+      this.#codeTimeoutMs,
+      (ep) => ep.run({ input: scriptInput, now, timezone }, host),
+      host,
+    );
+    const durationMs = Date.now() - started;
+    if (buildError) {
+      return { ok: false, error: { code: "build", message: buildError }, workerId, durationMs };
+    }
+    const response =
+      "error" in outcome
+        ? { ok: false as const, error: outcome.error }
+        : isResponse(outcome.value)
+          ? outcome.value
+          : { ok: false as const, error: { code: "crashed", message: "No result" } };
+    return response.ok
+      ? { ok: true, value: response.value, workerId, durationMs }
+      : { ok: false, error: response.error, workerId, durationMs };
   }
 
   /**

@@ -53,3 +53,13 @@ for deleting repositories, slows the person down at the right moment.
 - **Confirm every action.** Rejected: approval fatigue, as above.
 - **A free-form model judging intent.** Rejected: Jev's typed answers come with calibrated
   probabilities and recordings for CI (ADR 0231); a chat model's yes or no does not.
+
+## Amendment, 2026-11-06 (stage 17 W6: the two-step button)
+- ADR 0345's `external` risk is this repository's `outbound` risk class.
+- `secondStep` in `packages/core/src/approvals/high-risk.ts` holds the rule, for W5's phrase too. The
+  threshold is the constant `EMAIL_RECIPIENT_THRESHOLD` (25) until W5 adds the setting
+  `approvals.phraseThreshold.email`. Recipients are counted from an outbound action's To, Cc, Bcc or
+  Recipients fields.
+- The second button ignores presses for 350 ms, so a double tap on the first cannot confirm.
+- The step is in the card only. The Approvals inbox and a direct `approval.approve` do not ask for
+  it: W5 decides whether to enforce it on the server.
