@@ -10,8 +10,10 @@ import {
   type CoreOutput,
   invokeByName,
   memoryForAgent,
+  memoryForTurn,
   memorySaveOf,
   resolveActingUser,
+  type ThreadMemoryState,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { describe, expect, it } from "vitest";
@@ -98,6 +100,23 @@ async function newestSent(m: Member): Promise<string> {
   });
 }
 
+/** Compaction's hook, as it is called just before a compaction commits. */
+const fold = async (m: Member) =>
+  runInDurableObject(await stubOf(m), (agent: unknown) =>
+    (agent as { foldPendingLines(): Promise<void> }).foldPendingLines(),
+  );
+
+/** The memory block the thread's next turn sends in its prefix. */
+async function memoryBlock(m: Member): Promise<string | undefined> {
+  const raw = await runInDurableObject(await stubOf(m), async (_o, s: DurableObjectState) => {
+    return s.storage.sql
+      .exec<{ value: string }>("SELECT value FROM thread_meta WHERE key = 'memory'")
+      .toArray()[0]?.value;
+  });
+  const state = JSON.parse(raw ?? "null") as ThreadMemoryState;
+  return (await memoryForTurn(db.query, m.user.id, { state })).block;
+}
+
 const prefixes = async (m: Member) =>
   (await (await stubOf(m)).prefixHashes(m.user.id)).map((r) => r.prefixHash);
 
@@ -126,19 +145,19 @@ describe("memory in the chat", () => {
     await turn(m.principal, { text: "Hello" });
     await turn(m.principal, { text: "remember I take Fridays off" });
     await turn(m.principal, { text: "Hello again" });
-    const stub = await stubOf(m);
     expect(await newestSent(m)).toContain("I take Fridays off");
     expect(new Set(await prefixes(m)).size).toBe(1);
 
-    const folded = await stub.foldPendingLines();
-    expect(folded.block).toBe("- I take Fridays off");
-    expect(folded.folded).toHaveLength(1);
+    await fold(m);
     await turn(m.principal, { text: "And again" });
     const after = await prefixes(m);
     expect(new Set(after).size).toBe(2);
     expect(await newestSent(m)).not.toContain("I take Fridays off");
-    // The hook is safe with nothing to fold.
-    expect((await stub.foldPendingLines()).folded).toEqual([]);
+    expect(await memoryBlock(m)).toBe("- I take Fridays off");
+    // The hook is safe with nothing to fold, and then the prefix does not move.
+    await fold(m);
+    await turn(m.principal, { text: "Once more" });
+    expect(new Set(await prefixes(m)).size).toBe(2);
   });
 
   it("undo removes the line, and the next turn no longer sends it", async () => {

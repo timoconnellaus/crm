@@ -22,7 +22,7 @@ commit**, by editing this table. Use the next free block. Unused numbers in a bl
 | K | 0320–0329 | 0300–0309 (free) | Stage 16, Duplicates (migrations only) | specced |
 | L | 0330–0339 | 0320–0329 | Erase completeness (every store) | in flight |
 | M | 0340–0349 | 0330–0339 | Self-hosted Workers AI over REST (no prompt logging); narrower organisation erase (ADR 0330 used; no migrations) | merged |
-| N | 0350–0379 | 0340–0359 | Stage 17, One proactive assistant (ADRs 0340–0351 used by the spec; wave 1 used migrations 0350–0351; W3 memory holds 0352–0357 and used 0352) | in flight |
+| N | 0350–0379 | 0340–0359 | Stage 17, One proactive assistant (ADRs 0340–0351 used by the spec; wave 1 used migrations 0350–0351, W2 wiring 0358–0360, W3 memory 0352) | in flight |
 
 Add more blocks of ten as needed. `CORE_SCHEMA_VERSION` is the highest migration number on `main`;
 when you merge `main`, keep the larger value.

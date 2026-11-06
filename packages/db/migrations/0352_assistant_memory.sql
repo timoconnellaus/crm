@@ -69,4 +69,6 @@ CREATE TABLE core_memory_settings (
   updated_at TEXT NOT NULL
 );
 
-UPDATE core_meta SET value = '352' WHERE key = 'schema_version';
+-- Guarded: this file lands after 0358-0360 on databases that already have them.
+UPDATE core_meta SET value = '352'
+  WHERE key = 'schema_version' AND CAST(value AS INTEGER) < 352;

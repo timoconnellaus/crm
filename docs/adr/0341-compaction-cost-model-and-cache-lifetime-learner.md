@@ -1,6 +1,6 @@
 # ADR 0341: Compaction is decided by a cost model, with a learned cache lifetime
 
-Status: Accepted (2026-11-06), amended 2026-11-06 (see the end). Stage 17 spec: [`docs/stages/17-assistant.md`](../stages/17-assistant.md),
+Status: Accepted (2026-11-06), amended twice on 2026-11-06 (see the end). Stage 17 spec: [`docs/stages/17-assistant.md`](../stages/17-assistant.md),
 W2. Builds on [ADR 0340](0340-one-assistant-thread-per-user.md) and the prices in
 [ADR 0351](0351-assistant-model-roles.md).
 
@@ -255,3 +255,51 @@ where it differs from the text above.
       is set mostly by the half-life: about 1.5 to 4 days at 14 days. A shorter half-life follows faster and is noisier; `pnpm ai:replay-cache
       --half-life-days N` tries it against real data. At one turn a day there is never enough
       evidence for a learned value, and the published lifetime or the fallback applies.
+
+## Amendment, 2026-11-06 (W2 wiring: `apps/app/src/server/assistant/compaction.ts`)
+
+As built in the live thread. Where this differs from the text above, this section holds.
+
+1. **The summary call runs on `assistant.core`,** the front agent's own role, with the last turn's
+   exact system text, tools (sent with `toolChoice: "none"`) and history, then the request as a new
+   user message. Any other role or model would read nothing from the cache, and the planner prices
+   the call at `p_r` while warm. No `compaction` role was added (ADR 0351 amendment).
+2. **A compaction is two values,** the note and the seq it covers, committed in one transaction when
+   the summary call returns. Messages are not touched. That is what makes a turn arriving during the
+   call safe: until the commit the object has not changed, and the turn's messages are after the seq
+   when it lands. A turn that finishes in that window does not run the planner.
+3. **The ceiling may keep fewer than 10 exchanges.** A few huge exchanges can fill the window on
+   their own, so a compaction the ceiling forced keeps fewer until the compacted context fits, down
+   to the newest exchange. Compacting for cost always keeps 10. With 10 or fewer exchanges there is
+   nothing to fold, and `C′ = C` is what the planner sees.
+4. **`C` is measured** (the last request's prompt plus its answer) and **`C′` is scaled from it** by
+   the share of characters that stay (prefix and kept messages), plus the note's budget of 600
+   tokens. When a provider reports no usage, `C` is characters over 4. That also covers a turn that
+   failed outright, so a thread too long for its window still compacts. Only when `C` has reached
+   the window does the summary call send the newest turns that fit, instead of all of them.
+5. **Unknown window.** A model with no `contextTokens` plans with a window of 32,000.
+6. **Estimates are one turn stale.** `thread.finishTurn` carries the turn's observations and
+   decision in the turn's one D1 batch, and answers with the model's estimate, which the object keeps
+   for the next plan. Planning first would otherwise cost a second write per turn. A `version` guard
+   makes concurrent updates safe; the loser's update is dropped and its observations stay in
+   `core_ai_cache_observation`. An idle alarm or a compaction has no turn to ride on, so it writes
+   through `ai.recordCacheReview`.
+7. **A summary call is observed like a turn.** Its prefix is unchanged, so at the idle alarm it
+   measures the cache just before expiry. Its cost is added to every open decision's actual cost,
+   but it does not count as a turn.
+8. **Actual cost.** A decision stays open in the object until `ceil(N)` turns have run, and the sum is
+   written with the turn that closes it. Unknown prices open nothing, and a turn of unknown cost drops
+   the open decisions: a partial sum would read as a cheap turn. An abandoned thread leaves its
+   last decisions without an actual.
+9. **Deleting a message the note covers drops the note.** The note may repeat it, and a deleted
+   message must leave what the model sees. A model cannot be trusted to rewrite the note without it,
+   so the note goes; the messages it covered stay searchable, and the next compaction writes a new
+   one. A compaction under way that covers the message is abandoned. An erase scrubs the note, and one
+   still being written is scrubbed before it is kept.
+10. **The fallback's 10 minutes** is the admin setting `fallbackIdleMinutes`, stored with the rails in
+    `core_settings.ai_compaction`, separate from `ai_settings`.
+11. **The alarm** is an Agents SDK schedule (`onIdleAlarm`), so it shares the object's one physical
+    alarm with what later stages schedule. Under the floor, and when the next plan compacts, none is
+    set. A turn start cancels it only when one is set, so a short thread costs no alarm operations.
+12. **The summary call's output** is cut to 4,000 characters. A failed call or an empty note leaves
+    the thread as it is, and the next turn's end plans again.

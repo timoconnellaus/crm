@@ -86,7 +86,8 @@ visibility (stage 14) and erase (ADR 0320). Memory that copies those facts would
 > - **Pending lines are not stored in the thread.** The object keeps only `foldedAt`. A line active
 >   since then rides in the tail, and an older one is in the block; both are read live from D1 each
 >   turn, so undo, delete, pause and erase take effect at once with nothing to keep in step.
->   `foldPendingLines()` on `AssistantAgent` moves `foldedAt` forward; compaction calls it. Editing
+>   `foldPendingLines()` on `AssistantAgent` moves `foldedAt` forward; compaction calls it just
+>   before it commits, and its summary call sends the same block, so it reads the same cache. Editing
 >   a folded line, or resuming one, makes it pending again. A thread with no history folds at once.
 > - **Tails stay in history** (ADR 0341), so a line undone or edited after it was sent is still in
 >   old messages. The next tail says those lines changed or were removed, until the fold.

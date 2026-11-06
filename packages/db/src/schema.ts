@@ -1242,6 +1242,64 @@ export interface CoreAiUsageTable {
   tokens_out: number;
 }
 
+/** Migration 0358 (ADR 0341): one row per assistant model response, for review. Kept 180 days. */
+export interface CoreAiCacheObservationTable {
+  id: Generated<number>;
+  at: string;
+  provider: string;
+  model: string;
+  role: string;
+  gap_seconds: number;
+  prefix_unchanged: number;
+  cached_tokens: number;
+  prompt_tokens: number;
+  prefix_tokens: number | null;
+}
+
+/** Migration 0359 (ADR 0341): one row per compaction planner run, actual cost filled in later. */
+export interface CoreAiCompactionDecisionTable {
+  id: string;
+  at: string;
+  provider: string;
+  model: string;
+  role: string;
+  decision: "compact" | "continue";
+  rule: string;
+  /** JSON: the planner's input, verbatim. */
+  input: string;
+  /** JSON: the planner's result. */
+  result: string;
+  actual_turns: number | null;
+  actual_cost: number | null;
+  actual_at: string | null;
+}
+
+/** Migration 0360 (ADR 0341): the learned cache lifetime per provider and model. */
+export interface CoreAiCacheEstimateTable {
+  provider: string;
+  model: string;
+  /** JSON: the learner's state. */
+  state: string;
+  learned_seconds: number | null;
+  published_seconds: number | null;
+  confidence: number | null;
+  sample_size: number;
+  version: number;
+  updated_at: string;
+}
+
+/** Migration 0360: each change of a learned estimate. */
+export interface CoreAiCacheEstimateHistoryTable {
+  id: Generated<number>;
+  provider: string;
+  model: string;
+  at: string;
+  from_seconds: number | null;
+  to_seconds: number | null;
+  reason: "rise" | "fall";
+  sample_size: number;
+}
+
 /**
  * Migration 0252 (ADR 0234): judge calls and input tokens per day and placement, counted by a
  * statement in the batch a placement already writes.
@@ -1255,6 +1313,10 @@ export interface CoreJudgeUsageTable {
 
 export interface CoreDatabase {
   core_ai_usage: CoreAiUsageTable;
+  core_ai_cache_observation: CoreAiCacheObservationTable;
+  core_ai_compaction_decision: CoreAiCompactionDecisionTable;
+  core_ai_cache_estimate: CoreAiCacheEstimateTable;
+  core_ai_cache_estimate_history: CoreAiCacheEstimateHistoryTable;
   core_judge_usage: CoreJudgeUsageTable;
   core_entitlements: CoreEntitlementsTable;
   core_support_grants: CoreSupportGrantsTable;

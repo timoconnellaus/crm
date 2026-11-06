@@ -6,6 +6,7 @@
 // person's, through the UI or their thread object acting for them.
 import { sql } from "kysely";
 import { z } from "zod";
+import { cacheEstimateSchema, cacheReviewSchema, writeCacheReview } from "../ai/cache-review.ts";
 import { type AssistantContext, assistantContextSchema } from "../assistant/context.ts";
 import { queueDeleteMemoryFromMessages } from "../assistant/memory.ts";
 import { conversationRefPattern, MAX_REFS_PER_TURN } from "../assistant/scrub.ts";
@@ -139,13 +140,21 @@ export const threadFinishTurn = defineOperation({
       .describe(
         "People and organisations (ids) and emails (email:<sha256>) the turn referenced, for erase",
       ),
+    cache: cacheReviewSchema
+      .optional()
+      .describe("The turn's cache observations and planner decision, sizes and times only"),
   }),
-  output: threadSchema,
+  output: threadSchema.extend({
+    /** The cache lifetime to plan the next turn with (ADR 0341). */
+    cacheEstimate: cacheEstimateSchema.nullable(),
+  }),
   permission: "records:read",
   risk: "write",
   bookkeeping: true,
   actors: ["human"],
   mcp: { expose: false },
+  // Review data has its own tables; it would only bulk up the audit log.
+  redact: ["cache"],
   async handler(input, ctx) {
     const row = await loadOwn(ctx);
     if (!row || row.id !== input.id) throw new NotFoundError("thread", input.id);
@@ -176,13 +185,18 @@ export const threadFinishTurn = defineOperation({
           ),
       );
     }
-    return fromRow({
-      ...row,
-      turns: row.turns + 1,
-      unread: input.unread,
-      preview,
-      last_activity_at: ctx.now,
-    });
+    // In the same batch, so the review data costs the turn no extra write (ADR 0341).
+    const cacheEstimate = input.cache ? await writeCacheReview(ctx, input.cache) : null;
+    return {
+      ...fromRow({
+        ...row,
+        turns: row.turns + 1,
+        unread: input.unread,
+        preview,
+        last_activity_at: ctx.now,
+      }),
+      cacheEstimate,
+    };
   },
 });
 

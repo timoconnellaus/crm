@@ -90,9 +90,6 @@ export async function prefixHash(prefix: PrefixInput): Promise<string> {
   );
 }
 
-/** About 60k tokens of history at most, until compaction (W2) keeps the thread short. */
-export const HISTORY_CHAR_BUDGET = 240_000;
-
 /**
  * The reasoning policy (ADR 0201): keep reasoning only on assistant messages that made tool calls
  * (DeepSeek with thinking on rejects a follow-up without them) and drop it from plain answers,
@@ -105,12 +102,14 @@ export function withReasoningPolicy(message: ModelMessage): ModelMessage {
 }
 
 /**
- * What the model sees of the history: the newest whole turns that fit the budget (a turn is
- * never split, so tool calls keep their results), with the reasoning policy applied.
+ * What the model sees of the history, with the reasoning policy applied. The history is the
+ * messages since the last compaction, and compaction (ADR 0341) is what keeps it short, so by
+ * default all of it is sent. A caller may pass a character budget: then only the newest whole
+ * turns that fit are kept (a turn is never split, so tool calls keep their results).
  */
 export function historyForModel(
   history: readonly ThreadMessage[],
-  budget = HISTORY_CHAR_BUDGET,
+  budget = Number.POSITIVE_INFINITY,
 ): ModelMessage[] {
   const turns = new Map<number, ModelMessage[]>();
   for (const message of history) {
