@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "1.2.4",
+    "@relationship-os/agent-core": "workspace:*",
     "@relationship-os/auth": "workspace:*",
     "@relationship-os/core": "workspace:*",
     "@relationship-os/db": "workspace:*",

@@ -28,7 +28,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 330,
+  "coreSchemaVersion": 351,
   "extensionContract": {
     "supported": [
       1
@@ -336,6 +336,14 @@
     {
       "name": "0330_erase_completeness.sql",
       "sha256": "15ccaf1f0ddac644c2eb9d46d07f923f74b374a5d574c67be42d8b80571dce9f"
+    },
+    {
+      "name": "0350_assistant_thread.sql",
+      "sha256": "b0d5c64c08e918be48e4f7e894bfdcd6846c39f522ef9f497e28aced058a5884"
+    },
+    {
+      "name": "0351_assistant_model_roles.sql",
+      "sha256": "64f851090c4f6c85576a0597930c25afc1d3943454fd432b54f79a832c68c086"
     }
   ],
   "product": "relationship-os",
@@ -354,7 +362,7 @@
     },
     {
       "implicit": true,
-      "name": "ros-app:AssistantConversation",
+      "name": "ros-app:AssistantAgent",
       "optional": false,
       "type": "durable_object",
       "usedBy": [
@@ -536,7 +544,7 @@
           "type": "service"
         },
         {
-          "class_name": "AssistantConversation",
+          "class_name": "AssistantAgent",
           "name": "ASSISTANT",
           "type": "durable_object_namespace"
         },
@@ -766,6 +774,15 @@
             "AssistantConversation"
           ],
           "tag": "v1"
+        },
+        {
+          "deleted_classes": [
+            "AssistantConversation"
+          ],
+          "new_sqlite_classes": [
+            "AssistantAgent"
+          ],
+          "tag": "v2"
         }
       ],
       "mainModule": "index.js",
@@ -842,7 +859,7 @@
           "source": "installer"
         }
       ],
-      "sha256": "29423017a402201ba6901252c34ff1fe072353f32b31b3babe89856a8fb90a2e"
+      "sha256": "c421719a2e1b3548298de675fac05ae1b1bec5dd63e610c256c7d05e57668559"
     },
     {
       "bindings": [

@@ -29,3 +29,5 @@ ROS_UPDATE_TOKEN=
 # CLOUDFLARE_API_TOKEN=
 # AI_GATEWAY_TOKEN=
 # AI_KEY_OPENAI=
+# Voice (speech roles transcribe and speak, ADR 0351): off until set.
+# AI_KEY_ASSEMBLYAI=

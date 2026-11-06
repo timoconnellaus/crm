@@ -5,7 +5,7 @@
 // with a different actor and origin.
 import type { Principal } from "@relationship-os/auth";
 import {
-  type AssistantConversationStore,
+  type AssistantThreadStore,
   type AutomationHost,
   type EventSink,
   type ExtensionHost,
@@ -21,8 +21,9 @@ import {
   withCodeModeRateLimit,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
+import { getAgentByName } from "agents";
 import { type AiAppEnv, aiContextFor } from "./ai.ts";
-import type { AssistantConversation } from "./assistant/conversation.ts";
+import { type AssistantAgent, threadName } from "./assistant/agent.ts";
 import { blobStoreFor, integrationRuntimeFor } from "./integrations.ts";
 import { deleteGrantTokens } from "./mcp/handler.ts";
 import { runner } from "./runner.ts";
@@ -52,22 +53,33 @@ export interface OperationsEnv extends AiAppEnv {
   ROS_UPDATE_TOKEN?: string;
   /** The same token on an install from before the rename (ADR 0190); read when ROS_UPDATE_TOKEN is unset. */
   CRM_UPDATE_TOKEN?: string;
-  /** In-app assistant conversations (ADR 0200), which an erase scrubs. */
-  ASSISTANT?: DurableObjectNamespace<AssistantConversation>;
+  /** Each person's assistant thread (ADR 0340): thread.* operations and erase reach it. */
+  ASSISTANT?: DurableObjectNamespace<AssistantAgent>;
 }
 
 /**
- * The assistant's conversation objects as an erase sees them (ADR 0019 amendment): each one
- * redacts the erased subject from its own stored history.
+ * The assistant threads as operations see them (ADR 0340): each person's AssistantAgent object,
+ * for `thread.*` and for an erase to redact (ADR 0019 amendment).
  */
-export function assistantConversationsFor(
-  env: OperationsEnv,
-): AssistantConversationStore | undefined {
+export function assistantThreadsFor(env: OperationsEnv): AssistantThreadStore | undefined {
   const namespace = env.ASSISTANT;
   if (!namespace) return undefined;
+  const stub = (userId: string) =>
+    getAgentByName(namespace as never, threadName(userId)) as unknown as Promise<
+      DurableObjectStub<AssistantAgent>
+    >;
   return {
-    async scrub(conversationId, scrub) {
-      await namespace.get(namespace.idFromName(conversationId)).scrub(scrub);
+    async search(userId, query, limit) {
+      return (await stub(userId)).search(userId, query, limit);
+    },
+    async deleteMessage(userId, seq) {
+      return (await stub(userId)).deleteMessage(userId, seq);
+    },
+    async markSeen(userId, seq) {
+      return (await stub(userId)).markSeen(userId, seq);
+    },
+    async scrub(userId, scrub) {
+      await (await stub(userId)).scrub(scrub);
     },
   };
 }
@@ -196,7 +208,7 @@ export async function runOperation(
     const extensionHost = extensionHostFor(env);
     const integrations = integrationRuntimeFor(env, appOrigin);
     const blobs = blobStoreFor(env);
-    const assistantConversations = assistantConversationsFor(env);
+    const assistantThreads = assistantThreadsFor(env);
     const ctx: InvocationContext = {
       ...(integrations ? { integrations } : {}),
       ...(blobs ? { blobs } : {}),
@@ -207,7 +219,7 @@ export async function runOperation(
       floor: parseFloor(env.APPROVAL_FLOOR),
       ...(extensionHost ? { extensionHost } : {}),
       ...automationWiring(env),
-      ...(assistantConversations ? { assistantConversations } : {}),
+      ...(assistantThreads ? { assistantThreads } : {}),
       updater: updaterRuntimeFor(env),
       ...aiContextFor(env, db),
       approvalExpiryDays: Number.parseInt(env.APPROVAL_EXPIRY_DAYS ?? "", 10) || undefined,

@@ -11,6 +11,7 @@ import {
   capabilitiesOf,
   capabilityProblems,
   catalogueModel,
+  isSpeechRole,
   MODEL_ROLES,
   modelRolesVar,
   PROVIDER_INFO,
@@ -53,10 +54,11 @@ describe("the deepseek provider", () => {
     });
   });
 
-  it("serves every role but embed; JSON mode is enough for build, extract and review", () => {
+  it("serves every text role; JSON mode is enough for build, extract and review", () => {
     for (const role of MODEL_ROLES) {
       const problems = capabilityProblems(role, FLASH, { vectorDimensions: 384 });
       if (role === "embed") expect(problems.join()).toMatch(/not an embedding model/);
+      else if (isSpeechRole(role)) expect(problems.join()).toMatch(/cannot (transcribe|speak)/);
       else expect(problems).toEqual([]);
     }
   });
@@ -71,17 +73,20 @@ describe("the deepseek provider", () => {
       expect(capabilityProblems(role, plain).join()).toMatch(/does not support JSON output/);
     }
     expect(capabilityProblems("summarise", plain)).toEqual([]);
-    expect(capabilityProblems("assistant", plain)).toEqual([]);
+    expect(capabilityProblems("assistant.core", plain)).toEqual([]);
   });
 });
 
 describe("the deepseek-flash preset", () => {
-  it("does not change the shipped defaults: every role stays on Workers AI", () => {
-    for (const role of MODEL_ROLES) expect(SHIPPED_ROLES[role].provider).toBe("workers-ai");
-    expect(resolveRoles().assistant.provider).toBe("workers-ai");
+  it("does not change the shipped defaults: every text role stays on Workers AI", () => {
+    for (const role of MODEL_ROLES) {
+      // Voice is AssemblyAI only (ADR 0349): off until its key is set.
+      expect(SHIPPED_ROLES[role].provider).toBe(isSpeechRole(role) ? "assemblyai" : "workers-ai");
+    }
+    expect(resolveRoles()["assistant.core"].provider).toBe("workers-ai");
   });
 
-  it("puts every role but embed on deepseek-flash, each falling back to its Workers AI default", () => {
+  it("puts every text role on deepseek-flash, each falling back to its Workers AI default", () => {
     const roles = resolveRoles({ deploy: parseRoleLayer(PRESET()) }, { vectorDimensions: 384 });
     for (const role of MODEL_ROLES) {
       expect(roles[role].ignored).toEqual([]);
@@ -94,6 +99,11 @@ describe("the deepseek-flash preset", () => {
         });
         continue;
       }
+      if (isSpeechRole(role)) {
+        // Voice stays on AssemblyAI (ADR 0349).
+        expect(roles[role]).toMatchObject({ provider: "assemblyai", source: "shipped" });
+        continue;
+      }
       expect(roles[role]).toMatchObject({ ...FLASH, source: "deploy" });
       expect(roles[role].fallback).toMatchObject({
         provider: "workers-ai",
@@ -102,7 +112,7 @@ describe("the deepseek-flash preset", () => {
     }
     // Short answers think less: thinking off; the assistant and the reviewer keep it.
     expect(roles.classify.params).toEqual({ maxTokens: 64, temperature: 0, thinking: false });
-    expect(roles.assistant.params.thinking).toBeUndefined();
+    expect(roles["assistant.core"].params.thinking).toBeUndefined();
     expect(roles.review.params.thinking).toBeUndefined();
     expect(Object.keys(ROLE_PRESETS["deepseek-flash"]?.roles ?? {})).not.toContain("embed");
   });
@@ -113,7 +123,7 @@ describe("the deepseek-flash preset", () => {
       admin: { review: { provider: "workers-ai", model: "@cf/openai/gpt-oss-120b" } },
     });
     expect(roles.review).toMatchObject({ provider: "workers-ai", source: "admin" });
-    expect(roles.assistant).toMatchObject({ ...FLASH, source: "deploy" });
+    expect(roles["assistant.core"]).toMatchObject({ ...FLASH, source: "deploy" });
   });
 });
 
@@ -174,7 +184,7 @@ describe("running roles on DeepSeek", () => {
       thinking: { type: "disabled" },
     });
     // The assistant keeps DeepSeek's default (thinking on): no switch is sent.
-    await models.run("assistant", [{ role: "user", content: "hi" }]);
+    await models.run("assistant.core", [{ role: "user", content: "hi" }]);
     expect(server.calls[1]?.body.thinking).toBeUndefined();
     expect(server.calls[1]?.body.max_tokens).toBe(8000);
     // embed is untouched: Workers AI through the binding.

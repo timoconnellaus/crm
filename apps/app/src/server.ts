@@ -8,9 +8,11 @@ import handler from "@tanstack/react-start/server-entry";
 import { runAdjudicatorCron } from "./server/adjudicator.ts";
 import { runEmbeddingCron } from "./server/ai.ts";
 
-// The in-app assistant's conversation object (ADR 0200), bound as ASSISTANT in wrangler.jsonc.
-export { AssistantConversation } from "./server/assistant/conversation.ts";
+// Each person's assistant thread (ADR 0340), bound as ASSISTANT in wrangler.jsonc.
+export { AssistantAgent } from "./server/assistant/agent.ts";
 
+import { type AssistantHttpEnv, handleSocket, SOCKET_PATH } from "./server/assistant/http.ts";
+import { authorize } from "./server/identity.ts";
 import { createAppHandler } from "./server/mcp/handler.ts";
 import { runBlobDeletionCron, runScheduledMaintenance } from "./server/purge.ts";
 import { handleSupportRoute, isSupportRoute } from "./server/support.ts";
@@ -23,10 +25,20 @@ const EMBEDDING_CRON = "*/10 * * * *";
 
 const app = createAppHandler({ fetch: (request) => handler.fetch(request) });
 
+async function assistantSocket(request: Request, env: Env): Promise<Response> {
+  const result = await authorize(request, env, { handlerType: "router" });
+  if (!result.ok) return result.response;
+  return handleSocket(request, env as unknown as AssistantHttpEnv, result.principal);
+}
+
 export default {
   fetch(request, env, ctx) {
     // Hosted support access (ADR 0212): a 404 unless ROS_SUPPORT_PUBLIC_KEY is set.
-    if (isSupportRoute(new URL(request.url).pathname)) return handleSupportRoute(request, env);
+    const pathname = new URL(request.url).pathname;
+    if (isSupportRoute(pathname)) return handleSupportRoute(request, env);
+    // The assistant thread's WebSocket (ADR 0340) goes straight to the person's object: TanStack
+    // Start does not pass a 101 response through. Identity is enforced here the same way.
+    if (pathname === SOCKET_PATH) return assistantSocket(request, env);
     return app.fetch(request, env, ctx);
   },
   scheduled(controller, env, ctx) {

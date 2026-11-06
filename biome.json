@@ -43,6 +43,30 @@
   },
   "overrides": [
     {
+      "includes": ["packages/agent-*/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@relationship-os/*",
+                      "!@relationship-os/agent-*",
+                      "!@relationship-os/config/*"
+                    ],
+                    "message": "agent-* packages are MIT and import no CRM code (ADR 0350). Inject what you need instead."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["packages/ui/src/components/**", "packages/ui/src/hooks/**"],
       "linter": {
         "rules": {

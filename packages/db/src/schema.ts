@@ -666,6 +666,31 @@ export interface CoreAssistantConversationRefsTable {
 }
 
 /**
+ * Migration 0350 (ADR 0340): one assistant thread per user. The thread itself lives in the
+ * user's AssistantAgent Durable Object; this row is its bookkeeping (turns, unread, preview).
+ */
+export interface CoreAssistantThreadTable {
+  id: string;
+  user_id: string;
+  turns: ColumnType<number, number | undefined, number>;
+  unread: ColumnType<number, number | undefined, number>;
+  preview: string | null;
+  compaction: string | null;
+  last_activity_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Migration 0350 (ADR 0340, ADR 0019 amendment): the people, organisations and email hashes a
+ * thread referenced, so an erase can find the threads to scrub.
+ */
+export interface CoreAssistantThreadRefsTable {
+  thread_id: string;
+  ref: string;
+}
+
+/**
  * Migration 0330 (ADR 0320): erased people's addresses, as `sha256:<hex>` of the lower-cased
  * address (never the address), so sync does not collect them again.
  */
@@ -1313,6 +1338,8 @@ export interface CoreDatabase {
   core_notification_delivery: CoreNotificationDeliveryTable;
   core_assistant_conversation: CoreAssistantConversationTable;
   core_assistant_conversation_refs: CoreAssistantConversationRefsTable;
+  core_assistant_thread: CoreAssistantThreadTable;
+  core_assistant_thread_refs: CoreAssistantThreadRefsTable;
   core_erased_address: CoreErasedAddressTable;
   core_blob_deletion: CoreBlobDeletionTable;
   core_assignment_rule: CoreAssignmentRuleTable;

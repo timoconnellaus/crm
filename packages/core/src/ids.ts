@@ -41,6 +41,8 @@ export const ID_PREFIXES = {
   notificationRoute: "nrt",
   /** In-app assistant conversations (ADR 0200). */
   assistantConversation: "asc",
+  /** A person's one assistant thread (ADR 0340). */
+  assistantThread: "ath",
   /** Policy adjudicator verdicts (ADR 0204). */
   adjudication: "adj",
   /** Assignment rules (ADR 0246). */

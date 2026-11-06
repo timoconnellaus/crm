@@ -1,5 +1,9 @@
 # Functional Source License, Version 1.1, ALv2 Future License
 
+> This licence covers the repository except the directories listed in NOTICE. In particular, the
+> assistant packages `packages/agent-*` (agent-core, agent-a2ui, agent-voice, agent-plugins) are
+> licensed under the MIT License; see the LICENSE file in each of those directories (ADR 0350).
+
 ## Abbreviation
 
 FSL-1.1-ALv2

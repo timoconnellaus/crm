@@ -1,5 +1,5 @@
 // The assistant docked beside the page (ADR 0030 amendment): on tablets and desktops it is a
-// persistent right-hand sidebar that stays open, with the same conversation, across page changes
+// persistent right-hand sidebar that stays open, with the same thread, across page changes
 // and follows the page's context; it is resizable and remembers its width; Cmd-J toggles it; the
 // page reflows beside it without scrolling sideways. On phones it is still a full-screen sheet.
 // Local dev runs with AI_FAKE_MODEL=true (the scripted stand-in model).
@@ -62,7 +62,8 @@ test.describe("docked (tablet and desktop)", () => {
     await expect(dock(page)).toBeVisible();
     // Focus moves into the composer when opened from the keyboard.
     await expect(panel.getByTestId("assistant-input")).toBeFocused();
-    await panel.getByRole("button", { name: "New conversation" }).click();
+    // One chat that never resets: there is no "New conversation".
+    await expect(panel.getByRole("button", { name: "New conversation" })).toHaveCount(0);
     await expect(panel.getByTestId("assistant-context")).toHaveText(`On: Ada Lovelace${token}`);
     await panel.getByTestId("assistant-input").fill(`Hello ${token}`);
     await panel.getByTestId("assistant-send").click();
@@ -82,9 +83,39 @@ test.describe("docked (tablet and desktop)", () => {
     await expect(page).toHaveURL(/\/tasks$/);
     await expect(panel.getByTestId("assistant-transcript")).toContainText(`Hello ${token}`);
     await expect(panel.getByTestId("assistant-context")).toHaveText("On: Tasks");
-    await expect(panel.getByTestId("assistant-reply")).toHaveCount(1);
+    await expect(
+      panel.getByTestId("assistant-user").filter({ hasText: `Hello ${token}` }),
+    ).toHaveCount(1);
     await expectReflowed(page);
   });
+
+  for (const scheme of ["light", "dark"] as const) {
+    for (const viewport of [
+      { width: 1280, height: 900 },
+      { width: 834, height: 1112 },
+    ]) {
+      test(`its header lines up with the app header (${viewport.width} px, ${scheme})`, async ({
+        page,
+      }) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.setViewportSize(viewport);
+        await open(page, "/people");
+        const panel = await openDock(page);
+        const header = panel.getByTestId("assistant-header");
+        const shell = page.getByTestId("app-header");
+        const [a, b] = [await header.boundingBox(), await shell.boundingBox()];
+        if (!a || !b) throw new Error("no header");
+        // Same top and same height: the two bottom borders form one line.
+        expect(Math.round(a.y)).toBe(Math.round(b.y));
+        expect(Math.round(a.height)).toBe(Math.round(b.height));
+        if (SCREENSHOTS) {
+          await page.screenshot({
+            path: `${SCREENSHOTS}/dock-header-${viewport.width}-${scheme}.png`,
+          });
+        }
+      });
+    }
+  }
 
   test("resizes from its edge, by drag and by keyboard, and remembers its width", async ({
     page,

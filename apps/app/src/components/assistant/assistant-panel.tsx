@@ -1,10 +1,11 @@
-// The assistant panel (ADR 0030, ADR 0200). On tablets and desktops it is docked on the
+// The assistant panel (ADR 0030, ADR 0200, ADR 0340). On tablets and desktops it is docked on the
 // right of the app shell: the page reflows narrower beside it, it stays mounted across page
-// changes (same conversation, scroll, streaming reply and draft), it is resizable from its left
-// edge, and its width and open state are remembered per browser. On phones it is a full-screen
-// sheet. Either way it knows the page, its record and the list selection (AssistantProvider),
-// keeps one conversation going across pages (remembered for the browser tab), and opens
-// pre-filled from "Ask AI", "Ask about N selected" and every "Ask the assistant" link.
+// changes (same thread, scroll, streaming reply and draft), it is resizable from its left edge,
+// and its width and open state are remembered per browser. On phones it is a full-screen sheet.
+// Either way it shows the person's one thread (ThreadProvider), the same one /assistant shows;
+// knows the page, its record and the list selection (AssistantProvider); and opens pre-filled
+// from "Ask AI", "Ask about N selected" and every "Ask the assistant" link. Its header is exactly
+// as tall as the shell header beside it (SHELL_HEADER_HEIGHT), so their borders meet.
 import { Button } from "@relationship-os/ui/components/button";
 import {
   Sheet,
@@ -17,7 +18,7 @@ import { useSidebar } from "@relationship-os/ui/components/sidebar";
 import { useIsMobile } from "@relationship-os/ui/hooks/use-mobile";
 import { cn } from "@relationship-os/ui/lib/utils";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { MaximizeIcon, PlusIcon, SparklesIcon, XIcon } from "lucide-react";
+import { ChevronUpIcon, MaximizeIcon, SearchIcon, SparklesIcon, XIcon } from "lucide-react";
 import {
   type KeyboardEvent,
   type PointerEvent,
@@ -26,37 +27,42 @@ import {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useHotkey } from "#/lib/hotkeys";
-import { Composer, Transcript, useAssistantName } from "./assistant-chat.tsx";
+import { errorMessage } from "#/lib/query";
+import {
+  Composer,
+  ThreadSearch,
+  Transcript,
+  useAssistantName,
+  useJumpToMessage,
+} from "./assistant-chat.tsx";
 import { type AskOptions, PANEL_ID, useAssistant } from "./assistant-provider.tsx";
 import {
   dockWidthCss,
   PANEL_MAX,
   PANEL_MIN,
   readDockWidth,
+  SHELL_HEADER_HEIGHT,
   widthAfterDrag,
   widthAfterKey,
   writeDockWidth,
 } from "./dock-state.ts";
-import { useConversation } from "./use-conversation.ts";
+import { useThread, useThreadVisible } from "./thread-provider.tsx";
 
-const STORAGE_KEY = "ros.assistant.panelConversation";
-
-function remembered(): string | null {
-  try {
-    return sessionStorage.getItem(STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function remember(id: string | null) {
-  try {
-    if (id) sessionStorage.setItem(STORAGE_KEY, id);
-    else sessionStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Private mode: the panel just starts fresh next time.
-  }
+/** "Show earlier messages", above the first loaded message when there are earlier ones. */
+export function EarlierButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="mx-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      onClick={onClick}
+      data-testid="assistant-earlier"
+    >
+      <ChevronUpIcon className="size-3" />
+      Show earlier messages
+    </button>
+  );
 }
 
 export function AssistantPanel({ canApprove }: { canApprove: boolean }) {
@@ -64,18 +70,17 @@ export function AssistantPanel({ canApprove }: { canApprove: boolean }) {
   const phone = useIsMobile();
   const name = useAssistantName();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const thread = useThread();
   const [draft, setDraft] = useState("");
   const [scope, setScope] = useState<AskOptions>({});
-  const conversation = useConversation(conversationId, (id) => {
-    setConversationId(id);
-    remember(id);
-  });
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
+  const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setConversationId(remembered());
-  }, []);
+  // On /assistant the full page shows the thread; the panel there would be a duplicate.
+  const onFullPage = pathname === "/assistant";
+  useThreadVisible(assistant.open && !onFullPage);
+  useJumpToMessage(thread, scrollRoot);
 
   useHotkey("mod+j", () => assistant.toggle(), { global: true });
 
@@ -90,12 +95,8 @@ export function AssistantPanel({ canApprove }: { canApprove: boolean }) {
       ...(request.selection ? { selection: request.selection } : {}),
     };
     setScope(next);
-    if (request.fresh) {
-      setConversationId(null);
-      remember(null);
-    }
-    if (request.prompt && request.send && !request.fresh) {
-      void conversation.send(request.prompt, assistant.pageContext(next));
+    if (request.prompt && request.send) {
+      void thread.send(request.prompt, assistant.pageContext(next));
     } else if (request.prompt) {
       setDraft(request.prompt);
     }
@@ -110,10 +111,10 @@ export function AssistantPanel({ canApprove }: { canApprove: boolean }) {
     setScope({});
   }, [pathname]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on every change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll to the newest on every change (not while jumping).
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
-  }, [conversation.items, conversation.running]);
+    if (thread.jumpTarget === null) bottom.current?.scrollIntoView({ block: "end" });
+  }, [thread.items.length, thread.running, assistant.open]);
 
   const context = assistant.pageContext(scope);
   const close = () => {
@@ -121,25 +122,36 @@ export function AssistantPanel({ canApprove }: { canApprove: boolean }) {
     setScope({});
   };
 
+  async function remove(seq: number) {
+    try {
+      await thread.deleteMessage(seq);
+      toast.success("Message deleted");
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
   const actions = (
     <>
       <Button
+        variant={searching ? "secondary" : "ghost"}
+        size="icon"
+        aria-label="Search this chat"
+        title="Search this chat"
+        aria-pressed={searching}
+        onClick={() => setSearching((s) => !s)}
+        data-testid="assistant-search-toggle"
+      >
+        <SearchIcon />
+      </Button>
+      <Button
         variant="ghost"
         size="icon"
-        aria-label="New conversation"
-        onClick={() => {
-          setConversationId(null);
-          remember(null);
-        }}
+        aria-label="Open full page"
+        title="Open full page"
+        asChild
       >
-        <PlusIcon />
-      </Button>
-      <Button variant="ghost" size="icon" aria-label="Open full page" asChild>
-        <Link
-          to="/assistant"
-          search={conversation.id ? { c: conversation.id } : {}}
-          onClick={() => assistant.setOpen(false)}
-        >
+        <Link to="/assistant" onClick={() => assistant.setOpen(false)}>
           <MaximizeIcon />
         </Link>
       </Button>
@@ -148,26 +160,46 @@ export function AssistantPanel({ canApprove }: { canApprove: boolean }) {
 
   const body = (
     <>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4" data-testid="assistant-scroll">
-        {conversation.items.length === 0 && !conversation.running ? (
+      {searching && (
+        <div className="max-h-[50%] shrink-0 overflow-y-auto border-b p-3">
+          <ThreadSearch
+            query={query}
+            onQueryChange={setQuery}
+            name={name}
+            autoFocus
+            onJump={(seq) => {
+              thread.jumpTo(seq);
+              setSearching(false);
+            }}
+          />
+        </div>
+      )}
+      <div
+        ref={setScrollRoot}
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
+        data-testid="assistant-scroll"
+      >
+        {thread.items.length === 0 && !thread.running && !thread.loading ? (
           <p className="text-sm text-muted-foreground">
             Ask {name} about what you are looking at, or to do something: "Summarise this", "Create
             a task to follow up next week", "Add a widget of deals by stage".
           </p>
         ) : (
           <Transcript
-            items={conversation.items}
+            items={thread.items}
             name={name}
             canApprove={canApprove}
-            thinking={conversation.thinking}
-            running={conversation.running}
+            thinking={thread.thinking}
+            running={thread.running}
+            onDelete={(seq) => void remove(seq)}
+            before={thread.hasEarlier ? <EarlierButton onClick={thread.loadEarlier} /> : undefined}
           />
         )}
         <div ref={bottom} />
       </div>
       <div className="border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <Composer
-          conversation={conversation}
+          conversation={thread}
           context={context}
           name={name}
           draft={draft}
@@ -206,8 +238,11 @@ export function AssistantPanel({ canApprove }: { canApprove: boolean }) {
   if (!assistant.open) return null;
   return (
     <AssistantDock name={name} onClose={close}>
-      <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
-        <SparklesIcon className="size-4 text-primary" />
+      <div
+        className={cn("flex shrink-0 items-center gap-1 border-b px-4", SHELL_HEADER_HEIGHT)}
+        data-testid="assistant-header"
+      >
+        <SparklesIcon className="mr-1 size-4 text-primary" />
         <h2 id={`${PANEL_ID}-title`} className="flex-1 truncate font-semibold text-foreground">
           {name}
         </h2>

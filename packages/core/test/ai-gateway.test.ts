@@ -79,11 +79,15 @@ describe("model ids on the unified endpoint", () => {
       /declare its capabilities/,
     );
     expect(
-      capabilityProblems("assistant", { provider: "custom", model: TOGETHER, capabilities: CAPS }),
+      capabilityProblems("assistant.core", {
+        provider: "custom",
+        model: TOGETHER,
+        capabilities: CAPS,
+      }),
     ).toEqual([]);
     // Capability checks are unchanged: a declared model still has to fit the role.
     expect(
-      capabilityProblems("assistant", {
+      capabilityProblems("assistant.core", {
         provider: "custom",
         model: TOGETHER,
         capabilities: { ...CAPS, toolUse: false },
@@ -179,14 +183,14 @@ describe("with AI Gateway", () => {
       },
       fetch: server.fetch,
     });
-    const result = await models.run("assistant", [{ role: "user", content: "hi" }]);
+    const result = await models.run("assistant.core", [{ role: "user", content: "hi" }]);
     expect(result).toMatchObject({ text: "From Together.", provider: "custom", model: TOGETHER });
     expect(server.calls[0]?.url).toBe(`${COMPAT}/chat/completions`);
     expect(server.calls[0]?.body.model).toBe(TOGETHER);
     expect(gatewayHeadersOf(server.calls[0])).toEqual({
       authorization: undefined,
       aig: "Bearer aig-token",
-      metadata: { role: "assistant" },
+      metadata: { role: "assistant.core" },
     });
   });
 
@@ -396,7 +400,7 @@ describe("review independence (ADR 0031)", () => {
     expect(
       reviewIndependence({
         review: { provider: "openai", model: "m" },
-        assistant: { provider: "openrouter", model: "m" },
+        "assistant.core": { provider: "openrouter", model: "m" },
       }).ok,
     ).toBe(true);
   });
@@ -412,7 +416,7 @@ describe("review independence (ADR 0031)", () => {
     await expect(
       invoke(
         "ai.updateRole",
-        { role: "assistant", provider: "workers-ai", model: SHIPPED_ROLES.review.model },
+        { role: "assistant.core", provider: "workers-ai", model: SHIPPED_ROLES.review.model },
         context(admin),
       ),
     ).resolves.toMatchObject({ model: SHIPPED_ROLES.review.model });

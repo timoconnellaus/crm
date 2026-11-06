@@ -42,10 +42,14 @@ import {
 } from "./platform.ts";
 import {
   assertCapable,
+  capabilitiesOf,
   gatewayModelId,
+  isSpeechRole,
   type ModelCapabilities,
+  type ModelPricing,
   type ModelRef,
   type ModelRole,
+  modelPricing,
   onPlatform,
   PROVIDER_INFO,
   type ProviderId,
@@ -54,6 +58,7 @@ import {
   type ResolvedRole,
   type RoleLayer,
   resolveRoles,
+  type Thinking,
 } from "./roles.ts";
 import {
   workersAiRest,
@@ -115,12 +120,26 @@ export interface ModelRunner {
   chatModels?(role: ModelRole): Promise<ChatModel[]>;
 }
 
+/** A role's resolved settings (ADR 0351): output limit, temperature and thinking. */
+export interface RoleParams {
+  maxTokens: number;
+  temperature: number;
+  thinking?: Thinking | undefined;
+}
+
 /** One model for a role, ready for the AI SDK's generateText / streamText. */
 export interface ChatModel {
   model: LanguageModel;
   provider: ProviderId | "fake";
   modelId: string;
-  params: { maxTokens: number; temperature: number; thinking?: boolean | undefined };
+  params: RoleParams;
+  /**
+   * The model's prices for the compaction planner (ADR 0341, ADR 0351), cache prices filled in
+   * (unknown: cached priced as uncached); null when the model's prices are unknown.
+   */
+  pricing: ModelPricing | null;
+  /** The model's context window in tokens (0 for the local stand-in). */
+  contextTokens: number;
   /** Provider options to pass to the AI SDK call (DeepSeek's thinking switch, …). */
   providerOptions?: Record<string, JSONObject>;
   /** Extra request headers (AI Gateway metadata and authorization). */
@@ -195,6 +214,8 @@ export interface AiEnv extends PlatformAiEnv {
   AI_KEY_DEEPSEEK?: string;
   AI_KEY_ANTHROPIC?: string;
   AI_KEY_CUSTOM?: string;
+  /** Speech-to-text and text-to-speech (ADR 0349): voice is off until it is set. */
+  AI_KEY_ASSEMBLYAI?: string;
   /**
    * The judge (ADR 0230), beside the registry: TypeSafe's key as a Worker secret, "true" when
    * AI Gateway holds it as BYOK under `custom-typesafe`, and the deploy layer of its placement
@@ -349,19 +370,34 @@ function byokProviders(env: AiEnv, settings: AiAdminSettings): ProviderId[] {
   return [...new Set([...settings.byok, ...fromEnv])];
 }
 
+/** OpenAI-compatible providers that take `reasoning_effort` for a thinking level (ADR 0351). */
+const REASONING_EFFORT_PROVIDERS = new Set<ProviderId>([
+  "openai",
+  "openrouter",
+  "google",
+  "openai-compatible",
+  "custom",
+]);
+
 /**
- * Request body fields for a role's params that the AI SDK has no option for, per provider:
- * DeepSeek's thinking switch. The OpenAI-compatible provider copies unknown provider options
- * into the body.
+ * Request body fields for a role's params that the AI SDK has no option for, per provider
+ * (ADR 0351): DeepSeek's thinking switch (a level turns it on), and `reasoning_effort` for a
+ * thinking level on other OpenAI-compatible providers. The OpenAI-compatible provider copies
+ * unknown provider options into the body. Providers without a switch get nothing.
  */
-function providerBody(
+export function providerBody(
   provider: ProviderId,
-  params: { thinking?: boolean | undefined },
+  params: { thinking?: Thinking | undefined },
 ): Record<string, JSONObject> | undefined {
-  if (provider === "deepseek" && params.thinking !== undefined) {
-    return {
-      [provider]: { thinking: { type: params.thinking ? "enabled" : "disabled" } },
-    };
+  const thinking = params.thinking;
+  if (thinking === undefined) return undefined;
+  if (provider === "deepseek") {
+    return { [provider]: { thinking: { type: thinking === false ? "disabled" : "enabled" } } };
+  }
+  if (typeof thinking === "string" && REASONING_EFFORT_PROVIDERS.has(provider)) {
+    // The provider reads `reasoningEffort` under its camel-cased name and sends `reasoning_effort`.
+    const key = provider.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+    return { [key]: { reasoningEffort: thinking } };
   }
   return undefined;
 }
@@ -651,6 +687,13 @@ function useFakes(options: ModelRunnerOptions): boolean {
 /** The stand-ins answer Workers AI's roles, hosted (Platform AI) or not. */
 const fakeable = (provider: ProviderId) => provider === "workers-ai" || provider === "platform";
 
+/** Speech roles move audio over their own connections (ADR 0349), never through the text runner. */
+function assertTextRole(role: ModelRole): void {
+  if (isSpeechRole(role)) {
+    throw new AiNotConfiguredError(`The ${role} role is speech, not text: it has no text model`);
+  }
+}
+
 /**
  * The registry-backed model runner. Roles resolve lazily (deploy config from env, the admin layer
  * from `loadSettings`, once). A call tries the role's model, then its fallback once.
@@ -700,7 +743,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
     role: ModelRole,
     ref: ModelRef & { capabilities?: ModelCapabilities },
     messages: readonly ModelMessage[],
-    params: { maxTokens: number; temperature: number; thinking?: boolean | undefined },
+    params: RoleParams,
     json = false,
   ): Promise<ModelRunResult> => {
     await assertPlatformAllowed(ref);
@@ -784,11 +827,20 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
   const chatModelFor = async (
     role: ModelRole,
     ref: ModelRef,
-    params: { maxTokens: number; temperature: number; thinking?: boolean | undefined },
+    params: RoleParams,
   ): Promise<ChatModel | null> => {
     if (useFakes(options) && fakeable(ref.provider)) {
       const fake = options.fakes?.chat?.(role);
-      return fake ? { model: fake, provider: "fake", modelId: "fake", params } : null;
+      return fake
+        ? {
+            model: fake,
+            provider: "fake",
+            modelId: "fake",
+            params,
+            pricing: null,
+            contextTokens: 0,
+          }
+        : null;
     }
     const s = await settings();
     const providerOptions = providerBody(ref.provider, params);
@@ -798,6 +850,8 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
       provider: ref.provider,
       modelId: ref.model,
       params,
+      pricing: modelPricing(ref),
+      contextTokens: capabilitiesOf(ref)?.contextTokens ?? 0,
       ...(providerOptions ? { providerOptions } : {}),
       ...withHeaders(requestHeaders(options.env, ref, role, tag)),
     };
@@ -806,6 +860,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
   return {
     roles: resolved,
     async chatModels(role) {
+      assertTextRole(role);
       const config = (await resolved())[role];
       const out: ChatModel[] = [];
       const primary = await chatModelFor(role, config, config.params);
@@ -822,6 +877,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
       return out;
     },
     async run(role, messages, runOptions = {}) {
+      assertTextRole(role);
       const config = (await resolved())[role];
       const params = {
         ...config.params,
@@ -850,6 +906,21 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
       const config = (await resolved())[role];
       const target = ref ? (hosted ? platformRef(ref) : ref) : config;
       assertCapable(role, target, dims ? { vectorDimensions: dims } : {});
+      if (isSpeechRole(role)) {
+        // Voice is wired, not built (stage 17 W9): report whether the provider is set up, without
+        // calling it.
+        const status = providerStatus(options.env, await settings(), target.provider);
+        if (!status.ready) {
+          throw new AiNotConfiguredError(
+            `${PROVIDER_INFO[target.provider].label}: ${status.reason ?? "not configured"}`,
+          );
+        }
+        return {
+          text: "Configured. Voice is not switched on in this release yet.",
+          model: target.model,
+          provider: target.provider,
+        };
+      }
       if (role === "embed") {
         const result = await embedWith(target, ["Connection test"]);
         return {
@@ -883,7 +954,8 @@ export function modelRunnerFromEnv(
     isHosted(env) ||
     Boolean(workersAiRest(env)) ||
     Boolean(env.AI_MODEL_ROLES?.trim()) ||
-    Object.values(PROVIDER_INFO).some((p) => keyFromEnv(env, p.secretName));
+    // A speech-only key (AssemblyAI) does not make text AI configured.
+    Object.values(PROVIDER_INFO).some((p) => !p.speechOnly && keyFromEnv(env, p.secretName));
   if (hasBinding || (env.AI_FAKE_MODEL === "true" && options.fakes) || configured) {
     return createModelRunner({ env, ...options });
   }
