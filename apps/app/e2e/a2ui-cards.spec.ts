@@ -129,11 +129,10 @@ test("a saved producer draws a card, and its checkbox completes the task", async
   await acted;
   // Balanced: a write by the assistant applies, so the task is really done: a fresh card, read
   // from the CRM again, no longer lists it.
-  const cards = panel.getByTestId("assistant-card");
-  const before = await cards.count();
+  // The last card lists the task until a newer one replaces it, so this waits for that. (Not a
+  // count: the thread shows a window, so a new card can push an old one out.)
   await ask(panel, "Show my overdue tasks");
-  await expect(cards).toHaveCount(before + 1);
-  await expect(cards.last()).not.toContainText(title);
+  await expect(panel.getByTestId("assistant-card").last()).not.toContainText(title);
 });
 
 test("the stale deals producer draws a card", async ({ page }) => {

@@ -164,10 +164,12 @@ export interface ApprovalCardProps {
   actionIds?: readonly string[] | undefined;
   title?: string | undefined;
   youAsked?: string | undefined;
+  /** The words of a proposed note (`activity.proposeNote`), which the diff does not read well. */
+  note?: string | undefined;
 }
 
 /** A change set's pending actions, live from `approval.status`. */
-export function ApprovalCard({ changeSetId, actionIds, title, youAsked }: ApprovalCardProps) {
+export function ApprovalCard({ changeSetId, actionIds, title, youAsked, note }: ApprovalCardProps) {
   const { canApprove } = useCardHost();
   const only = actionIds?.length === 1 ? actionIds[0] : undefined;
   const status = useOp("approval.status", only ? { actionId: only } : { changeSetId });
@@ -223,6 +225,7 @@ export function ApprovalCard({ changeSetId, actionIds, title, youAsked }: Approv
       reviewHref={`/approvals?set=${encodeURIComponent(changeSetId)}`}
       onDecide={(decision) => void run(decision)}
     >
+      {note && <p className="min-w-0 break-words">{note}</p>}
       {actions.map((action) => (
         <ActionDetail key={action.id} action={action} names={names} />
       ))}

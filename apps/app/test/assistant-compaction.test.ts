@@ -241,6 +241,32 @@ describe("compaction in the live thread", () => {
     await settled(m);
   });
 
+  it("folds pending memory lines into the block, and summaries keep the block in their prefix", async () => {
+    fakeStandIn.pricing = PRICES;
+    fakeStandIn.contextTokens = 128_000;
+    const m = await member();
+    await rails(m, { minTokens: 1_000, maxShareOfWindow: 0.8, fallbackIdleMinutes: 10 });
+    const remember = (text: string) => invokeByName("memory.propose", { text }, human(m));
+    await remember("I take Fridays off");
+    await turn(m, "First"); // No history yet: it goes straight into the block.
+    await remember("I prefer calls before 10");
+
+    fakeStandIn.requests = [];
+    await oldThenRecent(m);
+    await compacted(m);
+    const before = JSON.stringify(fakeStandIn.requests);
+    expect(before).toContain("- I take Fridays off");
+
+    fakeStandIn.requests = [];
+    await turn(m, "And what next?");
+    const request = fakeStandIn.requests.find((r) => JSON.stringify(r).includes("what next"));
+    const messages = (request?.messages ?? []) as { role: string; content: unknown }[];
+    const system = JSON.stringify(messages.filter((x) => x.role === "system"));
+    expect(system).toContain("- I take Fridays off");
+    expect(system).toContain("- I prefer calls before 10");
+    expect(JSON.stringify(messages.at(-1))).not.toContain("I prefer calls before 10");
+  });
+
   it("always compacts at the ceiling, keeping fewer exchanges if it must, even with no prices", async () => {
     // A small window: the ceiling (12k) is under the floor (24k), and overflow is the worse risk.
     fakeStandIn.contextTokens = 16_000;

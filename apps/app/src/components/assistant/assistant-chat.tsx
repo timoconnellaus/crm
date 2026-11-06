@@ -3,6 +3,7 @@
 // Reject for people who may approve them, test-mode reports of proposed automations, day dividers,
 // times, and Delete on each message), "Search this chat", and the composer.
 import type { AssistantContext, TranscriptItem } from "@relationship-os/core/client";
+import { memorySaveOf } from "@relationship-os/core/client";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
 import { Input } from "@relationship-os/ui/components/input";
@@ -35,6 +36,7 @@ import { invalidateOps, useOp } from "#/lib/query";
 import { useAssistant } from "./assistant-provider.tsx";
 import { ApprovalCard } from "./cards/approval.tsx";
 import { Card, CardHostContext } from "./cards/index.tsx";
+import { MemorySaved } from "./memory-line.tsx";
 import { type ThreadView, useThread } from "./thread-provider.tsx";
 
 /** A tool call's name for people: `person_get` → "person get", call_operation → its operation. */
@@ -42,6 +44,13 @@ function toolLabel(item: Extract<TranscriptItem, { kind: "tool" }>): string {
   const input = item.input as Record<string, unknown> | null;
   if (item.tool === "call_operation" && typeof input?.name === "string") return input.name;
   return item.tool.replace(/_/g, " ");
+}
+
+/** The words of a note the assistant proposed (`activity.proposeNote`), for its card. */
+function proposedNote(item: Extract<TranscriptItem, { kind: "tool" }>): string | undefined {
+  if (item.pending?.operation !== "activity.proposeNote") return undefined;
+  const call = item.input as { input?: { body?: unknown } } | null;
+  return typeof call?.input?.body === "string" ? call.input.body : undefined;
 }
 
 /** automation.test's report, short: what the automation would do. */
@@ -92,6 +101,7 @@ function ChatCardHost({ canApprove, children }: { canApprove: boolean; children:
 function ToolItem({ item }: { item: Extract<TranscriptItem, { kind: "tool" }> }) {
   const [open, setOpen] = useState(false);
   const done = item.output !== undefined;
+  const memory = item.isError ? undefined : memorySaveOf(item.output);
   return (
     <div className="space-y-2" data-testid="assistant-tool" data-tool={item.tool}>
       <button
@@ -118,8 +128,14 @@ function ToolItem({ item }: { item: Extract<TranscriptItem, { kind: "tool" }> })
         </pre>
       )}
       {item.pending && (
-        <ApprovalCard changeSetId={item.pending.changeSetId} actionIds={[item.pending.actionId]} />
+        <ApprovalCard
+          changeSetId={item.pending.changeSetId}
+          actionIds={[item.pending.actionId]}
+          note={proposedNote(item)}
+          {...(item.pending.operation === "activity.proposeNote" ? { title: "Add a note" } : {})}
+        />
       )}
+      {memory && <MemorySaved save={memory} />}
       {item.tool === "automation_test" && done && !item.isError && (
         <TestReport output={item.output} />
       )}

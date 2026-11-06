@@ -3,6 +3,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@relationship-os/u
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   BellIcon,
+  BookmarkIcon,
   ChevronRightIcon,
   CoinsIcon,
   CreditCardIcon,
@@ -37,6 +38,7 @@ function Section({
   description: string;
   to?:
     | "/settings/approval-policy"
+    | "/settings/assistant-memory"
     | "/settings/adjudicator"
     | "/settings/users"
     | "/settings/audit"
@@ -164,6 +166,12 @@ function SettingsPage() {
                 : "Which notifications reach you by email or Slack, and the daily digest."
             }
             to="/settings/notifications"
+          />
+          <Section
+            icon={<BookmarkIcon className="size-5" />}
+            title="What your assistant remembers"
+            description="See, edit and pause what your assistant remembers, and the team's shared lines."
+            to="/settings/assistant-memory"
           />
           <Section
             icon={<PlugIcon className="size-5" />}

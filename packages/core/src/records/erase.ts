@@ -6,6 +6,8 @@ import { z } from "zod";
 import { enqueueEmbeddings } from "../ai/embedding.ts";
 import { deleteSummariesStatement } from "../ai/summaries.ts";
 import { queueScrubConversations } from "../assistant/erase.ts";
+import { queueEraseMemory } from "../assistant/memory.ts";
+import { emailRef } from "../assistant/scrub.ts";
 import type { HandlerContext } from "../operation.ts";
 import { chunk, jsonList } from "./common.ts";
 import { drainAllBlobDeletions, writeEraseLog } from "./erase-log.ts";
@@ -53,6 +55,8 @@ export interface EraseCounts {
   runs: number;
   /** Notifications deleted. */
   notifications: number;
+  /** Assistant memory lines that named the subject, deleted. */
+  memoryLines: number;
 }
 
 /** The counts person.erase and organisation.erase report beyond the audit and conversations. */
@@ -63,6 +67,7 @@ export const eraseCountsOutput = {
   extensionRowsErased: z.number().describe("Extension rows deleted or scrubbed"),
   runsRedacted: z.number().describe("Automation runs redacted"),
   notificationsDeleted: z.number(),
+  memoryLinesDeleted: z.number().describe("Assistant memory lines that named the subject"),
   bodiesDeleted: z
     .number()
     .describe("Synced email bodies deleted from blob storage now (the rest are retried)"),
@@ -81,6 +86,7 @@ export async function afterErase(
   extensionRowsErased: number;
   runsRedacted: number;
   notificationsDeleted: number;
+  memoryLinesDeleted: number;
   bodiesDeleted: number;
 }> {
   let bodiesDeleted = 0;
@@ -96,6 +102,7 @@ export async function afterErase(
     extensionRowsErased: counts.extensionRows,
     runsRedacted: counts.runs,
     notificationsDeleted: counts.notifications,
+    memoryLinesDeleted: counts.memoryLines,
     bodiesDeleted,
   };
 }
@@ -284,6 +291,13 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
   const suggestions = await queueEraseSync(ctx, subject);
   const extensionRows = await queueEraseExtensions(ctx, subject);
   const { runs, notifications } = await queueEraseRuns(ctx, subject);
+  // Memory lines that named the subject (ADR 0342 decision 10).
+  const memoryLines = await queueEraseMemory(ctx, {
+    recordIds,
+    terms,
+    names: subject.names,
+    refs: await Promise.all(terms.filter((t) => t.includes("@")).map(emailRef)),
+  });
 
   // 3f. The erase log outside D1 (R2), so an erasure can be re-applied after a restore. Written
   // before the commit: if it cannot be written the erase fails and can be retried.
@@ -312,6 +326,7 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
     extensionRows,
     runs,
     notifications,
+    memoryLines,
   };
 }
 

@@ -28,6 +28,7 @@ import { importOperations } from "./import.ts";
 import { importRecordsOperations } from "./import-records.ts";
 import { integrationOperations } from "./integration.ts";
 import { judgeOperations } from "./judge.ts";
+import { memoryOperations } from "./memory.ts";
 import { notificationOperations } from "./notification.ts";
 import { notificationDeliveryOperations } from "./notification-delivery.ts";
 import { organisationOperations } from "./organisation.ts";
@@ -92,6 +93,7 @@ export const coreOperations = [
   ...notificationDeliveryOperations,
   ...assistantOperations,
   ...a2uiOperations,
+  ...memoryOperations,
   ...aiCacheOperations,
   ...planOperations,
   ...supportOperations,

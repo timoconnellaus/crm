@@ -3,6 +3,8 @@
 import type { PlacementSet } from "../lib/calibrate.ts";
 import { adjudicatorPolicySet } from "./adjudicator-policy.ts";
 import { authoringIntentSet } from "./authoring-intent.ts";
+import { memoryConditionSet } from "./memory-condition.ts";
+import { memoryWriteSet } from "./memory-write.ts";
 import { outboundMessageSet } from "./outbound-message.ts";
 import { summaryStatementsSet } from "./summary-statements.ts";
 import { syncJobChangeSet } from "./sync-job-change.ts";
@@ -16,4 +18,6 @@ export const SETS: PlacementSet<any, any>[] = [
   widgetShapeSet,
   adjudicatorPolicySet,
   syncJobChangeSet,
+  memoryWriteSet,
+  memoryConditionSet,
 ];
