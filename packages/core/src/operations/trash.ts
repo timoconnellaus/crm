@@ -5,7 +5,13 @@ import { z } from "zod";
 import { ValidationError } from "../errors.ts";
 import { decodeCursor, encodeCursor } from "../list.ts";
 import { defineOperation } from "../operation.ts";
-import { chunk, purgeCutoff, restorableUntil, TRASH_RETENTION_DAYS } from "../records/common.ts";
+import {
+  chunk,
+  jsonList,
+  purgeCutoff,
+  restorableUntil,
+  TRASH_RETENTION_DAYS,
+} from "../records/common.ts";
 
 /**
  * Everything in Trash: what trash.list shows, the UI can restore, and trash.purge hard-deletes
@@ -227,12 +233,15 @@ export const trashPurge = defineOperation({
     // Duplicate pairs have no foreign key: a purged record's pairs (dismissed ones too) go with it.
     for (const object of ["person", "organisation"] as const) {
       const ids = purged.filter((r) => r.object === object).map((r) => r.id);
-      for (const part of chunk(ids)) {
+      if (ids.length) {
+        // One JSON parameter per list: D1 binds at most 100 per statement.
         ctx.write(
           ctx.db
             .deleteFrom("core_duplicate_pair")
             .where("object", "=", object)
-            .where((eb) => eb.or([eb("a_id", "in", part), eb("b_id", "in", part)])),
+            .where((eb) =>
+              eb.or([eb("a_id", "in", jsonList(ids)), eb("b_id", "in", jsonList(ids))]),
+            ),
         );
       }
     }
