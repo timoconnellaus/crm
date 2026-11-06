@@ -19,7 +19,7 @@ export interface AssistantThreadStore {
    * Posts a card in the person's thread without a turn (a saved producer run by a routine or a
    * button in the app). It waits for a running turn to finish first. Returns where it landed.
    */
-  postCard(userId: string, part: A2uiPart): Promise<{ seq: number }>;
+  postCard(userId: string, part: A2uiPart, via?: "routine" | "agent"): Promise<{ seq: number }>;
   /** Redacts an erased subject from the person's thread. Idempotent. */
   scrub(userId: string, scrub: ConversationScrub): Promise<void>;
 }

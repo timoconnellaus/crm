@@ -5,6 +5,7 @@ import { type Kysely, type SqlBool, sql } from "kysely";
 import { z } from "zod";
 import { enqueueEmbeddings } from "../ai/embedding.ts";
 import { deleteSummariesStatement } from "../ai/summaries.ts";
+import { queueScrubAgentJobs } from "../assistant/agent-jobs.ts";
 import { queueScrubConversations } from "../assistant/erase.ts";
 import { queueEraseMemory } from "../assistant/memory.ts";
 import { emailRef } from "../assistant/scrub.ts";
@@ -273,6 +274,13 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
   // their stored history now (before the commit, so an unreachable one fails the erase), and
   // their list rows and the subject's refs follow in this batch.
   const conversations = await queueScrubConversations(ctx, {
+    recordIds,
+    terms: request.terms,
+    names: request.names ?? [],
+  });
+
+  // 3d'. Agents (ADR 0344): what their rows say, and what running ones still hold.
+  await queueScrubAgentJobs(ctx, {
     recordIds,
     terms: request.terms,
     names: request.names ?? [],

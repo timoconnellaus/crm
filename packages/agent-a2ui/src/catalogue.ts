@@ -906,6 +906,59 @@ const approval = define({
     ),
 });
 
+const agentJob = define({
+  type: "agentJob",
+  group: "host",
+  since: 1,
+  hostOnly: true,
+  description: "An agent's live progress card: what it has done, changes to review, Stop",
+  props: z.object({ jobId: line(80), title: line(200) }),
+  fallback: (p) => `Agent: ${p.title}`,
+});
+
+const agentGrant = define({
+  type: "agentGrant",
+  group: "host",
+  since: 1,
+  hostOnly: true,
+  description: "What an agent asks to do, for the person to confirm before it starts",
+  props: z.object({
+    jobId: line(80),
+    title: line(200),
+    brief: z.string().max(2_000),
+    /** What it can do without asking. */
+    can: z.array(line(300)).max(12),
+    /** What it will put aside for the person. */
+    aside: z.array(line(300)).max(12),
+    budget: line(300),
+    /** The judge's note, when it has one. */
+    note: z.string().max(300).optional(),
+  }),
+  fallback: (p) =>
+    joinLines(
+      `Before I start: ${p.title}`,
+      p.brief,
+      ...p.can.map((c) => `It can: ${c}`),
+      ...p.aside.map((a) => `It will put aside: ${a}`),
+      p.budget,
+    ),
+});
+
+const changeReview = define({
+  type: "changeReview",
+  group: "host",
+  since: 1,
+  hostOnly: true,
+  description: "An agent's staged changes as one diff: approve or reject each row, or all of them",
+  props: z.object({
+    changeSetId: line(80),
+    title: line(200),
+    /** Why these need the person. */
+    text: z.string().max(400).optional(),
+  }),
+  fallback: (p) => joinLines(`Changes to review: ${p.title}`, p.text),
+});
+
 const gate = z.object({ kind: z.enum(["plain", "jev"]), text: line(300) });
 
 const routineReadBack = define({
@@ -1189,6 +1242,9 @@ export const CATALOGUE = [
   agentConnectionRequest,
   agentRequest,
   agentLogEntry,
+  agentJob,
+  agentGrant,
+  changeReview,
 ] as const;
 
 export type CatalogueComponent = (typeof CATALOGUE)[number];

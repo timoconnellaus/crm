@@ -125,6 +125,8 @@ export type ThreadServerFrame =
   | { type: "playout"; turn: number; playout: Playout }
   /** Something was added outside a turn (a card a routine posted): read the thread again. */
   | { type: "appended" }
+  /** An agent moved on: read its card again (ADR 0344). */
+  | { type: "job"; jobId: string }
   | { type: "error"; message: string };
 
 /** Recognises an MCP `pending_approval` tool result (PendingApproval in errors.ts). */

@@ -5,6 +5,7 @@
 // with a different actor and origin.
 import type { Principal } from "@relationship-os/auth";
 import {
+  type AgentJobHost,
   type AssistantThreadStore,
   type AutomationHost,
   type EventSink,
@@ -24,6 +25,7 @@ import { createCrmDb } from "@relationship-os/db";
 import { getAgentByName } from "agents";
 import { type AiAppEnv, aiContextFor } from "./ai.ts";
 import { type AssistantAgent, threadName } from "./assistant/agent.ts";
+import { type AgentJob, jobName } from "./assistant/job.ts";
 import { blobStoreFor, integrationRuntimeFor } from "./integrations.ts";
 import { deleteGrantTokens } from "./mcp/handler.ts";
 import { runner } from "./runner.ts";
@@ -55,6 +57,34 @@ export interface OperationsEnv extends AiAppEnv {
   CRM_UPDATE_TOKEN?: string;
   /** Each person's assistant thread (ADR 0340): thread.* operations and erase reach it. */
   ASSISTANT?: DurableObjectNamespace<AssistantAgent>;
+  /** One object per agent (ADR 0344). */
+  AGENT_JOB?: DurableObjectNamespace<AgentJob>;
+}
+
+/** The agents' objects as operations see them (ADR 0344). */
+export function agentJobsFor(env: OperationsEnv): AgentJobHost | undefined {
+  const namespace = env.AGENT_JOB;
+  if (!namespace) return undefined;
+  const stub = (jobId: string) => namespace.get(namespace.idFromName(jobName(jobId)));
+  return {
+    async begin(jobId) {
+      await stub(jobId).begin(jobId);
+    },
+    async stop(jobId) {
+      await stub(jobId).stop(jobId);
+    },
+    async wait(jobId, ms) {
+      try {
+        return await stub(jobId).wait(jobId, ms);
+      } catch {
+        // It restarted: it carries on by its alarm, and the card takes over.
+        return false;
+      }
+    },
+    async scrub(jobId, scrub) {
+      await stub(jobId).scrub(jobId, scrub);
+    },
+  };
 }
 
 /**
@@ -78,8 +108,8 @@ export function assistantThreadsFor(env: OperationsEnv): AssistantThreadStore | 
     async markSeen(userId, seq) {
       return (await stub(userId)).markSeen(userId, seq);
     },
-    async postCard(userId, part) {
-      return (await stub(userId)).postCard(userId, part);
+    async postCard(userId, part, via) {
+      return (await stub(userId)).postCard(userId, part, via);
     },
     async scrub(userId, scrub) {
       await (await stub(userId)).scrub(scrub);
@@ -213,6 +243,7 @@ export async function runOperation(
     const integrations = integrationRuntimeFor(env, appOrigin);
     const blobs = blobStoreFor(env);
     const assistantThreads = assistantThreadsFor(env);
+    const agentJobs = agentJobsFor(env);
     const ctx: InvocationContext = {
       ...(integrations ? { integrations } : {}),
       ...(blobs ? { blobs } : {}),
@@ -224,6 +255,7 @@ export async function runOperation(
       ...(extensionHost ? { extensionHost } : {}),
       ...automationWiring(env),
       ...(assistantThreads ? { assistantThreads } : {}),
+      ...(agentJobs ? { agentJobs } : {}),
       updater: updaterRuntimeFor(env),
       ...aiContextFor(env, db),
       approvalExpiryDays: Number.parseInt(env.APPROVAL_EXPIRY_DAYS ?? "", 10) || undefined,

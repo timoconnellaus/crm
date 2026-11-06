@@ -17,7 +17,7 @@
 //
 // Memory (ADR 0342) lives in D1 and is read live each turn (core's `memoryForTurn`); the object
 // keeps only when the memory block was last folded, which compaction moves on.
-import type { A2uiPart } from "@relationship-os/agent-a2ui";
+import { type A2uiPart, prepareCard } from "@relationship-os/agent-a2ui";
 import {
   assembleContext,
   attachCards,
@@ -84,6 +84,7 @@ import {
   scrubText,
   scrubValue,
   spokenTail,
+  orchestratorHint,
   type ThreadClientFrame,
   type ThreadMemoryState,
   type ThreadSearchHit,
@@ -99,6 +100,7 @@ import { aiContextFor } from "../ai.ts";
 import { blobStoreFor, integrationRuntimeFor } from "../integrations.ts";
 import type { McpCaller } from "../mcp/tools.ts";
 import {
+  agentJobsFor,
   automationWiring,
   ensureShippedExtensions,
   extensionHostFor,
@@ -125,6 +127,16 @@ export const USER_HEADER = "x-ros-assistant-user";
 /** The Durable Object name of a user's thread. */
 export function threadName(userId: string): string {
   return `user:${userId}`;
+}
+
+/** What an agent leaves in the chat when it finishes. */
+export interface FinishedJob {
+  jobId: string;
+  title: string;
+  state: string;
+  text: string;
+  changeSetId: string | null;
+  toReview: number;
 }
 
 export interface TurnRequest {
@@ -696,7 +708,52 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
    * Posts a card outside a turn (ADR 0346): a saved producer run by a routine or an app button.
    * It waits for a running turn, is stored with its text fallback, and is indexed for erase.
    */
-  async postCard(userId: string, part: A2uiPart): Promise<{ seq: number }> {
+  async postCard(
+    userId: string,
+    part: A2uiPart,
+    via: "routine" | "agent" = "routine",
+  ): Promise<{ seq: number }> {
+    return this.#post(userId, [part], via, part.fallback);
+  }
+
+  /** An agent moved on: the open chats read its card again (ADR 0344). */
+  async jobChanged(userId: string, jobId: string): Promise<void> {
+    this.#assertOwner(userId);
+    this.#broadcast({ type: "job", jobId });
+  }
+
+  /**
+   * An agent finished (ADR 0344): its report goes in the thread, so the model and the person both
+   * see it, with one review of whatever it staged.
+   */
+  async jobFinished(userId: string, job: FinishedJob): Promise<void> {
+    const parts: ThreadMessage["parts"] = [{ type: "text", text: job.text }];
+    if (job.changeSetId && job.toReview) {
+      parts.push(
+        prepareCard(
+          {
+            a2ui: 1,
+            root: {
+              type: "changeReview",
+              changeSetId: job.changeSetId,
+              title: job.title,
+              text: "These need you. Approve or reject each one, or all of them at once.",
+            },
+          },
+          { source: "host", text: `${job.toReview} changes to review: ${job.title}` },
+        ),
+      );
+    }
+    await this.#post(userId, parts, "agent", job.text);
+    this.#broadcast({ type: "job", jobId: job.jobId });
+  }
+
+  async #post(
+    userId: string,
+    parts: ThreadMessage["parts"],
+    via: MessageVia,
+    preview: string,
+  ): Promise<{ seq: number }> {
     this.#assertOwner(userId);
     await this.#running?.done;
     const store = this.#messages;
@@ -711,7 +768,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
       ) + 1;
     const now = new Date().toISOString();
     const [message] = store.append([
-      { turn, role: "assistant", via: "routine", parts: [part], createdAt: now },
+      { turn, role: "assistant", via, parts, createdAt: now },
     ]);
     this.ctx.storage.sql.exec(
       "INSERT INTO thread_turns (turn, status, started_at, finished_at) VALUES (?, 'done', ?, ?)",
@@ -727,9 +784,9 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
       "thread.finishTurn",
       {
         id: await this.#threadId(user),
-        preview: part.fallback,
+        preview,
         unread,
-        refs: await conversationRefs([part]),
+        refs: await conversationRefs(parts),
       },
       { actor: "human", user, origin: { surface: "ui" }, db },
     );
@@ -897,6 +954,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
     const integrations = integrationRuntimeFor(env);
     const blobs = blobStoreFor(env);
     const db = createCrmDb(env.DB);
+    const agentJobs = agentJobsFor(env);
     const context: InvocationContext = {
       ...(integrations ? { integrations } : {}),
       ...(blobs ? { blobs } : {}),
@@ -912,6 +970,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
       ...automationWiring(env),
       ...aiContextFor(env, db),
       assistantThreads: this.#localThreads(),
+      ...(agentJobs ? { agentJobs } : {}),
       personsWords,
       ...(assistantTurn ? { assistantTurn } : {}),
     };
@@ -1049,7 +1108,20 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
         user,
         threadId,
         personsWordsInThread(words, request.text),
-        { threadId, messageSeq: running.userSeq, text: request.text },
+        {
+          threadId,
+          messageSeq: running.userSeq,
+          text: request.text,
+          via: request.via ?? "text",
+          // What a "yes" answers: the last thing the person was told (ADR 0345).
+          lastReply: messageText(
+            store
+              .list({ beforeSeq: running.userSeq, limit: 12 })
+              .findLast((m) => m.role === "assistant" && messageText(m).trim()) ?? {
+              parts: [],
+            },
+          ).slice(0, 2_000),
+        },
       );
       try {
         const settings = await loadGeneralSettings(db.query);
@@ -1069,6 +1141,12 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
         tail.push(...memory.tail);
         this.#setMeta("memory", JSON.stringify(memory.state));
         if (request.spoken) tail.push(spokenTail(request.spoken));
+        const hint = await orchestratorHint(
+          ai.judge,
+          request.text,
+          request.context?.selection?.ids.length ?? 0,
+        );
+        if (hint) tail.push(hint);
         const assembled = await assembleContext({
           prefix: {
             instructions: this.#instructions(settings, user, mcp),

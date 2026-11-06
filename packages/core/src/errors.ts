@@ -8,6 +8,7 @@ export type OperationErrorCode =
   | "forbidden"
   | "denied"
   | "pending_approval"
+  | "second_step_required"
   | "rate_limited"
   | "plan_limit"
   | "not_found"

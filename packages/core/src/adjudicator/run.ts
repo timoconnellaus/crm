@@ -521,6 +521,16 @@ async function applyApproved(
   now: string,
 ): Promise<{ ok: boolean }> {
   const db = deps.db.query;
+  // The same claim a person's approval takes (ADR 0345): whichever comes first applies it, once.
+  const claim = await db
+    .updateTable("core_pending_action")
+    .set({ execution_id: newId("execution"), execution_at: now })
+    .where("id", "=", row.id)
+    .where("status", "=", "pending")
+    .where("execution_id", "is", null)
+    .returning("id")
+    .executeTakeFirst();
+  if (!claim) return { ok: false };
   const bindings = new Map<string, string>();
   const dependsOn = parse<string[]>(row.depends_on, []);
   if (dependsOn.length) {

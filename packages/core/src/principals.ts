@@ -43,6 +43,8 @@ export const originSchema = z.object({
   test: z.boolean().optional(),
   /** The extension whose code made the call (actor `extension`). */
   extensionId: z.string().optional(),
+  /** The agent that made the call (job_…, ADR 0344). Its session is `job:<id>`. */
+  jobId: z.string().optional(),
 });
 export type Origin = z.infer<typeof originSchema>;
 

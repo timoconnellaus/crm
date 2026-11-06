@@ -6,6 +6,7 @@ import { syncOperations } from "../sync/ingest.ts";
 import { a2uiOperations } from "./a2ui.ts";
 import { activityOperations } from "./activity.ts";
 import { adjudicatorOperations } from "./adjudicator.ts";
+import { agentOperations } from "./agent.ts";
 import { affiliationOperations } from "./affiliation.ts";
 import { aiOperations } from "./ai.ts";
 import { aiCacheOperations } from "./ai-cache.ts";
@@ -90,6 +91,7 @@ export const coreOperations = [
   ...setupOperations,
   ...aiOperations,
   ...adjudicatorOperations,
+  ...agentOperations,
   ...summaryOperations,
   ...automationOperations,
   ...automationBindingOperations,

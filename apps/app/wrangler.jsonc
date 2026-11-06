@@ -40,7 +40,11 @@
   // on the Agents SDK, with SQLite storage for the thread and hibernatable WebSockets. v2 replaces
   // the per-conversation objects of ADR 0200 and deletes their storage.
   "durable_objects": {
-    "bindings": [{ "name": "ASSISTANT", "class_name": "AssistantAgent" }]
+    "bindings": [
+      { "name": "ASSISTANT", "class_name": "AssistantAgent" },
+      // One object per agent (ADR 0344), named `job:<id>`: it deletes its storage when done.
+      { "name": "AGENT_JOB", "class_name": "AgentJob" }
+    ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["AssistantConversation"] },
@@ -48,7 +52,8 @@
       "tag": "v2",
       "new_sqlite_classes": ["AssistantAgent"],
       "deleted_classes": ["AssistantConversation"]
-    }
+    },
+    { "tag": "v3", "new_sqlite_classes": ["AgentJob"] }
   ],
   // Workers Rate Limiting (ADR 0056, docs/deploying.md). Limits are per Cloudflare location and
   // approximate; change them here and redeploy. namespace_id must be an integer unique within

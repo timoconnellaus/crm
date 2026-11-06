@@ -8,6 +8,7 @@ import type { z } from "zod";
 import type { AiAdmin } from "./ai/admin.ts";
 import type { AiEnv } from "./ai/client.ts";
 import type { VectorStore } from "./ai/vectors.ts";
+import type { AgentJobHost } from "./assistant/agent-jobs.ts";
 import type { AssistantThreadStore } from "./assistant/threads.ts";
 import type { AutomationHost, EventSink } from "./automations/types.ts";
 import type { WidgetCache } from "./dashboards/cache.ts";
@@ -183,6 +184,8 @@ export interface HandlerContext {
   readonly assistantThreads?: AssistantThreadStore;
   /** Speech providers for voice.* operations (ADR 0349). Absent: voice is off. */
   readonly voice?: VoiceRuntime;
+  /** The agents' Durable Objects (ADR 0344). Absent: jobs wait in the queue for the cron. */
+  readonly agentJobs?: AgentJobHost;
 }
 
 /** The person's message a chat turn answers. */
@@ -191,6 +194,10 @@ export interface AssistantTurn {
   messageSeq: number;
   /** The person's words this turn. */
   text: string;
+  /** How they came (`text`, `voice`, `dictation`, or from something else: `agent`, `connected`). */
+  via?: string;
+  /** What the assistant last said to them, for judging a "yes" (ADR 0345). */
+  lastReply?: string;
 }
 
 /** The extension an `extension`-actor call runs for, and its approved permissions. */
@@ -224,6 +231,8 @@ export interface PipelineAccess {
    * actor, user and origin. Used to apply approved pending actions.
    */
   invoke(name: string, input: unknown, ctx: NestedInvocation): Promise<unknown>;
+  /** Looks an operation up by name, as `invoke` would. */
+  resolve(name: string): AnyOperation | undefined;
 }
 
 export interface NestedInvocation {
