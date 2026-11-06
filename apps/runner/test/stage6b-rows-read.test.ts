@@ -117,8 +117,12 @@ describe("stage 6b rows read and query plans", () => {
       pollIntegrationEvents({ ...env, DB: metered } as typeof env),
     );
     expect(result.consumed).toBe(5);
-    // The poll itself plus dispatch's settings, schema registry and automation lookups.
-    expect(rows).toBeLessThanOrEqual(400);
+    const schema = await env.DB.prepare("SELECT count(*) AS n FROM sqlite_master").first<{
+      n: number;
+    }>();
+    // Dispatch reads sqlite_master once, which grows with the schema. The poll itself and
+    // dispatch's settings, schema registry and automation lookups read about 50 rows more.
+    expect(rows).toBeLessThanOrEqual((schema?.n ?? 0) + 60);
     expect(await scans(["core_integration_event"])).toEqual([]);
     const idle = await measure(() => pollIntegrationEvents({ ...env, DB: metered } as typeof env));
     expect(idle.result.consumed).toBe(0);
