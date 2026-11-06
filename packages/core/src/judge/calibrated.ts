@@ -3,13 +3,16 @@
 // questions here when it ships.
 
 import { POLICY_CALIBRATED } from "./questions/adjudicator-policy.ts";
+import { APPROVAL_INTENT_CALIBRATED } from "./questions/approval-intent.ts";
 import {
   CALIBRATED_QUESTIONS as INTENT_QUESTIONS_BY_KEY,
   INTENT_THRESHOLDS,
   type IntentQuestionId,
 } from "./questions/authoring-intent.ts";
+import { GRANT_CALIBRATED } from "./questions/grant-least-privilege.ts";
 import { MEMORY_CONDITION_CALIBRATED } from "./questions/memory-condition.ts";
 import { MEMORY_WRITE_CALIBRATED } from "./questions/memory-write.ts";
+import { ORCHESTRATOR_CALIBRATED } from "./questions/orchestrator-suggest.ts";
 import { OUTBOUND_CALIBRATED } from "./questions/outbound-message.ts";
 import { STATEMENTS_CALIBRATED } from "./questions/summary-statements.ts";
 import { JOB_CHANGE_CALIBRATED } from "./questions/sync-job-change.ts";
@@ -30,4 +33,7 @@ export const CALIBRATED: Record<string, { question: Question; threshold: number 
   ...JOB_CHANGE_CALIBRATED,
   ...MEMORY_WRITE_CALIBRATED,
   ...MEMORY_CONDITION_CALIBRATED,
+  ...APPROVAL_INTENT_CALIBRATED,
+  ...GRANT_CALIBRATED,
+  ...ORCHESTRATOR_CALIBRATED,
 };

@@ -361,10 +361,17 @@ describe("the off path", () => {
     const shipped = resolvePlacements(undefined, { placements: {} });
     expect(shipped["authoring.intent"]).toEqual({ on: true, source: "shipped" });
     expect(shipped["widget.shape"].on).toBe(true);
-    for (const p of JUDGE_PLACEMENTS.filter((p) => p.sendsRecordContent && p.switchable)) {
+    // Record content is off, but for the two that have to be on to work at all: the adjudicator
+    // and typed and spoken approvals. Hosted deployments force the switchable one off.
+    for (const p of JUDGE_PLACEMENTS.filter(
+      (p) => p.sendsRecordContent && p.switchable && p.id !== "approval.intent",
+    )) {
       expect(shipped[p.id].on).toBe(false);
     }
     expect(shipped["adjudicator.policy"]).toEqual({ on: true, source: "fixed" });
+    expect(shipped["approval.intent"]).toEqual({ on: true, source: "shipped" });
+    const hosted = resolvePlacements(undefined, { placements: {} }, { hosted: true });
+    expect(hosted["approval.intent"]).toEqual({ on: false, source: "fixed" });
     const deploy = '{"summary.statements":true,"outbound.message":true,"adjudicator.policy":false}';
     const mine = resolvePlacements(deploy, { placements: { "outbound.message": false } });
     expect(mine["summary.statements"]).toEqual({ on: true, source: "deploy" });
