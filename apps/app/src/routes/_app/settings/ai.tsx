@@ -87,14 +87,55 @@ const DOCS_URL =
 
 const ROLE_TITLES: Record<string, string> = {
   build: "Build",
-  assistant: "Assistant",
+  "assistant.core": "Assistant",
+  "assistant.subagent": "Agents",
   summarise: "Summarise",
   extract: "Extract",
   classify: "Classify",
   embed: "Embeddings",
   vision: "Vision",
   review: "Review",
+  "dictation.cleanup": "Dictation cleanup",
+  transcribe: "Speech to text",
+  speak: "Speech",
 };
+
+type Thinking = NonNullable<Role["params"]["thinking"]>;
+const THINKING_DEFAULT = "__default__";
+const THINKING_OPTIONS: { value: string; label: string }[] = [
+  { value: THINKING_DEFAULT, label: "Provider default" },
+  { value: "off", label: "Off" },
+  { value: "on", label: "On" },
+  { value: "low", label: "On, low" },
+  { value: "medium", label: "On, medium" },
+  { value: "high", label: "On, high" },
+];
+
+function thinkingValue(thinking: Role["params"]["thinking"]): string {
+  if (thinking === undefined) return THINKING_DEFAULT;
+  if (thinking === true) return "on";
+  if (thinking === false) return "off";
+  return thinking;
+}
+
+function thinkingFrom(value: string): Thinking | undefined {
+  if (value === THINKING_DEFAULT) return undefined;
+  if (value === "on") return true;
+  if (value === "off") return false;
+  return value as Thinking;
+}
+
+function thinkingLabel(thinking: Role["params"]["thinking"]): string {
+  if (thinking === undefined) return "thinking: provider default";
+  if (thinking === false) return "thinking off";
+  if (thinking === true) return "thinking on";
+  return `thinking ${thinking}`;
+}
+
+/** USD per million tokens, short. */
+function perMillion(n: number): string {
+  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 3 })}`;
+}
 
 const SOURCE_LABELS: Record<Role["source"], string> = {
   shipped: "Default",
@@ -202,6 +243,9 @@ function CapabilityBadges({ capabilities }: { capabilities: Capabilities }) {
     [!capabilities.jsonSchema && capabilities.jsonObject === true, "JSON mode"],
     [capabilities.vision, "Vision"],
     [capabilities.embedding, "Embeddings"],
+    [capabilities.streamingAudioIn === true, "Streaming speech to text"],
+    [capabilities.voicesOut === true, "Voices"],
+    [capabilities.supportsSpeed === true, "Speed"],
   ];
   return (
     <span className="flex flex-wrap gap-1">
@@ -212,9 +256,11 @@ function CapabilityBadges({ capabilities }: { capabilities: Capabilities }) {
             {label}
           </Badge>
         ))}
-      <Badge variant="outline" className="font-normal">
-        {contextLabel(capabilities.contextTokens)}
-      </Badge>
+      {capabilities.contextTokens > 0 && (
+        <Badge variant="outline" className="font-normal">
+          {contextLabel(capabilities.contextTokens)}
+        </Badge>
+      )}
       {capabilities.dimensions ? (
         <Badge variant="outline" className="font-normal">
           {capabilities.dimensions} dimensions
@@ -336,17 +382,35 @@ function RoleCard({
           )}
         </div>
         <CapabilityBadges capabilities={role.capabilities} />
-        <p className="text-muted-foreground">
-          Fallback: {fallbackLabel ?? "none"}
-          {" · "}
-          {role.params.maxTokens.toLocaleString()} tokens max · temperature{" "}
-          {role.params.temperature}
-        </p>
-        {!role.ready && role.notReadyReason && (
-          <p className="text-destructive" data-testid="role-not-ready">
-            {role.notReadyReason}
+        {role.kind === "text" ? (
+          <p className="text-muted-foreground" data-testid="role-params">
+            Fallback: {fallbackLabel ?? "none"}
+            {" · "}
+            {role.params.maxTokens.toLocaleString()} tokens max · temperature{" "}
+            {role.params.temperature} · {thinkingLabel(role.params.thinking)}
+          </p>
+        ) : role.kind === "embedding" ? (
+          <p className="text-muted-foreground">Fallback: {fallbackLabel ?? "none"}</p>
+        ) : null}
+        {role.pricing && (
+          <p className="text-xs text-muted-foreground" data-testid="role-pricing">
+            Per million tokens: {perMillion(role.pricing.input)} in
+            {role.pricing.cacheKnown ? `, ${perMillion(role.pricing.cachedInput)} cached` : ""},{" "}
+            {perMillion(role.pricing.output)} out
           </p>
         )}
+        {!role.ready &&
+          role.notReadyReason &&
+          (role.kind === "speech" ? (
+            // Voice is optional: off until its key is set, not a fault.
+            <p className="text-muted-foreground" data-testid="role-not-ready">
+              Voice is off until the {providerLabel(role.provider)} key is set.
+            </p>
+          ) : (
+            <p className="text-destructive" data-testid="role-not-ready">
+              {role.notReadyReason}
+            </p>
+          ))}
         {role.warnings.map((warning) => (
           <p
             key={warning}
@@ -424,8 +488,12 @@ function EditRoleDialog({
   const [fallback, setFallback] = useState<string>(
     role.fallback ? `${role.fallback.provider}|${role.fallback.model}` : NO_FALLBACK,
   );
+  const [maxTokens, setMaxTokens] = useState(String(role.params.maxTokens));
+  const [temperature, setTemperature] = useState(String(role.params.temperature));
+  const [thinking, setThinking] = useState(thinkingValue(role.params.thinking));
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const textRole = role.kind === "text";
 
   const models = listed(provider);
   const freeText =
@@ -464,10 +532,30 @@ function EditRoleDialog({
       return;
     }
     const [fbProvider, ...fbModel] = fallback.split("|");
+    const tokens = Number.parseInt(maxTokens, 10);
+    const temp = Number.parseFloat(temperature);
+    if (textRole && (!Number.isFinite(tokens) || tokens < 16 || tokens > 32_000)) {
+      setError("Max output tokens must be between 16 and 32,000");
+      return;
+    }
+    if (textRole && (!Number.isFinite(temp) || temp < 0 || temp > 2)) {
+      setError("Temperature must be between 0 and 2");
+      return;
+    }
+    const chosenThinking = thinkingFrom(thinking);
     try {
       await update.mutateAsync({
         role: role.role,
         ...target(),
+        ...(textRole
+          ? {
+              params: {
+                maxTokens: tokens,
+                temperature: temp,
+                ...(chosenThinking !== undefined ? { thinking: chosenThinking } : {}),
+              },
+            }
+          : {}),
         fallback:
           fallback === NO_FALLBACK
             ? null
@@ -518,7 +606,10 @@ function EditRoleDialog({
                 : role.requirements.json && "JSON output",
               role.requirements.vision && "vision",
               role.requirements.embedding && "embeddings",
-              `${contextLabel(role.requirements.minContextTokens)} or more`,
+              role.requirements.streamingAudioIn && "streaming speech to text",
+              role.requirements.voicesOut && "voices",
+              role.requirements.minContextTokens > 0 &&
+                `${contextLabel(role.requirements.minContextTokens)} or more`,
             ]
               .filter(Boolean)
               .join(", ")}
@@ -616,6 +707,55 @@ function EditRoleDialog({
                     setCaps((c) => ({ ...c, contextTokens: Number(e.target.value) || 1 }))
                   }
                 />
+              </div>
+            </fieldset>
+          )}
+          {textRole && (
+            <fieldset className="grid gap-3 rounded-md border p-3" data-testid="role-settings">
+              <legend className="px-1 text-sm font-medium">Settings</legend>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="ai-max-tokens">Max output tokens</Label>
+                  <Input
+                    id="ai-max-tokens"
+                    type="number"
+                    min={16}
+                    max={32000}
+                    value={maxTokens}
+                    onChange={(e) => setMaxTokens(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="ai-temperature">Temperature</Label>
+                  <Input
+                    id="ai-temperature"
+                    type="number"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={temperature}
+                    onChange={(e) => setTemperature(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="ai-thinking">Thinking</Label>
+                <Select value={thinking} onValueChange={setThinking}>
+                  <SelectTrigger id="ai-thinking" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THINKING_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  For models that reason before answering. Thinking counts against max output
+                  tokens. Models without a switch ignore it.
+                </p>
               </div>
             </fieldset>
           )}
@@ -850,7 +990,11 @@ function AddKeyDialog({
   const custom = provider.id === "custom";
   // BYOK in the deployment's AI Gateway when there is one (ADR 0203); a custom provider exists
   // only in the gateway, so its key is BYOK only.
-  const available = custom ? modes.filter((m) => m === "byok") : modes;
+  const available = custom
+    ? modes.filter((m) => m === "byok")
+    : provider.byokPossible
+      ? modes
+      : modes.filter((m) => m === "secret");
   const [apiKey, setApiKey] = useState("");
   const [slug, setSlug] = useState("");
   const [mode, setMode] = useState<(typeof modes)[number]>(

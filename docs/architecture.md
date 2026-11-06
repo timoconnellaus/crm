@@ -449,9 +449,13 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   settings for thinking, max output tokens and temperature. The registry carries prices for
   uncached input, cache writes, cached reads and output, and a published cache lifetime where
   known, for the compaction planner ([ADR 0341](adr/0341-compaction-cost-model-and-cache-lifetime-learner.md)).
-  `transcribe` (AssemblyAI streaming) and `speak` (AssemblyAI-TTS-1) share one BYOK key; they go through AI Gateway
-  if it can proxy their streaming sockets, otherwise directly with usage logged by us
+  `transcribe` (AssemblyAI streaming) and `speak` (AssemblyAI-TTS-1) share one key,
+  `AI_KEY_ASSEMBLYAI` (a Workers secret for now; voice is off until it is set); they go through AI
+  Gateway if it can proxy their streaming sockets, otherwise directly with usage logged by us
   ([ADR 0349](adr/0349-voice-on-agents-voice.md)). `dictation.cleanup` runs with thinking off.
+  Within a config layer, `assistant.subagent` and `dictation.cleanup` follow `assistant.core` unless
+  set themselves, and `AI_MODEL_ROLES` still reads `assistant` as `assistant.core` with a
+  deprecation warning (migration 0351 rewrote stored admin settings).
 - **Hosted placement** ([ADR 0213 amendment](adr/0213-ai-usage-billing.md),
   `packages/core/src/ai/platform.ts`): the same code, switched by deploy vars the control plane
   sets. Every Workers AI role becomes **Platform AI** (registry provider `platform`), called over

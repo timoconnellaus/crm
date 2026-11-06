@@ -8,6 +8,7 @@ import { type AiAdminSettings, providerStatus, vectorDimensions } from "../ai/cl
 import { isHosted } from "../ai/platform.ts";
 import {
   capabilityProblems,
+  isSpeechRole,
   MODEL_CATALOGUE,
   MODEL_ROLES,
   onPlatform,
@@ -17,6 +18,7 @@ import {
   ROLE_REQUIREMENTS,
   resolveRoles,
   reviewIndependence,
+  THINKING_LEVELS,
 } from "../ai/roles.ts";
 import { ConfigError, OperationError, ValidationError } from "../errors.ts";
 import { defineOperation } from "../operation.ts";
@@ -30,9 +32,27 @@ const capabilitiesSchema = z.object({
   jsonObject: z.boolean().optional(),
   vision: z.boolean(),
   embedding: z.boolean(),
-  contextTokens: z.number().int().min(1).max(10_000_000),
+  /** 0 for speech models, which have no text context. */
+  contextTokens: z.number().int().min(0).max(10_000_000),
   dimensions: z.number().int().min(1).max(4096).optional(),
   maxBatch: z.number().int().min(1).max(4096).optional(),
+  /** Speech (ADR 0351): streaming speech-to-text, text-to-speech voices, a speed setting. */
+  streamingAudioIn: z.boolean().optional(),
+  voicesOut: z.boolean().optional(),
+  supportsSpeed: z.boolean().optional(),
+});
+
+/** Thinking (ADR 0351): off, on (the provider's default amount) or a level. */
+const thinkingSchema = z.union([z.boolean(), z.enum(THINKING_LEVELS)]);
+
+/** USD per million tokens, cache prices filled in (unknown: cached priced as uncached). */
+const pricingSchema = z.object({
+  input: z.number(),
+  cacheWrite: z.number(),
+  cachedInput: z.number(),
+  output: z.number(),
+  cacheKnown: z.boolean(),
+  cacheLifetimeSeconds: z.number().nullable(),
 });
 
 const modelRefSchema = z.object({
@@ -45,6 +65,8 @@ const roleSchema = z.enum(MODEL_ROLES);
 
 const resolvedRoleSchema = z.object({
   role: roleSchema,
+  /** Text roles run through the model runner; speech roles move audio (voice, a later wave). */
+  kind: z.enum(["text", "embedding", "speech"]),
   provider: z.enum(PROVIDERS),
   model: z.string(),
   label: z.string(),
@@ -52,9 +74,11 @@ const resolvedRoleSchema = z.object({
   params: z.object({
     maxTokens: z.number(),
     temperature: z.number(),
-    thinking: z.boolean().optional(),
+    thinking: thinkingSchema.optional(),
   }),
   fallback: z.object({ provider: z.enum(PROVIDERS), model: z.string() }).nullable(),
+  /** The model's prices for the compaction planner (ADR 0351); null when unknown. */
+  pricing: pricingSchema.nullable(),
   source: z.enum(["shipped", "deploy", "admin"]),
   ignored: z.array(z.object({ layer: z.string(), problems: z.array(z.string()) })),
   requirements: z.object({
@@ -65,6 +89,8 @@ const resolvedRoleSchema = z.object({
     jsonSchema: z.boolean(),
     vision: z.boolean(),
     embedding: z.boolean(),
+    streamingAudioIn: z.boolean(),
+    voicesOut: z.boolean(),
     minContextTokens: z.number(),
   }),
   ready: z.boolean(),
@@ -86,6 +112,8 @@ const settingsOutput = z.object({
       keySource: z.enum(["secret", "byok", "binding", "platform"]).nullable(),
       reason: z.string().nullable(),
       secretName: z.string().nullable(),
+      /** AI Gateway can hold its key (BYOK); false for providers called directly (AssemblyAI). */
+      byokPossible: z.boolean(),
     }),
   ),
   catalogue: z.array(
@@ -166,10 +194,17 @@ export const aiSettingsGet = defineOperation({
         keySource: status.keySource ?? null,
         reason: status.reason ?? null,
         secretName: info.secretName ?? null,
+        byokPossible: id === "custom" || Boolean(info.gatewaySlug),
       };
     });
     const ready = new Map(providers.map((p) => [p.id, p]));
     const independence = reviewIndependence(roles);
+    const kind = (role: (typeof MODEL_ROLES)[number]) =>
+      isSpeechRole(role)
+        ? ("speech" as const)
+        : role === "embed"
+          ? ("embedding" as const)
+          : ("text" as const);
     const counts = await ctx.db
       .selectFrom("core_embedding")
       .select((eb) => eb.fn.countAll<number>().as("n"))
@@ -186,12 +221,14 @@ export const aiSettingsGet = defineOperation({
         const p = ready.get(r.provider);
         return {
           role,
+          kind: kind(role),
           provider: r.provider,
           model: r.model,
           label: modelLabel(r.provider, r.model),
           capabilities: r.capabilities,
           params: r.params,
           fallback: r.fallback ? { provider: r.fallback.provider, model: r.fallback.model } : null,
+          pricing: r.pricing,
           source: r.source,
           ignored: r.ignored,
           requirements: {
@@ -201,6 +238,8 @@ export const aiSettingsGet = defineOperation({
             jsonSchema: Boolean(need.jsonSchema),
             vision: Boolean(need.vision),
             embedding: Boolean(need.embedding),
+            streamingAudioIn: Boolean(need.streamingAudioIn),
+            voicesOut: Boolean(need.voicesOut),
             minContextTokens: need.minContextTokens,
           },
           ready: Boolean(p?.ready),
@@ -245,7 +284,8 @@ async function saveSettings(
 export const aiUpdateRole = defineOperation({
   name: "ai.updateRole",
   description:
-    "Choose the provider, model, fallback and params for one model role (admins), or reset it " +
+    "Choose the provider, model, fallback and settings (max output tokens, temperature, " +
+    "thinking off, on or a level) for one model role (admins), or reset it " +
     "to the deploy/shipped default. The model and the fallback must have every capability the " +
     "role needs (tool use, JSON schema, context size, vision, embeddings): an unsuitable model " +
     "is rejected. Keys are not set here (ai.setProviderKey).",
@@ -259,7 +299,7 @@ export const aiUpdateRole = defineOperation({
       .object({
         maxTokens: z.number().int().min(16).max(32_000).optional(),
         temperature: z.number().min(0).max(2).optional(),
-        thinking: z.boolean().optional(),
+        thinking: thinkingSchema.optional(),
       })
       .optional(),
     fallback: modelRefSchema.nullable().optional(),
@@ -427,7 +467,14 @@ export const aiSetProviderKey = defineOperation({
   async handler(input, ctx) {
     const modes = ctx.aiAdmin?.status().keyModes ?? [];
     const custom = input.provider === "custom";
-    const mode = input.mode ?? (custom || modes.includes("byok") ? "byok" : "secret");
+    // A provider AI Gateway does not route (AssemblyAI, ADR 0349) keeps its key as a secret.
+    const routable = custom || Boolean(PROVIDER_INFO[input.provider].gatewaySlug);
+    const mode = input.mode ?? (routable && (custom || modes.includes("byok")) ? "byok" : "secret");
+    if (mode === "byok" && !routable) {
+      throw new ValidationError(
+        `${PROVIDER_INFO[input.provider].label} is called directly, so its key is stored as a secret`,
+      );
+    }
     if (custom && (mode !== "byok" || !input.customProvider)) {
       throw new ValidationError(
         "A custom provider's key is stored in AI Gateway (BYOK): give the provider's slug",

@@ -11,7 +11,7 @@ import { shippedModel } from "@relationship-os/core/ai-roles";
  * model with multi-turn function calling and a long context. Evals stand in for an agent, so they
  * use the role an agent uses; --model or EVAL_MODEL overrides it.
  */
-export const DEFAULT_MODEL = shippedModel("assistant");
+export const DEFAULT_MODEL = shippedModel("assistant.core");
 
 export interface ChatToolCall {
   id: string;
