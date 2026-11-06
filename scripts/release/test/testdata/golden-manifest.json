@@ -350,6 +350,10 @@
       "sha256": "64f851090c4f6c85576a0597930c25afc1d3943454fd432b54f79a832c68c086"
     },
     {
+      "name": "0352_assistant_memory.sql",
+      "sha256": "9d939b9144dfe475cc69a243e3165009809a5dda6ec7bb71b3b36d2d60fbe8ef"
+    },
+    {
       "name": "0358_ai_cache_observation.sql",
       "sha256": "b2e96850568233565dc5d5a8fa17845f49a0bad228ed61a21fc5e5a39640be77"
     },

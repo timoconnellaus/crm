@@ -14,13 +14,14 @@
 // `thread.finishTurn` per turn (unread count, preview, the records it referenced, for erase, and
 // the compaction review data). Compaction (ADR 0341) lives in ./compaction.ts, behind a few hook
 // points here; it holds the object's one idle alarm.
+//
+// Memory (ADR 0342) lives in D1 and is read live each turn (core's `memoryForTurn`); the object
+// keeps only when the memory block was last folded, which compaction moves on.
 import {
   assembleContext,
   prefixHash as hashPrefix,
   messagesFromResponse,
   messageText,
-  type PendingLine,
-  pendingTailBlock,
   runTurn,
   SqliteMessageStore,
   type StepUsage,
@@ -46,11 +47,15 @@ import {
   type ConversationScrub,
   conversationRefs,
   describeAssistantResult,
+  EMPTY_THREAD_MEMORY,
   errorForLog,
+  foldPendingLines,
   type InvocationContext,
   invokeByName,
   loadCacheRails,
   loadGeneralSettings,
+  memoryForTurn,
+  memorySaveOf,
   parseFloor,
   personsWordsInThread,
   type RateLimitBinding,
@@ -63,10 +68,12 @@ import {
   scrubText,
   scrubValue,
   type ThreadClientFrame,
+  type ThreadMemoryState,
   type ThreadSearchHit,
   type ThreadServerFrame,
   type TranscriptItem,
   transcriptFromThread,
+  withSavedLines,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { Agent, type Connection, type ConnectionContext, type WSMessage } from "agents";
@@ -212,10 +219,17 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
   }
 
   /**
-   * Folds pending memory lines into the memory block, just before a compaction commits (ADR 0342).
-   * The memory build (W3) fills this in; until then there is no block to fold them into.
+   * Folds pending memory lines into the memory block, just before a compaction commits (ADR 0342):
+   * the prefix is being rewritten anyway, so they join the block and leave the tail. If the commit
+   * is then abandoned, the only cost is one cache miss: the lines are read live either way.
    */
-  protected async foldPendingLines(): Promise<void> {}
+  protected async foldPendingLines(): Promise<void> {
+    const owner = this.#meta("owner");
+    if (!owner) return;
+    const db = createCrmDb(this.#env.DB);
+    const { state } = await foldPendingLines(db.query, owner, this.#memoryState());
+    this.#setMeta("memory", JSON.stringify(state));
+  }
 
   /** The idle alarm's callback, by name (the Agents SDK runs the schedule). */
   async onIdleAlarm(): Promise<void> {
@@ -258,9 +272,9 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     return unreadCount(this.#messages.list({ afterSeq: lastSeen }), lastSeen);
   }
 
-  #pendingLines(): PendingLine[] {
-    const raw = this.#meta("pending_lines");
-    return raw ? (JSON.parse(raw) as PendingLine[]) : [];
+  #memoryState(): ThreadMemoryState {
+    const raw = this.#meta("memory");
+    return raw ? (JSON.parse(raw) as ThreadMemoryState) : EMPTY_THREAD_MEMORY;
   }
 
   // -------------------------------------------------------------------------------------------
@@ -360,7 +374,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
   /**
    * Deletes a message: one of the person's, or a whole reply (every assistant and tool message of
    * its turn, so a tool call never loses its result). Gone from the thread, search and what the
-   * model sees. Memory lines saved from it go too (ADR 0342, once memory exists).
+   * model sees. `thread.deleteMessage` deletes the memory lines saved from it (ADR 0342).
    */
   async deleteMessage(userId: string, seq: number): Promise<{ deleted: number[] }> {
     this.#assertOwner(userId);
@@ -378,11 +392,6 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
             .map((m) => m.seq);
     this.#messages.delete(seqs, new Date().toISOString());
     this.#compaction.deleted(seqs);
-    const pending = this.#pendingLines();
-    const kept = pending.filter(
-      (l) => l.sourceMessageSeq === undefined || !seqs.includes(l.sourceMessageSeq),
-    );
-    if (kept.length !== pending.length) this.#setMeta("pending_lines", JSON.stringify(kept));
     this.#broadcast({ type: "deleted", seqs });
     return { deleted: seqs };
   }
@@ -730,6 +739,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     user: ActingUser,
     threadId: string,
     personsWords: string,
+    assistantTurn?: InvocationContext["assistantTurn"],
   ): Promise<AssistantMcp> {
     const env = this.#env;
     const extensionHost = extensionHostFor(env);
@@ -752,6 +762,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
       ...aiContextFor(env, db),
       assistantThreads: this.#localThreads(),
       personsWords,
+      ...(assistantTurn ? { assistantTurn } : {}),
     };
     const caller: McpCaller = {
       context,
@@ -809,9 +820,11 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     if (!models.length) throw new ThreadError(503, "AI is not configured for this deployment");
     const settings = await loadGeneralSettings(db.query);
     const mcp = await this.#connectTools(user, threadId, "");
+    const memory = await memoryForTurn(db.query, user.id, { state: this.#memoryState() });
     const prefix = {
       instructions: this.#instructions(settings, user, mcp),
       tools: mcp.tools as AssistantTool[],
+      memory: memory.block,
       note: this.#compaction.note(),
     };
     const assembled = await assembleContext({
@@ -885,6 +898,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
         user,
         threadId,
         personsWordsInThread(words, request.text),
+        { threadId, messageSeq: running.userSeq, text: request.text },
       );
       try {
         const settings = await loadGeneralSettings(db.query);
@@ -895,12 +909,19 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
             context: request.context,
           }),
         ];
-        const pending = pendingTailBlock(this.#pendingLines());
-        if (pending) tail.push(pending);
+        // With no history there is no cached prefix to protect, so everything starts in the block.
+        const memory = await memoryForTurn(db.query, user.id, {
+          state: this.#memoryState(),
+          fold: !history.length,
+          record: request.context?.record,
+        });
+        tail.push(...memory.tail);
+        this.#setMeta("memory", JSON.stringify(memory.state));
         const assembled = await assembleContext({
           prefix: {
             instructions: this.#instructions(settings, user, mcp),
             tools: mcp.tools,
+            memory: memory.block,
             note,
           },
           history,
@@ -919,7 +940,14 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
           system: assembled.system,
           messages: assembled.messages,
           tools: mcp.tools,
-          emit: (event) => this.#emit(event as AssistantEventInput),
+          emit: (event) => {
+            this.#emit(event as AssistantEventInput);
+            const save = event.type === "tool-result" ? memorySaveOf(event.output) : undefined;
+            if (save) {
+              const state = withSavedLines(this.#memoryState(), [save.line]);
+              this.#setMeta("memory", JSON.stringify(state));
+            }
+          },
           describeResult: describeAssistantResult,
           signal: running.abort.signal,
         });

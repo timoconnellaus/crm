@@ -7,6 +7,7 @@ import type {
   AssistantPending,
   TranscriptItem,
 } from "@relationship-os/core/client";
+import { memorySaveOf } from "@relationship-os/core/client";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
 import { Input } from "@relationship-os/ui/components/input";
@@ -30,6 +31,7 @@ import { Fragment, type KeyboardEvent, type ReactNode, useEffect, useRef, useSta
 import { toast } from "sonner";
 import { Markdown } from "#/components/markdown";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
+import { MemorySaved } from "./memory-line.tsx";
 import type { ThreadView } from "./thread-provider.tsx";
 
 /** A tool call's name for people: `person_get` → "person get", call_operation → its operation. */
@@ -39,7 +41,22 @@ function toolLabel(item: Extract<TranscriptItem, { kind: "tool" }>): string {
   return item.tool.replace(/_/g, " ");
 }
 
-function PendingCard({ pending, canApprove }: { pending: AssistantPending; canApprove: boolean }) {
+/** The words of a note the assistant proposed (`activity.proposeNote`), for its card. */
+function proposedNote(item: Extract<TranscriptItem, { kind: "tool" }>): string | undefined {
+  if (item.pending?.operation !== "activity.proposeNote") return undefined;
+  const call = item.input as { input?: { body?: unknown } } | null;
+  return typeof call?.input?.body === "string" ? call.input.body : undefined;
+}
+
+function PendingCard({
+  pending,
+  canApprove,
+  note,
+}: {
+  pending: AssistantPending;
+  canApprove: boolean;
+  note?: string | undefined;
+}) {
   const status = useOp("approval.status", { actionId: pending.actionId });
   const approve = useOpMutation("approval.approve", { invalidates: ["approval."] });
   const reject = useOpMutation("approval.reject", { invalidates: ["approval."] });
@@ -72,8 +89,11 @@ function PendingCard({ pending, canApprove }: { pending: AssistantPending; canAp
     >
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline">{state === "pending" ? "Waiting for approval" : state}</Badge>
-        <span className="font-medium">{pending.operation}</span>
+        <span className="font-medium">
+          {pending.operation === "activity.proposeNote" ? "Add a note" : pending.operation}
+        </span>
       </div>
+      {note && <p className="mt-1">{note}</p>}
       {action?.reason && <p className="mt-1 text-muted-foreground">{action.reason}</p>}
       {action?.preview?.length ? (
         <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
@@ -145,6 +165,7 @@ function ToolItem({
 }) {
   const [open, setOpen] = useState(false);
   const done = item.output !== undefined;
+  const memory = item.isError ? undefined : memorySaveOf(item.output);
   return (
     <div className="space-y-2" data-testid="assistant-tool" data-tool={item.tool}>
       <button
@@ -170,7 +191,10 @@ function ToolItem({
           {JSON.stringify({ input: item.input, output: item.output }, null, 2)}
         </pre>
       )}
-      {item.pending && <PendingCard pending={item.pending} canApprove={canApprove} />}
+      {item.pending && (
+        <PendingCard pending={item.pending} canApprove={canApprove} note={proposedNote(item)} />
+      )}
+      {memory && <MemorySaved save={memory} />}
       {item.tool === "automation_test" && done && !item.isError && (
         <TestReport output={item.output} />
       )}

@@ -510,7 +510,7 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
  Browser (sidebar · /assistant · voice) ──WebSocket (Agents SDK: chat frames + binary audio)──┐
                                                                                                ▼
  ros-app: AssistantAgent DO  name user:<userId>   (agent-core Thread + CRM binding)
-   SQLite: messages, turns, compactions, pending memory lines, search index (FTS5), unread, jobs
+   SQLite: messages, turns, compactions, when memory last folded, search index (FTS5), unread, jobs
    ├─ turn engine ─ context assembly ─ chatModels("assistant.core") ─ tools = in-process MCP client
    │     └─ approvals (tap · typed · spoken, Jev-checked) ─ change sets ─ adjudicator
    ├─ compaction planner (pure cost model, alarm before cache expiry)
@@ -539,8 +539,14 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   off" note, messages since the compaction) and puts pending memory lines, page context and
   display facts in the tail. **Compaction** is decided by a pure cost model between rails (never
   below 24k tokens, always before 80% of the window), with a cache lifetime published per model or
-  learned from cache hits (ADR 0341). **Memory** is written inline and checked by Jev, and never
-  holds customer facts (ADR 0342). **Routines** are personal automations on the existing engine
+  learned from cache hits (ADR 0341). **Memory** lives in D1 (`core_memory`), is read live each
+  turn, is written inline by `memory.propose` and checked by Jev (`memory.write`,
+  `memory.condition`), and never holds customer facts: those become a note the person approves
+  (`activity.proposeNote`). With the judge off, every save is read back for the person to confirm.
+  The thread keeps only when the block last folded; lines active since then ride in the tail
+  until compaction calls `foldPendingLines()`, and conditional lines join the tail only on a
+  matching record. Deleting a line's source message deletes it, an erase reaches it through
+  `core_memory_refs`, and only the chat can write it, never an agent (ADR 0342). **Routines** are personal automations on the existing engine
   that message the thread (ADR 0343). Longer work runs as **agents**, child `AgentJob` objects
   that stage changes for review and never block (ADR 0344). Approvals can be tapped, typed or
   spoken, with a Jev intent check and a second step for high risk (ADR 0345). Rich messages are
