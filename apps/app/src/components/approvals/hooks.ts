@@ -77,14 +77,21 @@ export function useRefreshAfterDecision() {
   return () => client.invalidateQueries({ queryKey: ["op"] });
 }
 
-/** Approve or reject: a whole change set, or chosen actions. */
-export function decide(
+/**
+ * Approve or reject by tap: a whole change set, or chosen actions. `confirm` is the second button's
+ * words, for high-risk items (ADR 0345): the server refuses them without it.
+ */
+export async function decide(
   decision: "approve" | "reject",
   target: { changeSetId: string } | { actionIds: string[] },
-  note?: string,
+  confirm?: string,
 ) {
-  const input = { ...target, ...(note ? { note } : {}) };
-  return decision === "approve"
-    ? callOp("approval.approve", input)
-    : callOp("approval.reject", input);
+  const out = await callOp("approval.decide", {
+    ...target,
+    decision,
+    via: "tap",
+    ...(confirm ? { confirm } : {}),
+  });
+  if (out.status !== "decided") throw new Error(out.message);
+  return out;
 }

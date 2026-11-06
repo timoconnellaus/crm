@@ -194,6 +194,9 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
           case "appended":
             ws.send(JSON.stringify({ type: "sync" } satisfies ThreadClientFrame));
             break;
+          case "job":
+            void invalidateOps(client, "agent.");
+            break;
           case "playout": {
             const { turn, playout } = data;
             setItems((current) =>

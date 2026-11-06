@@ -67,8 +67,9 @@ describe("core registry", () => {
     expect(curated.length).toBeGreaterThanOrEqual(12);
     // Stage 2's ~15, the extension authoring tools and Code Mode (stage 3b), and connections,
     // integration.call and suggested contacts (stage 6a), and the assistant's cards (stage 17;
-    // show_card is the assistant's only, so external clients gain one).
-    expect(curated.length).toBeLessThanOrEqual(32);
+    // show_card is the assistant's only, so external clients gain one), and agents and approvals
+    // (stage 17 W5: five tools, none of them for external clients).
+    expect(curated.length).toBeLessThanOrEqual(37);
     for (const op of curated) expect(op.description.trim().length).toBeGreaterThanOrEqual(60);
   });
 

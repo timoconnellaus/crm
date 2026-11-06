@@ -1,5 +1,6 @@
 // The CRM's component map (ADR 0346): one component per catalogue type, built with packages/ui.
 // `Required` makes a new catalogue component a type error here until it has a renderer.
+import { AgentGrantComponent, AgentJobComponent, ChangeReviewComponent } from "./agents.tsx";
 import type { A2uiPart, ComponentType } from "@relationship-os/agent-a2ui";
 import { A2uiView, type ComponentMap } from "@relationship-os/agent-a2ui/react";
 import { useMemo } from "react";
@@ -119,6 +120,9 @@ export const crmCards: Required<ComponentMap> & Record<ComponentType, unknown> =
   agentConnectionRequest: AgentConnectionRequestComponent,
   agentRequest: AgentRequestComponent,
   agentLogEntry: AgentLogEntryComponent,
+  agentJob: AgentJobComponent,
+  agentGrant: AgentGrantComponent,
+  changeReview: ChangeReviewComponent,
 };
 
 /** A card's text fallback: what it says when it cannot be drawn. */
