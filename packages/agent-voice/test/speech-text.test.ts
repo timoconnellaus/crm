@@ -35,9 +35,7 @@ describe("SpeechPicker", () => {
   });
 
   it("reads everything in full mode, without a block", () => {
-    expect(pick("full", ["Hello ", "there.", " <say>x</say>Bye."]).said).toBe(
-      "Hello there. Bye.",
-    );
+    expect(pick("full", ["Hello ", "there.", " <say>x</say>Bye."]).said).toBe("Hello there. Bye.");
   });
 });
 

@@ -2,7 +2,11 @@
 // addition (ending a turn on demand, for push-to-talk); text-to-speech is a long-lived session a
 // call's sentences go through. A provider counts its own usage, because the sockets may not run
 // through AI Gateway (ADR 0349's amendment): the host logs it beside other AI usage.
-import type { Transcriber, TranscriberSession, TranscriberSessionOptions } from "agents/voice/types";
+import type {
+  Transcriber,
+  TranscriberSession,
+  TranscriberSessionOptions,
+} from "agents/voice/types";
 import type { SpokenSegment } from "./playout.ts";
 
 /** One voice on offer. */

@@ -28,7 +28,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 351,
+  "coreSchemaVersion": 362,
   "extensionContract": {
     "supported": [
       1
@@ -344,6 +344,14 @@
     {
       "name": "0351_assistant_model_roles.sql",
       "sha256": "64f851090c4f6c85576a0597930c25afc1d3943454fd432b54f79a832c68c086"
+    },
+    {
+      "name": "0361_voice_preferences.sql",
+      "sha256": "bc7af6698221ebe56d2a376cc8afa0ce71fcfc8e29edf8476a8ecb814267e8fc"
+    },
+    {
+      "name": "0362_voice_usage.sql",
+      "sha256": "bbfc4c830d9052c91eca2b5dcddc829555de6c20e9328ddf33268af29c2a50c8"
     }
   ],
   "product": "relationship-os",

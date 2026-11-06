@@ -3,12 +3,15 @@
 // playout truth and what gets said. No CRM imports. The browser side is `./client` and `./react`.
 export { AssemblyAITranscriber } from "./assemblyai/speech-to-text.ts";
 export { ASSEMBLYAI_VOICES, AssemblyAISpeech } from "./assemblyai/text-to-speech.ts";
-export { type SpokenTurn, type VoiceCallPlan, type VoiceHost, withAssistantVoice } from "./mixin.ts";
+export {
+  type SpokenTurn,
+  type VoiceCallPlan,
+  type VoiceHost,
+  withAssistantVoice,
+} from "./mixin.ts";
 export * from "./playout.ts";
 export { PlayoutClock } from "./playout-clock.ts";
 export * from "./protocol.ts";
 export * from "./providers.ts";
 export * from "./speech-text.ts";
 export { pcmToWav } from "./wav.ts";
-
-

@@ -101,9 +101,7 @@ test("dictation types into the box, cleans up with undo, and sends as typed", as
   const input = panel.getByTestId("assistant-input");
   await panel.getByTestId("dictation-mic").click();
   await expect(panel.getByTestId("dictation-status")).toContainText("Esc to cancel");
-  await expect
-    .poll(() => page.evaluate(() => "__dictationSay" in window))
-    .toBe(true);
+  await expect.poll(() => page.evaluate(() => "__dictationSay" in window)).toBe(true);
   await expect(async () => {
     await page.evaluate(() =>
       (window as never as { __dictationSay(t: string): void }).__dictationSay(

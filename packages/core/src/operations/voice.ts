@@ -285,7 +285,10 @@ export const dictationCleanup = defineOperation({
   async handler(input, ctx) {
     const raw = input.text;
     if (!ctx.models) return { text: raw, changed: false };
-    const names = [...new Set([...input.names, ...(await mentionedNames(ctx))])].slice(0, MAX_NAMES);
+    const names = [...new Set([...input.names, ...(await mentionedNames(ctx))])].slice(
+      0,
+      MAX_NAMES,
+    );
     try {
       const result = await ctx.models.run("dictation.cleanup", [
         {

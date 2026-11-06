@@ -2,7 +2,11 @@
 // key comes from .dev.vars through the test pool's env, and CI never runs this. It speaks a
 // sentence, feeds that audio to speech-to-text, and checks the words come back.
 import { env } from "cloudflare:workers";
-import { AssemblyAISpeech, AssemblyAITranscriber, type SpokenSegment } from "@relationship-os/agent-voice";
+import {
+  AssemblyAISpeech,
+  AssemblyAITranscriber,
+  type SpokenSegment,
+} from "@relationship-os/agent-voice";
 import { describe, expect, it } from "vitest";
 
 const { AI_KEY_ASSEMBLYAI: key = "", ASSEMBLYAI_LIVE } = env as unknown as {
@@ -39,10 +43,16 @@ async function speak(text: string) {
 
 describe.skipIf(!live)("AssemblyAI, live", () => {
   it("speaks a sentence with word timings, and hears it back", { timeout: 60_000 }, async () => {
-    const { pcm, segments, usage } = await speak("Please call Lena back about the renewal on Friday.");
+    const { pcm, segments, usage } = await speak(
+      "Please call Lena back about the renewal on Friday.",
+    );
     expect(pcm.byteLength).toBeGreaterThan(24_000);
     expect(segments).toHaveLength(1);
-    console.log("speech", { audioMs: segments[0]?.audioMs, words: segments[0]?.words?.slice(0, 3), usage });
+    console.log("speech", {
+      audioMs: segments[0]?.audioMs,
+      words: segments[0]?.words?.slice(0, 3),
+      usage,
+    });
     expect(usage.characters).toBeGreaterThan(40);
 
     const heard: string[] = [];
@@ -66,7 +76,12 @@ describe.skipIf(!live)("AssemblyAI, live", () => {
     for (let i = 0; i < 80 && !heard.length; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    console.log("heard", { firstWord, interims: interims.length, heard, usage: session.takeUsage() });
+    console.log("heard", {
+      firstWord,
+      interims: interims.length,
+      heard,
+      usage: session.takeUsage(),
+    });
     session.close();
     expect(heard.join(" ").toLowerCase()).toContain("renewal");
     expect(firstWord).toBeTruthy();

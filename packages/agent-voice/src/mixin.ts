@@ -11,8 +11,13 @@ import type { Agent, Connection } from "agents";
 import { withVoice } from "agents/voice";
 import { type Playout, playoutFor, type SpokenSegment } from "./playout.ts";
 import type { CallKind, VoiceClientFrame, VoiceFacts, VoiceServerFrame } from "./protocol.ts";
-import type { SpeechProviders, SpeechSession, SpeechToTextSession, SpeechUsage } from "./providers.ts";
-import { SpeechPicker, type SpeechMode, toSpeech } from "./speech-text.ts";
+import type {
+  SpeechProviders,
+  SpeechSession,
+  SpeechToTextSession,
+  SpeechUsage,
+} from "./providers.ts";
+import { type SpeechMode, SpeechPicker, toSpeech } from "./speech-text.ts";
 
 /** How one call runs, decided by the host when it starts. */
 export interface VoiceCallPlan {
@@ -146,7 +151,9 @@ export function withAssistantVoice<TBase extends AgentLike>(Base: TBase) {
       const call = this.#calls.get(connection.id);
       if (!call) return null;
       return {
-        createSession: (options?: Parameters<SpeechProviders["speechToText"]["createSession"]>[0]) => {
+        createSession: (
+          options?: Parameters<SpeechProviders["speechToText"]["createSession"]>[0],
+        ) => {
           const session = call.plan.providers.speechToText.createSession(options);
           call.transcriber = session;
           return session;
@@ -161,7 +168,10 @@ export function withAssistantVoice<TBase extends AgentLike>(Base: TBase) {
       return null;
     }
 
-    override async onTurn(transcript: string, context: Parameters<InstanceType<typeof Voiced>["onTurn"]>[1]) {
+    override async onTurn(
+      transcript: string,
+      context: Parameters<InstanceType<typeof Voiced>["onTurn"]>[1],
+    ) {
       const { connection, signal } = context;
       const call = this.#calls.get(connection.id);
       if (!call) return "";
@@ -172,7 +182,12 @@ export function withAssistantVoice<TBase extends AgentLike>(Base: TBase) {
       const turn = await this.#host.startSpokenTurn(connection, transcript, facts, mode);
       call.reply = { turn: turn.turn, picker, segments: [], firstAudioAt: null };
       send(connection, { type: "voice.reply", turn: turn.turn });
-      signal.addEventListener("abort", () => this.#host.stopSpokenTurn(turn.turn), { once: true });
+      // The person may already have spoken again while the turn was starting.
+      if (signal.aborted) this.#host.stopSpokenTurn(turn.turn);
+      else
+        signal.addEventListener("abort", () => this.#host.stopSpokenTurn(turn.turn), {
+          once: true,
+        });
       return spoken(turn.text, picker);
     }
 

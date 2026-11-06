@@ -73,28 +73,28 @@ function AppLayout() {
       <AssistantProvider>
         <ThreadProvider>
           <VoiceProvider>
-          <a
-            href="#main"
-            className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
-          >
-            Skip to content
-          </a>
-          <SidebarProvider className="h-dvh overflow-hidden">
-            <AppSidebar />
-            <SidebarInset className="min-h-0 min-w-0 overflow-hidden pr-[env(safe-area-inset-right)]">
-              <SupportBanner />
-              <AppHeader />
-              <div
-                className="min-h-0 min-w-0 flex-1 overflow-y-auto [view-transition-name:page]"
-                id="main"
-                tabIndex={-1}
-              >
-                <Outlet />
-              </div>
-            </SidebarInset>
-            <AssistantPanel canApprove={user.role !== "viewer"} />
-          </SidebarProvider>
-          <AppOverlays />
+            <a
+              href="#main"
+              className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+            >
+              Skip to content
+            </a>
+            <SidebarProvider className="h-dvh overflow-hidden">
+              <AppSidebar />
+              <SidebarInset className="min-h-0 min-w-0 overflow-hidden pr-[env(safe-area-inset-right)]">
+                <SupportBanner />
+                <AppHeader />
+                <div
+                  className="min-h-0 min-w-0 flex-1 overflow-y-auto [view-transition-name:page]"
+                  id="main"
+                  tabIndex={-1}
+                >
+                  <Outlet />
+                </div>
+              </SidebarInset>
+              <AssistantPanel canApprove={user.role !== "viewer"} />
+            </SidebarProvider>
+            <AppOverlays />
           </VoiceProvider>
         </ThreadProvider>
       </AssistantProvider>

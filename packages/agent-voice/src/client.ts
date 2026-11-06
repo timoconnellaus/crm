@@ -144,8 +144,9 @@ export class VoiceCall {
       this.#client.addEventListener("connectionchange", opened);
       this.#client.connect();
     });
-    await this.#client.startCall();
+    // Before the microphone opens, so push to talk sends nothing until the button is held.
     if (options.muted && !this.#client.isMuted) this.#client.toggleMute();
+    await this.#client.startCall();
   }
 
   end() {
@@ -264,7 +265,7 @@ export class VoiceCall {
   }
 }
 
-export type { VoiceStatus };
-export { splitSpoken } from "./speech-text.ts";
-export type { CallKind, VoiceFacts } from "./protocol.ts";
 export type { Playout } from "./playout.ts";
+export type { CallKind, VoiceFacts } from "./protocol.ts";
+export { splitSpoken } from "./speech-text.ts";
+export type { VoiceStatus };

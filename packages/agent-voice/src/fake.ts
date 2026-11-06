@@ -49,7 +49,10 @@ export class FakeTranscriber implements SpeechToText {
       say(text) {
         // Words stream in one at a time; "..." at the end keeps the turn open (push-to-talk).
         const open = text.endsWith("...");
-        const words = text.replace(/\.\.\.$/, "").split(/\s+/).filter(Boolean);
+        const words = text
+          .replace(/\.\.\.$/, "")
+          .split(/\s+/)
+          .filter(Boolean);
         words.forEach((_, i) => {
           const partial = words.slice(0, i + 1).join(" ");
           if (i === 0) options.onSpeechStart?.(partial);

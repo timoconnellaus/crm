@@ -14,7 +14,12 @@ import {
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { describe, expect, it } from "vitest";
-import { type AssistantHttpEnv, handleSocket, handleState, threadStub } from "../src/server/assistant/http.ts";
+import {
+  type AssistantHttpEnv,
+  handleSocket,
+  handleState,
+  threadStub,
+} from "../src/server/assistant/http.ts";
 import { speechProviders, voiceContextFor } from "../src/server/assistant/voice.ts";
 
 const ORIGIN = "https://crm.test";
@@ -87,7 +92,11 @@ async function voiceSocket(principal: Principal, kind: "talk" | "dictation") {
 }
 
 async function state(principal: Principal): Promise<AssistantThreadState> {
-  const response = await handleState(new Request(`${ORIGIN}/api/assistant/thread`), appEnv, principal);
+  const response = await handleState(
+    new Request(`${ORIGIN}/api/assistant/thread`),
+    appEnv,
+    principal,
+  );
   return (await response.json()) as AssistantThreadState;
 }
 

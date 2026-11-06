@@ -406,8 +406,8 @@ function VoiceSetup({
             <Label>How you'll talk</Label>
             <ModeChoice value={mode} onChange={setMode} />
             <p className="text-xs text-muted-foreground">
-              This choice starts the same on all your devices. If you change it later on one
-              device, only that device changes.
+              This choice starts the same on all your devices. If you change it later on one device,
+              only that device changes.
             </p>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -418,7 +418,11 @@ function VoiceSetup({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Not now
           </Button>
-          <Button onClick={() => void finish()} disabled={update.isPending} data-testid="voice-start">
+          <Button
+            onClick={() => void finish()}
+            disabled={update.isPending}
+            data-testid="voice-start"
+          >
             <AudioLinesIcon />
             Start voice chat
           </Button>
@@ -459,7 +463,9 @@ function statusLine(chat: UseVoiceChat, mode: VoiceMode): string {
     case "thinking":
       return "Thinking";
     case "speaking":
-      return mode === "push_to_talk" ? "Speaking. Hold to interrupt" : "Speaking. Talk to interrupt";
+      return mode === "push_to_talk"
+        ? "Speaking. Hold to interrupt"
+        : "Speaking. Talk to interrupt";
     case "listening":
       if (mode === "hands_free") return chat.muted ? "Muted. I'm not listening." : "Listening";
       return "Hold Space or the button to talk";

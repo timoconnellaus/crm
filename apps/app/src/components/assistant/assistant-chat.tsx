@@ -2,12 +2,13 @@
 // transcript (Markdown replies, tool calls folded away, pending changes with Approve / Reject for
 // people who may approve them, test-mode reports of proposed automations, day dividers, times,
 // and Delete on each message), "Search this chat", and the composer.
+
+import { splitSpoken } from "@relationship-os/agent-voice/text";
 import type {
   AssistantContext,
   AssistantPending,
   TranscriptItem,
 } from "@relationship-os/core/client";
-import { splitSpoken } from "@relationship-os/agent-voice/text";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
 import { Input } from "@relationship-os/ui/components/input";

@@ -9,16 +9,14 @@ describe("heardReply", () => {
 
   it("cuts a read-out reply where it stopped", () => {
     const text = "Lena said the budget is approved. She also asked for SSO.";
-    expect(
-      heardReply(text, { state: "partly_spoken", unsaid: "She also asked for SSO." }),
-    ).toBe("Lena said the budget is approved. [The person spoke over the rest and did not hear it.]");
+    expect(heardReply(text, { state: "partly_spoken", unsaid: "She also asked for SSO." })).toBe(
+      "Lena said the budget is approved. [The person spoke over the rest and did not hear it.]",
+    );
   });
 
   it("cuts only the spoken block when the answer was on screen", () => {
     const text = "<say>Six overdue. The top one is Acme.</say>\nHere they are: one, two.";
-    expect(
-      heardReply(text, { state: "partly_spoken", unsaid: "The top one is Acme." }),
-    ).toBe(
+    expect(heardReply(text, { state: "partly_spoken", unsaid: "The top one is Acme." })).toBe(
       "<say>Six overdue. [The person spoke over the rest and did not hear it.]</say>\nHere they are: one, two.",
     );
   });

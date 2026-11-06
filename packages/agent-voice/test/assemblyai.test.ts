@@ -1,7 +1,7 @@
 // The providers against a stand-in for AssemblyAI's sockets, using the frames its docs show.
 import { describe, expect, it } from "vitest";
-import { AssemblyAISpeech, AssemblyAITranscriber, type SpokenSegment } from "../src/index.ts";
 import type { ProviderSocket } from "../src/assemblyai/socket.ts";
+import { AssemblyAISpeech, AssemblyAITranscriber, type SpokenSegment } from "../src/index.ts";
 
 class FakeSocket implements ProviderSocket {
   sent: (string | Uint8Array)[] = [];

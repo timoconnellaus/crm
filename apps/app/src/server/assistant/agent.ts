@@ -158,10 +158,7 @@ function int(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-export class AssistantAgent
-  extends withAssistantVoice(Agent<Cloudflare.Env>)
-  implements VoiceHost
-{
+export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) implements VoiceHost {
   static override options = { sendIdentityOnConnect: false };
 
   #store: SqliteMessageStore | null = null;

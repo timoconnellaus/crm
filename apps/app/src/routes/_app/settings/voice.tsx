@@ -1,6 +1,8 @@
 // Settings → Voice (ADR 0349): how the assistant sounds and how you talk to it. Voice, speed and
 // how much is read out are yours everywhere; how you talk is per device. Speed shows only when the
 // speech provider supports it. Changes save at once.
+
+import { Button } from "@relationship-os/ui/components/button";
 import {
   Card,
   CardContent,
@@ -8,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@relationship-os/ui/components/card";
-import { Button } from "@relationship-os/ui/components/button";
 import { Label } from "@relationship-os/ui/components/label";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
 import {

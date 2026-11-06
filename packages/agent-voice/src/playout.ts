@@ -46,7 +46,8 @@ export function playoutFor(
   if (!intendedText) return { state: "spoken" };
   if (playedMs < NOTHING_MS || total === 0) return { state: "unspoken" };
   const heard = heardText(segments, playedMs);
-  const allSynthesised = squash(segments.map((s) => s.text).join(" ")).length >= intendedText.length;
+  const allSynthesised =
+    squash(segments.map((s) => s.text).join(" ")).length >= intendedText.length;
   if (playedMs >= total - END_SLACK_MS && allSynthesised) return { state: "spoken" };
   const unsaid = unsaidAfter(intendedText, heard);
   if (!unsaid) return { state: "spoken" };

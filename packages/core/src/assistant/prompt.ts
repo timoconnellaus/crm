@@ -114,7 +114,8 @@ export function assistantTail(input: AssistantTailInput): TailBlock[] {
  * they asked for everything, so the reply is written to be listened to.
  */
 export function spokenTail(mode: "short" | "full"): TailBlock {
-  const said = "This message was spoken and transcribed, so expect odd punctuation and misheard names.";
+  const said =
+    "This message was spoken and transcribed, so expect odd punctuation and misheard names.";
   const text =
     mode === "short"
       ? `${said} Your reply is also spoken, and they can see this chat. Start your reply with a ` +
