@@ -159,9 +159,14 @@ test("Settings → Voice: no speed, this device's mode, the device list", async 
   const settings = page.getByTestId("voice-settings");
   await expect(settings).toBeVisible();
   await expect(settings.getByLabel(/^Speed/)).toHaveCount(0);
-  await settings.getByTestId("voice-mode-hands_free").click({ force: true });
-  await expect(page.getByTestId("voice-devices")).toContainText("This device");
-  await expect(page.getByTestId("voice-devices")).toContainText("Hands-free");
+  // A new browser is a new device, and it joins the list when its mode is changed. Clicking the
+  // mode it already has changes nothing, so pick the other one.
+  const handsFree = settings.getByTestId("voice-mode-hands_free");
+  const pushToTalk = settings.getByTestId("voice-mode-push_to_talk");
+  const useHandsFree = !(await handsFree.isChecked());
+  await (useHandsFree ? handsFree : pushToTalk).click({ force: true });
+  const row = page.getByTestId("voice-devices").getByRole("row", { name: /This device/ });
+  await expect(row).toContainText(useHandsFree ? "Hands-free" : "Push to talk");
   await settings.getByTestId("voice-read-full").click();
   await expect(settings.getByTestId("voice-read-full")).toBeChecked();
   await settings.getByTestId("voice-read-short").click();

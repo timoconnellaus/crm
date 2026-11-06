@@ -59,12 +59,50 @@ export interface TurnInput<X extends object = Record<never, never>> {
   describeResult?: (output: unknown, isError: boolean) => X | undefined;
   /** Model steps per turn (each step may call tools). */
   maxSteps?: number;
+  /**
+   * `none` sends the tools (so the request keeps the cached prefix) but forbids calling them: a
+   * compaction's summary call (ADR 0341).
+   */
+  toolChoice?: "none";
   signal?: AbortSignal;
+}
+
+/**
+ * One model request of a turn and what the provider said it used (ADR 0341): the input of the
+ * cache-lifetime learner and the usage model, and the actual cost of a turn. No content.
+ */
+export interface StepUsage {
+  provider: string;
+  modelId: string;
+  /** When the request was sent (epoch ms). */
+  startedAt: number;
+  /** Prompt (input) tokens, null when the provider did not say. */
+  promptTokens: number | null;
+  /** Prompt tokens read from the provider's cache, null when the provider did not say. */
+  cachedTokens: number | null;
+  outputTokens: number | null;
+}
+
+/** Cached prompt tokens from a raw usage chunk, for fields the SDK does not map (DeepSeek's). */
+export function rawCachedTokens(raw: unknown): number | null {
+  if (!raw || typeof raw !== "object") return null;
+  const usage = (raw as { usage?: unknown }).usage;
+  if (!usage || typeof usage !== "object") return null;
+  const u = usage as Record<string, unknown>;
+  if (typeof u.prompt_cache_hit_tokens === "number") return u.prompt_cache_hit_tokens;
+  const details = u.prompt_tokens_details;
+  if (details && typeof details === "object") {
+    const cached = (details as Record<string, unknown>).cached_tokens;
+    if (typeof cached === "number") return cached;
+  }
+  return null;
 }
 
 export interface TurnResult {
   /** The model's and tools' messages, to store after the user message. */
   response: ModelMessage[];
+  /** Every model request of the turn that finished, in order (failed attempts' included). */
+  steps: StepUsage[];
   status: "done" | "error" | "stopped";
   model?: string;
   fellBack?: boolean;
@@ -140,10 +178,13 @@ async function attemptTurn<X extends object>(
   input: TurnInput<X>,
   model: TurnModel,
   attempt: { emitted: boolean },
+  steps: StepUsage[],
 ): Promise<{ messages: ModelMessage[]; text: string; stopped: boolean }> {
   let streamError: unknown = null;
   let thinking = false;
   let text = "";
+  let stepStartedAt = Date.now();
+  let rawCached: number | null = null;
   const result = streamText({
     model: model.model,
     instructions: input.system,
@@ -155,13 +196,23 @@ async function attemptTurn<X extends object>(
     maxRetries: 1,
     ...(model.providerOptions ? { providerOptions: model.providerOptions } : {}),
     ...(model.headers ? { headers: model.headers } : {}),
+    ...(input.toolChoice ? { toolChoice: input.toolChoice } : {}),
     ...(input.signal ? { abortSignal: input.signal } : {}),
+    // Raw chunks carry usage fields the SDK does not map (DeepSeek's prompt_cache_hit_tokens).
+    includeRawChunks: true,
     onError: ({ error }) => {
       streamError = error;
     },
   });
   for await (const part of result.fullStream) {
     switch (part.type) {
+      case "start-step":
+        stepStartedAt = Date.now();
+        rawCached = null;
+        break;
+      case "raw":
+        rawCached = rawCachedTokens(part.rawValue) ?? rawCached;
+        break;
       case "text-delta":
         if (!part.text) break;
         attempt.emitted = true;
@@ -175,11 +226,21 @@ async function attemptTurn<X extends object>(
           input.emit({ type: "thinking" });
         }
         break;
-      case "finish-step":
+      case "finish-step": {
         // A new step starts a new paragraph of text.
         if (text && !text.endsWith("\n")) text += "\n\n";
         thinking = false;
+        const usage = part.usage;
+        steps.push({
+          provider: model.provider,
+          modelId: model.modelId,
+          startedAt: stepStartedAt,
+          promptTokens: usage.inputTokens ?? null,
+          cachedTokens: rawCached ?? usage.inputTokenDetails?.cacheReadTokens ?? null,
+          outputTokens: usage.outputTokens ?? null,
+        });
         break;
+      }
       case "error":
         streamError = part.error;
         break;
@@ -207,6 +268,7 @@ export async function runTurn<X extends object = Record<never, never>>(
 ): Promise<TurnResult> {
   let lastError: unknown = null;
   let actedBeforeFailing = false;
+  const steps: StepUsage[] = [];
   for (const [index, model] of input.models.entries()) {
     const attempt = { emitted: false };
     input.emit({
@@ -215,9 +277,10 @@ export async function runTurn<X extends object = Record<never, never>>(
       ...(index > 0 ? { fellBack: true } : {}),
     });
     try {
-      const out = await attemptTurn(input, model, attempt);
+      const out = await attemptTurn(input, model, attempt, steps);
       return {
         response: out.messages,
+        steps,
         status: out.stopped ? "stopped" : "done",
         model: model.modelId,
         ...(index > 0 ? { fellBack: true } : {}),
@@ -226,7 +289,7 @@ export async function runTurn<X extends object = Record<never, never>>(
     } catch (error) {
       lastError = error;
       if (input.signal?.aborted) {
-        return { response: [], status: "stopped", model: model.modelId, text: "" };
+        return { response: [], steps, status: "stopped", model: model.modelId, text: "" };
       }
       console.warn(`turn: ${model.provider}/${model.modelId} failed`, error);
       if (attempt.emitted) {
@@ -243,5 +306,5 @@ export async function runTurn<X extends object = Record<never, never>>(
       ? `(This answer failed partway: ${message}. Some tool calls may already have run; check before repeating them.)`
       : `(This answer failed: ${message}.)`,
   };
-  return { response: [note], status: "error", error: message, text: "" };
+  return { response: [note], steps, status: "error", error: message, text: "" };
 }

@@ -556,8 +556,22 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   same items, and a reply that arrives while the chat is on screen on any device is already seen.
   `thread.search`, `thread.deleteMessage`, `thread.markSeen` and `thread.status` are operations
   over the `assistantThreads` port; `thread.open` and `thread.finishTurn` are the object's own
-  bookkeeping. Until compaction (W2) lands, the history sent is the newest whole turns within a
-  character budget. `pnpm lint` runs `scripts/check-agent-imports.mjs` and its test.
+  bookkeeping. `pnpm lint` runs `scripts/check-agent-imports.mjs` and its test.
+
+  Compaction (W2) is in `apps/app/src/server/assistant/compaction.ts`, behind a few hook points in
+  the object, over agent-core's maths. The model is sent the messages after the last compaction;
+  there is no other trim. Each response's usage becomes cache observations and per-user usage
+  stats in one `thread_meta` row, then the planner runs at the turn's end. It either compacts or
+  sets the object's one idle alarm (an Agents SDK schedule) just before the estimated cache expiry,
+  and the alarm runs the planner again. A compaction makes one summary call on `assistant.core`
+  over the last turn's exact prefix and history, then commits the note and the seq it covers in
+  one transaction. Messages are never touched, so everything stays searchable, and a turn arriving
+  during the call runs on the old context and simply falls after the seq. The review data rides on
+  `thread.finishTurn` into `core_ai_cache_observation`, `core_ai_compaction_decision` and
+  `core_ai_cache_estimate` (migrations 0358 to 0360; observations and decisions kept 180 days by
+  the daily cron); an idle alarm or a compaction writes through `ai.recordCacheReview`.
+  `ai.cacheReport` exports it for `pnpm ai:replay-cache`. Settings → AI shows the lifetimes
+  read-only and the admin rails (`ai.cacheSettings`, `ai.updateCacheRails`).
   In the app (ADR 0030 amendment) the panel is docked on the right of the shell on tablets and
   desktops, beside the page, and stays mounted across page changes; on phones it is a sheet.
 

@@ -1,6 +1,8 @@
 // Stage 7a in-app AI: Settings → AI (roles and the Test button), the record Summary card and the
 // Similar records panel. Local dev runs with AI_FAKE_MODEL=true: deterministic fake models for
 // every role and an in-memory vector store filled right after each write. Desktop and phone.
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 import { createPerson, open, unique } from "./helpers.ts";
 import { createOrganisation } from "./org-helpers.ts";
@@ -24,6 +26,51 @@ test("Settings → AI lists the model roles and tests one", async ({ page }) => 
   await open(page, "/settings");
   await page.getByRole("link", { name: /^AI\b/ }).click();
   await expect(page).toHaveURL(/\/settings\/ai$/);
+});
+
+test("Settings → AI: cache lifetimes, the rails, and an export the replay tool reads", async ({
+  page,
+  baseURL,
+}) => {
+  // Two turns: the second is an observation of the first's cache.
+  await open(page, "/settings/ai");
+  for (const text of ["Hello there", "Hello again"]) {
+    const reply = await page.request.post("/api/assistant/turn", {
+      data: { text },
+      headers: { origin: baseURL ?? "" },
+    });
+    expect(reply.ok()).toBe(true);
+    await reply.text();
+  }
+  await page.reload();
+
+  const card = page.getByTestId("ai-cache");
+  await expect(card.getByText("Prompt cache and compaction")).toBeVisible();
+  await expect(card.getByTestId("ai-cache-estimate").first()).toContainText("fake / fake");
+
+  // The rails save, and come back.
+  const floor = card.getByLabel("Never compact below (tokens)");
+  await expect(floor).toHaveValue("24000");
+  await floor.fill("30000");
+  await card.getByRole("button", { name: "Save limits" }).click();
+  await expect(page.getByText("Compaction limits saved")).toBeVisible();
+  await page.reload();
+  await expect(card.getByLabel("Never compact below (tokens)")).toHaveValue("30000");
+  await card.getByLabel("Never compact below (tokens)").fill("24000");
+  await card.getByRole("button", { name: "Save limits" }).click();
+  await expect(page.getByText("Compaction limits saved").first()).toBeVisible();
+
+  // A real export, through the real command.
+  const download = page.waitForEvent("download");
+  await card.getByRole("button", { name: "Export JSON" }).click();
+  const file = await (await download).path();
+  const script = fileURLToPath(new URL("../../../scripts/ai-replay-cache.mjs", import.meta.url));
+  const report = JSON.parse(
+    execFileSync(process.execPath, [script, file, "--json"], { encoding: "utf8" }),
+  ) as { models: { provider: string; observations: number }[]; decisions: { total: number } };
+  const fake = report.models.find((m) => m.provider === "fake");
+  expect(fake?.observations).toBeGreaterThan(0);
+  expect(report.decisions.total).toBeGreaterThan(0);
 });
 
 test("Settings → AI's Judge section: key status, reviewer, placement switches and spend", async ({

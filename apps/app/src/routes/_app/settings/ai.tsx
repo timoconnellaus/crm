@@ -70,6 +70,7 @@ import {
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { PageLayout } from "#/components/layout/page-layout";
+import { CacheSection } from "#/components/settings/cache-section";
 import { JudgeSection } from "#/components/settings/judge-section";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
 
@@ -214,6 +215,7 @@ function AiSettings() {
       <ProvidersSection settings={data} />
       {data.admin.hosted && <OwnGatewayCard settings={data} />}
       <JudgeSection />
+      <CacheSection />
       <UsageCard />
       <SpeechUsageCard />
       <SemanticSearchCard search={data.semanticSearch} />

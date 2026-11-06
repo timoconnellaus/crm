@@ -10,7 +10,20 @@ const migrationsDir = fileURLToPath(new URL("../../packages/db/migrations", impo
  * run next to the runner as auxiliary Workers, so tests drive the real gatekeepers through the
  * integration host.
  */
-async function bundleGatekeeper(name: "webhook" | "email-send"): Promise<string> {
+function bundleGatekeeper(name: "webhook" | "email-send"): Promise<string> {
+  // Once per run. `workers` below is called again for each test file, and rebuilding in place
+  // lets a pool that is starting read a half-written bundle (it then has no GatekeeperVendor).
+  let bundle = gatekeeperBundles.get(name);
+  if (!bundle) {
+    bundle = buildGatekeeper(name);
+    gatekeeperBundles.set(name, bundle);
+  }
+  return bundle;
+}
+
+const gatekeeperBundles = new Map<string, Promise<string>>();
+
+async function buildGatekeeper(name: "webhook" | "email-send"): Promise<string> {
   const outfile = fileURLToPath(
     new URL(`./.wrangler/test-gatekeepers/${name}.js`, import.meta.url),
   );
