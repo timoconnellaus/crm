@@ -1,6 +1,6 @@
 # ADR 0341: Compaction is decided by a cost model, with a learned cache lifetime
 
-Status: Accepted (2026-11-06). Stage 17 spec: [`docs/stages/17-assistant.md`](../stages/17-assistant.md),
+Status: Accepted (2026-11-06), amended 2026-11-06 (see the end). Stage 17 spec: [`docs/stages/17-assistant.md`](../stages/17-assistant.md),
 W2. Builds on [ADR 0340](0340-one-assistant-thread-per-user.md) and the prices in
 [ADR 0351](0351-assistant-model-roles.md).
 
@@ -168,3 +168,90 @@ planner at warm and cold cache, with cheap and expensive cached reads, at the 24
   ruled out.
 - **A logistic fit of hit rate against gap.** Considered. It needs more data to be stable and its
   confidence is harder to explain than per-bucket posteriors.
+
+## Amendment, 2026-11-06 (W2 build: `packages/agent-core/src/compaction/`)
+
+Building and simulating the maths found gaps and two wrong claims. The code follows this section
+where it differs from the text above.
+
+1. **The ceiling is checked before the floor.** With a small window the rails conflict: a 16k
+   window has a ceiling of 12.8k, under the 24k floor, so "never compact below 24k" would let the
+   context overflow. Overflow is worse than compacting a small context, so the order is: ceiling,
+   then floor, then (idle with no lifetime) the fallback, then cost. When the floor is under the
+   ceiling the order makes no difference.
+2. **The horizon and `q` come from one gap distribution.** The person's gaps are a decayed histogram
+   over the learner's buckets with a weak prior (4 pseudo-observations; about one gap in twelve over
+   70 minutes). A gap over 70 minutes ends the session, so sessions are geometric with end
+   probability `pEnd = P(gap > 70 min)` and `N = clamp(1 / pEnd, 1, 20)`: the turns up to and
+   including the first turn of the next session. `q = P(gap ≤ L)` over all gaps, with gaps spread
+   evenly inside a bucket and gaps over 70 minutes never warm. Because a turn's cost is linear in
+   `q`, pricing all `N` turns at the unconditional `q` gives the same expectation as pricing the
+   in-session turns at `P(gap ≤ L | gap ≤ 70 min)` and the session-ending turn cold. `N` may be
+   fractional: the last turn is weighted by the fraction. A separate "turns per session" input is
+   not needed; it is `1 / pEnd`.
+3. **The next turn's warmth is conditioned on the time already idle:**
+   `q₀ = P(elapsed < gap ≤ L) / P(gap > elapsed)`. At the end of a turn `elapsed ≈ 0` and `q₀ = q`;
+   at the idle alarm `q₀` is small but not exactly 0. One formula serves both moments, and a late
+   alarm (after expiry) gets `q₀ = 0` and prices the summary call cold at `p_in`.
+4. **A cold prefix is rewritten at `p_w`, not `p_in`.** The idle comparison above said the next
+   session's first turn costs `p_in`; it uses `turn(X)` like every other turn, so a cold prefix is
+   written into the cache at `p_w` (equal to `p_in` for providers without a write price). Only the
+   summary call, which reads and does not cache, is priced at `p_in` when cold.
+5. **Unknown input or output price** means no cost comparison: only the rails and the fallback
+   apply (rule `unknown-prices`). Zero prices tie, and ties continue. Prices are per million tokens
+   (ADR 0351).
+6. **The idle fallback waits the full 10 minutes.** Woken early with no lifetime known, the planner
+   continues and asks for an alarm at `lastRequest + 10 min`. The idle alarm is only set when
+   `L − margin` is still ahead; for a lifetime of 30 s there is nothing left to catch.
+7. **Out-of-order observations.** Counts decayed to the latest time seen, plus a late observation
+   entering with weight `2^(−age / half-life)`, equal the counts in any other arrival order. The
+   learner and the usage model both do this, so replaying an export in any order gives the same
+   counts (the hysteresis path can still differ).
+8. **Prefixes under 1,024 tokens are ignored**: providers do not cache them, so their misses say
+   nothing about the lifetime. A hit compares cached tokens with the prefix tokens when the caller
+   knows them, otherwise with the prompt tokens.
+9. **The open last bucket.** If gaps over 70 minutes are confidently hits, the estimate is
+   70 minutes, its lower edge; the planner never counts those gaps as warm anyway.
+10. **Confidence bounds are one-sided under the monotone constraint.** The text above gives every
+    bucket in a pooled block the block's 5th and 95th percentiles. That borrows strength in the
+    wrong direction. If the hit rate cannot rise with the gap, hits at *longer* gaps are evidence
+    that a bucket is alive, but hits at *shorter* gaps are not: many hits at 1 minute say nothing
+    about 8 minutes. Pooling also let a miss raise the estimate: in simulation a miss at 7 minutes
+    re-pooled the blocks and lifted the 20 to 40 minute bucket over the bar. The bounds are now:
+    - `LB_b` = the largest 5th percentile over windows `b..j` with `j ≥ b` (the average rate of
+      `b..j` is at most the rate of `b`, so a lower bound on it is a lower bound for `b`);
+    - `UB_b` = the smallest 95th percentile over windows `i..b` with `i ≤ b` (symmetrically).
+
+    A bucket is confident when `LB_b ≥ 0.9` and `UB_b ≥ 0.9`. The candidate is the longest run of
+    confident buckets from the shortest. The estimate falls when the bucket at `L̂` has
+    `UB < 0.9` (to the candidate, which is then shorter), otherwise rises to the candidate when it
+    is longer. Two properties follow and are unit tests: at a fixed time a miss never raises the
+    estimate and a hit never lowers it. The robustness to a stray short-gap miss is kept: the
+    0 to 30 s bucket's lower bound still comes from windows running into the longer buckets full of
+    hits. Pool Adjacent Violators remains, for the fitted hit rate shown in Settings. The decision
+    uses CDF comparisons (`P(rate < 0.9) ≤ 0.05`), not quantile searches, so it is cheap on every
+    turn.
+11. **A window's posterior counts the prior once**: the mean of its buckets' priors plus all their
+    evidence, not `Beta(Σα, Σβ)`. Summing priors adds one prior per bucket (three pooled buckets
+    under `Beta(0.5, 0.5)` add 1.5 pseudo-misses, and under a published prior up to 60
+    pseudo-observations), which outweighed the evidence of a low-traffic workspace and kept it from
+    a confident estimate for weeks in simulation.
+12. **Corrected simulation claims** (now unit tests, with hourly observations cycling through
+    gaps in every bucket):
+    - A 15-minute cache reaches `L̂` = 10 minutes after about 160 observations, not 120: the 5 to
+      10 minute bucket needs about 28 hits of its own (or from longer buckets) for its 5th
+      percentile to pass 0.9, since shorter buckets no longer lend it strength. Before that the
+      estimate climbs through 30 s, 2 and 5 minutes. The 10 to 20 minute bucket contains the expiry
+      and is never confident, as stated.
+    - A stray 10-second miss leaves `L̂` at 10 minutes (the 0 to 30 s bucket's lower bound stays
+      about 0.97 through the window into the longer buckets). Three misses at 8 minutes also leave
+      it (that bucket's upper bound is about 0.97).
+    - A true 60-minute cache gives `L̂ = 40` minutes, not 70: the 40 to 70 minute bucket contains
+      the expiry. After the cache drops to 5 minutes, one or five misses do not move it. It falls
+      to 5 minutes after consistent evidence: 35 to 60 observations at one an hour (1.5 to 2.5 days,
+      depending on which gaps come first), about 280 at one every 10 minutes (2 days), about 20 at
+      one every 4 hours (3.5 days, first to 2 minutes, then up to 5 as the 2 to 5 minute bucket
+      fills). A fall needs the recent misses to outweigh the decayed old hits near `L̂`, so the lag
+      is set mostly by the half-life: about 1.5 to 4 days at 14 days. A shorter half-life follows faster and is noisier; `pnpm ai:replay-cache
+      --half-life-days N` tries it against real data. At one turn a day there is never enough
+      evidence for a learned value, and the published lifetime or the fallback applies.

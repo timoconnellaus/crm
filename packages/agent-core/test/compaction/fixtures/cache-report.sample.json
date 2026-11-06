@@ -1,0 +1,2499 @@
+{
+  "format": "relationship-os.ai-cache-report",
+  "version": 1,
+  "exportedAt": "2026-10-09T10:00:00.000Z",
+  "models": [
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "publishedLifetimeSeconds": null
+    }
+  ],
+  "observations": [
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T10:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 28500,
+      "promptTokens": 30000
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T11:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 29837,
+      "promptTokens": 31337
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T12:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 31174,
+      "promptTokens": 32674
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T13:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 34011
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T14:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 33848,
+      "promptTokens": 35348
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T15:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 36685
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T16:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 36522,
+      "promptTokens": 38022
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T17:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 37859,
+      "promptTokens": 39359
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T18:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 39196,
+      "promptTokens": 40696
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T19:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 40533,
+      "promptTokens": 42033
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T20:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 43370
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T21:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 43207,
+      "promptTokens": 44707
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T22:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 44544,
+      "promptTokens": 46044
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-01T23:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 45881,
+      "promptTokens": 47381
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T00:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 47218,
+      "promptTokens": 48718
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T01:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 30055
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T02:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 31392
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T03:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 32729
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T04:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 32566,
+      "promptTokens": 34066
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T05:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 33903,
+      "promptTokens": 35403
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T06:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 35240,
+      "promptTokens": 36740
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T07:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 36577,
+      "promptTokens": 38077
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T08:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 39414
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T09:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 39251,
+      "promptTokens": 40751
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T10:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 40588,
+      "promptTokens": 42088
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T11:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 41925,
+      "promptTokens": 43425
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T12:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 43262,
+      "promptTokens": 44762
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T13:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 46099
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T14:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 45936,
+      "promptTokens": 47436
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T15:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 48773
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T16:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 28610,
+      "promptTokens": 30110
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T17:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 29947,
+      "promptTokens": 31447
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T18:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 31284,
+      "promptTokens": 32784
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T19:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 32621,
+      "promptTokens": 34121
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T20:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 35458
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T21:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 35295,
+      "promptTokens": 36795
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T22:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 36632,
+      "promptTokens": 38132
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T23:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 37969,
+      "promptTokens": 39469
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T00:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 40806
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T01:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 42143
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T02:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 41980,
+      "promptTokens": 43480
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T03:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 44817
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T04:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 44654,
+      "promptTokens": 46154
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T05:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 45991,
+      "promptTokens": 47491
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T06:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 47328,
+      "promptTokens": 48828
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T07:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 28665,
+      "promptTokens": 30165
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T08:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 31502
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T09:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 31339,
+      "promptTokens": 32839
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T10:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 32676,
+      "promptTokens": 34176
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T11:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 35513
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T12:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 35350,
+      "promptTokens": 36850
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T13:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 38187
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T14:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 38024,
+      "promptTokens": 39524
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T15:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 40861
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T16:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 40698,
+      "promptTokens": 42198
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T17:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 42035,
+      "promptTokens": 43535
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T18:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 43372,
+      "promptTokens": 44872
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T19:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 44709,
+      "promptTokens": 46209
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T20:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 47546
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T21:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 47383,
+      "promptTokens": 48883
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T22:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 30220
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T23:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 30057,
+      "promptTokens": 31557
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T00:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 31394,
+      "promptTokens": 32894
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T01:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 34231
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T02:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 34068,
+      "promptTokens": 35568
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T03:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 36905
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T04:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 36742,
+      "promptTokens": 38242
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T05:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 38079,
+      "promptTokens": 39579
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T06:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 39416,
+      "promptTokens": 40916
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T07:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 40753,
+      "promptTokens": 42253
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T08:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 43590
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T09:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 44927
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T10:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 44764,
+      "promptTokens": 46264
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T11:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 46101,
+      "promptTokens": 47601
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T12:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 47438,
+      "promptTokens": 48938
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T13:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 30275
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T14:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 30112,
+      "promptTokens": 31612
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T15:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 32949
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T16:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 32786,
+      "promptTokens": 34286
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T17:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 34123,
+      "promptTokens": 35623
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T18:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 35460,
+      "promptTokens": 36960
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T19:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 36797,
+      "promptTokens": 38297
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T20:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 39634
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T21:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 39471,
+      "promptTokens": 40971
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T22:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 40808,
+      "promptTokens": 42308
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T23:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 42145,
+      "promptTokens": 43645
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T00:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 43482,
+      "promptTokens": 44982
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T01:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 46319
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T02:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 46156,
+      "promptTokens": 47656
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T03:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 48993
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T04:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 28830,
+      "promptTokens": 30330
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T05:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 30167,
+      "promptTokens": 31667
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T06:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 31504,
+      "promptTokens": 33004
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T07:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 34341
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T08:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 35678
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T09:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 35515,
+      "promptTokens": 37015
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T10:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 36852,
+      "promptTokens": 38352
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T11:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 38189,
+      "promptTokens": 39689
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T12:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 39526,
+      "promptTokens": 41026
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T13:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 42363
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T14:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 42200,
+      "promptTokens": 43700
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T15:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 45037
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T16:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 44874,
+      "promptTokens": 46374
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T17:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 46211,
+      "promptTokens": 47711
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T18:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 49048
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T19:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 28885,
+      "promptTokens": 30385
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T20:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 31722
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T21:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 31559,
+      "promptTokens": 33059
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T22:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 32896,
+      "promptTokens": 34396
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T23:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 34233,
+      "promptTokens": 35733
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T00:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 35570,
+      "promptTokens": 37070
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T01:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 38407
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T02:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 38244,
+      "promptTokens": 39744
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T03:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 41081
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T04:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 40918,
+      "promptTokens": 42418
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T05:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 43755
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T06:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 43592,
+      "promptTokens": 45092
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T07:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 44929,
+      "promptTokens": 46429
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T08:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 47766
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T09:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 47603,
+      "promptTokens": 49103
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T10:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 28940,
+      "promptTokens": 30440
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T11:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 30277,
+      "promptTokens": 31777
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T12:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 31614,
+      "promptTokens": 33114
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T13:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 34451
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T14:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 34288,
+      "promptTokens": 35788
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T15:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 37125
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T16:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 38462
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T17:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 38299,
+      "promptTokens": 39799
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T18:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 39636,
+      "promptTokens": 41136
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T19:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 40973,
+      "promptTokens": 42473
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T20:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 43810
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T21:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 43647,
+      "promptTokens": 45147
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T22:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 44984,
+      "promptTokens": 46484
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T23:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 46321,
+      "promptTokens": 47821
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T00:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 47658,
+      "promptTokens": 49158
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T01:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 30495
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T02:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 30332,
+      "promptTokens": 31832
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T03:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 33169
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T04:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 33006,
+      "promptTokens": 34506
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T05:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 34343,
+      "promptTokens": 35843
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T06:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 35680,
+      "promptTokens": 37180
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T07:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 37017,
+      "promptTokens": 38517
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T08:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 39854
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T09:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 39691,
+      "promptTokens": 41191
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T10:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 41028,
+      "promptTokens": 42528
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T11:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 42365,
+      "promptTokens": 43865
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T12:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 43702,
+      "promptTokens": 45202
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T13:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 46539
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T14:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 47876
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T15:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 49213
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T16:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 29050,
+      "promptTokens": 30550
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T17:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 30387,
+      "promptTokens": 31887
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T18:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 31724,
+      "promptTokens": 33224
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T19:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 33061,
+      "promptTokens": 34561
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T20:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 35898
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T21:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 35735,
+      "promptTokens": 37235
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T22:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 37072,
+      "promptTokens": 38572
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T23:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 38409,
+      "promptTokens": 39909
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T00:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 39746,
+      "promptTokens": 41246
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T01:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 42583
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T02:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 42420,
+      "promptTokens": 43920
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T03:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 45257
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T04:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 45094,
+      "promptTokens": 46594
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T05:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 46431,
+      "promptTokens": 47931
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T06:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 47768,
+      "promptTokens": 49268
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T07:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 29105,
+      "promptTokens": 30605
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T08:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 31942
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T09:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 31779,
+      "promptTokens": 33279
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T10:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 33116,
+      "promptTokens": 34616
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T11:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": true,
+      "cachedTokens": 34453,
+      "promptTokens": 35953
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T12:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 37290
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T13:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 38627
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T14:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 38464,
+      "promptTokens": 39964
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T15:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 41301
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T16:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 41138,
+      "promptTokens": 42638
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T17:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 42475,
+      "promptTokens": 43975
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T18:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 43812,
+      "promptTokens": 45312
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T19:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 45149,
+      "promptTokens": 46649
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T20:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 47986
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T21:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 47823,
+      "promptTokens": 49323
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T22:00:00.000Z",
+      "gapSeconds": 8,
+      "prefixUnchanged": true,
+      "cachedTokens": 29160,
+      "promptTokens": 30660
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T23:00:00.000Z",
+      "gapSeconds": 550,
+      "prefixUnchanged": false,
+      "cachedTokens": 0,
+      "promptTokens": 31997
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T00:00:00.000Z",
+      "gapSeconds": 60,
+      "prefixUnchanged": true,
+      "cachedTokens": 31834,
+      "promptTokens": 33334
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T01:00:00.000Z",
+      "gapSeconds": 1000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 34671
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T02:00:00.000Z",
+      "gapSeconds": 180,
+      "prefixUnchanged": true,
+      "cachedTokens": 34508,
+      "promptTokens": 36008
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T03:00:00.000Z",
+      "gapSeconds": 3000,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 37345
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T04:00:00.000Z",
+      "gapSeconds": 420,
+      "prefixUnchanged": true,
+      "cachedTokens": 37182,
+      "promptTokens": 38682
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T05:00:00.000Z",
+      "gapSeconds": 25,
+      "prefixUnchanged": true,
+      "cachedTokens": 38519,
+      "promptTokens": 40019
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T06:00:00.000Z",
+      "gapSeconds": 700,
+      "prefixUnchanged": true,
+      "cachedTokens": 39856,
+      "promptTokens": 41356
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T07:00:00.000Z",
+      "gapSeconds": 100,
+      "prefixUnchanged": true,
+      "cachedTokens": 41193,
+      "promptTokens": 42693
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T08:00:00.000Z",
+      "gapSeconds": 1500,
+      "prefixUnchanged": true,
+      "cachedTokens": 0,
+      "promptTokens": 44030
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T09:00:00.000Z",
+      "gapSeconds": 250,
+      "prefixUnchanged": true,
+      "cachedTokens": 43867,
+      "promptTokens": 45367
+    }
+  ],
+  "decisions": [
+    {
+      "id": "dec-001",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T01:00:01.000Z",
+      "input": {
+        "moment": "turn-end",
+        "now": 1790902801000,
+        "lastRequestAt": 1790902801000,
+        "contextTokens": 21000,
+        "compactedTokens": 18650,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": null,
+          "source": "fallback",
+          "confidence": null
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "continue",
+        "rule": "floor",
+        "costContinue": 0.23334000000000002,
+        "costCompact": 0.221648,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.04946808
+      }
+    },
+    {
+      "id": "dec-002",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-02T17:00:01.000Z",
+      "input": {
+        "moment": "idle",
+        "now": 1790961241000,
+        "lastRequestAt": 1790960401000,
+        "contextTokens": 24200,
+        "compactedTokens": 20410,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 30,
+          "source": "learned",
+          "confidence": 0.9109495400580108
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.20680820800000002,
+        "costCompact": 0.19723244240000004,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.039840953
+      }
+    },
+    {
+      "id": "dec-003",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-03T09:00:01.000Z",
+      "input": {
+        "moment": "turn-end",
+        "now": 1791018001000,
+        "lastRequestAt": 1791018001000,
+        "contextTokens": 27400,
+        "compactedTokens": 22170,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 120,
+          "source": "learned",
+          "confidence": 0.913411251600933
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.15704,
+        "costCompact": 0.14537222,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.027911466
+      }
+    },
+    {
+      "id": "dec-004",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T01:00:01.000Z",
+      "input": {
+        "moment": "idle",
+        "now": 1791076441000,
+        "lastRequestAt": 1791075601000,
+        "contextTokens": 30600,
+        "compactedTokens": 23930,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 120,
+          "source": "learned",
+          "confidence": 0.9323777910360262
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.1707516,
+        "costCompact": 0.15881558,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.028904436
+      }
+    },
+    {
+      "id": "dec-005",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-04T17:00:01.000Z",
+      "input": {
+        "moment": "turn-end",
+        "now": 1791133201000,
+        "lastRequestAt": 1791133201000,
+        "contextTokens": 33800,
+        "compactedTokens": 25690,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 300,
+          "source": "learned",
+          "confidence": 0.9177957506652412
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.13314088,
+        "costCompact": 0.12127462759999999,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.02595277
+      }
+    },
+    {
+      "id": "dec-006",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-05T09:00:01.000Z",
+      "input": {
+        "moment": "idle",
+        "now": 1791191641000,
+        "lastRequestAt": 1791190801000,
+        "contextTokens": 37000,
+        "compactedTokens": 27450,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 300,
+          "source": "learned",
+          "confidence": 0.9303437523201634
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.14650220000000003,
+        "costCompact": 0.13489821800000001,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.027519236
+      }
+    },
+    {
+      "id": "dec-007",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T01:00:01.000Z",
+      "input": {
+        "moment": "turn-end",
+        "now": 1791248401000,
+        "lastRequestAt": 1791248401000,
+        "contextTokens": 40200,
+        "compactedTokens": 29210,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 300,
+          "source": "learned",
+          "confidence": 0.9392853447727978
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.14736935999999998,
+        "costCompact": 0.12987380839999998,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.025195519
+      }
+    },
+    {
+      "id": "dec-008",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-06T17:00:01.000Z",
+      "input": {
+        "moment": "idle",
+        "now": 1791306841000,
+        "lastRequestAt": 1791306001000,
+        "contextTokens": 43400,
+        "compactedTokens": 30970,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 300,
+          "source": "learned",
+          "confidence": 0.9459782397395493
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.16181125600000001,
+        "costCompact": 0.14511019879999998,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.026700277
+      }
+    },
+    {
+      "id": "dec-009",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-07T09:00:01.000Z",
+      "input": {
+        "moment": "turn-end",
+        "now": 1791363601000,
+        "lastRequestAt": 1791363601000,
+        "contextTokens": 46600,
+        "compactedTokens": 32730,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 600,
+          "source": "learned",
+          "confidence": 0.9046308760553563
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.12628256,
+        "costCompact": 0.11175451280000001,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.024138975
+      }
+    },
+    {
+      "id": "dec-010",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T01:00:01.000Z",
+      "input": {
+        "moment": "idle",
+        "now": 1791422041000,
+        "lastRequestAt": 1791421201000,
+        "contextTokens": 49800,
+        "compactedTokens": 34490,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 600,
+          "source": "learned",
+          "confidence": 0.9146975336744381
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.141411408,
+        "costCompact": 0.1276767464,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.02630141
+      }
+    },
+    {
+      "id": "dec-011",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-08T17:00:01.000Z",
+      "input": {
+        "moment": "turn-end",
+        "now": 1791478801000,
+        "lastRequestAt": 1791478801000,
+        "contextTokens": 53000,
+        "compactedTokens": 36250,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 600,
+          "source": "learned",
+          "confidence": 0.9223651852335588
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.13696287999999998,
+        "costCompact": 0.11849978000000001,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": {
+        "turns": 4,
+        "cost": 0.023225957
+      }
+    },
+    {
+      "id": "dec-012",
+      "provider": "example",
+      "model": "chat-large",
+      "role": "assistant",
+      "at": "2026-10-09T09:00:01.000Z",
+      "input": {
+        "moment": "idle",
+        "now": 1791537241000,
+        "lastRequestAt": 1791536401000,
+        "contextTokens": 56200,
+        "compactedTokens": 38010,
+        "noteTokens": 800,
+        "contextWindow": 128000,
+        "prices": {
+          "input": 0.28,
+          "output": 1.1,
+          "cacheWrite": 0.28,
+          "cachedInput": 0.028
+        },
+        "lifetime": {
+          "seconds": 600,
+          "source": "learned",
+          "confidence": 0.9230683183070569
+        },
+        "usage": {
+          "gapShares": [0.22, 0.28, 0.17, 0.11, 0.08, 0.05, 0.04, 0.05],
+          "addedTokensPerTurn": 1800,
+          "outputTokensPerTurn": 450
+        }
+      },
+      "result": {
+        "decision": "compact",
+        "rule": "cost",
+        "costContinue": 0.15334971200000003,
+        "costCompact": 0.13603481360000003,
+        "horizonTurns": 20,
+        "nextAlarmAt": null
+      },
+      "actual": null
+    }
+  ],
+  "estimateHistory": [
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "at": "2026-10-02T14:00:00.000Z",
+      "fromSeconds": null,
+      "toSeconds": 30,
+      "reason": "rise",
+      "sampleSize": 25.251
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "at": "2026-10-03T02:00:00.000Z",
+      "fromSeconds": 30,
+      "toSeconds": 120,
+      "reason": "rise",
+      "sampleSize": 35.503
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "at": "2026-10-04T02:00:00.000Z",
+      "fromSeconds": 120,
+      "toSeconds": 300,
+      "reason": "rise",
+      "sampleSize": 55.267
+    },
+    {
+      "provider": "example",
+      "model": "chat-large",
+      "at": "2026-10-06T23:00:00.000Z",
+      "fromSeconds": 300,
+      "toSeconds": 600,
+      "reason": "rise",
+      "sampleSize": 106.722
+    }
+  ]
+}

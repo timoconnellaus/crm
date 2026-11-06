@@ -20,6 +20,7 @@
     "types": "turbo run types",
     "db:seed": "pnpm --filter @relationship-os/db seed",
     "upstream:check": "node scripts/upstream-sync-check.mjs",
+    "ai:replay-cache": "node scripts/ai-replay-cache.mjs",
     "eval:calibrate": "pnpm --filter @relationship-os/evals-judge calibrate"
   },
   "devDependencies": {
