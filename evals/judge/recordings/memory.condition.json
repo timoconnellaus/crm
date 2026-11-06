@@ -1,0 +1,4700 @@
+{
+  "00497c8c747589462641b2cc13e7d025f1803067532a350ea12e3db3c15f1cb9": {
+    "key": "00497c8c747589462641b2cc13e7d025f1803067532a350ea12e3db3c15f1cb9",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where Name contains \"500\"",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: another field"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 1,
+            "probabilities": {
+              "as_said": 0,
+              "different": 1,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 547,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 547,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af99822c74318ce01663e3ada229",
+    "latencyMs": 201,
+    "recordedAt": "2026-11-06T06:43:55.678Z"
+  },
+  "02b3a41927367959e1ef55a880d5ab4d75e0302a2318475ff484c711042f3a38": {
+    "key": "02b3a41927367959e1ef55a880d5ab4d75e0302a2318475ff484c711042f3a38",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "do that for those",
+          "condition": "Organisations where Industry is \"Healthcare\"",
+          "line": "Do that"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/unclear: only a pronoun"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "unclear",
+            "confidence": 0.61,
+            "probabilities": {
+              "as_said": 0.17,
+              "different": 0.09,
+              "unclear": 0.74
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 527,
+          "output_tokens": 42
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 527,
+      "output_tokens": 42
+    },
+    "requestId": "req_01a1af999a047560b207e056fede2eb0",
+    "latencyMs": 185,
+    "recordedAt": "2026-11-06T06:44:01.766Z"
+  },
+  "08c91ebcfe3d7a0879a53df118b217739fcb0acbb0717844693e1a311d134fa8": {
+    "key": "08c91ebcfe3d7a0879a53df118b217739fcb0acbb0717844693e1a311d134fa8",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when the company's domain ends in .gov.au, follow the public sector rules",
+          "condition": "Organisations where Primary domain ends with \".gov.au\"",
+          "line": "Follow the public sector rules"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: domain"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.8,
+            "probabilities": {
+              "as_said": 0.87,
+              "different": 0.12,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 543,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 543,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9978f67885aaa00b62e2aa5a8e",
+    "latencyMs": 182,
+    "recordedAt": "2026-11-06T06:43:53.301Z"
+  },
+  "0b447c8d5920d867f0b07f350eb3d506a99726832b041b3ca533a240ea9ec511": {
+    "key": "0b447c8d5920d867f0b07f350eb3d506a99726832b041b3ca533a240ea9ec511",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where People is more than 50",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: another value"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.01,
+              "different": 0.99,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 547,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 547,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af997cd77d31bea77b82ffb9cff8",
+    "latencyMs": 183,
+    "recordedAt": "2026-11-06T06:43:54.295Z"
+  },
+  "0d2f4d4e043f6814c0d926203a64600674570c99eaa397a61c15c56ca9a862d9": {
+    "key": "0d2f4d4e043f6814c0d926203a64600674570c99eaa397a61c15c56ca9a862d9",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when the company's domain ends in .gov.au, follow the public sector rules",
+          "condition": "Organisations where Primary domain ends with \".gov.au\"",
+          "line": "Follow the public sector rules"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: domain"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.91,
+            "probabilities": {
+              "as_said": 0.94,
+              "different": 0.06,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 543,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 543,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af997a6771848917e0185b399344",
+    "latencyMs": 232,
+    "recordedAt": "2026-11-06T06:43:53.720Z"
+  },
+  "184875599bcc08958b999cd311f2422ad6af5d5db303b494244538a020c2eade": {
+    "key": "184875599bcc08958b999cd311f2422ad6af5d5db303b494244538a020c2eade",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for small companies under 50 people, go straight to the founder",
+          "condition": "Organisations where People is less than 50",
+          "line": "Go straight to the founder"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: under"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.56,
+            "probabilities": {
+              "as_said": 0.71,
+              "different": 0.29,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 540,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 540,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9970ef7eb3a4030f2480cd036a",
+    "latencyMs": 187,
+    "recordedAt": "2026-11-06T06:43:51.251Z"
+  },
+  "185084d4c85d45f7b7bb8033a32cb44cd8568263926189a622552c00ba070956": {
+    "key": "185084d4c85d45f7b7bb8033a32cb44cd8568263926189a622552c00ba070956",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on anyone tagged VIP, keep it formal",
+          "condition": "Organisations where Tags is \"VIP\"",
+          "line": "Keep it formal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: people for organisations"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.94,
+            "probabilities": {
+              "as_said": 0.03,
+              "different": 0.96,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 530,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 530,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9993f671f988adf02d2baaa7f2",
+    "latencyMs": 188,
+    "recordedAt": "2026-11-06T06:44:00.218Z"
+  },
+  "1d119a9105b011e060c7ea9eb535b9b0db0aa6c14a27f5070aa61a6533289ade": {
+    "key": "1d119a9105b011e060c7ea9eb535b9b0db0aa6c14a27f5070aa61a6533289ade",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "remember this for later",
+          "condition": "Organisations where People is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/unclear: no condition said"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "unclear",
+            "confidence": 0.7,
+            "probabilities": {
+              "as_said": 0.14,
+              "different": 0.06,
+              "unclear": 0.8
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 531,
+          "output_tokens": 42
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 531,
+      "output_tokens": 42
+    },
+    "requestId": "req_01a1af99965f733398cb9d98e114abfd",
+    "latencyMs": 186,
+    "recordedAt": "2026-11-06T06:44:00.834Z"
+  },
+  "237926bdb4008a037b7202e0db784a01fd383d7c37e61df323216fe779657393": {
+    "key": "237926bdb4008a037b7202e0db784a01fd383d7c37e61df323216fe779657393",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when it's a healthcare company, mention compliance first",
+          "condition": "Organisations where Industry is \"Healthcare\"",
+          "line": "Mention compliance first"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: an industry"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.83,
+            "probabilities": {
+              "as_said": 0.89,
+              "different": 0.1,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 535,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 535,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99647d78f5bd268a506da60ef4",
+    "latencyMs": 186,
+    "recordedAt": "2026-11-06T06:43:48.063Z"
+  },
+  "279218419c7ade7bb4e04d5dd1370ae7b391439d1c89d50807c42ee46e11f6f4": {
+    "key": "279218419c7ade7bb4e04d5dd1370ae7b391439d1c89d50807c42ee46e11f6f4",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when it's a healthcare company, mention compliance first",
+          "condition": "Organisations where Industry is \"Healthcare\"",
+          "line": "Mention compliance first"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: an industry"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.86,
+            "probabilities": {
+              "as_said": 0.91,
+              "different": 0.09,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 535,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 535,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99630f7bfa83cf091775a59fef",
+    "latencyMs": 185,
+    "recordedAt": "2026-11-06T06:43:47.698Z"
+  },
+  "2ca918e22a612770105f3b8c9708449cf5dc189f1e30c1e7e87ece4d3bd7f846": {
+    "key": "2ca918e22a612770105f3b8c9708449cf5dc189f1e30c1e7e87ece4d3bd7f846",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on anyone tagged VIP, keep it formal",
+          "condition": "Organisations where Tags is \"VIP\"",
+          "line": "Keep it formal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: people for organisations"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.92,
+            "probabilities": {
+              "as_said": 0.03,
+              "different": 0.95,
+              "unclear": 0.02
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 530,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 530,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9994b3796db60375b64433a259",
+    "latencyMs": 237,
+    "recordedAt": "2026-11-06T06:44:00.456Z"
+  },
+  "2f37431a7bfd1b5ac40131ec7265c9e3bbf7a6fa70f5b191d14c2fc189c9b17a": {
+    "key": "2f37431a7bfd1b5ac40131ec7265c9e3bbf7a6fa70f5b191d14c2fc189c9b17a",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for anyone not in Sales, skip the pricing talk",
+          "condition": "People where Department is not \"Sales\"",
+          "line": "Skip the pricing talk"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: not"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.6,
+            "probabilities": {
+              "as_said": 0.73,
+              "different": 0.25,
+              "unclear": 0.02
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 531,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 531,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99745c77ccaf3f52f8cb102577",
+    "latencyMs": 199,
+    "recordedAt": "2026-11-06T06:43:52.139Z"
+  },
+  "3372feb798862ccc0fbae5c8b88b0fc29d20e81ea02f994097bf99ec6f633cce": {
+    "key": "3372feb798862ccc0fbae5c8b88b0fc29d20e81ea02f994097bf99ec6f633cce",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for anyone not in Sales, skip the pricing talk",
+          "condition": "People where Department is \"Sales\"",
+          "line": "Skip the pricing talk"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: is not for is"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.94,
+            "probabilities": {
+              "as_said": 0.04,
+              "different": 0.96,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 530,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 530,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9992837914ab4cfa43844c32c8",
+    "latencyMs": 186,
+    "recordedAt": "2026-11-06T06:43:59.845Z"
+  },
+  "364a1b16adf0dfb1f56992a3330e22f1f6a220765f6ac60c117727852ec8a4bc": {
+    "key": "364a1b16adf0dfb1f56992a3330e22f1f6a220765f6ac60c117727852ec8a4bc",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies with more than 100 people, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\" or People is more than 100",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: or for and"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.01,
+              "different": 0.99,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af998ccf72d9a3e698965a40bf6a",
+    "latencyMs": 270,
+    "recordedAt": "2026-11-06T06:43:58.471Z"
+  },
+  "371cf99da423b391dd2e468736806baf88fd67e0d96407199bb86878ec870385": {
+    "key": "371cf99da423b391dd2e468736806baf88fd67e0d96407199bb86878ec870385",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies with more than 100 people, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\" and People is more than 100",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: two conditions"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.86,
+            "probabilities": {
+              "as_said": 0.91,
+              "different": 0.09,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99682572d8a8db5e790e388665",
+    "latencyMs": 184,
+    "recordedAt": "2026-11-06T06:43:48.998Z"
+  },
+  "412ed5082c2e69db5a736b9a879ede3d7b2da357ea4eb3f85d18efbc6cdd2026": {
+    "key": "412ed5082c2e69db5a736b9a879ede3d7b2da357ea4eb3f85d18efbc6cdd2026",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for banks or insurers, check procurement rules",
+          "condition": "Organisations where Industry is \"Banking\" and Industry is \"Insurance\"",
+          "line": "Check procurement rules"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: and for or"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.91,
+            "probabilities": {
+              "as_said": 0.06,
+              "different": 0.94,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 537,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 537,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9989d17746ad7057d887b9ed9e",
+    "latencyMs": 197,
+    "recordedAt": "2026-11-06T06:43:57.630Z"
+  },
+  "46c358506a4177cc7ddf0abd7f11ad0653c55931d223fa93c1d537b7092bef6b": {
+    "key": "46c358506a4177cc7ddf0abd7f11ad0653c55931d223fa93c1d537b7092bef6b",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for companies with over 500 employees, start with the buying committee",
+          "condition": "Organisations where Employees is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: a field that means the word"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.96,
+            "probabilities": {
+              "as_said": 0.97,
+              "different": 0.03,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 542,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 542,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af995f5b7f9d92f5641fca881c15",
+    "latencyMs": 208,
+    "recordedAt": "2026-11-06T06:43:46.772Z"
+  },
+  "47a82e4d8eb4901525186cb564b3caccf019889b2e8d749246925629d4971fcd": {
+    "key": "47a82e4d8eb4901525186cb564b3caccf019889b2e8d749246925629d4971fcd",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for banks or insurers, check procurement rules",
+          "condition": "Organisations where Industry is \"Banking\" and Industry is \"Insurance\"",
+          "line": "Check procurement rules"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: and for or"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.92,
+            "probabilities": {
+              "as_said": 0.05,
+              "different": 0.95,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 537,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 537,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af998a967859b61061134924bc96",
+    "latencyMs": 185,
+    "recordedAt": "2026-11-06T06:43:57.815Z"
+  },
+  "4b6450058f5a72036648f6ed79b4aa05ce1f4209b1a551863b2a2c9667278744": {
+    "key": "4b6450058f5a72036648f6ed79b4aa05ce1f4209b1a551863b2a2c9667278744",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies with more than 100 people, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\" or People is more than 100",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: or for and"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.01,
+              "different": 0.99,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af998ddf7a72bb54c2a1e474a7d2",
+    "latencyMs": 203,
+    "recordedAt": "2026-11-06T06:43:58.674Z"
+  },
+  "4cbbb72ff3e8426f967b4c973e102f95b0916078b94c53b212a1148bcb4e7764": {
+    "key": "4cbbb72ff3e8426f967b4c973e102f95b0916078b94c53b212a1148bcb4e7764",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on the bigger ones, start with the committee",
+          "condition": "Organisations where People is more than 500",
+          "line": "Start with the committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/unclear: a vague size"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.13,
+            "probabilities": {
+              "as_said": 0.42,
+              "different": 0.29,
+              "unclear": 0.29
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 535,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 535,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9997d1785e813c2a6ea8f34b0f",
+    "latencyMs": 188,
+    "recordedAt": "2026-11-06T06:44:01.206Z"
+  },
+  "5337d93c1afcf1e087f8262b73e6b3855f14e23640e7fecbc16ff03f9e0c94c6": {
+    "key": "5337d93c1afcf1e087f8262b73e6b3855f14e23640e7fecbc16ff03f9e0c94c6",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "People where People is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: another record type"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.88,
+            "probabilities": {
+              "as_said": 0.08,
+              "different": 0.92,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 545,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 545,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9981617d539df6c75b8211c2cb",
+    "latencyMs": 204,
+    "recordedAt": "2026-11-06T06:43:55.477Z"
+  },
+  "554514c2e9c64a38dc6c2a8b60f26bd4f0537350c603392d03ee63f1decf090b": {
+    "key": "554514c2e9c64a38dc6c2a8b60f26bd4f0537350c603392d03ee63f1decf090b",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for anyone not in Sales, skip the pricing talk",
+          "condition": "People where Department is \"Sales\"",
+          "line": "Skip the pricing talk"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: is not for is"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.94,
+            "probabilities": {
+              "as_said": 0.04,
+              "different": 0.96,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 530,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 530,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af99910a7f96b7a4e5fd955215ae",
+    "latencyMs": 189,
+    "recordedAt": "2026-11-06T06:43:59.472Z"
+  },
+  "565733036091fbe83074af0bd567519ec47022ec32c1254bbb596b13bcd1b604": {
+    "key": "565733036091fbe83074af0bd567519ec47022ec32c1254bbb596b13bcd1b604",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\" and People is more than 100",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: a part added"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.52,
+            "probabilities": {
+              "as_said": 0.14,
+              "different": 0.68,
+              "unclear": 0.18
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 540,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 540,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9987a17cc28fb237a1dd2f1aed",
+    "latencyMs": 182,
+    "recordedAt": "2026-11-06T06:43:57.055Z"
+  },
+  "5e68c1ed07c63459b83d82f6d6d88b15550eb4f0a2ba3be5804d191e42f115d4": {
+    "key": "5e68c1ed07c63459b83d82f6d6d88b15550eb4f0a2ba3be5804d191e42f115d4",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for companies with over 500 employees, start with the buying committee",
+          "condition": "Organisations where Employees is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: a field that means the word"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.94,
+            "probabilities": {
+              "as_said": 0.96,
+              "different": 0.04,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 542,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 542,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99602b79e39a2dc52f4ff374a4",
+    "latencyMs": 188,
+    "recordedAt": "2026-11-06T06:43:46.960Z"
+  },
+  "62a7cc14131c47878befad5d01f8dba138b9041da6812609d27206a85c7b40ff": {
+    "key": "62a7cc14131c47878befad5d01f8dba138b9041da6812609d27206a85c7b40ff",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for any org with University in the name, mention the education rate",
+          "condition": "Organisations where Name contains \"University\"",
+          "line": "Mention the education rate"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: contains"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.99,
+              "different": 0.01,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 537,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 537,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99777776fb9ea85c4b93ff7614",
+    "latencyMs": 181,
+    "recordedAt": "2026-11-06T06:43:52.917Z"
+  },
+  "677c9be0d1768e050ffe2681bff67825f2b0e6ede11441f11e96cc320f49ebb0": {
+    "key": "677c9be0d1768e050ffe2681bff67825f2b0e6ede11441f11e96cc320f49ebb0",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\" and People is more than 100",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: a part added"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.55,
+            "probabilities": {
+              "as_said": 0.13,
+              "different": 0.7,
+              "unclear": 0.17
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 540,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 540,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af99885773418edc4112daebf071",
+    "latencyMs": 191,
+    "recordedAt": "2026-11-06T06:43:57.246Z"
+  },
+  "6847096a47c10c8831784d12e501c456928c01106455659cbf70bab5ca1890e0": {
+    "key": "6847096a47c10c8831784d12e501c456928c01106455659cbf70bab5ca1890e0",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for any org with University in the name, mention the education rate",
+          "condition": "Organisations where Name contains \"University\"",
+          "line": "Mention the education rate"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: contains"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.99,
+              "different": 0.01,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 537,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 537,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9976bb7a43938a2e2f51ea4826",
+    "latencyMs": 188,
+    "recordedAt": "2026-11-06T06:43:52.736Z"
+  },
+  "6b2dbea2bc056b33198f533ffd48246ec95008b5119655fab3e51122c8ac699d": {
+    "key": "6b2dbea2bc056b33198f533ffd48246ec95008b5119655fab3e51122c8ac699d",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "at 500 people or more, start with the committee",
+          "condition": "Organisations where People is at least 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: at least"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.7,
+            "probabilities": {
+              "as_said": 0.8,
+              "different": 0.14,
+              "unclear": 0.06
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 540,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 540,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af996dcf7b66bc3cd3def63e73b2",
+    "latencyMs": 220,
+    "recordedAt": "2026-11-06T06:43:50.484Z"
+  },
+  "6bc986085b1b9d5c560d9535f5bc3d1834e469dbbf3b166e2694e76a944a0f41": {
+    "key": "6bc986085b1b9d5c560d9535f5bc3d1834e469dbbf3b166e2694e76a944a0f41",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where People is more than 50",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: another value"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.01,
+              "different": 0.99,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 547,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 547,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af997c127e79af53ada7e936a243",
+    "latencyMs": 197,
+    "recordedAt": "2026-11-06T06:43:54.112Z"
+  },
+  "6cc22a24418ee98acdd2b305b309e2ea1e5070a98313dd177f277bccaf5ff89b": {
+    "key": "6cc22a24418ee98acdd2b305b309e2ea1e5070a98313dd177f277bccaf5ff89b",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for small companies under 50 people, go straight to the founder",
+          "condition": "Organisations where People is less than 50",
+          "line": "Go straight to the founder"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: under"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.58,
+            "probabilities": {
+              "as_said": 0.72,
+              "different": 0.28,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 540,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 540,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af996f6e700b9b7aa266af27f0f0",
+    "latencyMs": 189,
+    "recordedAt": "2026-11-06T06:43:50.868Z"
+  },
+  "6d6da638adb7a880c75a2e4a2015d77a6db8646abf24f7f080fc4dac1ed7a2e5": {
+    "key": "6d6da638adb7a880c75a2e4a2015d77a6db8646abf24f7f080fc4dac1ed7a2e5",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for banks or insurers, check procurement rules",
+          "condition": "Organisations where Industry is one of \"Banking\", \"Insurance\"",
+          "line": "Check procurement rules"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: either of two"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.94,
+            "probabilities": {
+              "as_said": 0.96,
+              "different": 0.04,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 536,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 536,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af996ba271638cedf7fa4ffd1ae8",
+    "latencyMs": 186,
+    "recordedAt": "2026-11-06T06:43:49.892Z"
+  },
+  "6da00a599b1d9a945a1929f4f087304927ca0e656aa1d6d93a84bd226696c0fd": {
+    "key": "6da00a599b1d9a945a1929f4f087304927ca0e656aa1d6d93a84bd226696c0fd",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when it's a healthcare company, mention compliance first",
+          "condition": "Organisations where Industry is \"Healthcare\"",
+          "line": "Mention compliance first"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: an industry"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.92,
+            "probabilities": {
+              "as_said": 0.95,
+              "different": 0.05,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 535,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 535,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9963c97358802ff00407f8f3cc",
+    "latencyMs": 179,
+    "recordedAt": "2026-11-06T06:43:47.877Z"
+  },
+  "6df8dc30a496d9d749f1b91036f895ec5329e03427fa11bcbe2f4416e1bb7060": {
+    "key": "6df8dc30a496d9d749f1b91036f895ec5329e03427fa11bcbe2f4416e1bb7060",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when the company's domain ends in .gov.au, follow the public sector rules",
+          "condition": "Organisations where Primary domain ends with \".gov.au\"",
+          "line": "Follow the public sector rules"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: domain"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.86,
+            "probabilities": {
+              "as_said": 0.91,
+              "different": 0.08,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 543,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 543,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9979ac7c07ba23475b24af2ac2",
+    "latencyMs": 186,
+    "recordedAt": "2026-11-06T06:43:53.487Z"
+  },
+  "6e212c862edad97f1c012ed6dcf4acb332cb88d752ff316a1740194a96c8b4b0": {
+    "key": "6e212c862edad97f1c012ed6dcf4acb332cb88d752ff316a1740194a96c8b4b0",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies with more than 100 people, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\" and People is more than 100",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: two conditions"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.77,
+            "probabilities": {
+              "as_said": 0.85,
+              "different": 0.15,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9969967c0c80531c1940e56ebd",
+    "latencyMs": 184,
+    "recordedAt": "2026-11-06T06:43:49.368Z"
+  },
+  "6e48e68f7710d6c2920f251fbaa4d65ba5279d3f4f82970e9df018ff73aafe51": {
+    "key": "6e48e68f7710d6c2920f251fbaa4d65ba5279d3f4f82970e9df018ff73aafe51",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where Name contains \"500\"",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: another field"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 1,
+            "probabilities": {
+              "as_said": 0,
+              "different": 1,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 547,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 547,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9983f27fd7b9258e9a26dc756e",
+    "latencyMs": 322,
+    "recordedAt": "2026-11-06T06:43:56.252Z"
+  },
+  "700d323f88a1ac3d0272e3f363edab17b7c8a5c4d8ee350a15a22c4667acf691": {
+    "key": "700d323f88a1ac3d0272e3f363edab17b7c8a5c4d8ee350a15a22c4667acf691",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where People is less than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: the opposite comparison"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 1,
+            "probabilities": {
+              "as_said": 0,
+              "different": 1,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af997d8e79fda200e7a149e6e515",
+    "latencyMs": 193,
+    "recordedAt": "2026-11-06T06:43:54.488Z"
+  },
+  "7180d581f10c9e98ac79171f08a481c66d140613f1d2ec070eec60f46999adc5": {
+    "key": "7180d581f10c9e98ac79171f08a481c66d140613f1d2ec070eec60f46999adc5",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on the bigger ones, start with the committee",
+          "condition": "Organisations where People is more than 500",
+          "line": "Start with the committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/unclear: a vague size"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.11,
+            "probabilities": {
+              "as_said": 0.41,
+              "different": 0.32,
+              "unclear": 0.27
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 535,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 535,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99988f7957b2842fe623fa61e3",
+    "latencyMs": 185,
+    "recordedAt": "2026-11-06T06:44:01.392Z"
+  },
+  "77a37925f5fea2ebc5a32716dc846ae581265fae9fd3fd615c5f3d09f16e6f1d": {
+    "key": "77a37925f5fea2ebc5a32716dc846ae581265fae9fd3fd615c5f3d09f16e6f1d",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies with more than 100 people, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\" and People is more than 100",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: two conditions"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.77,
+            "probabilities": {
+              "as_said": 0.85,
+              "different": 0.15,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9968dd74d687efc655034215ba",
+    "latencyMs": 186,
+    "recordedAt": "2026-11-06T06:43:49.184Z"
+  },
+  "8118d6b0396522a03cf4e5f684b252455cc38e700dfd9cde124c348d10630c27": {
+    "key": "8118d6b0396522a03cf4e5f684b252455cc38e700dfd9cde124c348d10630c27",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies with more than 100 people, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\"",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: a part left out"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.97,
+            "probabilities": {
+              "as_said": 0.02,
+              "different": 0.98,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 539,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 539,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9986c77a0fbdce73914fafdab8",
+    "latencyMs": 220,
+    "recordedAt": "2026-11-06T06:43:56.872Z"
+  },
+  "887c3b4124c8c614dc600cd0785e5f9011b81e2b66957c87cccbceb2dbb067e4": {
+    "key": "887c3b4124c8c614dc600cd0785e5f9011b81e2b66957c87cccbceb2dbb067e4",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on organisations with more than a thousand people, ask who signs",
+          "condition": "Organisations where People is more than 1,000",
+          "line": "Ask who signs"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: a number written out"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.64,
+            "probabilities": {
+              "as_said": 0.76,
+              "different": 0.24,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 539,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 539,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9960e87a1fbf87df87d1576ebd",
+    "latencyMs": 183,
+    "recordedAt": "2026-11-06T06:43:47.143Z"
+  },
+  "8ad0e5819d3b8db2f22a86af26676231f2fb0913567b268199df89ef1e6d915b": {
+    "key": "8ad0e5819d3b8db2f22a86af26676231f2fb0913567b268199df89ef1e6d915b",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where People is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: the mockup's condition"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.55,
+            "probabilities": {
+              "as_said": 0.7,
+              "different": 0.29,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af995de87f29bd2dc69ec6dbcdf0",
+    "latencyMs": 186,
+    "recordedAt": "2026-11-06T06:43:46.379Z"
+  },
+  "8d2eba9671c1782dac06ad30b4e4dc523884e93cd0cdd74a47e1323096339845": {
+    "key": "8d2eba9671c1782dac06ad30b4e4dc523884e93cd0cdd74a47e1323096339845",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on the bigger ones, start with the committee",
+          "condition": "Organisations where People is more than 500",
+          "line": "Start with the committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/unclear: a vague size"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.19,
+            "probabilities": {
+              "as_said": 0.46,
+              "different": 0.28,
+              "unclear": 0.26
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 535,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 535,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99994974a287ecaf11ea3ac54a",
+    "latencyMs": 187,
+    "recordedAt": "2026-11-06T06:44:01.581Z"
+  },
+  "8e91520219d7341d48ca9068326a6a7190f9fdf8d03f9439937a3ecbd759580d": {
+    "key": "8e91520219d7341d48ca9068326a6a7190f9fdf8d03f9439937a3ecbd759580d",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where People is less than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: the opposite comparison"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 1,
+            "probabilities": {
+              "as_said": 0,
+              "different": 1,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af997f13748ca644396303fb06e9",
+    "latencyMs": 194,
+    "recordedAt": "2026-11-06T06:43:54.878Z"
+  },
+  "95870bb159fa163e5515d411810723485ef245ea92f877d751e58466abf38f8c": {
+    "key": "95870bb159fa163e5515d411810723485ef245ea92f877d751e58466abf38f8c",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on anyone tagged VIP, keep it formal",
+          "condition": "People where Tags is \"VIP\"",
+          "line": "Keep it formal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: a tag"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.83,
+            "probabilities": {
+              "as_said": 0.89,
+              "different": 0.1,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 527,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 527,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9965f479188bd94ee97b8c4299",
+    "latencyMs": 263,
+    "recordedAt": "2026-11-06T06:43:48.516Z"
+  },
+  "96dd4456385b5e6ffcc5f236a94b3f918aeaae392d1a608727fa3a8102f5459e": {
+    "key": "96dd4456385b5e6ffcc5f236a94b3f918aeaae392d1a608727fa3a8102f5459e",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when a person has no job title, ask what they do",
+          "condition": "People where Job title is empty",
+          "line": "Ask what they do"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: empty"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.52,
+            "probabilities": {
+              "as_said": 0.68,
+              "different": 0.28,
+              "unclear": 0.04
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 531,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 531,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9971ac734fa50c851f889a9f52",
+    "latencyMs": 192,
+    "recordedAt": "2026-11-06T06:43:51.444Z"
+  },
+  "9768585c95014bb7105b2e0e6d2f810663a398025a19f78a8976cc0a8a3dca71": {
+    "key": "9768585c95014bb7105b2e0e6d2f810663a398025a19f78a8976cc0a8a3dca71",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "at 500 people or more, start with the committee",
+          "condition": "Organisations where People is at least 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: at least"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.55,
+            "probabilities": {
+              "as_said": 0.7,
+              "different": 0.19,
+              "unclear": 0.11
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 540,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 540,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af996ead7787ae456c4530c89455",
+    "latencyMs": 195,
+    "recordedAt": "2026-11-06T06:43:50.679Z"
+  },
+  "9966f27e42af61326222f9a7e344e9b556f0ea030a092e3cf99a67444f283804": {
+    "key": "9966f27e42af61326222f9a7e344e9b556f0ea030a092e3cf99a67444f283804",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where People is less than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: the opposite comparison"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 1,
+            "probabilities": {
+              "as_said": 0,
+              "different": 1,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af997e4f743789c81a9bef716f15",
+    "latencyMs": 196,
+    "recordedAt": "2026-11-06T06:43:54.684Z"
+  },
+  "9f80d8a51ce9b18ae3f54ab490fca4c87d3f62ab6b910665296a15de5c65d440": {
+    "key": "9f80d8a51ce9b18ae3f54ab490fca4c87d3f62ab6b910665296a15de5c65d440",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies with more than 100 people, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\" or People is more than 100",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: or for and"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.01,
+              "different": 0.99,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af998c1475428e7a95bb5dc53c2d",
+    "latencyMs": 190,
+    "recordedAt": "2026-11-06T06:43:58.200Z"
+  },
+  "aa3ab8b72af7f5c647e2705c19918334fc3f565fb106449843db7c937aacf05b": {
+    "key": "aa3ab8b72af7f5c647e2705c19918334fc3f565fb106449843db7c937aacf05b",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on organisations with more than a thousand people, ask who signs",
+          "condition": "Organisations where People is more than 1,000",
+          "line": "Ask who signs"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: a number written out"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.67,
+            "probabilities": {
+              "as_said": 0.78,
+              "different": 0.21,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 539,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 539,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99625772268c67a81020701f70",
+    "latencyMs": 184,
+    "recordedAt": "2026-11-06T06:43:47.512Z"
+  },
+  "aa8de4a33622e8bc146392a8c60ff208e8cfbe4928417d7e195528e14acfc32e": {
+    "key": "aa8de4a33622e8bc146392a8c60ff208e8cfbe4928417d7e195528e14acfc32e",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on anyone tagged VIP, keep it formal",
+          "condition": "People where Tags is \"VIP\"",
+          "line": "Keep it formal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: a tag"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.88,
+            "probabilities": {
+              "as_said": 0.92,
+              "different": 0.07,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 527,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 527,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9966fb78818ce6d13dbddde217",
+    "latencyMs": 298,
+    "recordedAt": "2026-11-06T06:43:48.814Z"
+  },
+  "b2690cb5376ea067b4af92819697f4c41aad55a2b86e63b42310bd8aced81ddf": {
+    "key": "b2690cb5376ea067b4af92819697f4c41aad55a2b86e63b42310bd8aced81ddf",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on anyone tagged VIP, keep it formal",
+          "condition": "People where Tags is \"VIP\"",
+          "line": "Keep it formal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: a tag"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.86,
+            "probabilities": {
+              "as_said": 0.91,
+              "different": 0.08,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 527,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 527,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9965387eaeab85f6a4a17bd26b",
+    "latencyMs": 189,
+    "recordedAt": "2026-11-06T06:43:48.253Z"
+  },
+  "b4d60127c1f69c12ef4bcc8b3153fa1e7509011e342cc2f3ae43cf0a6b01b5bf": {
+    "key": "b4d60127c1f69c12ef4bcc8b3153fa1e7509011e342cc2f3ae43cf0a6b01b5bf",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "remember this for later",
+          "condition": "Organisations where People is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/unclear: no condition said"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "unclear",
+            "confidence": 0.62,
+            "probabilities": {
+              "as_said": 0.18,
+              "different": 0.07,
+              "unclear": 0.75
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 531,
+          "output_tokens": 42
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 531,
+      "output_tokens": 42
+    },
+    "requestId": "req_01a1af9997197f828ad0c5d483ba4562",
+    "latencyMs": 184,
+    "recordedAt": "2026-11-06T06:44:01.018Z"
+  },
+  "b501641197ccb3f6c38bcc607a77d3854b4637c3c9ea29130abcdfb3f336b54f": {
+    "key": "b501641197ccb3f6c38bcc607a77d3854b4637c3c9ea29130abcdfb3f336b54f",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when a person has no job title, ask what they do",
+          "condition": "People where Job title is empty",
+          "line": "Ask what they do"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: empty"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.58,
+            "probabilities": {
+              "as_said": 0.72,
+              "different": 0.25,
+              "unclear": 0.03
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 531,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 531,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9973317c669ff72d4b5cae12af",
+    "latencyMs": 302,
+    "recordedAt": "2026-11-06T06:43:51.939Z"
+  },
+  "b9985b9dea37c2eb0c0d7f472281e30dffda026935d64c03677c4765f6bb1a1d": {
+    "key": "b9985b9dea37c2eb0c0d7f472281e30dffda026935d64c03677c4765f6bb1a1d",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where People is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: the mockup's condition"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.53,
+            "probabilities": {
+              "as_said": 0.69,
+              "different": 0.3,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af995d097b2993a63c170a79090f",
+    "latencyMs": 223,
+    "recordedAt": "2026-11-06T06:43:46.193Z"
+  },
+  "bacb6cd7025176b2035b2552a0428648a846d193255f4be3662924fbdb1b74cc": {
+    "key": "bacb6cd7025176b2035b2552a0428648a846d193255f4be3662924fbdb1b74cc",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for any org with University in the name, mention the education rate",
+          "condition": "Organisations where Name contains \"University\"",
+          "line": "Mention the education rate"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: contains"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.99,
+              "different": 0.01,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 537,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 537,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99782c7f01bebdba78761de50f",
+    "latencyMs": 202,
+    "recordedAt": "2026-11-06T06:43:53.119Z"
+  },
+  "be6e81f8aae2a43afb0690a3959cd909e24f1b4f6416ee9534568f07c3d4d492": {
+    "key": "be6e81f8aae2a43afb0690a3959cd909e24f1b4f6416ee9534568f07c3d4d492",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where People is more than 50",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: another value"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.01,
+              "different": 0.99,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 547,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 547,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af997b4f7e36a7748131e6eb2d31",
+    "latencyMs": 194,
+    "recordedAt": "2026-11-06T06:43:53.915Z"
+  },
+  "c90b4441f8c66da7f56b27d7289a586437daff21cca3cd77da85ac6d5fecf487": {
+    "key": "c90b4441f8c66da7f56b27d7289a586437daff21cca3cd77da85ac6d5fecf487",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where People is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: the mockup's condition"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.55,
+            "probabilities": {
+              "as_said": 0.7,
+              "different": 0.3,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 548,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 548,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af995c427507b50ecbaaefd462f1",
+    "latencyMs": 198,
+    "recordedAt": "2026-11-06T06:43:45.970Z"
+  },
+  "ca03a96528f89b54f23dcfef47e4eea40f5977d76060bf6d567dc06ff1bed74b": {
+    "key": "ca03a96528f89b54f23dcfef47e4eea40f5977d76060bf6d567dc06ff1bed74b",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for banks or insurers, check procurement rules",
+          "condition": "Organisations where Industry is one of \"Banking\", \"Insurance\"",
+          "line": "Check procurement rules"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: either of two"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.96,
+            "probabilities": {
+              "as_said": 0.97,
+              "different": 0.03,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 536,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 536,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af996c5a70b1b19878986c2ad372",
+    "latencyMs": 185,
+    "recordedAt": "2026-11-06T06:43:50.077Z"
+  },
+  "cd477bd399cb57bbd5bc8ab9960715cd3bac080ac1d9e2628d4c2910f5e9d3cd": {
+    "key": "cd477bd399cb57bbd5bc8ab9960715cd3bac080ac1d9e2628d4c2910f5e9d3cd",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for anyone not in Sales, skip the pricing talk",
+          "condition": "People where Department is not \"Sales\"",
+          "line": "Skip the pricing talk"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: not"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.62,
+            "probabilities": {
+              "as_said": 0.75,
+              "different": 0.23,
+              "unclear": 0.02
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 531,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 531,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9975217d6988f6a9e9fd16dbe5",
+    "latencyMs": 188,
+    "recordedAt": "2026-11-06T06:43:52.327Z"
+  },
+  "cfe90b4b4e569d556450350b0388a59c81438ee58fd2a3cc3dd6f69af8725142": {
+    "key": "cfe90b4b4e569d556450350b0388a59c81438ee58fd2a3cc3dd6f69af8725142",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "at 500 people or more, start with the committee",
+          "condition": "Organisations where People is at least 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: at least"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.66,
+            "probabilities": {
+              "as_said": 0.77,
+              "different": 0.15,
+              "unclear": 0.08
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 540,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 540,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af996d1675d290a7a76c3dbb47c9",
+    "latencyMs": 187,
+    "recordedAt": "2026-11-06T06:43:50.264Z"
+  },
+  "d042f9fbeace97f7440b8cf6500a142aacf1fc8c251c8ab2476a37b46e685680": {
+    "key": "d042f9fbeace97f7440b8cf6500a142aacf1fc8c251c8ab2476a37b46e685680",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for small companies under 50 people, go straight to the founder",
+          "condition": "Organisations where People is less than 50",
+          "line": "Go straight to the founder"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: under"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.56,
+            "probabilities": {
+              "as_said": 0.71,
+              "different": 0.29,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 540,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 540,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99702b73e5a5deca267cee896a",
+    "latencyMs": 195,
+    "recordedAt": "2026-11-06T06:43:51.063Z"
+  },
+  "d10d556a3fabc598190cf278051d50fe00353ae0b2b033e0b6475778ff8efce9": {
+    "key": "d10d556a3fabc598190cf278051d50fe00353ae0b2b033e0b6475778ff8efce9",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "People where People is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: another record type"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.91,
+            "probabilities": {
+              "as_said": 0.06,
+              "different": 0.94,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 545,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 545,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af997fd57e53a2046c21c5faaeb7",
+    "latencyMs": 183,
+    "recordedAt": "2026-11-06T06:43:55.061Z"
+  },
+  "d5a23e19cde72c96564bef265f41a156e98e328de2175ef66ad8e14590c34b5a": {
+    "key": "d5a23e19cde72c96564bef265f41a156e98e328de2175ef66ad8e14590c34b5a",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies with more than 100 people, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\"",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: a part left out"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.01,
+              "different": 0.99,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 539,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 539,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9985347af384dcf2d2e73b17bd",
+    "latencyMs": 187,
+    "recordedAt": "2026-11-06T06:43:56.439Z"
+  },
+  "d60e58d3b31d3b4a747fdf9dda8965e6a4bf5b083529b8928563db736e5c63e7": {
+    "key": "d60e58d3b31d3b4a747fdf9dda8965e6a4bf5b083529b8928563db736e5c63e7",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "Organisations where Name contains \"500\"",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: another field"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 1,
+            "probabilities": {
+              "as_said": 0,
+              "different": 1,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 547,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 547,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9982f57c8093a9210a15877c53",
+    "latencyMs": 251,
+    "recordedAt": "2026-11-06T06:43:55.930Z"
+  },
+  "d71eee40c213d1c7d0bc686e96681ea2965fa6757470f301c36627ae3b1d9ec9": {
+    "key": "d71eee40c213d1c7d0bc686e96681ea2965fa6757470f301c36627ae3b1d9ec9",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "do that for those",
+          "condition": "Organisations where Industry is \"Healthcare\"",
+          "line": "Do that"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/unclear: only a pronoun"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "unclear",
+            "confidence": 0.7,
+            "probabilities": {
+              "as_said": 0.1,
+              "different": 0.1,
+              "unclear": 0.8
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 527,
+          "output_tokens": 42
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 527,
+      "output_tokens": 42
+    },
+    "requestId": "req_01a1af999abf72dcbedc11ef47017506",
+    "latencyMs": 186,
+    "recordedAt": "2026-11-06T06:44:01.952Z"
+  },
+  "d89ded5b80bfd251a55313d885ee8f653bf9d656a631a10410865037117bf7d0": {
+    "key": "d89ded5b80bfd251a55313d885ee8f653bf9d656a631a10410865037117bf7d0",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for companies with over 500 employees, start with the buying committee",
+          "condition": "Organisations where Employees is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: a field that means the word"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.96,
+            "probabilities": {
+              "as_said": 0.97,
+              "different": 0.03,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 542,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 542,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af995ea37945b636fee8f7ca2ee9",
+    "latencyMs": 185,
+    "recordedAt": "2026-11-06T06:43:46.564Z"
+  },
+  "db5954399e82f62dd36d2f374fad44dcdeb69a6727f48a3ab6551b084afc2667": {
+    "key": "db5954399e82f62dd36d2f374fad44dcdeb69a6727f48a3ab6551b084afc2667",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on anyone tagged VIP, keep it formal",
+          "condition": "Organisations where Tags is \"VIP\"",
+          "line": "Keep it formal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: people for organisations"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.94,
+            "probabilities": {
+              "as_said": 0.03,
+              "different": 0.96,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 530,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 530,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af99933c71af860aea0fae0fde0f",
+    "latencyMs": 185,
+    "recordedAt": "2026-11-06T06:44:00.030Z"
+  },
+  "dd2f64f52edd9b410537691aa4ed7fcb5dd545b17f973810367b62fbfece885c": {
+    "key": "dd2f64f52edd9b410537691aa4ed7fcb5dd545b17f973810367b62fbfece885c",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "remember this for later",
+          "condition": "Organisations where People is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/unclear: no condition said"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "unclear",
+            "confidence": 0.44,
+            "probabilities": {
+              "as_said": 0.29,
+              "different": 0.08,
+              "unclear": 0.63
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 531,
+          "output_tokens": 42
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 531,
+      "output_tokens": 42
+    },
+    "requestId": "req_01a1af9995a07b4182183bfe98313af6",
+    "latencyMs": 192,
+    "recordedAt": "2026-11-06T06:44:00.648Z"
+  },
+  "e07c8eaeccce568d23367424e6332457e5c6b1914e361bc1d336eac70fe747ae": {
+    "key": "e07c8eaeccce568d23367424e6332457e5c6b1914e361bc1d336eac70fe747ae",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when a person has no job title, ask what they do",
+          "condition": "People where Job title is empty",
+          "line": "Ask what they do"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: empty"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.58,
+            "probabilities": {
+              "as_said": 0.72,
+              "different": 0.27,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 531,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 531,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af99726a74539e60fe8bed42c652",
+    "latencyMs": 193,
+    "recordedAt": "2026-11-06T06:43:51.637Z"
+  },
+  "e166747a9430a77350334c75064d71ea8d8ca26897d526b27f6769141db9c37b": {
+    "key": "e166747a9430a77350334c75064d71ea8d8ca26897d526b27f6769141db9c37b",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "on organisations with more than a thousand people, ask who signs",
+          "condition": "Organisations where People is more than 1,000",
+          "line": "Ask who signs"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/match: a number written out"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.66,
+            "probabilities": {
+              "as_said": 0.77,
+              "different": 0.22,
+              "unclear": 0.01
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 539,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 539,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9961a07192977728dcbe5efa56",
+    "latencyMs": 184,
+    "recordedAt": "2026-11-06T06:43:47.327Z"
+  },
+  "e19a853ea2027f12fb377d3a6ffd46b52e520d11c25b49d364cec73b16183c5e": {
+    "key": "e19a853ea2027f12fb377d3a6ffd46b52e520d11c25b49d364cec73b16183c5e",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when it's a healthcare company, mention compliance first",
+          "condition": "Organisations where Industry is \"Finance\"",
+          "line": "Mention compliance first"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: another industry"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 1,
+            "probabilities": {
+              "as_said": 0,
+              "different": 1,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 533,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 533,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9990317cc0ba16dbd5144fe3ac",
+    "latencyMs": 217,
+    "recordedAt": "2026-11-06T06:43:59.283Z"
+  },
+  "e495125d62dad940731a13a3697d2230ac233a876533f4326e3e5b778ad4fd19": {
+    "key": "e495125d62dad940731a13a3697d2230ac233a876533f4326e3e5b778ad4fd19",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies with more than 100 people, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\"",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: a part left out"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.98,
+            "probabilities": {
+              "as_said": 0.01,
+              "different": 0.99,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 539,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 539,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9985ef7b4697f95fb2c168b0ed",
+    "latencyMs": 212,
+    "recordedAt": "2026-11-06T06:43:56.651Z"
+  },
+  "e9356a2a59b184d3757478ee2bc2d133eee93cdb1e8a89c85c96b88ad7c1bec0": {
+    "key": "e9356a2a59b184d3757478ee2bc2d133eee93cdb1e8a89c85c96b88ad7c1bec0",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for anyone not in Sales, skip the pricing talk",
+          "condition": "People where Department is not \"Sales\"",
+          "line": "Skip the pricing talk"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/match: not"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.58,
+            "probabilities": {
+              "as_said": 0.72,
+              "different": 0.26,
+              "unclear": 0.02
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 531,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 531,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af9975df7dc397122cd9b41a9be1",
+    "latencyMs": 221,
+    "recordedAt": "2026-11-06T06:43:52.548Z"
+  },
+  "e93d41c26281c3f51e70eb5094b945e1404aea3c7f8d821a072f8c453a077c2d": {
+    "key": "e93d41c26281c3f51e70eb5094b945e1404aea3c7f8d821a072f8c453a077c2d",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "When I'm on an organisation with more than 500 people, start with the buying committee.",
+          "condition": "People where People is more than 500",
+          "line": "Start with the buying committee"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: another record type"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.85,
+            "probabilities": {
+              "as_said": 0.1,
+              "different": 0.9,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 545,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 545,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af99808b79c5bcccea714e492acd",
+    "latencyMs": 212,
+    "recordedAt": "2026-11-06T06:43:55.273Z"
+  },
+  "eeadf3be757b584006deb57b8df91687ffa713eb7db3b63c914f5626a3da3619": {
+    "key": "eeadf3be757b584006deb57b8df91687ffa713eb7db3b63c914f5626a3da3619",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when it's a healthcare company, mention compliance first",
+          "condition": "Organisations where Industry is \"Finance\"",
+          "line": "Mention compliance first"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/differs: another industry"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 1,
+            "probabilities": {
+              "as_said": 0,
+              "different": 1,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 533,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 533,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af998ea97c4b838c9fda30e390ae",
+    "latencyMs": 189,
+    "recordedAt": "2026-11-06T06:43:58.863Z"
+  },
+  "ef20724ef30ef501ba7099fe66e0da1ec947e27567a7c035657f6056c99ca919": {
+    "key": "ef20724ef30ef501ba7099fe66e0da1ec947e27567a7c035657f6056c99ca919",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for banks or insurers, check procurement rules",
+          "condition": "Organisations where Industry is \"Banking\" and Industry is \"Insurance\"",
+          "line": "Check procurement rules"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: and for or"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.92,
+            "probabilities": {
+              "as_said": 0.05,
+              "different": 0.95,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 537,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 537,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af998b4e7ac2a8cb2b985fd8c672",
+    "latencyMs": 195,
+    "recordedAt": "2026-11-06T06:43:58.010Z"
+  },
+  "f2b8d81523342fa4932dbcb2e5d753c5895dd5496219698d911411171503a86b": {
+    "key": "f2b8d81523342fa4932dbcb2e5d753c5895dd5496219698d911411171503a86b",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for anyone not in Sales, skip the pricing talk",
+          "condition": "People where Department is \"Sales\"",
+          "line": "Skip the pricing talk"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: is not for is"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.96,
+            "probabilities": {
+              "as_said": 0.03,
+              "different": 0.97,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 530,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 530,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9991c776998ade7232b745f042",
+    "latencyMs": 186,
+    "recordedAt": "2026-11-06T06:43:59.658Z"
+  },
+  "f4b879ee037aff1ef3a47026493470b370da4fac48cab46dbf8a7e300c02cb94": {
+    "key": "f4b879ee037aff1ef3a47026493470b370da4fac48cab46dbf8a7e300c02cb94",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for banks or insurers, check procurement rules",
+          "condition": "Organisations where Industry is one of \"Banking\", \"Insurance\"",
+          "line": "Check procurement rules"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 1,
+      "scope": "memory.condition/match: either of two"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "as_said",
+            "confidence": 0.94,
+            "probabilities": {
+              "as_said": 0.96,
+              "different": 0.04,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 536,
+          "output_tokens": 43
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 536,
+      "output_tokens": 43
+    },
+    "requestId": "req_01a1af996a4f719c9b2af3f2920c521b",
+    "latencyMs": 338,
+    "recordedAt": "2026-11-06T06:43:49.706Z"
+  },
+  "f63ff44dcd5d6c7ed9c53a3811bdd0488e6515b2f7826d19b50ac11f771be5d5": {
+    "key": "f63ff44dcd5d6c7ed9c53a3811bdd0488e6515b2f7826d19b50ac11f771be5d5",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "do that for those",
+          "condition": "Organisations where Industry is \"Healthcare\"",
+          "line": "Do that"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/unclear: only a pronoun"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "unclear",
+            "confidence": 0.7,
+            "probabilities": {
+              "as_said": 0.1,
+              "different": 0.1,
+              "unclear": 0.8
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 527,
+          "output_tokens": 42
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 527,
+      "output_tokens": 42
+    },
+    "requestId": "req_01a1af999b78732881512585e3bb8621",
+    "latencyMs": 187,
+    "recordedAt": "2026-11-06T06:44:02.140Z"
+  },
+  "f85cb3aafaa8e410cca3924c1389d7a35c8a2d65b642bc22938c11a91287e19b": {
+    "key": "f85cb3aafaa8e410cca3924c1389d7a35c8a2d65b642bc22938c11a91287e19b",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "when it's a healthcare company, mention compliance first",
+          "condition": "Organisations where Industry is \"Finance\"",
+          "line": "Mention compliance first"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 2,
+      "scope": "memory.condition/differs: another industry"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 1,
+            "probabilities": {
+              "as_said": 0,
+              "different": 1,
+              "unclear": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 533,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 533,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af998f69741cbcd9e6f19175146a",
+    "latencyMs": 202,
+    "recordedAt": "2026-11-06T06:43:59.066Z"
+  },
+  "fafdab0480f7d9b235c61ce0df1dc7ad41518c4f7b0b75aca178a2ac1eeb4509": {
+    "key": "fafdab0480f7d9b235c61ce0df1dc7ad41518c4f7b0b75aca178a2ac1eeb4509",
+    "request": {
+      "service": "jev",
+      "model": "jev-1.14.0",
+      "body": {
+        "model": "jev-1.14.0",
+        "state": {
+          "said": "for healthcare companies, loop in legal",
+          "condition": "Organisations where Industry is \"Healthcare\" and People is more than 100",
+          "line": "Loop in legal"
+        },
+        "questions": {
+          "matches": {
+            "type": "choice",
+            "instructions": "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
+            "criteria": {
+              "as_said": "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
+              "different": "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+              "unclear": "`said` does not say which records the person means"
+            }
+          }
+        }
+      },
+      "run": 3,
+      "scope": "memory.condition/differs: a part added"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "model": "jev-1.14.0",
+        "answers": {
+          "matches": {
+            "type": "choice",
+            "choice": "different",
+            "confidence": 0.61,
+            "probabilities": {
+              "as_said": 0.08,
+              "different": 0.74,
+              "unclear": 0.18
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 540,
+          "output_tokens": 41
+        }
+      }
+    },
+    "model": "jev-1.14.0",
+    "usage": {
+      "input_tokens": 540,
+      "output_tokens": 41
+    },
+    "requestId": "req_01a1af9989167ee2ac1032147785cc70",
+    "latencyMs": 187,
+    "recordedAt": "2026-11-06T06:43:57.433Z"
+  }
+}

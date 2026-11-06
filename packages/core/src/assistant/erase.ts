@@ -35,12 +35,30 @@ export async function queueScrubConversations(
   const rows = await ctx.db
     .selectFrom("core_assistant_thread as t")
     .select(["t.id", "t.user_id", "t.preview"])
-    // Driven by the ref index, not by scanning threads.
-    .where("t.id", "in", (eb) =>
-      eb
-        .selectFrom("core_assistant_thread_refs as r")
-        .select("r.thread_id")
-        .where("r.ref", "in", jsonList(refs)),
+    // Driven by the ref indexes, not by scanning threads. A memory line that names the subject
+    // leads to the thread it was said in, though the turn looked no record up (ADR 0342).
+    .where((eb) =>
+      eb.or([
+        eb(
+          "t.id",
+          "in",
+          eb
+            .selectFrom("core_assistant_thread_refs as r")
+            .select("r.thread_id")
+            .where("r.ref", "in", jsonList(refs)),
+        ),
+        eb(
+          "t.id",
+          "in",
+          eb
+            .selectFrom("core_memory_refs as r")
+            .innerJoin("core_memory as m", "m.id", "r.memory_id")
+            .select("m.source_thread_id")
+            .where("r.ref", "in", jsonList(refs))
+            .where("m.source_thread_id", "is not", null)
+            .$narrowType<{ source_thread_id: string }>(),
+        ),
+      ]),
     )
     .execute();
 

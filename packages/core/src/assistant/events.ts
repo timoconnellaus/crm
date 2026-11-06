@@ -124,6 +124,38 @@ export function pendingOf(output: unknown): AssistantPending | undefined {
   };
 }
 
+/** A memory line as a tool result carries it, for the line under a reply. */
+export interface AssistantMemoryLine {
+  id: string;
+  kind: string;
+  text: string;
+  status: string;
+  condition: unknown;
+  conditionLabel: string | null;
+  source: { threadId: string; messageSeq: number } | null;
+  activeSince: string | null;
+}
+
+/** What `memory.propose` and `teamMemory.propose` returned, for the UI under the reply. */
+export interface AssistantMemorySave {
+  result: "saved" | "confirm" | "awaiting_approval";
+  line: AssistantMemoryLine;
+  checked: "judge" | "deterministic" | "person";
+}
+
+/** Recognises a memory save in a tool result (nothing for one that saved no line). */
+export function memorySaveOf(output: unknown): AssistantMemorySave | undefined {
+  if (!output || typeof output !== "object") return undefined;
+  const o = output as Record<string, unknown>;
+  if (o.result !== "saved" && o.result !== "confirm" && o.result !== "awaiting_approval") {
+    return undefined;
+  }
+  const line = o.line as AssistantMemoryLine | null | undefined;
+  if (!line || typeof line !== "object" || typeof line.id !== "string") return undefined;
+  if (!line.id.startsWith("mem_")) return undefined;
+  return o as unknown as AssistantMemorySave;
+}
+
 /** Parses a tool's text result as JSON when it is JSON. */
 export function parseToolOutput(text: string): unknown {
   const trimmed = text.trim();
