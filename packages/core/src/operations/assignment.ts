@@ -451,11 +451,10 @@ export const assignmentApply = defineOperation({
     const object = requireOwnedObject(input.object);
     const ownerField = object.ownerField;
     const ids = [...new Set(input.ids)];
-    const core = object.name === "person" || object.name === "organisation";
+    // The object's view holds live records only, so a deleted record reads as missing.
     const { rows } = await sql<Record<string, unknown>>`
       SELECT * FROM ${sql.table(object.source)}
       WHERE id IN ${sql`(SELECT value FROM json_each(${JSON.stringify(ids)}))`}
-      ${core ? sql`AND deleted_at IS NULL` : sql``}
     `.execute(ctx.db);
     const byId = new Map(rows.map((row) => [String(row.id), row]));
     const missing = ids.filter((id) => !byId.has(id));

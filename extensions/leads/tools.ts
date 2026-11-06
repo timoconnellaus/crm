@@ -14,6 +14,17 @@ interface ListShape {
   items: RecordShape[];
 }
 
+/** Why a lead is disqualified: the `unqualifiedReason` field's options. */
+export const UNQUALIFIED_REASONS = [
+  { value: "noBudget", label: "No budget" },
+  { value: "noNeed", label: "No need" },
+  { value: "noAuthority", label: "No authority" },
+  { value: "badTiming", label: "Bad timing" },
+  { value: "competitor", label: "Went with a competitor" },
+  { value: "unresponsive", label: "Unresponsive" },
+  { value: "other", label: "Other" },
+] as const;
+
 /** The deal field Leads adds (`fields["deals.deal"].lead`), by its registry name. */
 export const DEAL_LEAD_FIELD = "leads.lead";
 /** The lifecycle extension's person field, when that extension is installed. */
@@ -46,6 +57,7 @@ export const convert = defineTool({
     label: "Convert to deal",
     idInput: "leadId",
     confirm: "Create a deal from this lead and mark it converted?",
+    hideWhen: { field: "status", values: ["converted"] },
   },
   input: z.object({
     leadId: z.string().min(1).describe("The lead (leads.lead record id)"),
@@ -176,6 +188,13 @@ export const disqualify = defineTool({
     "authority, bad timing, competitor, unresponsive or other). A converted lead cannot be " +
     "disqualified.",
   risk: "write",
+  recordAction: {
+    object: "leads.lead",
+    label: "Disqualify",
+    idInput: "leadId",
+    ask: { input: "reason", label: "Reason", options: UNQUALIFIED_REASONS },
+    hideWhen: { field: "status", values: ["converted", "unqualified"] },
+  },
   input: z.object({
     leadId: z.string().min(1).describe("The lead (leads.lead record id)"),
     reason: z.enum([

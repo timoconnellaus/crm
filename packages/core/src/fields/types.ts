@@ -110,6 +110,8 @@ export interface ObjectDefinition {
   navigationOrder?: number;
   /** Extension objects: groups of fields of which a record must have at least one. */
   requireOneOf?: readonly (readonly string[])[];
+  /** Extension objects: how a record created without a title is named (ADR 0246). */
+  titleDefault?: { from: readonly string[]; suffix?: string | undefined };
 }
 
 /** A stage behaviour as the host enforces it (the SDK's StagesSpec, validated). */

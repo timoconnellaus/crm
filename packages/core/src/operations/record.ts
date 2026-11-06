@@ -441,13 +441,14 @@ async function applyDefaults(
   object: ObjectDefinition,
   values: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
+  const named = await withDefaultTitle(ctx, object, values);
   const fields = object.fields.filter(
     (f) =>
       f.extension === object.extension &&
       (f.options?.default !== undefined || f.options?.defaultSetting) &&
-      (values[f.name] === undefined || values[f.name] === null),
+      (named[f.name] === undefined || named[f.name] === null),
   );
-  if (!fields.length || !object.extension) return values;
+  if (!fields.length || !object.extension) return named;
   let settings: Record<string, unknown> = {};
   if (fields.some((f) => f.options?.defaultSetting)) {
     const row = await ctx.db
@@ -457,13 +458,31 @@ async function applyDefaults(
       .executeTakeFirst();
     settings = row ? (JSON.parse(row.value) as Record<string, unknown>) : {};
   }
-  const out = { ...values };
+  const out = { ...named };
   for (const field of fields) {
     const setting = field.options?.defaultSetting ? settings[field.options.defaultSetting] : null;
     const value = setting ?? field.options?.default;
     if (value !== undefined && value !== null) out[field.name] = value;
   }
   return out;
+}
+
+/** `titleDefault` (ADR 0246): a record left untitled is named after its first filled relation. */
+async function withDefaultTitle(
+  ctx: HandlerContext,
+  object: ObjectDefinition,
+  values: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { titleDefault, titleField } = object;
+  if (!titleDefault || !titleField) return values;
+  const given = values[titleField];
+  if (given !== undefined && given !== null && given !== "") return values;
+  for (const name of titleDefault.from) {
+    const to = object.fields.find((f) => f.name === name)?.options?.to;
+    const title = await titleOf(ctx, to, values[name]);
+    if (title) return { ...values, [titleField]: `${title}${titleDefault.suffix ?? ""}` };
+  }
+  return values;
 }
 
 /** `requireOneOf` (ADR 0246): each group needs a value in at least one of its fields. */
@@ -785,6 +804,8 @@ export const objectInfoSchema = z.object({
   ownerField: z.string().nullable(),
   /** Sidebar order among extension objects (lower first). */
   navigationOrder: z.number(),
+  /** The relations an untitled record is named after (ADR 0246), when it has any. */
+  titleDefaultFrom: z.array(z.string()),
 });
 export type ObjectInfo = z.infer<typeof objectInfoSchema>;
 
@@ -803,6 +824,7 @@ export function objectInfo(object: ObjectDefinition): ObjectInfo {
     timelineLinks: [...(object.timelineLinks ?? [])],
     ownerField: object.ownerField ?? null,
     navigationOrder: object.navigationOrder ?? 100,
+    titleDefaultFrom: [...(object.titleDefault?.from ?? [])],
     fields: object.fields.map((f) => ({
       name: f.name,
       label: f.label,

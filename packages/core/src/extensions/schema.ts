@@ -44,6 +44,7 @@ export interface ObjectDefinitionJson {
   owner?: string;
   navigationOrder?: number;
   requireOneOf?: string[][];
+  titleDefault?: { from: string[]; suffix?: string | undefined };
 }
 
 export type FieldDefinitionJson = FieldManifest & {
@@ -443,6 +444,7 @@ export function buildRegistry(state: SchemaState): Map<string, ObjectDefinition>
       ...(object.definition.navigationOrder !== undefined
         ? { navigationOrder: object.definition.navigationOrder }
         : {}),
+      ...(object.definition.titleDefault ? { titleDefault: object.definition.titleDefault } : {}),
       ...(object.definition.requireOneOf?.length
         ? { requireOneOf: object.definition.requireOneOf }
         : {}),

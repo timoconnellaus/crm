@@ -7,7 +7,7 @@
 import { defineExtension } from "@relationship-os/sdk";
 import { leadAutomations } from "./automations.ts";
 import { leadsDashboard } from "./dashboards.ts";
-import { convert, disqualify } from "./tools.ts";
+import { convert, disqualify, UNQUALIFIED_REASONS } from "./tools.ts";
 
 export const SOURCES = [
   { value: "website", label: "Website" },
@@ -18,16 +18,6 @@ export const SOURCES = [
   { value: "import", label: "Import" },
   { value: "other", label: "Other" },
 ];
-
-export const UNQUALIFIED_REASONS = [
-  { value: "noBudget", label: "No budget" },
-  { value: "noNeed", label: "No need" },
-  { value: "noAuthority", label: "No authority" },
-  { value: "badTiming", label: "Bad timing" },
-  { value: "competitor", label: "Went with a competitor" },
-  { value: "unresponsive", label: "Unresponsive" },
-  { value: "other", label: "Other" },
-] as const;
 
 const INBOX_COLUMNS = ["name", "status", "owner", "source", "person", "organisation", "ageDays"];
 
@@ -57,12 +47,13 @@ export default defineExtension({
       navigationOrder: 10,
       owner: "owner",
       requireOneOf: [["person", "organisation"]],
+      titleDefault: { from: ["person", "organisation"], suffix: " lead" },
       fields: {
         name: {
           type: "text",
           label: "Name",
           required: true,
-          description: "Defaults to the person's or organisation's name followed by “lead”.",
+          description: "Left blank, the person's or organisation's name followed by “lead”.",
         },
         person: { type: "relation", label: "Person", to: "person" },
         organisation: { type: "relation", label: "Organisation", to: "organisation" },
@@ -92,6 +83,7 @@ export default defineExtension({
           type: "select",
           label: "Source",
           editableOptions: true,
+          default: "other",
           defaultSetting: "defaultSource",
           description: "Where the lead came from.",
           options: SOURCES,

@@ -59,6 +59,16 @@ const recordActionSchema = z.object({
   /** The input field that takes the record's id. */
   idInput: z.string(),
   confirm: z.string().nullable(),
+  /** One choice to ask for first, passed in the `input` field. */
+  ask: z
+    .object({
+      input: z.string(),
+      label: z.string(),
+      options: z.array(z.object({ value: z.string(), label: z.string() })),
+    })
+    .nullable(),
+  /** The button is hidden while the record's field holds one of the values. */
+  hideWhen: z.object({ field: z.string(), values: z.array(z.string()) }).nullable(),
 });
 export type RecordAction = z.infer<typeof recordActionSchema>;
 
@@ -138,6 +148,8 @@ export const viewRecordViews = defineOperation({
           label: action.label,
           idInput: action.idInput,
           confirm: action.confirm ?? null,
+          ask: action.ask ?? null,
+          hideWhen: action.hideWhen ?? null,
         });
       }
       for (const [name, entry] of Object.entries(manifest.recordTabs ?? {})) {

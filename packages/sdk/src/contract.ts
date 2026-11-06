@@ -179,6 +179,12 @@ export interface ObjectSpec {
    */
   requireOneOf?: readonly (readonly string[])[];
   /**
+   * Names a record created without a title (ADR 0246): the title of the first of these relation
+   * fields that has a value, then `suffix` (a lead is "Ada Lovelace lead"). The title field can
+   * then be left blank in the create form.
+   */
+  titleDefault?: { from: readonly string[]; suffix?: string };
+  /**
    * Records created once, when the object is first installed (default pipelines and stages).
    * Keyed by a seed key (camelCase); a relation value `{ seed: "<key>" }` points at another seed
    * record of the relation's target (one of this extension's objects). Later releases never
@@ -423,6 +429,10 @@ export interface RecordActionSpec {
   idInput: string;
   /** A confirmation question shown before running it. */
   confirm?: string;
+  /** One choice to ask for first, passed in the `input` field (a disqualify reason). */
+  ask?: { input: string; label: string; options: readonly { value: string; label: string }[] };
+  /** Hides the button while the record's `field` holds one of `values` (a converted lead). */
+  hideWhen?: { field: string; values: readonly string[] };
 }
 
 export function defineTool<In extends z.ZodType, Out extends z.ZodType>(

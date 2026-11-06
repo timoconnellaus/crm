@@ -133,6 +133,12 @@ export const objectManifestSchema = z.object({
     .array(z.array(z.string().max(40)).min(2).max(8))
     .max(8)
     .optional(),
+  titleDefault: z
+    .object({
+      from: z.array(z.string().max(40)).min(1).max(8),
+      suffix: z.string().max(40).optional(),
+    })
+    .optional(),
   seed: z
     .record(z.string().max(40), z.record(z.string().max(40), z.unknown()))
     .refine((seed) => Object.keys(seed).length <= 200, "At most 200 seed records per object")
@@ -147,6 +153,22 @@ export const recordActionManifestSchema = z.object({
   label: z.string().min(1).max(60),
   idInput: z.string().min(1).max(40),
   confirm: z.string().max(300).optional(),
+  ask: z
+    .object({
+      input: z.string().min(1).max(40),
+      label: z.string().min(1).max(60),
+      options: z
+        .array(z.object({ value: z.string().min(1).max(100), label: z.string().min(1).max(100) }))
+        .min(1)
+        .max(50),
+    })
+    .optional(),
+  hideWhen: z
+    .object({
+      field: z.string().min(1).max(80),
+      values: z.array(z.string().min(1).max(100)).min(1).max(50),
+    })
+    .optional(),
 });
 export type RecordActionManifest = z.infer<typeof recordActionManifestSchema>;
 
@@ -659,6 +681,11 @@ export function validateManifest(
         }
       }
     });
+    for (const field of object.titleDefault?.from ?? []) {
+      if (object.fields[field]?.type !== "relation") {
+        contract(`${path}.titleDefault`, `"${field}" is not a relation field of ${name}`);
+      }
+    }
     for (const [fieldName, field] of Object.entries(object.fields)) {
       const fieldPath = `${path}.fields.${fieldName}`;
       if (field.default !== undefined) {
@@ -731,6 +758,12 @@ export function validateManifest(
         contract(
           `tools.${name}.recordAction.idInput`,
           `idInput "${action.idInput}" must be a string field of the tool's input`,
+        );
+      }
+      if (action.ask && !properties[action.ask.input]) {
+        contract(
+          `tools.${name}.recordAction.ask`,
+          `"${action.ask.input}" is not a field of the tool's input`,
         );
       }
     }

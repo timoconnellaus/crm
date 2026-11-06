@@ -170,6 +170,7 @@ export function planFromState(
       ...(object.owner ? { owner: object.owner } : {}),
       ...(object.navigationOrder !== undefined ? { navigationOrder: object.navigationOrder } : {}),
       ...(object.requireOneOf?.length ? { requireOneOf: object.requireOneOf } : {}),
+      ...(object.titleDefault ? { titleDefault: object.titleDefault } : {}),
     };
     let existing = next.objects.find((o) => o.name === name);
     if (!existing && object.renamedFrom) {
