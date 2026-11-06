@@ -450,9 +450,10 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   uncached input, cache writes, cached reads and output, and a published cache lifetime where
   known, for the compaction planner ([ADR 0341](adr/0341-compaction-cost-model-and-cache-lifetime-learner.md)).
   `transcribe` (AssemblyAI streaming) and `speak` (AssemblyAI-TTS-1) share one key,
-  `AI_KEY_ASSEMBLYAI` (a Workers secret for now; voice is off until it is set); they go through AI
-  Gateway if it can proxy their streaming sockets, otherwise directly with usage logged by us
-  ([ADR 0349](adr/0349-voice-on-agents-voice.md)). `dictation.cleanup` runs with thinking off.
+  `AI_KEY_ASSEMBLYAI` (a Workers secret; voice is off until it is set). AI Gateway cannot carry
+  their streaming sockets, so they are the one direct call, with usage logged by us in
+  `core_voice_usage` ([ADR 0349](adr/0349-voice-on-agents-voice.md)). `dictation.cleanup` runs with
+  thinking off.
   Within a config layer, `assistant.subagent` and `dictation.cleanup` follow `assistant.core` unless
   set themselves, and `AI_MODEL_ROLES` still reads `assistant` as `assistant.core` with a
   deprecation warning (migration 0351 rewrote stored admin settings).
@@ -507,7 +508,7 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
    │     └─ approvals (tap · typed · spoken, Jev-checked) ─ change sets ─ adjudicator
    ├─ compaction planner (pure cost model, alarm before cache expiry)
    ├─ memory writer (inline, Jev-gated) ──► D1 core_memory
-   ├─ voice (agent-voice: withVoice / withVoiceInput) ─ AssemblyAI STT + TTS
+   ├─ voice (agent-voice: withVoice, own socket per call) ─ AssemblyAI STT + TTS, direct
    └─ spawns ──► AgentJob DO  name job:<jobId>   (assistant.subagent; brief, grant, budget)
                     └─ stages change sets; reports progress to the parent; never chats
  ros-runner: AutomationWorkflow ─ personal routine ─ gates (plain, Jev) ─ step "message me" ─► AssistantAgent
@@ -538,7 +539,9 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   spoken, with a Jev intent check and a second step for high risk (ADR 0345). Rich messages are
   **A2UI** from a versioned catalogue (ADR 0346); **plugins** install as copies (ADR 0347);
   **connected assistants** in the same workspace exchange Jev-checked messages under a contract
-  (ADR 0348); **voice** runs on `agents/voice` (ADR 0349). The general machinery lives in
+  (ADR 0348); **voice** runs on `agents/voice` (ADR 0349): a spoken message is a normal turn in the
+  thread (`via: voice`), the browser reports played milliseconds and the thread stores what was
+  heard (`playout`), and the model is shown only that. The general machinery lives in
   MIT-licensed `packages/agent-*`, which never import CRM code; the CRM binding is in
   `packages/core/src/assistant/` and `apps/app/src/server/assistant/` (ADR 0350).
 

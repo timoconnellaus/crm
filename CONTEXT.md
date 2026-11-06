@@ -492,6 +492,17 @@ prompt cache keeps hitting; its hash is recorded per turn. The tail is what chan
 (pending memory lines, page context, display facts, the time), sent as a `<context>` block at the
 start of the new user message and kept with that message afterwards. The person never sees it.
 
+**Playout**
+What the person actually heard of a spoken reply: `spoken`, `partly_spoken` (with the words
+`unsaid`) or `unspoken`, worked out from the milliseconds the browser played. The model is shown
+only what was heard (ADR 0349).
+
+**Dictation**
+The mic in the chat box: words stream into the box, a cleanup pass tidies them, and the message
+is sent as if typed. Not **voice chat**, where the assistant talks back and messages show in
+italics with a mic (ADR 0349).
+_Avoid_: voice input
+
 **Thread compaction**
 Folding a thread's older messages into a short "where we left off" note, keeping the last ~10
 exchanges, when a cost model says it is cheaper, between 24k tokens and 80% of the model's window

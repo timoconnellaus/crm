@@ -1,0 +1,136 @@
+// Voice (ADR 0349) against the stand-in speech providers (AI_FAKE_VOICE): first-use setup, a spoken
+// turn in the one thread, barge-in, push to talk, dictation with its cleanup and undo, and
+// Settings → Voice. Chromium's fake microphone stands in for the person, and window.__voiceSay and
+// window.__dictationSay speak into the stand-in transcriber.
+import { expect, type Page, test } from "@playwright/test";
+import { isPhone, open } from "./helpers.ts";
+
+test.use({
+  permissions: ["microphone"],
+  launchOptions: {
+    args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"],
+  },
+});
+
+async function openPanel(page: Page) {
+  const panel = page.getByTestId("assistant-panel");
+  if (isPhone(page)) {
+    await page.getByTestId("open-assistant").click();
+  } else {
+    await expect(async () => {
+      if (!(await panel.isVisible())) await page.keyboard.press("ControlOrMeta+j");
+      await expect(panel).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 20_000 });
+  }
+  return panel;
+}
+
+/** Starts voice chat, going through first-use setup when it has not run yet. */
+async function startCall(page: Page, mode: "hands_free" | "push_to_talk") {
+  await page.getByTestId("voice-chat-start").first().click();
+  const setup = page.getByTestId("voice-setup");
+  const bar = page.getByTestId("voice-bar").first();
+  await expect(setup.or(bar)).toBeVisible();
+  if (await setup.isVisible()) {
+    // AssemblyAI-TTS-1 has no speed control, so setup asks for voice and mode only.
+    await expect(setup.getByLabel(/^Speed/)).toHaveCount(0);
+    await setup.getByTestId(`voice-mode-${mode}`).check({ force: true });
+    await setup.getByTestId("voice-start").click();
+  }
+  await expect(bar).toBeVisible();
+  await expect(bar).toHaveAttribute("data-status", "listening");
+  if ((await bar.getAttribute("data-mode")) !== mode) {
+    await bar.getByTestId("voice-switch-mode").click();
+    await expect(bar).toHaveAttribute("data-mode", mode);
+  }
+  return bar;
+}
+
+const say = (page: Page, text: string) =>
+  page.evaluate((t) => (window as never as { __voiceSay(t: string): void }).__voiceSay(t), text);
+
+test("a spoken turn lands in the thread in italics, and speaking over a reply is recorded", async ({
+  page,
+}) => {
+  await open(page, "/");
+  const panel = await openPanel(page);
+  const bar = await startCall(page, "hands_free");
+
+  await say(page, "whats on my list today");
+  const message = panel.getByTestId("assistant-user").last();
+  await expect(message).toContainText("whats on my list today");
+  await expect(message.locator("[data-via=voice]")).toHaveClass(/italic/);
+  await expect(message.getByRole("img", { name: "Spoken" })).toBeVisible();
+  const reply = panel.getByTestId("assistant-reply").last();
+  await expect(reply).toContainText("Said:");
+  await expect(reply).toContainText("Here is the short version.");
+  await expect(reply).not.toContainText("<say>");
+
+  // Spoken over as it plays: the first word stops playback and the reply is marked.
+  await expect(bar).toHaveAttribute("data-status", "listening");
+  await say(page, "and tell me everything about it now please");
+  await expect(panel.getByTestId("assistant-user").last()).toContainText("tell me everything");
+  await expect(panel.getByTestId("assistant-partly-heard").first()).toBeVisible();
+  await bar.getByTestId("voice-end").click();
+  await expect(page.getByTestId("voice-bar")).toHaveCount(0);
+});
+
+test("push to talk: nothing is heard until the button is held, and letting go ends the turn", async ({
+  page,
+}) => {
+  await open(page, "/");
+  const panel = await openPanel(page);
+  const bar = await startCall(page, "push_to_talk");
+  const hold = bar.getByTestId("voice-hold");
+  await expect(hold).toHaveText("Hold to talk");
+  const box = await hold.boundingBox();
+  if (!box) throw new Error("no talk button");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(hold).toHaveText("Release to send");
+  await say(page, "push to talk works...");
+  await expect(bar.getByTestId("voice-status")).toContainText("push to talk works");
+  await page.mouse.up();
+  await expect(panel.getByTestId("assistant-user").last()).toContainText("push to talk works");
+  await bar.getByTestId("voice-end").click();
+});
+
+test("dictation types into the box, cleans up with undo, and sends as typed", async ({ page }) => {
+  await open(page, "/");
+  const panel = await openPanel(page);
+  const input = panel.getByTestId("assistant-input");
+  await panel.getByTestId("dictation-mic").click();
+  await expect(panel.getByTestId("dictation-status")).toContainText("Esc to cancel");
+  await expect
+    .poll(() => page.evaluate(() => "__dictationSay" in window))
+    .toBe(true);
+  await expect(async () => {
+    await page.evaluate(() =>
+      (window as never as { __dictationSay(t: string): void }).__dictationSay(
+        "um add a task to call Lena",
+      ),
+    );
+    await expect(input).toHaveValue(/um add a task to call Lena/, { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+  await panel.getByTestId("dictation-mic").click();
+  await expect(input).toHaveValue("add a task to call Lena");
+  await panel.getByTestId("dictation-undo").click();
+  await expect(input).toHaveValue("um add a task to call Lena");
+  await panel.getByTestId("assistant-send").click();
+  const sent = panel.getByTestId("assistant-user").last();
+  await expect(sent).toContainText("um add a task to call Lena");
+  await expect(sent.locator("[data-via]")).not.toHaveClass(/italic/);
+  await expect(sent.getByRole("img", { name: "Spoken" })).toHaveCount(0);
+});
+
+test("Settings → Voice: no speed, this device's mode, the device list", async ({ page }) => {
+  await open(page, "/settings/voice");
+  const settings = page.getByTestId("voice-settings");
+  await expect(settings).toBeVisible();
+  await expect(settings.getByLabel(/^Speed/)).toHaveCount(0);
+  await settings.getByTestId("voice-mode-hands_free").check({ force: true });
+  await expect(page.getByTestId("voice-devices")).toContainText("This device");
+  await expect(page.getByTestId("voice-devices")).toContainText("Hands-free");
+  await settings.getByTestId("voice-read-full").check();
+  await settings.getByTestId("voice-read-short").check();
+});

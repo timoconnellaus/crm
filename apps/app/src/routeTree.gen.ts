@@ -51,6 +51,7 @@ import { Route as AppSettingsStorageRouteImport } from './routes/_app/settings/s
 import { Route as AppSettingsSupportAccessRouteImport } from './routes/_app/settings/support-access'
 import { Route as AppSettingsUpdatesRouteImport } from './routes/_app/settings/updates'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
+import { Route as AppSettingsVoiceRouteImport } from './routes/_app/settings/voice'
 import { Route as ApiAssistantThreadRouteImport } from './routes/api/assistant/thread'
 import { Route as ApiAssistantTurnRouteImport } from './routes/api/assistant/turn'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -274,6 +275,11 @@ const AppSettingsUsersRoute = AppSettingsUsersRouteImport.update({
   path: '/settings/users',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsVoiceRoute = AppSettingsVoiceRouteImport.update({
+  id: '/settings/voice',
+  path: '/settings/voice',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAssistantThreadRoute = ApiAssistantThreadRouteImport.update({
   id: '/api/assistant/thread',
   path: '/api/assistant/thread',
@@ -348,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
+  '/settings/voice': typeof AppSettingsVoiceRoute
   '/api/assistant/thread': typeof ApiAssistantThreadRouteWithChildren
   '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -398,6 +405,7 @@ export interface FileRoutesByTo {
   '/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
+  '/settings/voice': typeof AppSettingsVoiceRoute
   '/api/assistant/thread': typeof ApiAssistantThreadRouteWithChildren
   '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -450,6 +458,7 @@ export interface FileRoutesById {
   '/_app/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/_app/settings/updates': typeof AppSettingsUpdatesRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
+  '/_app/settings/voice': typeof AppSettingsVoiceRoute
   '/api/assistant/thread': typeof ApiAssistantThreadRouteWithChildren
   '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -502,6 +511,7 @@ export interface FileRouteTypes {
     | '/settings/support-access'
     | '/settings/updates'
     | '/settings/users'
+    | '/settings/voice'
     | '/api/assistant/thread'
     | '/api/assistant/turn'
     | '/api/auth/$'
@@ -552,6 +562,7 @@ export interface FileRouteTypes {
     | '/settings/support-access'
     | '/settings/updates'
     | '/settings/users'
+    | '/settings/voice'
     | '/api/assistant/thread'
     | '/api/assistant/turn'
     | '/api/auth/$'
@@ -603,6 +614,7 @@ export interface FileRouteTypes {
     | '/_app/settings/support-access'
     | '/_app/settings/updates'
     | '/_app/settings/users'
+    | '/_app/settings/voice'
     | '/api/assistant/thread'
     | '/api/assistant/turn'
     | '/api/auth/$'
@@ -924,6 +936,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsUsersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/voice': {
+      id: '/_app/settings/voice'
+      path: '/settings/voice'
+      fullPath: '/settings/voice'
+      preLoaderRoute: typeof AppSettingsVoiceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/assistant/thread': {
       id: '/api/assistant/thread'
       path: '/api/assistant/thread'
@@ -1009,6 +1028,7 @@ interface AppRouteChildren {
   AppSettingsSupportAccessRoute: typeof AppSettingsSupportAccessRoute
   AppSettingsUpdatesRoute: typeof AppSettingsUpdatesRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
+  AppSettingsVoiceRoute: typeof AppSettingsVoiceRoute
   AppAutomationsIndexRoute: typeof AppAutomationsIndexRoute
   AppDashboardsIndexRoute: typeof AppDashboardsIndexRoute
   AppOrganisationsIndexRoute: typeof AppOrganisationsIndexRoute
@@ -1051,6 +1071,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsSupportAccessRoute: AppSettingsSupportAccessRoute,
   AppSettingsUpdatesRoute: AppSettingsUpdatesRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,
+  AppSettingsVoiceRoute: AppSettingsVoiceRoute,
   AppAutomationsIndexRoute: AppAutomationsIndexRoute,
   AppDashboardsIndexRoute: AppDashboardsIndexRoute,
   AppOrganisationsIndexRoute: AppOrganisationsIndexRoute,
