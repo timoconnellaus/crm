@@ -269,6 +269,8 @@ export interface FakeModels {
   embed(texts: readonly string[]): number[][];
   /** A scripted language model for tool-using roles (the assistant), when there is one. */
   chat?(role: ModelRole): LanguageModel | undefined;
+  /** The scripted model's prices and window, for the compaction planner (ADR 0341). */
+  chatInfo?(): { pricing: ModelPricing | null; contextTokens: number };
 }
 
 /** A provider key from the environment (a Workers secret), by secret name. */
@@ -837,8 +839,8 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
             provider: "fake",
             modelId: "fake",
             params,
-            pricing: null,
-            contextTokens: 0,
+            pricing: options.fakes?.chatInfo?.().pricing ?? null,
+            contextTokens: options.fakes?.chatInfo?.().contextTokens ?? 0,
           }
         : null;
     }

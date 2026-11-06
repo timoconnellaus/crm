@@ -11,18 +11,21 @@
 // and replayed (ADR 0201).
 //
 // Writes to D1 go only through operations: the turn's tool calls, `thread.open` once, and one
-// `thread.finishTurn` per turn (unread count, preview, and the records it referenced, for erase).
-// No alarms yet: compaction (W2) and agent reminders will add them.
+// `thread.finishTurn` per turn (unread count, preview, the records it referenced, for erase, and
+// the compaction review data). Compaction (ADR 0341) lives in ./compaction.ts, behind a few hook
+// points here; it holds the object's one idle alarm.
 import type { A2uiPart } from "@relationship-os/agent-a2ui";
 import {
   assembleContext,
   attachCards,
+  prefixHash as hashPrefix,
   messagesFromResponse,
   messageText,
   type PendingLine,
   pendingTailBlock,
   runTurn,
   SqliteMessageStore,
+  type StepUsage,
   type TailBlock,
   type ThreadMessage,
   unreadCount,
@@ -35,15 +38,20 @@ import {
   type AssistantResultExtras,
   type AssistantThreadState,
   type AssistantThreadStore,
+  type AssistantTool,
   assistantContextSchema,
   assistantInstructions,
   assistantTail,
+  type CacheEstimate,
+  type CacheReview,
+  type ChatModel,
   type ConversationScrub,
   conversationRefs,
   describeAssistantResult,
   errorForLog,
   type InvocationContext,
   invokeByName,
+  loadCacheRails,
   loadGeneralSettings,
   parseFloor,
   personsWordsInThread,
@@ -74,7 +82,14 @@ import {
   extensionHostFor,
   type OperationsEnv,
 } from "../operations.ts";
-import { connectAssistantMcp } from "./mcp-client.ts";
+import {
+  COMPACTION_ROLE,
+  type FinishedTurn,
+  type PlanModel,
+  type SummaryRequest,
+  ThreadCompaction,
+} from "./compaction.ts";
+import { type AssistantMcp, connectAssistantMcp } from "./mcp-client.ts";
 
 export interface AssistantEnv extends OperationsEnv {
   /** Assistant changes count against the same per-minute write budget as MCP (ADR 0091). */
@@ -126,6 +141,9 @@ interface SocketState {
 /** Messages shown per window of the thread ("Show earlier messages" loads the next). */
 export const THREAD_WINDOW = 200;
 
+/** Newest messages searched for the person's own words (they are cut to 4,000 characters anyway). */
+const PERSONS_WORDS_WINDOW = 200;
+
 const encoder = new TextEncoder();
 
 function sseFrame(event: AssistantEvent): Uint8Array {
@@ -146,6 +164,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
   #running: RunningTurn | null = null;
   /** Erases that arrived while a turn ran: applied to its messages before they are stored. */
   #scrubs: ConversationScrub[] = [];
+  #compactionHost: ThreadCompaction | null = null;
 
   get #env(): AssistantEnv {
     return this.env as unknown as AssistantEnv;
@@ -173,6 +192,37 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
       this.#store = new SqliteMessageStore(sql);
     }
     return this.#store;
+  }
+
+  /** The thread's compaction (ADR 0341): the planner, the idle alarm and the note. */
+  get #compaction(): ThreadCompaction {
+    this.#compactionHost ??= new ThreadCompaction({
+      meta: (key) => this.#meta(key),
+      setMeta: (key, value) => this.#setMeta(key, value),
+      store: this.#messages,
+      transaction: (run) => this.ctx.storage.transactionSync(run),
+      turnRunning: () => this.#running !== null,
+      setAlarm: async (at) => (await this.schedule(at, "onIdleAlarm")).id,
+      cancelAlarm: async (id) => {
+        await this.cancelSchedule(id);
+      },
+      rails: () => loadCacheRails(createCrmDb(this.#env.DB).query),
+      openSummary: () => this.#openSummary(),
+      record: (review) => this.#recordCacheReview(review),
+      foldPendingLines: () => this.foldPendingLines(),
+    });
+    return this.#compactionHost;
+  }
+
+  /**
+   * Folds pending memory lines into the memory block, just before a compaction commits (ADR 0342).
+   * The memory build (W3) fills this in; until then there is no block to fold them into.
+   */
+  protected async foldPendingLines(): Promise<void> {}
+
+  /** The idle alarm's callback, by name (the Agents SDK runs the schedule). */
+  async onIdleAlarm(): Promise<void> {
+    await this.#compaction.idleAlarm();
   }
 
   #meta(key: string): string | null {
@@ -330,6 +380,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
             .filter((m) => !m.deletedAt && m.role !== "user")
             .map((m) => m.seq);
     this.#messages.delete(seqs, new Date().toISOString());
+    this.#compaction.deleted(seqs);
     const pending = this.#pendingLines();
     const kept = pending.filter(
       (l) => l.sourceMessageSeq === undefined || !seqs.includes(l.sourceMessageSeq),
@@ -348,6 +399,21 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     const unread = this.#unread();
     this.#broadcast({ type: "unread", unread, lastSeenSeq });
     return { unread, lastSeenSeq };
+  }
+
+  /** Where compaction stands, for tests and support. No message content but the note. */
+  async compactionStatus(userId: string): Promise<{
+    note: string | null;
+    since: number;
+    compacting: boolean;
+  }> {
+    this.#assertOwner(userId);
+    const compaction = this.#compaction;
+    return {
+      note: compaction.note() ?? null,
+      since: compaction.since(),
+      compacting: compaction.compacting,
+    };
   }
 
   /** The prefix hash each finished turn was sent with (tests check it is stable, ADR 0341). */
@@ -396,6 +462,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
           );
         }
       }
+      this.#compaction.scrub(pattern);
     });
     const running = this.#running;
     if (running) {
@@ -565,9 +632,11 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     };
     this.#running = running;
     this.#emit({ type: "turn-start", turn, text: request.text, at: now });
-    running.done = this.#runTurn(request, running).finally(() => {
-      if (this.#running === running) this.#running = null;
-    });
+    running.done = this.#runTurn(request, running)
+      .finally(() => {
+        if (this.#running === running) this.#running = null;
+      })
+      .then(() => this.#compaction.afterTurn());
     this.ctx.waitUntil(running.done);
     return running;
   }
@@ -708,6 +777,125 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     };
   }
 
+  /** The tools, as an in-process MCP client acting as `assistant` for the owner (ADR 0200). */
+  async #connectTools(
+    user: ActingUser,
+    threadId: string,
+    personsWords: string,
+  ): Promise<AssistantMcp> {
+    const env = this.#env;
+    const extensionHost = extensionHostFor(env);
+    const integrations = integrationRuntimeFor(env);
+    const blobs = blobStoreFor(env);
+    const db = createCrmDb(env.DB);
+    const context: InvocationContext = {
+      ...(integrations ? { integrations } : {}),
+      ...(blobs ? { blobs } : {}),
+      actor: "assistant",
+      user,
+      // The thread is the assistant's MCP session: its pending actions group in its change set,
+      // and only its reads see them simulated (ADR 0022, ADR 0032).
+      origin: { surface: "assistant", sessionId: threadId },
+      db,
+      floor: parseFloor(env.APPROVAL_FLOOR),
+      approvalExpiryDays: int(env.APPROVAL_EXPIRY_DAYS, 7),
+      ...(extensionHost ? { extensionHost } : {}),
+      ...automationWiring(env),
+      ...aiContextFor(env, db),
+      assistantThreads: this.#localThreads(),
+      personsWords,
+    };
+    const caller: McpCaller = {
+      context,
+      async consumeWrite() {
+        const writes = await rateLimit(env.MCP_WRITE_RATE_LIMIT, `assistant:${user.id}`);
+        if (!writes.ok) {
+          throw new RateLimitedError(
+            `Rate limit: too many changes this minute. Retry in ${writes.retryAfterSeconds}s.`,
+            { retryAfterSeconds: writes.retryAfterSeconds },
+          );
+        }
+      },
+    };
+    return connectAssistantMcp(caller);
+  }
+
+  #instructions(
+    settings: Awaited<ReturnType<typeof loadGeneralSettings>>,
+    user: ActingUser,
+    mcp: Pick<AssistantMcp, "instructions">,
+  ): string {
+    return assistantInstructions({
+      name: settings.assistantName,
+      user: { name: user.name, role: user.role },
+      orgName: settings.orgName,
+      serverInstructions: mcp.instructions,
+    });
+  }
+
+  #planModel(model: ChatModel | undefined): PlanModel | null {
+    if (!model) return null;
+    return {
+      provider: model.provider,
+      modelId: model.modelId,
+      pricing: model.pricing,
+      contextTokens: model.contextTokens,
+    };
+  }
+
+  /** The owner, for work no request brought in (an alarm, a compaction after a turn). */
+  async #owner(): Promise<ActingUser> {
+    const owner = this.#meta("owner");
+    if (!owner) throw new ThreadError(404, "No such thread");
+    return this.#actingUser(owner);
+  }
+
+  /** The last turn's prefix rebuilt for a summary call, so it reads the same cache. */
+  async #openSummary(): Promise<SummaryRequest> {
+    const env = this.#env;
+    const db = createCrmDb(env.DB);
+    const user = await this.#owner();
+    const threadId = await this.#threadId(user);
+    const ai = aiContextFor(env, db);
+    const models = ai.models?.chatModels ? await ai.models.chatModels(COMPACTION_ROLE) : [];
+    if (!models.length) throw new ThreadError(503, "AI is not configured for this deployment");
+    const settings = await loadGeneralSettings(db.query);
+    const mcp = await this.#connectTools(user, threadId, "");
+    const prefix = {
+      instructions: this.#instructions(settings, user, mcp),
+      tools: mcp.tools as AssistantTool[],
+      note: this.#compaction.note(),
+    };
+    const assembled = await assembleContext({
+      prefix,
+      history: [],
+      tail: [],
+      text: "",
+      turn: 0,
+      via: "text",
+    });
+    return {
+      models,
+      system: assembled.system,
+      tools: mcp.tools,
+      prefixHash: await hashPrefix(prefix),
+      close: () => mcp.close(),
+    };
+  }
+
+  /** Review data with no turn to ride on, as the owner. */
+  async #recordCacheReview(review: CacheReview): Promise<CacheEstimate | null> {
+    const db = createCrmDb(this.#env.DB);
+    const user = await this.#owner();
+    const out = (await invokeByName("ai.recordCacheReview", review, {
+      actor: "human",
+      user,
+      origin: { surface: "ui" },
+      db,
+    })) as { estimate: CacheEstimate };
+    return out.estimate;
+  }
+
   async #runTurn(request: TurnRequest, running: RunningTurn): Promise<void> {
     const env = this.#env;
     const db = createCrmDb(env.DB);
@@ -717,6 +905,10 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     let model: string | null = null;
     let preview: string | null = null;
     let prefixHash: string | null = null;
+    let prefixChars = 0;
+    let since = 0;
+    let steps: StepUsage[] = [];
+    let planModel: PlanModel | null = null;
     let newMessages: Omit<ThreadMessage, "seq" | "createdAt">[] = [];
     let threadId: string | null = null;
     try {
@@ -730,42 +922,22 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
       if (!chatModels?.length) {
         throw new ThreadError(503, "AI is not configured for this deployment (Settings → AI).");
       }
-      const extensionHost = extensionHostFor(env);
-      const integrations = integrationRuntimeFor(env);
-      const blobs = blobStoreFor(env);
-      const history = store.list({ beforeSeq: running.userSeq });
-      const context: InvocationContext = {
-        ...(integrations ? { integrations } : {}),
-        ...(blobs ? { blobs } : {}),
-        actor: "assistant",
+      // The context is what came after the last compaction. Read together: a compaction commits
+      // the note and its seq in one step, whenever its summary call returns.
+      const compaction = this.#compaction;
+      await compaction.turnStarted();
+      since = compaction.since();
+      const note = compaction.note();
+      const history = store.list({ afterSeq: since, beforeSeq: running.userSeq });
+      // The person's own turns, by code: what authoring.intent checks an automation against
+      // (ADR 0230). The model never writes them; a request it passes is ignored. Compaction does
+      // not shorten them.
+      const words = store.list({ beforeSeq: running.userSeq, limit: PERSONS_WORDS_WINDOW });
+      const mcp = await this.#connectTools(
         user,
-        // The thread is the assistant's MCP session: its pending actions group in its change set,
-        // and only its reads see them simulated (ADR 0022, ADR 0032).
-        origin: { surface: "assistant", sessionId: threadId },
-        db,
-        floor: parseFloor(env.APPROVAL_FLOOR),
-        approvalExpiryDays: int(env.APPROVAL_EXPIRY_DAYS, 7),
-        ...(extensionHost ? { extensionHost } : {}),
-        ...automationWiring(env),
-        ...ai,
-        assistantThreads: this.#localThreads(),
-        // The person's own turns, by code: what authoring.intent checks an automation against
-        // (ADR 0230). The model never writes them; a request it passes is ignored.
-        personsWords: personsWordsInThread(history, request.text),
-      };
-      const caller: McpCaller = {
-        context,
-        async consumeWrite() {
-          const writes = await rateLimit(env.MCP_WRITE_RATE_LIMIT, `assistant:${user.id}`);
-          if (!writes.ok) {
-            throw new RateLimitedError(
-              `Rate limit: too many changes this minute. Retry in ${writes.retryAfterSeconds}s.`,
-              { retryAfterSeconds: writes.retryAfterSeconds },
-            );
-          }
-        },
-      };
-      const mcp = await connectAssistantMcp(caller);
+        threadId,
+        personsWordsInThread(words, request.text),
+      );
       try {
         const settings = await loadGeneralSettings(db.query);
         const tail: TailBlock[] = [
@@ -779,13 +951,9 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
         if (pending) tail.push(pending);
         const assembled = await assembleContext({
           prefix: {
-            instructions: assistantInstructions({
-              name: settings.assistantName,
-              user: { name: user.name, role: user.role },
-              orgName: settings.orgName,
-              serverInstructions: mcp.instructions,
-            }),
+            instructions: this.#instructions(settings, user, mcp),
             tools: mcp.tools,
+            note,
           },
           history,
           tail,
@@ -794,6 +962,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
           via: "text",
         });
         prefixHash = assembled.prefixHash;
+        prefixChars = assembled.system.length + JSON.stringify(assembled.tools).length;
         // The user message is kept exactly as it is sent, tail and all, so history replays byte
         // for byte on the next turn.
         store.replace(running.userSeq, assembled.userMessage.parts);
@@ -813,6 +982,10 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
         newMessages = attachCards(
           messagesFromResponse(running.turn, "text", result.response),
           cards,
+        );
+        steps = result.steps;
+        planModel = this.#planModel(
+          chatModels.find((m) => m.modelId === result.model) ?? chatModels[0],
         );
         status = result.status;
         error = result.error ?? null;
@@ -859,8 +1032,21 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     // A reply that arrives while the chat is on screen somewhere is already seen.
     if (this.#anyoneWatching()) this.#setMeta("last_seen_seq", String(store.lastSeq()));
     const unread = this.#unread();
+    const finished: FinishedTurn | null =
+      prefixHash && planModel
+        ? { steps, prefixHash, prefixChars, model: planModel, since, now: Date.now() }
+        : null;
+    let cache: CacheReview | null = null;
+    if (finished) {
+      try {
+        cache = await this.#compaction.finishTurn(finished);
+      } catch (caught) {
+        console.warn("assistant: could not plan compaction", caught);
+      }
+    }
     // The bookkeeping row (D1): once per turn, through an operation, as the owner. It also indexes
-    // the records and emails the turn referenced, so an erase can find this thread.
+    // the records and emails the turn referenced, so an erase can find this thread, and carries
+    // the turn's compaction review data.
     if (threadId) {
       try {
         const user = await this.#actingUser(request.userId);
@@ -871,11 +1057,12 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
           turnMessages.map((m) => m.parts),
           request.context ?? null,
         ]);
-        await invokeByName(
+        const row = (await invokeByName(
           "thread.finishTurn",
-          { id: threadId, preview: preview ?? error, unread, refs },
+          { id: threadId, preview: preview ?? error, unread, refs, ...(cache ? { cache } : {}) },
           { actor: "human", user, origin: { surface: "ui" }, db },
-        );
+        )) as { cacheEstimate: CacheEstimate | null };
+        this.#compaction.rememberEstimate(row.cacheEstimate);
       } catch (caught) {
         console.warn("assistant: could not record the turn", caught);
       }

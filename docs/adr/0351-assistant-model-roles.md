@@ -79,3 +79,8 @@ fixed "thinking off" would lose quality on models that do better with it.
   alone does not make text AI "configured". The text runner refuses speech roles; Settings → AI's
   Test only reports whether the provider is set up. Speech prices (`speechPrice`, per audio hour or
   million characters) are left empty until checked.
+
+## Amendment, 2026-11-06 (stage 17 W2 wiring)
+No `compaction` role was added. The summary call runs on `assistant.core`: it must send the front
+agent's exact prefix to its model to read the cache, so a separate role could only cost more
+(ADR 0341 amendment). The local stand-in has no prices and no window unless a test sets them.

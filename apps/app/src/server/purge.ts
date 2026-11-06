@@ -9,6 +9,7 @@ import {
   expirePendingActions,
   measureStorage,
   parseFloor,
+  purgeCacheReview,
   purgeIntegrationEvents,
   purgeNotificationDeliveries,
   purgeNotifications,
@@ -91,7 +92,10 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   if (notifications?.deleted) console.log(`notifications: ${notifications.deleted} purged`);
   // Their delivery ledger goes with them (ADR 0172).
   await step("notification deliveries", () => purgeNotificationDeliveries(db.query, now));
-  return { purge, expired, audit, runs, compacted, storage, events, notifications };
+  // Prompt cache review data is kept 180 days (ADR 0341).
+  const cacheReview = await step("cache review data", () => purgeCacheReview(db.query, now));
+  if (cacheReview?.deleted) console.log(`cache review: ${cacheReview.deleted} row(s) purged`);
+  return { purge, expired, audit, runs, compacted, storage, events, notifications, cacheReview };
 }
 
 /**

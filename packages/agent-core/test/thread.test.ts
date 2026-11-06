@@ -7,6 +7,7 @@ import {
   ftsQuery,
   MemoryMessageStore,
   markSeen,
+  messageChars,
   messageText,
   pendingFromMessage,
   pendingTailBlock,
@@ -238,6 +239,16 @@ describe("cards in the thread (ADR 0346)", () => {
     expect(unreadCount([stored("tool")], 0)).toBe(1);
     expect(readableText(stored("assistant"))).toBe("1. Call Ada");
     expect(messageText(stored("assistant"))).toBe("");
+  });
+
+  it("counts only what the model is sent towards compaction", () => {
+    const big: A2uiPart = {
+      ...card,
+      document: { a2ui: 1, root: { type: "text", text: "x".repeat(5_000) } },
+    };
+    const posted: ThreadMessage = { ...base, role: "assistant", parts: [big] };
+    expect(messageChars(posted)).toBeLessThan(100);
+    expect(messageChars({ ...base, role: "tool", parts: [big] })).toBeLessThan(10);
   });
 
   it("puts each card beside the tool result that made it", () => {

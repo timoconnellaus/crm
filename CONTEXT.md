@@ -495,7 +495,8 @@ start of the new user message and kept with that message afterwards. The person 
 **Thread compaction**
 Folding a thread's older messages into a short "where we left off" note, keeping the last ~10
 exchanges, when a cost model says it is cheaper, between 24k tokens and 80% of the model's window
-(ADR 0341). Different from **Compaction** of pending actions.
+(ADR 0341). The messages themselves stay, and stay searchable; the model just stops being sent
+them. Different from **Compaction** of pending actions.
 
 **Memory line**
 One thing the assistant remembers about the person, shown on "What your assistant remembers":
