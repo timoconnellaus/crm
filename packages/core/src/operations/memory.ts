@@ -265,7 +265,7 @@ async function ownLine(ctx: HandlerContext, id: string): Promise<MemoryRow> {
 
 async function teamLine(ctx: HandlerContext, id: string): Promise<MemoryRow> {
   const row = await memoryRow(ctx.db, id);
-  if (!row || row.kind !== "team") throw new NotFoundError("team memory line", id);
+  if (row?.kind !== "team") throw new NotFoundError("team memory line", id);
   return row;
 }
 
@@ -310,12 +310,10 @@ export const memoryPropose = defineOperation({
       .optional()
       .describe("For kind conditional: the records the line holds on"),
     replaces: memoryId.optional().describe("A line this one replaces, deleted when this is saved"),
-    sourceSeq: z
-      .number()
-      .int()
-      .min(1)
+    restore: z
+      .object({ id: memoryId, sourceSeq: z.number().int().min(1).optional() })
       .optional()
-      .describe("Set by the app when the person restores a line with Redo"),
+      .describe("Set by the app when the person brings a line back with Redo. Not for the model"),
   }),
   output: proposeOutput,
   permission: "records:read",
@@ -352,8 +350,9 @@ export const memoryPropose = defineOperation({
     }
     const confirmed =
       check.decision === "save" && (input.kind !== "conditional" || ctx.actor === "human");
+    const restore = ctx.actor === "human" ? input.restore : undefined;
     const row: MemoryRow = {
-      id: newId("memory"),
+      id: restore?.id ?? newId("memory"),
       user_id: ctx.user.id,
       kind: input.kind,
       text: input.text,
@@ -371,7 +370,7 @@ export const memoryPropose = defineOperation({
       created_at: ctx.now,
       updated_at: ctx.now,
     };
-    if (ctx.actor === "human" && input.sourceSeq) {
+    if (restore?.sourceSeq) {
       const thread = await ctx.db
         .selectFrom("core_assistant_thread")
         .select("id")
@@ -379,7 +378,7 @@ export const memoryPropose = defineOperation({
         .executeTakeFirst();
       if (thread) {
         row.source_thread_id = thread.id;
-        row.source_message_seq = input.sourceSeq;
+        row.source_message_seq = restore.sourceSeq;
       }
     }
     ctx.write(ctx.db.insertInto("core_memory").values(row));

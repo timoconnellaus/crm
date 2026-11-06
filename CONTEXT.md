@@ -502,8 +502,9 @@ One thing the assistant remembers about the person, shown on "What your assistan
 **personal**; a **shortcut** ("the pipeline" means …); the **writing style** section;
 **conditional**, with a view-style filter, used only on matching records; or **team**, shared and
 governed by a workspace setting (open, approval, restricted). A **pending** line was saved since the
-last thread compaction and sits at the end of the context until it is folded in. Written inline,
-checked by Jev, never a fact about a customer: those go on the record as a note (ADR 0342).
+last thread compaction and sits at the end of the context until it is folded in. A **proposed** line
+waits to be read back and confirmed, or for a team line's approval. Written inline, checked by Jev,
+never a fact about a customer: those go on the record as a proposed note (ADR 0342).
 _Avoid_: note (that is on a record), fact
 
 **Routine**

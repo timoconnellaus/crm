@@ -156,6 +156,13 @@ Proposed by later stages, after stage 11:
   (findings on the pending approval). No new questions.
 - Stages 14, 15 and 16 add no placement: permissions, assignment rules and duplicate matching are
   exact code (rule 1).
+- **`memory.write`** (stage 17, [ADR 0342](adr/0342-assistant-memory.md), built): three Choices about
+  a line the assistant wants to save: is it about a customer, is it already held, did the person
+  say it. Sends the person's words, the line and the lines held, no record content, so it is on by
+  default, also on hosted deployments. Fails closed: the deterministic checks decide what they can
+  and the line is read back for the person to confirm.
+- **`memory.condition`** (stage 17, ADR 0342, built): does a conditional line's filter, written out
+  in words by code, pick out the records the person described. Fails closed to the read-back alone.
 
 Proposed by the brief and **dropped or deferred**, with why:
 
@@ -532,6 +539,21 @@ Steps 6, 7 and 9 (the same day, jev-1.14.0, three runs a case, none wrong; repor
 | `outbound.message/recipients` (P(someone_else)) | 0.5 | 0.03 → 0.82 | none |
 | `widget.shape/<shape>` (P(shape), five records) | 0.4 | at worst 0.24 → 0.62 | none |
 | `sync.jobChange/different_employer` (6 November 2026, 29 cases) | 0.5 | 0.01 → 0.95 | none |
+
+Stage 17's memory placements (6 November 2026, jev-1.14.0, three runs a case, none wrong; report
+`evals/judge/reports/2026-11-06T06-43-20-661Z.md`):
+
+| Question | Threshold | Gap | Close calls |
+| --- | --- | --- | --- |
+| `memory.write/customer` (P(customer), 41 cases) | 0.35 | 0.21 → 0.57 | a conditional line (0.21, below) |
+| `memory.write/already` (P(already), 41 cases) | 0.5 | 0.02 → 0.96 | none |
+| `memory.write/not_said` (P(not_said), 41 cases) | 0.5 | 0.14 → 0.92 | none |
+| `memory.condition/as_said` (P(as_said), 27 cases) | 0.55 | 0.42 → 0.70 | "the bigger ones" with a number (0.42, below); the mockup's condition (0.70, above) |
+
+Two things moved before the recorded run. The state first described a personal line as "a
+preference or fact about the person", which told the judge the answer: customer facts sat at 0.5.
+It now says only "something to remember". And a filter on the wrong kind of record read as a match
+(0.6), until the criteria named that slip.
 
 The first runs of these sets found three things, fixed before the recorded run: two cases shared a
 name (a slug of six words), so their answers were pooled; a planted note that itself *asserted* a

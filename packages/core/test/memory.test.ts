@@ -605,7 +605,7 @@ describe("team memory", () => {
     expect(after.block).toContain(text);
     const line = (await list(reader)).team.find((l) => l.id === id);
     expect(line).toMatchObject({ authorName: user.name, authorId: user.id });
-    expect((line?.history as { action: string }[]).map((h) => h.action)).toEqual([
+    expect(((line?.history ?? []) as { action: string }[]).map((h) => h.action)).toEqual([
       "proposed",
       "approved",
     ]);
