@@ -25,7 +25,12 @@ import {
   sortRules,
 } from "../duplicates/rules.ts";
 import { loadScanState, runScan, scanPending } from "../duplicates/scan.ts";
-import { ForbiddenError, OperationError, PendingApprovalError, ValidationError } from "../errors.ts";
+import {
+  ForbiddenError,
+  OperationError,
+  PendingApprovalError,
+  ValidationError,
+} from "../errors.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 import { roleHasPermission } from "../principals.ts";
 import { jsonList } from "../records/common.ts";
@@ -168,7 +173,9 @@ function groupPairs(pairs: PairRow[]): PairRow[][] {
     if (!parent.has(p.b_id)) parent.set(p.b_id, p.b_id);
     const ra = find(p.a_id);
     const rb = find(p.b_id);
-    if (ra !== rb) parent.set(ra < rb ? rb : ra, ra < rb ? ra : rb);
+    // The smaller id becomes the root (ids are strings, so no Math.min).
+    if (ra < rb) parent.set(rb, ra);
+    else if (rb < ra) parent.set(ra, rb);
   }
   const groups = new Map<string, PairRow[]>();
   for (const p of pairs) {
@@ -347,8 +354,8 @@ export const duplicateList = defineOperation({
         .map((f) => f.field)
         .filter(
           (field) =>
-            new Set(list.map((m) => m.fields.find((f) => f.field === field)?.value ?? null))
-              .size > 1,
+            new Set(list.map((m) => m.fields.find((f) => f.field === field)?.value ?? null)).size >
+            1,
         );
       return [
         {

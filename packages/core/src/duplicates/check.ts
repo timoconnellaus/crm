@@ -11,9 +11,9 @@ import { normalisePhoneNumber } from "../operations/person.ts";
 import { jsonList } from "../records/common.ts";
 import { organisationNameKey, personNameKey } from "./normalise.ts";
 import {
+  type DuplicateMatch,
   type DuplicateObject,
   type DuplicateRule,
-  type DuplicateMatch,
   emailDomainsFor,
   loadPersonProfiles,
   loadPhoneHolders,
@@ -95,7 +95,7 @@ async function warningsFor(
       : await profilesFor(db, object, candidates, env);
   const out: DuplicateMatch[] = [];
   for (const profile of profiles.values()) {
-    const m = match(object, draft, profile);
+    const m = match(object, profile, draft);
     if (!m.rules.length) continue;
     out.push({
       id: profile.id,
@@ -159,12 +159,7 @@ export async function checkPerson(
       .executeTakeFirst();
     draft.organisations.set(values.organisationId, org?.name ?? "");
   }
-  const warnings = await warningsFor(
-    db,
-    "person",
-    draft,
-    new Set(conflicts.map((c) => c.id)),
-  );
+  const warnings = await warningsFor(db, "person", draft, new Set(conflicts.map((c) => c.id)));
   return {
     conflicts: conflicts.slice(0, CHECK_LIMIT),
     warnings: sortMatches(warnings).slice(0, CHECK_LIMIT),

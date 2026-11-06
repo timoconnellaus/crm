@@ -41,6 +41,17 @@ export * from "./dashboards/params.ts";
 export * from "./dashboards/run.ts";
 export * from "./dashboards/spec.ts";
 export * from "./diff.ts";
+export { runDuplicateCron } from "./duplicates/cron.ts";
+export * from "./duplicates/normalise.ts";
+export * from "./duplicates/rules.ts";
+export {
+  DUPLICATE_SCAN_KEY,
+  loadScanState,
+  nightlyDue,
+  runScan,
+  type ScanState,
+  scanPending,
+} from "./duplicates/scan.ts";
 export * from "./entitlements.ts";
 export * from "./errors.ts";
 export * from "./extensions/host.ts";
@@ -101,17 +112,6 @@ export * from "./operations/connected-app.ts";
 export * from "./operations/count.ts";
 export * from "./operations/dashboard.ts";
 export * from "./operations/duplicate.ts";
-export * from "./duplicates/normalise.ts";
-export * from "./duplicates/rules.ts";
-export { runDuplicateCron } from "./duplicates/cron.ts";
-export {
-  DUPLICATE_SCAN_KEY,
-  loadScanState,
-  nightlyDue,
-  runScan,
-  type ScanState,
-  scanPending,
-} from "./duplicates/scan.ts";
 export * from "./operations/enrichment.ts";
 export * from "./operations/export.ts";
 export * from "./operations/extension.ts";

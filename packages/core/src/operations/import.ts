@@ -957,7 +957,11 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
         "created_by",
         "updated_at",
       ],
-      personInserts.map((p) => ({ ...p, name_key: personNameKey(String(p.display_name)), ...stamp })),
+      personInserts.map((p) => ({
+        ...p,
+        name_key: personNameKey(String(p.display_name)),
+        ...stamp,
+      })),
     );
     queueUpdate(
       ctx,

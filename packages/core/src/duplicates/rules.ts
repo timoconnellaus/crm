@@ -282,7 +282,8 @@ export async function loadPersonProfiles(
   }
   for (const a of affiliations) out.get(a.person_id)?.organisations.set(a.organisation_id, a.name);
   const byPerson = new Map<string, string[]>();
-  for (const e of emails) byPerson.set(e.person_id, [...(byPerson.get(e.person_id) ?? []), e.email]);
+  for (const e of emails)
+    byPerson.set(e.person_id, [...(byPerson.get(e.person_id) ?? []), e.email]);
   for (const [id, list] of byPerson) {
     const profile = out.get(id);
     if (profile) profile.emailDomains = emailDomainsFor(list, internal);

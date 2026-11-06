@@ -11,7 +11,7 @@
 //    (updated_at), each looked up against the name-key index, phone numbers and domains. Reads
 //    follow the number of changed records, not the table size.
 import type { CoreDatabase } from "@relationship-os/db";
-import { type Kysely, sql } from "kysely";
+import { type Kysely, type SqlBool, sql } from "kysely";
 import { z } from "zod";
 import { zonedTime } from "../automations/cron.ts";
 import type { HandlerContext } from "../operation.ts";
@@ -404,12 +404,8 @@ async function incrementalChunk(
     .orderBy("id")
     .limit(CHANGED_CHUNK);
   if (cursor) {
-    query = query.where((eb) =>
-      eb.or([
-        eb("updated_at", ">", cursor.at),
-        eb.and([eb("updated_at", "=", cursor.at), eb("id", ">", cursor.id)]),
-      ]),
-    );
+    // A row-value comparison, so the (updated_at, id) index serves it as a range.
+    query = query.where(sql<SqlBool>`(updated_at, id) > (${cursor.at}, ${cursor.id})`);
   }
   const rows = await query.execute();
   const last = rows.at(-1);
