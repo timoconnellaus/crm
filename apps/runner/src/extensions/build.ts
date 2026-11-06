@@ -20,7 +20,8 @@ export type BuildResult =
 
 const SOURCE_RE = /\.(ts|js)$/;
 const IMPORT_FROM_RE = /(\b(?:import|export)\b[^'"`;]*?\bfrom\s*)(["'])([^"'\n]+)\2/g;
-const BARE_IMPORT_RE = /(\bimport\s*)(["'])([^"'\n]+)\2/g;
+// Not preceded by a quote: `value: "import", label: "Import"` is a string, not an import.
+const BARE_IMPORT_RE = /(?<!["'`])(\bimport\s*)(["'])([^"'\n]+)\2/g;
 
 /** Removes comments so they cannot hide `import(` (strings are left alone; fail-closed). */
 function stripComments(code: string): string {
