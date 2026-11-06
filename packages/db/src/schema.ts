@@ -1196,6 +1196,37 @@ export interface CoreSupportGrantsTable {
  * Migration 0260 (ADR 0213 amendment): model usage counted in a hosted workspace, per day, role
  * and provider. `billed` is 1 for Platform AI, 0 for the customer's own key.
  */
+/** Voice settings per person (ADR 0349). */
+export interface CoreVoicePrefsTable {
+  user_id: string;
+  voice_id: string;
+  speed: number;
+  default_mode: string;
+  read_out: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A device someone has used voice on; `mode` is set once it differs from their default. */
+export interface CoreVoiceDeviceTable {
+  user_id: string;
+  device_id: string;
+  label: string;
+  mode: string | null;
+  last_seen_at: string;
+}
+
+/** Speech usage per day, person, role and provider (ADR 0349's amendment). */
+export interface CoreVoiceUsageTable {
+  day: string;
+  user_id: string;
+  role: string;
+  provider: string;
+  requests: number;
+  audio_seconds: number;
+  characters: number;
+}
+
 export interface CoreAiUsageTable {
   day: string;
   role: string;
@@ -1219,6 +1250,9 @@ export interface CoreJudgeUsageTable {
 
 export interface CoreDatabase {
   core_ai_usage: CoreAiUsageTable;
+  core_voice_prefs: CoreVoicePrefsTable;
+  core_voice_device: CoreVoiceDeviceTable;
+  core_voice_usage: CoreVoiceUsageTable;
   core_judge_usage: CoreJudgeUsageTable;
   core_entitlements: CoreEntitlementsTable;
   core_support_grants: CoreSupportGrantsTable;

@@ -102,6 +102,9 @@ export function transcriptFromThread(messages: readonly ThreadMessage[]): Transc
           const last = items[items.length - 1];
           if (last?.kind === "assistant" && last.turn === turn) last.text += part.text;
           else items.push({ kind: "assistant", turn, seq, at, text: part.text });
+          const reply = items[items.length - 1] as Extract<TranscriptItem, { kind: "assistant" }>;
+          if (message.via === "voice") reply.spoken = true;
+          if (message.playout) reply.playout = message.playout;
         } else if (part.type === "tool-call") {
           const item = {
             kind: "tool" as const,

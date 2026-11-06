@@ -95,6 +95,7 @@ export * from "./operations/affiliation.ts";
 export * from "./operations/ai.ts";
 export * from "./operations/approval.ts";
 export * from "./operations/assistant.ts";
+export * from "./operations/voice.ts";
 export * from "./operations/audit.ts";
 export * from "./operations/automation.ts";
 export * from "./operations/code.ts";

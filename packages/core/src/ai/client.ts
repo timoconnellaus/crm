@@ -907,8 +907,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
       const target = ref ? (hosted ? platformRef(ref) : ref) : config;
       assertCapable(role, target, dims ? { vectorDimensions: dims } : {});
       if (isSpeechRole(role)) {
-        // Voice is wired, not built (stage 17 W9): report whether the provider is set up, without
-        // calling it.
+        // Report whether the provider is set up, without calling it: a test would open a socket.
         const status = providerStatus(options.env, await settings(), target.provider);
         if (!status.ready) {
           throw new AiNotConfiguredError(
@@ -916,7 +915,7 @@ export function createModelRunner(options: ModelRunnerOptions): ModelRunner {
           );
         }
         return {
-          text: "Configured. Voice is not switched on in this release yet.",
+          text: "Configured.",
           model: target.model,
           provider: target.provider,
         };

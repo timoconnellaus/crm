@@ -182,8 +182,8 @@ export const PROVIDER_INFO: Record<ProviderId, ProviderInfo> = {
   },
   // AssemblyAI (ADR 0349): Universal-Streaming speech-to-text and AssemblyAI-TTS-1 text-to-speech
   // over streaming WebSockets. Configured when the AI_KEY_ASSEMBLYAI secret is set. Called
-  // directly for now (no gateway slug): whether AI Gateway can proxy the streaming sockets is
-  // checked when voice is built (stage 17 W9). Wiring only: nothing calls it yet.
+  // directly (no gateway slug): AI Gateway cannot carry these sockets (ADR 0349's amendment), so
+  // usage is logged by us in core_voice_usage.
   assemblyai: {
     id: "assemblyai",
     label: "AssemblyAI",

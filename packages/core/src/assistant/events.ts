@@ -1,5 +1,6 @@
 // What the in-app assistant streams to the UI and how its thread is shown (ADR 0200, ADR 0340).
 // Browser-safe: no Workers or AI SDK imports, so the app's client bundle can use these types.
+import type { Playout } from "@relationship-os/agent-core";
 import type { AssistantContext } from "./context.ts";
 
 /** A pending change the assistant's tool call created (the MCP `pending_approval` result). */
@@ -48,7 +49,15 @@ interface Placed {
 /** One item of the thread as the UI shows it. */
 export type TranscriptItem =
   | ({ kind: "user"; turn: number; text: string; via?: string } & Placed)
-  | ({ kind: "assistant"; turn: number; text: string } & Placed)
+  | ({
+      kind: "assistant";
+      turn: number;
+      text: string;
+      /** What was heard of a spoken reply (ADR 0349). */
+      playout?: Playout;
+      /** The reply was spoken: the chat says how much was. */
+      spoken?: boolean;
+    } & Placed)
   | ({
       kind: "tool";
       turn: number;
@@ -90,7 +99,7 @@ export interface ThreadSearchHit {
 /** What the browser sends over the thread's WebSocket. */
 export type ThreadClientFrame =
   /** A new message from the person. */
-  | { type: "send"; text: string; context?: AssistantContext }
+  | { type: "send"; text: string; context?: AssistantContext; dictated?: boolean }
   /** Stop the running reply. */
   | { type: "stop" }
   /** Ask for the thread: the newest window, or the window before `beforeSeq`, or from `fromSeq`. */
@@ -107,6 +116,8 @@ export type ThreadServerFrame =
   | { type: "unread"; unread: number; lastSeenSeq: number }
   /** Messages were deleted (on any device). */
   | { type: "deleted"; seqs: number[] }
+  /** What was heard of a turn's spoken reply. */
+  | { type: "playout"; turn: number; playout: Playout }
   | { type: "error"; message: string };
 
 /** Recognises an MCP `pending_approval` tool result (PendingApproval in errors.ts). */

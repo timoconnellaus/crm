@@ -101,6 +101,33 @@ function withOptions<T extends object>(part: T, providerOptions: ProviderOptions
  * A thread message as the AI SDK model message it was (or will be) sent as. Notices and deleted
  * messages have none. A user message is always a single string: the tail block, then the words.
  */
+const SAY_OPEN = "<say>";
+const SAY_CLOSE = "</say>";
+const CUT_OFF = "[The person spoke over the rest and did not hear it.]";
+const NOT_HEARD = "[The person spoke over this before hearing any of it.]";
+
+/**
+ * What the model is shown of a spoken reply: only what was heard (ADR 0349, decision 7). A
+ * `<say>` block is what was spoken, and the answer after it was on the person's screen, so only
+ * the block is cut. Without one, the reply itself was spoken and is cut where it stopped.
+ * `unsaid` is the words as they went to speech, so Markdown can keep it from matching exactly;
+ * then the model is told which words were missed.
+ */
+export function heardReply(text: string, playout: Playout | undefined): string {
+  if (!playout || playout.state === "spoken") return text;
+  const open = text.indexOf(SAY_OPEN);
+  const close = open < 0 ? -1 : text.indexOf(SAY_CLOSE, open);
+  const start = close < 0 ? 0 : open + SAY_OPEN.length;
+  const end = close < 0 ? text.length : close;
+  if (playout.state === "unspoken") {
+    return close < 0 ? NOT_HEARD : `${text.slice(0, start)}${NOT_HEARD}${text.slice(end)}`;
+  }
+  const opening = playout.unsaid.split(/\s+/).slice(0, 3).join(" ");
+  const at = text.slice(start, end).lastIndexOf(opening);
+  if (!opening || at < 0) return `${text}\n[The person did not hear: "${playout.unsaid}"]`;
+  return `${text.slice(0, start + at).trimEnd()} ${CUT_OFF}${text.slice(end)}`;
+}
+
 export function toModelMessage(message: ThreadMessage): ModelMessage | null {
   if (message.deletedAt) return null;
   switch (message.role) {
@@ -110,9 +137,13 @@ export function toModelMessage(message: ThreadMessage): ModelMessage | null {
     }
     case "assistant": {
       const content: Exclude<Extract<ModelMessage, { role: "assistant" }>["content"], string> = [];
-      for (const part of message.parts) {
-        if (part.type === "text") content.push({ type: "text", text: part.text });
-        else if (part.type === "reasoning") {
+      const lastText = message.parts.findLastIndex((part) => part.type === "text");
+      for (const [index, part] of message.parts.entries()) {
+        if (part.type === "text") {
+          const text = index === lastText ? heardReply(part.text, message.playout) : part.text;
+          content.push({ type: "text", text });
+        }
+        if (part.type === "reasoning") {
           content.push(withOptions({ type: "reasoning", text: part.text }, part.providerOptions));
         } else if (part.type === "tool-call") {
           content.push(

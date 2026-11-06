@@ -2,7 +2,7 @@
 // sits next to the thread's single writer (a Durable Object's SQLite), so it is synchronous.
 // `SqliteMessageStore` works over any SQLite with FTS5 that has the Durable Object `exec` shape;
 // `MemoryMessageStore` is for tests and tools.
-import { messageText, type NewMessage, type ThreadMessage } from "./thread.ts";
+import { messageText, type NewMessage, type Playout, type ThreadMessage } from "./thread.ts";
 
 export interface ListOptions {
   /** Only messages after this seq. */
@@ -34,6 +34,8 @@ export interface MessageStore {
   delete(seqs: readonly number[], at: string): void;
   /** Rewrites a message's parts (an erase redacting it) and reindexes it. */
   replace(seq: number, parts: ThreadMessage["parts"]): void;
+  /** Records what was heard of a spoken message (W9). */
+  setPlayout(seq: number, playout: Playout): void;
   /** Messages whose words match every term of `query`, newest first. */
   search(query: string, limit?: number): SearchHit[];
   lastSeq(): number;
@@ -209,6 +211,14 @@ export class SqliteMessageStore implements MessageStore {
     }
   }
 
+  setPlayout(seq: number, playout: Playout): void {
+    this.#sql.exec(
+      "UPDATE thread_messages SET playout = ? WHERE seq = ? AND deleted_at IS NULL",
+      JSON.stringify(playout),
+      seq,
+    );
+  }
+
   replace(seq: number, parts: ThreadMessage["parts"]): void {
     this.#sql.exec(
       "UPDATE thread_messages SET parts = ? WHERE seq = ?",
@@ -319,6 +329,11 @@ export class MemoryMessageStore implements MessageStore {
   replace(seq: number, parts: ThreadMessage["parts"]): void {
     const m = this.#messages.find((x) => x.seq === seq);
     if (m) m.parts = parts;
+  }
+
+  setPlayout(seq: number, playout: Playout): void {
+    const m = this.#messages.find((x) => x.seq === seq);
+    if (m && !m.deletedAt) m.playout = playout;
   }
 
   search(query: string, limit = 20): SearchHit[] {

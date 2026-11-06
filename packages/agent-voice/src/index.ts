@@ -9,5 +9,6 @@ export { PlayoutClock } from "./playout-clock.ts";
 export * from "./protocol.ts";
 export * from "./providers.ts";
 export * from "./speech-text.ts";
+export { pcmToWav } from "./wav.ts";
 
 

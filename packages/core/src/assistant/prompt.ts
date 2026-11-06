@@ -107,6 +107,25 @@ export function assistantTail(input: AssistantTailInput): TailBlock[] {
   ];
 }
 
+/**
+ * The display fact for a spoken message (ADR 0349, decisions 8 and 9). It rides in the tail, so
+ * the cached prefix is the same for typed and spoken turns. `short`: the person can see the chat,
+ * so a `<say>` block carries what is spoken and the full answer follows. `full`: they cannot, or
+ * they asked for everything, so the reply is written to be listened to.
+ */
+export function spokenTail(mode: "short" | "full"): TailBlock {
+  const said = "This message was spoken and transcribed, so expect odd punctuation and misheard names.";
+  const text =
+    mode === "short"
+      ? `${said} Your reply is also spoken, and they can see this chat. Start your reply with a ` +
+        "one or two sentence spoken version in <say>…</say>, in plain speech with no Markdown or " +
+        "lists, then give the full answer after it for the chat. Put your whole answer inside " +
+        "<say> when they ask to hear all of it."
+      : `${said} Your reply is read out and they cannot see the screen, so write it to be heard: ` +
+        "plain sentences, no Markdown, tables or links, and read out anything a card would show.";
+  return { kind: "display", text };
+}
+
 /** The system instructions: the same on every turn, so the prompt cache keeps hitting. */
 export function assistantInstructions(input: AssistantPromptInput): string {
   const sections = [
