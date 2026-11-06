@@ -23,3 +23,9 @@ One tool surface to design, test and evaluate. Anything the assistant can do, an
 > the person moves, shown as an "On: …" chip. It is resizable from its left edge (drag or arrow
 > keys, 288–720 px, giving way so the page keeps 320 px), and its width and open state are
 > remembered per browser. On phones it stays a full-screen sheet. `/assistant` is unchanged.
+
+> Amended 2026-11-06 ([ADR 0340](0340-one-assistant-thread-per-user.md), stage 17 spec): the
+> Durable Object per conversation is superseded. Each person has one thread in one
+> `AssistantAgent` object on the Agents SDK, with no reset and no conversation list; `/assistant`
+> is a full-page view of that thread. The assistant is still an MCP client of our own server, in
+> process, acting as actor `assistant`.

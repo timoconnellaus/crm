@@ -395,8 +395,9 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
 
 ### 8. AI
 
-**Model roles** (`build`, `assistant`, `summarise`, `extract`, `classify`, `embed`, `vision`,
-`review`) map to a provider and model in the core **model role registry**
+**Model roles** (`build`, `assistant.core`, `assistant.subagent`, `summarise`, `extract`,
+`classify`, `embed`, `vision`, `review`, `transcribe`, `speak`, `dictation.cleanup`; the
+assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assistant-model-roles.md)) map to a provider and model in the core **model role registry**
 (`packages/core/src/ai/roles.ts`, [ADR 0009](adr/0009-model-roles.md),
 [ADR 0150](adr/0150-model-role-registry-and-ai-sdk.md)). Code asks for a role, never a model.
 
@@ -442,6 +443,15 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   `CloudflareClient.setGatewayProviderKey`) or as Workers secrets, **never in D1** ([ADR 0151](adr/0151-provider-keys-as-workers-secrets-or-byok.md));
   usage and spend per role from AI Gateway's logs, cached 10 minutes
   ([ADR 0152](adr/0152-usage-and-spend-per-role.md)).
+- **Stage 17 additions** ([ADR 0351](adr/0351-assistant-model-roles.md)): `assistant.core` (the
+  front agent) replaces `assistant`, whose old config maps to it; `assistant.subagent` is the
+  default for agents, and an agent profile may name another role, never a model. Every role has
+  settings for thinking, max output tokens and temperature. The registry carries prices for
+  uncached input, cache writes, cached reads and output, and a published cache lifetime where
+  known, for the compaction planner ([ADR 0341](adr/0341-compaction-cost-model-and-cache-lifetime-learner.md)).
+  `transcribe` (AssemblyAI streaming) and `speak` (ElevenLabs) are BYOK; they go through AI Gateway
+  if it can proxy their streaming sockets, otherwise directly with usage logged by us
+  ([ADR 0349](adr/0349-voice-on-agents-voice.md)). `dictation.cleanup` runs with thinking off.
 - **Hosted placement** ([ADR 0213 amendment](adr/0213-ai-usage-billing.md),
   `packages/core/src/ai/platform.ts`): the same code, switched by deploy vars the control plane
   sets. Every Workers AI role becomes **Platform AI** (registry provider `platform`), called over
@@ -479,37 +489,56 @@ Auth) or gets a 401 (APIs, server functions, and any request under Cloudflare Ac
   `pnpm run deploy` adds `ai` (both Workers) and `vectorize` (ros-app). Without them AI features
   say AI is not configured and search is full-text only. Locally `AI_FAKE_MODEL=true` answers
   every role with deterministic stand-ins and keeps vectors in memory.
-- **The in-app assistant** ([ADR 0030](adr/0030-in-app-assistant.md),
-  [ADR 0200](adr/0200-in-app-assistant-build.md), [ADR 0201](adr/0201-assistant-reasoning-content.md)):
+- **The in-app assistant** (stage 17, [spec](stages/17-assistant.md); ADRs
+  [0340](adr/0340-one-assistant-thread-per-user.md) to [0351](adr/0351-assistant-model-roles.md);
+  earlier [ADR 0030](adr/0030-in-app-assistant.md), [ADR 0200](adr/0200-in-app-assistant-build.md),
+  [ADR 0201](adr/0201-assistant-reasoning-content.md)):
 
 ```
- Cmd-J panel · /assistant · Ask AI · Ask about N selected ─ POST /api/assistant/turn (SSE) ─┐
-   (page, record, selection)                     GET …/conversations/:id[/stream?after=N] │
-                                                                                          ▼
- ros-app: AssistantConversation DO (one per conversation, SQLite: messages, turns; no alarms)
-   └─ turn: chatModels("assistant") ─► AI SDK streamText loop ─► tools = MCP client ──► createCrmMcpServer
-        (primary, then fallback)        (≤16 steps)              (in-process transport)  (actor assistant,
-                                                                                          session = asc_…)
-                                                     ─► pipeline: gate · change set · simulation · audit
+ Browser (sidebar · /assistant · voice) ──WebSocket (Agents SDK: chat frames + binary audio)──┐
+                                                                                               ▼
+ ros-app: AssistantAgent DO  name user:<userId>   (agent-core Thread + CRM binding)
+   SQLite: messages, turns, compactions, pending memory lines, search index (FTS5), unread, jobs
+   ├─ turn engine ─ context assembly ─ chatModels("assistant.core") ─ tools = in-process MCP client
+   │     └─ approvals (tap · typed · spoken, Jev-checked) ─ change sets ─ adjudicator
+   ├─ compaction planner (pure cost model, alarm before cache expiry)
+   ├─ memory writer (inline, Jev-gated) ──► D1 core_memory
+   ├─ voice (agent-voice: withVoice / withVoiceInput) ─ AssemblyAI STT ─ ElevenLabs TTS
+   └─ spawns ──► AgentJob DO  name job:<jobId>   (assistant.subagent; brief, grant, budget)
+                    └─ stages change sets; reports progress to the parent; never chats
+ ros-runner: AutomationWorkflow ─ personal routine ─ gates (plain, Jev) ─ step "message me" ─► AssistantAgent
+ Connected assistants: AssistantAgent ⇄ AssistantAgent via core.agentMessage (Jev-adjudicated, logged)
+ Plugins: core_plugin_* ─ install = copy into the owning scope; saved code on LOADER.get(stableId)
+ Marketplace: ros-control hosts listings (reviewed); workspaces read it with a workspace token
 ```
 
-  The assistant is an MCP client of the same server `/mcp` builds per request, connected in
-  process, so its tools, descriptions and results are an external client's. It acts as actor
-  `assistant` for the signed-in person (role, no scopes) with origin `{ surface: "assistant",
-  sessionId: <conversation> }`; its pending actions group in that session's change set and are
-  shown inline with Approve / Reject. The conversation object stores the AI SDK's model messages
-  with their reasoning (DeepSeek's thinking mode needs `reasoning_content` replayed) and streams
-  each turn's events to any number of readers, who resume with `?after=<seq>`. D1 holds only the
-  conversation list (`core_assistant_conversation`, one write per turn through
-  `assistant.finishTurn`) and, in the same write, the people, organisations and (hashed) emails
-  each turn referenced (`core_assistant_conversation_refs`), so an erase finds the conversations
-  to redact and asks their objects to scrub them before it commits (ADR 0019 amendment).
-  `EVAL_VIA=assistant` runs the stage 2–5 eval sets through it.
-  In the app (ADR 0030 amendment) the Cmd-J panel is docked on the right of the shell on tablets
-  and desktops, beside the page rather than over it, and stays mounted across page changes; on
-  phones it is a sheet. `AssistantProvider` holds the open state and page context (stable actions
-  in one context, state in another); the conversation and its streaming live in `AssistantPanel`,
-  so a streamed token re-renders only the panel.
+  Each person has **one thread** that never resets, in one `AssistantAgent` Durable Object on the
+  Cloudflare Agents SDK; the docked sidebar and `/assistant` show the same thread (ADR 0340). What
+  still holds from stage 7b: the assistant is an MCP client of the same server `/mcp` builds per
+  request, connected in process, so its tools, descriptions and results are an external client's;
+  it acts as actor `assistant` for the signed-in person with origin `{ surface: "assistant",
+  sessionId }`, its pending actions group in the session's change set, and it keeps and replays
+  reasoning content (ADR 0201). D1 holds one `core_assistant_thread` row per user, written once
+  per finished turn, and the people, organisations and hashed emails each turn referenced, so an
+  erase finds the thread and asks its object to scrub it before it commits (ADR 0019 amendment,
+  ADR 0320). `EVAL_VIA=assistant` runs the eval sets through it.
+
+  The context keeps a byte-stable cached prefix (instructions, tools, memory, a "where we left
+  off" note, messages since the compaction) and puts pending memory lines, page context and
+  display facts in the tail. **Compaction** is decided by a pure cost model between rails (never
+  below 24k tokens, always before 80% of the window), with a cache lifetime published per model or
+  learned from cache hits (ADR 0341). **Memory** is written inline and checked by Jev, and never
+  holds customer facts (ADR 0342). **Routines** are personal automations on the existing engine
+  that message the thread (ADR 0343). Longer work runs as **agents**, child `AgentJob` objects
+  that stage changes for review and never block (ADR 0344). Approvals can be tapped, typed or
+  spoken, with a Jev intent check and a second step for high risk (ADR 0345). Rich messages are
+  **A2UI** from a versioned catalogue (ADR 0346); **plugins** install as copies (ADR 0347);
+  **connected assistants** in the same workspace exchange Jev-checked messages under a contract
+  (ADR 0348); **voice** runs on `agents/voice` (ADR 0349). The general machinery lives in
+  MIT-licensed `packages/agent-*`, which never import CRM code; the CRM binding is in
+  `packages/core/src/assistant/` and `apps/app/src/server/assistant/` (ADR 0350).
+  In the app (ADR 0030 amendment) the panel is docked on the right of the shell on tablets and
+  desktops, beside the page, and stays mounted across page changes; on phones it is a sheet.
 
 - **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
   [ADR 0232](adr/0232-judge-defaults-and-user-decisions.md), [`docs/jev.md`](jev.md); stage 11,
@@ -651,6 +680,8 @@ packages/
   sdk/                 the extension contract (defineExtension, defineTool), formula language, test harness
   ui/                  shared shadcn/ui components and the view-spec renderer
   config/              shared tsconfig, biome and vitest presets
+  agent-core/, agent-a2ui/, agent-voice/, agent-plugins/
+                       (stage 17, planned) the assistant's general machinery, MIT, no CRM imports (ADR 0350)
   release/             release bundles, manifest types, verification, the Cloudflare API deploy
                        engine, preflight and the update procedure (Node and Workers)
   create-relationship-os/          the installer CLI: npx create-relationship-os, ros upgrade / rollback / status

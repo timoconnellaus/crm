@@ -102,7 +102,7 @@ An admin-only hard delete for GDPR requests (`person.erase`, `organisation.erase
 it also **redacts** the audit log: content that mentions the record becomes `"[erased]"` (ADR 0019).
 Activities and tasks only about the record are deleted; shared ones are scrubbed of its emails,
 phone numbers and id, and the search index is purged of it. Pending actions that touch or mention
-it are redacted, and rejected if still waiting. In-app assistant conversations that referenced it
+it are redacted, and rejected if still waiting. In-app assistant threads that referenced it
 are redacted too (ADR 0019 amendment). It also reaches sync, extension data, run history,
 notifications, events and synced email bodies, and puts a person's addresses on the
 **erased-address list** (ADR 0320).
@@ -471,22 +471,85 @@ The deploy-time choice of how a Principal is resolved: `better-auth` (default) o
 
 **Assistant**
 The in-app AI, named "Assistant" by default and renamed in Settings → General (`assistantName`;
-never "Claude"). It answers with the `assistant` model role and acts as actor `assistant` for the
-signed-in person, as an MCP client of our own MCP server (the same tools, gate, change sets and
-simulation as an external client). Each conversation is a Durable Object
-(`AssistantConversation`, `asc_…`) holding its history (reasoning included, ADR 0201) and its
-running turn, which readers can resume; its id is the assistant's MCP session. It opens with
-Cmd-J on any page, at `/assistant`, from "Ask AI" on records and "Ask about N selected" on lists,
-and knows the page, record and selection (ADR 0030, ADR 0200).
+never "Claude"). Each person has one, with one **thread**. Its front agent answers with the
+`assistant.core` model role and acts as actor `assistant` for the signed-in person, as an MCP
+client of our own MCP server (the same tools, gate, change sets and simulation as an external
+client). It opens docked on any page, at `/assistant`, from "Ask AI" on records and "Ask about N
+selected" on lists, and knows the page, record and selection (ADR 0030, ADR 0200, ADR 0340).
 _Avoid_: Claude, chatbot, copilot
 
-**Conversation**
-One thread with the Assistant: a Durable Object plus one `core_assistant_conversation` row for the
-person's list. A **turn** is one message and everything the Assistant did to answer it.
+**Thread**
+A person's one chat with their assistant, which never resets: an `AssistantAgent` Durable Object
+named `user:<userId>` plus one `core_assistant_thread` row. A **turn** is one message and
+everything the assistant did to answer it. Older messages stay searchable (`thread.search`). "Your
+chat" in the UI (ADR 0340).
+_Avoid_: conversation (stage 7b had many per person; there is now one), session
+
+**Thread compaction**
+Folding a thread's older messages into a short "where we left off" note, keeping the last ~10
+exchanges, when a cost model says it is cheaper, between 24k tokens and 80% of the model's window
+(ADR 0341). Different from **Compaction** of pending actions.
+
+**Memory line**
+One thing the assistant remembers about the person, shown on "What your assistant remembers":
+**personal**; a **shortcut** ("the pipeline" means …); the **writing style** section;
+**conditional**, with a view-style filter, used only on matching records; or **team**, shared and
+governed by a workspace setting (open, approval, restricted). A **pending** line was saved since the
+last thread compaction and sits at the end of the context until it is folded in. Written inline,
+checked by Jev, never a fact about a customer: those go on the record as a note (ADR 0342).
+_Avoid_: note (that is on a record), fact
+
+**Routine**
+A personal automation (`owner_user_id`, scope `personal`) that messages the person's thread: a
+trigger, plain and Jev gates, and the step "message me in my chat". "My routines" in settings and
+plugin pages; in chat the assistant offers the outcome and never says "routine" (ADR 0343).
+_Avoid_: reminder, alert, task
+
+**Agent (UI) / job (code)**
+Longer work the assistant hands off: an `AgentJob` Durable Object named `job:<jobId>`, awaited or in
+the background, with a brief, the records, read-only memory and a **grant**. It stages changes for
+review and never chats. "Agents" in the UI; `job` in code and storage (ADR 0344). A CRM **Task** is
+a to-do on a record, and a **job change** is a person's new employer: both unrelated.
+_Avoid_: task, subagent (in UI copy), worker
+
+**Agent profile**
+A named kind of agent (researcher, drafter, importer, analyst, or one from a plugin): instructions,
+a default grant, a budget and a model role, never a model.
+_Avoid_: job profile, persona
+
+**Grant**
+What one agent may do: operations, a target set (ids or a filter), count caps and an expiry. Never
+wider than its starter (a user, routine or plugin), and checked by Jev against the brief (ADR 0344).
+Different from a **Support grant**.
+_Avoid_: permission (that is a role's), scope
+
+**A2UI producer**
+A saved Code Mode script, usually shipped in a plugin, that queries the CRM and returns an A2UI card
+from the versioned catalogue with no model call, run on a stable loader id (ADR 0346). An A2UI card
+is a rich message from that catalogue, stored with a text fallback.
+_Avoid_: widget (that is on a dashboard), template
+
+**Plugin**
+A bundle of assistant and CRM items (skills, saved code, A2UI producers, routines, agent profiles,
+presets, dashboards, views, extensions, connection needs) described by `plugin.json`, installed at
+personal, team or role (optionally **locked**), or org scope (ADR 0347).
+_Avoid_: extension (that is code that changes the CRM; a plugin may contain one), app, add-on
+
+**Plugin copy**
+What installing a plugin creates in the owning scope, stamped with the source version's
+fingerprint. An unchanged copy updates by itself; an edited one is compared and merged; a detached
+one ("Stop updates") no longer updates.
+
+**Connected assistant**
+A colleague's assistant, in the same workspace, that yours may exchange messages with under a
+**contract**: numbered rules in plain English tagged Automatic, Asks you or Never, agreed by both
+people. Every message is checked by Jev and logged (ADR 0348).
+_Avoid_: agent-to-agent (in UI copy), connection (that is a gatekeeper account)
 
 **Model role**
-A named AI job (`build`, `assistant`, `summarise`, `extract`, `classify`, `embed`, `vision`, `review`)
-mapped to a provider + model in the model registry. Code asks for a role, never a model.
+A named AI job (`build`, `assistant.core`, `assistant.subagent`, `summarise`, `extract`, `classify`,
+`embed`, `vision`, `review`, `transcribe`, `speak`, `dictation.cleanup`; ADR 0351) mapped to a
+provider + model in the model registry. Code asks for a role, never a model.
 
 **Model role registry**
 The core table (`packages/core/src/ai/roles.ts`) that resolves each model role to
