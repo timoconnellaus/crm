@@ -66,13 +66,28 @@ test("a spoken turn lands in the thread in italics, and speaking over a reply is
   await expect(reply).toContainText("Here is the short version.");
   await expect(reply).not.toContainText("<say>");
 
-  // Spoken over as it plays: the first word stops playback and the reply is marked.
-  await expect(bar).toHaveAttribute("data-status", "listening");
-  await say(page, "and tell me everything about it now please");
-  await expect(panel.getByTestId("assistant-user").last()).toContainText("tell me everything");
-  await expect(panel.getByTestId("assistant-partly-heard").first()).toBeVisible();
   await bar.getByTestId("voice-end").click();
   await expect(page.getByTestId("voice-bar")).toHaveCount(0);
+});
+
+test("speaking over a reply stops it, and the chat marks it partly heard", async ({ page }) => {
+  // Read out in full, so there is plenty of reply to speak over.
+  await open(page, "/settings/voice");
+  await page.getByTestId("voice-read-full").click();
+  await expect(page.getByTestId("voice-read-full")).toBeChecked();
+  await open(page, "/");
+  const panel = await openPanel(page);
+  const bar = await startCall(page, "hands_free");
+  await say(page, "tell me what you can do");
+  await expect(panel.getByTestId("assistant-reply").last()).toContainText("I can look up");
+  // Let some of it play. The turn stays open, so what is marked comes from the browser's report.
+  await page.waitForTimeout(2_000);
+  await say(page, "sorry which one was that...");
+  await expect(panel.getByTestId("assistant-partly-heard").last()).toBeVisible();
+  await bar.getByTestId("voice-end").click();
+  await open(page, "/settings/voice");
+  await page.getByTestId("voice-read-short").click();
+  await expect(page.getByTestId("voice-read-short")).toBeChecked();
 });
 
 test("push to talk: nothing is heard until the button is held, and letting go ends the turn", async ({
@@ -91,6 +106,7 @@ test("push to talk: nothing is heard until the button is held, and letting go en
   await say(page, "push to talk works...");
   await expect(bar.getByTestId("voice-status")).toContainText("push to talk works");
   await page.mouse.up();
+  await expect(hold).toHaveText("Hold to talk");
   await expect(panel.getByTestId("assistant-user").last()).toContainText("push to talk works");
   await bar.getByTestId("voice-end").click();
 });
@@ -126,9 +142,11 @@ test("Settings → Voice: no speed, this device's mode, the device list", async 
   const settings = page.getByTestId("voice-settings");
   await expect(settings).toBeVisible();
   await expect(settings.getByLabel(/^Speed/)).toHaveCount(0);
-  await settings.getByTestId("voice-mode-hands_free").check({ force: true });
+  await settings.getByTestId("voice-mode-hands_free").click({ force: true });
   await expect(page.getByTestId("voice-devices")).toContainText("This device");
   await expect(page.getByTestId("voice-devices")).toContainText("Hands-free");
-  await settings.getByTestId("voice-read-full").check();
-  await settings.getByTestId("voice-read-short").check();
+  await settings.getByTestId("voice-read-full").click();
+  await expect(settings.getByTestId("voice-read-full")).toBeChecked();
+  await settings.getByTestId("voice-read-short").click();
+  await expect(settings.getByTestId("voice-read-short")).toBeChecked();
 });

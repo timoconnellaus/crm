@@ -522,7 +522,11 @@ function CallControls({ large }: { large?: boolean }) {
           type="button"
           className="touch-none select-none"
           variant={talk.held ? "default" : "outline"}
-          onPointerDown={talk.press}
+          onPointerDown={(event) => {
+            // Letting go counts wherever the pointer has moved to.
+            event.currentTarget.setPointerCapture(event.pointerId);
+            talk.press();
+          }}
           onPointerUp={talk.lift}
           onPointerCancel={talk.lift}
           data-testid="voice-hold"
