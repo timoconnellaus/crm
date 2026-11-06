@@ -3,7 +3,12 @@
 // Deals; `leads.convert` links without copying, finishes after a failure between its calls and
 // refuses a converted lead; lifecycle is opt-in; the views, tabs, panel and navigation are there.
 import { env } from "cloudflare:workers";
-import { type ActingUser, installShippedExtensions, seedRecordId } from "@relationship-os/core";
+import {
+  type ActingUser,
+  extensionDashboardId,
+  installShippedExtensions,
+  seedRecordId,
+} from "@relationship-os/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { call, createAdmin, db, extensionRow, host, unique } from "./helpers.ts";
 
@@ -184,6 +189,29 @@ describe("leads", () => {
       limit: 1,
     });
     expect(inbox.items[0]?.id).toBe(lead.id);
+  });
+});
+
+describe("the Leads dashboard", () => {
+  it("runs every widget through the query guards, counts only", async () => {
+    const dashboardId = extensionDashboardId("leads", "leads");
+    const dashboard = await call<{ title: string; widgets: { id: string }[] }>(
+      admin,
+      "dashboard.get",
+      { id: dashboardId },
+    );
+    expect(dashboard.title).toBe("Leads");
+    expect(dashboard.widgets.map((w) => w.id)).toEqual(
+      expect.arrayContaining(["by-status", "by-source", "by-owner", "per-week"]),
+    );
+    for (const widget of dashboard.widgets) {
+      const result = await call<{ rows: unknown[] }>(admin, "widget.run", {
+        dashboardId,
+        widgetId: widget.id,
+        refresh: true,
+      });
+      expect(Array.isArray(result.rows), widget.id).toBe(true);
+    }
   });
 });
 
