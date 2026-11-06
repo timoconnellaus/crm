@@ -2,9 +2,13 @@
 import { describe, expect, it } from "vitest";
 import {
   type AnyOperation,
+  devJudge,
   EMPTY_GRANT_USAGE,
   type Grant,
   grantGuard,
+  mightBeLongWork,
+  offJudge,
+  orchestratorHint,
   ungrantable,
 } from "../src/index.ts";
 
@@ -118,5 +122,17 @@ describe("what can never be granted", () => {
     }
     expect(ungrantable("organisation.update")).toBeNull();
     expect(ungrantable("integration.call")).toBeNull();
+  });
+});
+
+describe("the front agent's hint", () => {
+  it("asks only about what could be longer work, and never forces anything", async () => {
+    expect(mightBeLongWork("when is my next meeting?", 0)).toBe(false);
+    expect(mightBeLongWork("research these 20 accounts", 0)).toBe(true);
+    expect(mightBeLongWork("look at these", 8)).toBe(true);
+    expect(await orchestratorHint(undefined, "research these 20 accounts")).toBeNull();
+    expect(await orchestratorHint(offJudge, "research these 20 accounts")).toBeNull();
+    const hint = await orchestratorHint(devJudge, "research these 20 accounts");
+    expect(hint?.text).toContain("your call");
   });
 });
