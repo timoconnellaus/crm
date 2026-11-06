@@ -7,6 +7,7 @@ import { choiceAnswer } from "./fake.ts";
 import type { IntentState } from "./questions/authoring-intent.ts";
 import { MEMORY_CONDITION_PLACEMENT } from "./questions/memory-condition.ts";
 import { MEMORY_WRITE_PLACEMENT, type MemoryWriteState } from "./questions/memory-write.ts";
+import { ROUTINE_GATE_PLACEMENT, type RoutineGateState } from "./questions/routine-gate.ts";
 import type { Judge, JudgeOutcome, JudgeRequest, Questions } from "./types.ts";
 
 const NOTIFY = /\b(notif\w*|tell|alert|remind\w*|message)\b/i;
@@ -78,6 +79,15 @@ function devAnswers(placement: string, state: unknown): Record<string, unknown> 
   if (placement === MEMORY_WRITE_PLACEMENT) return memoryWriteAnswers(state as MemoryWriteState);
   if (placement === MEMORY_CONDITION_PLACEMENT) {
     return { matches: choiceAnswer(["as_said", "different", "unclear"], "as_said") };
+  }
+  if (placement === ROUTINE_GATE_PLACEMENT) {
+    const { event } = state as RoutineGateState;
+    return {
+      check: choiceAnswer(
+        ["meets", "does_not", "unclear"],
+        /keen|excited|happy|interested/i.test(event) ? "meets" : "does_not",
+      ),
+    };
   }
   return null;
 }

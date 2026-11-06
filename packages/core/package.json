@@ -18,6 +18,7 @@
     "./judge-sync-job-change": "./src/judge/questions/sync-job-change.ts",
     "./judge-memory-write": "./src/judge/questions/memory-write.ts",
     "./judge-memory-condition": "./src/judge/questions/memory-condition.ts",
+    "./judge-routine-gate": "./src/judge/questions/routine-gate.ts",
     "./adjudicator-agreement": "./src/adjudicator/agreement.ts",
     "./cron": "./src/automations/cron.ts"
   },

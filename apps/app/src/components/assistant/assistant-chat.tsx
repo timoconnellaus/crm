@@ -4,7 +4,7 @@
 // times, and Delete on each message), "Search this chat", and the composer.
 
 import { splitSpoken } from "@relationship-os/agent-voice/text";
-import type { AssistantContext, TranscriptItem } from "@relationship-os/core/client";
+import type { AssistantContext, RoutineWhy, TranscriptItem } from "@relationship-os/core/client";
 import { memorySaveOf } from "@relationship-os/core/client";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
@@ -40,6 +40,7 @@ import { useAssistant } from "./assistant-provider.tsx";
 import { ApprovalCard } from "./cards/approval.tsx";
 import { Card, CardHostContext } from "./cards/index.tsx";
 import { MemorySaved } from "./memory-line.tsx";
+import { WhyDot, WhyPanel } from "./routine-why.tsx";
 import { type ThreadView, useThread } from "./thread-provider.tsx";
 import { DictationButton, DictationStatus, useComposerDictation, VoiceBar } from "./voice.tsx";
 
@@ -81,7 +82,12 @@ function TestReport({ output }: { output: unknown }) {
 }
 
 /** Tools that make a card: the card is what the person sees, so their row is hidden. */
-const CARD_TOOLS = new Set(["show_card", "a2ui_produce"]);
+const CARD_TOOLS = new Set([
+  "show_card",
+  "a2ui_produce",
+  "offer_standing_help",
+  "offer_morning_briefing",
+]);
 
 /** What cards in the chat reach: the router, the thread and the page the person is on. */
 function ChatCardHost({ canApprove, children }: { canApprove: boolean; children: ReactNode }) {
@@ -206,34 +212,42 @@ function Meta({
   onDelete,
   align = "start",
   label,
+  why,
 }: {
   at?: string | undefined;
   seq?: number | undefined;
   onDelete?: ((seq: number) => void) | undefined;
   align?: "start" | "end";
   label: string;
+  /** A delivered message: the info dot, and the why panel it opens. */
+  why?: RoutineWhy | undefined;
 }) {
+  const [whyOpen, setWhyOpen] = useState(false);
   if (!at && seq === undefined) return null;
   return (
-    <div
-      className={cn(
-        "mt-1 flex items-center gap-1 text-xs text-muted-foreground",
-        align === "end" && "justify-end",
-      )}
-    >
-      {at && <time dateTime={at}>{timeLabel(at)}</time>}
-      {seq !== undefined && onDelete && (
-        <button
-          type="button"
-          className="rounded p-0.5 opacity-0 group-hover/msg:opacity-100 hover:text-foreground focus-visible:opacity-100"
-          aria-label={`Delete ${label}`}
-          data-testid="assistant-delete"
-          onClick={() => onDelete(seq)}
-        >
-          <Trash2Icon className="size-3" />
-        </button>
-      )}
-    </div>
+    <>
+      <div
+        className={cn(
+          "mt-1 flex items-center gap-1 text-xs text-muted-foreground",
+          align === "end" && "justify-end",
+        )}
+      >
+        {at && <time dateTime={at}>{timeLabel(at)}</time>}
+        {why && <WhyDot open={whyOpen} onToggle={() => setWhyOpen((open) => !open)} />}
+        {seq !== undefined && onDelete && (
+          <button
+            type="button"
+            className="rounded p-0.5 opacity-0 group-hover/msg:opacity-100 hover:text-foreground focus-visible:opacity-100"
+            aria-label={`Delete ${label}`}
+            data-testid="assistant-delete"
+            onClick={() => onDelete(seq)}
+          >
+            <Trash2Icon className="size-3" />
+          </button>
+        )}
+      </div>
+      {why && whyOpen && <WhyPanel why={why} />}
+    </>
   );
 }
 
@@ -324,7 +338,13 @@ export function Transcript({
                   <span className="sr-only">{name}: </span>
                   <Markdown>{shown || say || ""}</Markdown>
                   <SpokenLine say={shown ? say : null} item={item} />
-                  <Meta at={item.at} seq={item.seq} onDelete={onDelete} label={`${name}'s reply`} />
+                  <Meta
+                    at={item.at}
+                    seq={item.seq}
+                    onDelete={onDelete}
+                    label={`${name}'s reply`}
+                    why={item.why}
+                  />
                 </li>
               );
               break;
@@ -341,7 +361,13 @@ export function Transcript({
               row = (
                 <li className="group/msg" data-testid="assistant-card" {...seqAttr}>
                   <Card part={item.part} />
-                  <Meta at={item.at} seq={item.seq} onDelete={onDelete} label={`${name}'s card`} />
+                  <Meta
+                    at={item.at}
+                    seq={item.seq}
+                    onDelete={onDelete}
+                    label={`${name}'s card`}
+                    why={item.why}
+                  />
                 </li>
               );
               break;

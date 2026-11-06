@@ -83,6 +83,7 @@ export interface AutomationRow {
   paused_reason: string | null;
   paused_at: string | null;
   removed_at: string | null;
+  owner_user_id?: string | null;
 }
 
 export function parseSpec(json: string): AutomationManifest | null {
@@ -103,12 +104,13 @@ export function toDefinition(row: AutomationRow): AutomationDefinition | null {
     key: row.key,
     commit: row.commit_oid,
     spec,
+    ...(row.owner_user_id ? { ownerUserId: row.owner_user_id } : {}),
   };
 }
 
 /**
  * Enabled, live automations of the given trigger types (optionally on the given objects) whose
- * extension is active. Uses core_automations_trigger_idx: the partial index's predicate is
+ * extension is active, and personal routines. Uses core_automations_trigger_idx: the partial index's predicate is
  * repeated literally so the planner matches it.
  */
 export async function loadEnabledAutomations(
@@ -119,7 +121,7 @@ export async function loadEnabledAutomations(
   if (!triggerTypes.length) return [];
   let q = db
     .selectFrom("core_automations as a")
-    .innerJoin("core_extensions as e", "e.id", "a.extension_id")
+    .leftJoin("core_extensions as e", "e.id", "a.extension_id")
     .select([
       "a.id",
       "a.extension_id",
@@ -133,10 +135,12 @@ export async function loadEnabledAutomations(
       "a.paused_reason",
       "a.paused_at",
       "a.removed_at",
+      "a.owner_user_id",
     ])
     .where(sql<boolean>`a.enabled = 1 AND a.paused_reason IS NULL AND a.removed_at IS NULL`)
     .where("a.trigger_type", "in", jsonList([...triggerTypes]))
-    .where("e.status", "=", "active");
+    // A routine has no extension (ADR 0343).
+    .where(sql<boolean>`(e.status = 'active' OR a.scope = 'personal')`);
   if (objects) {
     if (!objects.length) return [];
     q = q.where("a.trigger_object", "in", jsonList([...new Set(objects)]));

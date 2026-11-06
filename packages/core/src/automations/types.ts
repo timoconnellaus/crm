@@ -167,6 +167,8 @@ export interface AutomationDefinition {
   key: string;
   commit: string | null;
   spec: AutomationManifest;
+  /** A personal routine's owner (ADR 0343): its conditions and "me" are theirs. */
+  ownerUserId?: string;
 }
 
 /** One run a source wants started. */
@@ -358,6 +360,14 @@ export interface AutomationHost {
   replayRun(runId: string): Promise<{ runId: string }>;
   /** Cancels a running or waiting run (terminates its Workflow). */
   cancelRun(runId: string): Promise<{ runId: string }>;
+}
+
+/** What the runner queues for ros-app to deliver (ADR 0343). Ids only: it reads the rest. */
+export interface RoutineDeliveryMessage {
+  v: 1;
+  routineId: string;
+  runId: string;
+  userId: string;
 }
 
 /** Workflow instance ids: at most 100 chars of [a-zA-Z0-9_-] (Workflows docs). */

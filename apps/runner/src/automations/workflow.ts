@@ -18,6 +18,7 @@ import { NonRetryableError } from "cloudflare:workflows";
 import type { AutomationEvent, AutomationJournalEntry } from "@relationship-os/sdk";
 import { Executor } from "../executor/executor.ts";
 import { type AutomationRunParams, reviewEventType } from "./dispatch.ts";
+import { checkRoutineRun, isRoutineRun, queueRoutineDelivery } from "./routine.ts";
 import {
   advanceRun,
   finishRun,
@@ -54,6 +55,24 @@ export class AutomationWorkflow extends WorkflowEntrypoint<Env, AutomationRunPar
       const started = await durable(step, "start", BOOKKEEPING, () => startRun(env, params));
       if ("stopped" in started) return { status: started.stopped };
       const runEvent = started.event as AutomationEvent;
+      // A routine has no extension code: its checks, then "message me in my chat" (ADR 0343).
+      if (isRoutineRun(params)) {
+        const checked = await durable(step, "checks", ADVANCE_RETRIES, () =>
+          checkRoutineRun(env, params),
+        );
+        if (checked.deliver) {
+          await durable(step, "deliver", BOOKKEEPING, () => queueRoutineDelivery(env, params));
+        }
+        await durable(step, "finish", BOOKKEEPING, () =>
+          finishRun(
+            env,
+            params.runId,
+            "completed",
+            checked.reason ? { reason: checked.reason } : {},
+          ),
+        );
+        return { status: "completed" };
+      }
       const journal: AutomationJournalEntry[] = [...(params.journal ?? [])];
 
       for (let i = 0; i < MAX_ADVANCES; i++) {

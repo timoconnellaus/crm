@@ -37,7 +37,11 @@
   // approval decisions; this Worker consumes them and starts runs. Failed batches retry, then go
   // to the dead-letter queue.
   "queues": {
-    "producers": [{ "binding": "AUTOMATION_EVENTS", "queue": "ros-automation-events" }],
+    "producers": [
+      { "binding": "AUTOMATION_EVENTS", "queue": "ros-automation-events" },
+      // A routine's messages (ADR 0343): ros-app consumes this and owns the person's thread.
+      { "binding": "ROUTINE_DELIVERY", "queue": "ros-routine-delivery" }
+    ],
     "consumers": [
       {
         "queue": "ros-automation-events",

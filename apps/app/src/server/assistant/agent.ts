@@ -22,9 +22,11 @@ import {
   assembleContext,
   attachCards,
   prefixHash as hashPrefix,
+  type MessagePart,
   type MessageVia,
   messagesFromResponse,
   messageText,
+  readableText,
   runTurn,
   SqliteMessageStore,
   type StepUsage,
@@ -65,6 +67,7 @@ import {
   describeAssistantResult,
   EMPTY_THREAD_MEMORY,
   errorForLog,
+  firstChatTail,
   foldPendingLines,
   type InvocationContext,
   invokeByName,
@@ -78,7 +81,10 @@ import {
   RateLimitedError,
   ROLES,
   type Role,
+  type RoutineDelivered,
+  type RoutineDelivery,
   rateLimit,
+  routineRunOf,
   scrubParts,
   scrubPattern,
   scrubText,
@@ -112,6 +118,7 @@ import {
   ThreadCompaction,
 } from "./compaction.ts";
 import { type AssistantMcp, connectAssistantMcp } from "./mcp-client.ts";
+import { deliverRoutineMessage } from "./routines.ts";
 import { recordSpeechUsage, voiceCallPlan } from "./voice.ts";
 
 export interface AssistantEnv extends OperationsEnv {
@@ -169,6 +176,9 @@ interface SocketState {
 
 /** Messages shown per window of the thread ("Show earlier messages" loads the next). */
 export const THREAD_WINDOW = 200;
+
+/** Model steps in a routine's short turn: a few reads, then the message. */
+const ROUTINE_TURN_STEPS = 8;
 
 /** Newest messages searched for the person's own words (they are cut to 4,000 characters anyway). */
 const PERSONS_WORDS_WINDOW = 200;
@@ -698,7 +708,88 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
    */
   async postCard(userId: string, part: A2uiPart): Promise<{ seq: number }> {
     this.#assertOwner(userId);
-    await this.#running?.done;
+    return this.#post(userId, [part]);
+  }
+
+  /**
+   * A routine's message (ADR 0343), from the runner's Workflow by way of the delivery queue, or
+   * from Test on My routines. ./routines.ts makes it; here is only what needs the object.
+   */
+  async deliverRoutine(userId: string, delivery: RoutineDelivery): Promise<RoutineDelivered> {
+    this.#assertOwner(userId);
+    const user = await this.#actingUser(userId);
+    const threadId = await this.#threadId(user);
+    return deliverRoutineMessage(
+      {
+        env: this.#env,
+        user,
+        threadId,
+        delivered: (runId) =>
+          this.#messages
+            .list({ limit: THREAD_WINDOW })
+            .some((m) => routineRunOf(m.parts) === runId),
+        post: (parts) => this.#post(userId, parts),
+        write: (prompt) => this.#routineTurn(user, threadId, prompt),
+      },
+      delivery,
+    );
+  }
+
+  /** A short model turn outside the chat: no history, read-only tools, nothing stored here. */
+  async #routineTurn(
+    user: ActingUser,
+    threadId: string,
+    text: string,
+  ): Promise<{ text: string; cards: A2uiPart[] }> {
+    const env = this.#env;
+    const db = createCrmDb(env.DB);
+    const ai = aiContextFor(env, db);
+    const models = ai.models?.chatModels ? await ai.models.chatModels("assistant.core") : [];
+    if (!models.length) throw new ThreadError(503, "AI is not configured for this deployment");
+    const mcp = await this.#connectTools(user, threadId, "", undefined, ["records:read"]);
+    try {
+      const settings = await loadGeneralSettings(db.query);
+      const memory = await memoryForTurn(db.query, user.id, { state: this.#memoryState() });
+      const assembled = await assembleContext({
+        prefix: {
+          instructions: this.#instructions(settings, user, mcp),
+          tools: mcp.tools,
+          memory: memory.block,
+          note: null,
+        },
+        history: [],
+        tail: [
+          ...assistantTail({ now: new Date().toISOString(), timezone: settings.timezone }),
+          ...memory.tail,
+        ],
+        text,
+        turn: 0,
+        via: "routine",
+      });
+      const cards = new Map<string, A2uiPart>();
+      const result = await runTurn<AssistantResultExtras>({
+        models,
+        system: assembled.system,
+        messages: assembled.messages,
+        tools: withCardText(mcp.tools),
+        emit: (event) => {
+          if (event.type === "tool-result" && event.card) cards.set(event.id, event.card);
+        },
+        describeResult: describeAssistantResult,
+        maxSteps: ROUTINE_TURN_STEPS,
+      });
+      if (result.status !== "done") {
+        throw new ThreadError(502, result.error ?? "The message could not be written");
+      }
+      return { text: result.text, cards: [...cards.values()] };
+    } finally {
+      await mcp.close();
+    }
+  }
+
+  /** Stores an assistant message outside a turn, once any running turn has finished. */
+  async #post(userId: string, parts: MessagePart[]): Promise<{ seq: number }> {
+    while (this.#running) await this.#running.done;
     const store = this.#messages;
     const turn =
       Math.max(
@@ -711,7 +802,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
       ) + 1;
     const now = new Date().toISOString();
     const [message] = store.append([
-      { turn, role: "assistant", via: "routine", parts: [part], createdAt: now },
+      { turn, role: "assistant", via: "routine", parts, createdAt: now },
     ]);
     this.ctx.storage.sql.exec(
       "INSERT INTO thread_turns (turn, status, started_at, finished_at) VALUES (?, 'done', ?, ?)",
@@ -727,9 +818,9 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
       "thread.finishTurn",
       {
         id: await this.#threadId(user),
-        preview: part.fallback,
+        preview: readableText({ parts }),
         unread,
-        refs: await conversationRefs([part]),
+        refs: await conversationRefs(parts),
       },
       { actor: "human", user, origin: { surface: "ui" }, db },
     );
@@ -879,6 +970,9 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
       postCard: async () => {
         throw new ThreadError(403, "A turn's cards come from its tool results");
       },
+      deliverRoutine: async () => {
+        throw new ThreadError(403, "The assistant cannot send itself a test");
+      },
       scrub: async (_userId, scrub) => {
         await this.scrub(scrub);
       },
@@ -891,6 +985,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
     threadId: string,
     personsWords: string,
     assistantTurn?: InvocationContext["assistantTurn"],
+    grantedPermissions?: InvocationContext["grantedPermissions"],
   ): Promise<AssistantMcp> {
     const env = this.#env;
     const extensionHost = extensionHostFor(env);
@@ -914,6 +1009,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
       assistantThreads: this.#localThreads(),
       personsWords,
       ...(assistantTurn ? { assistantTurn } : {}),
+      ...(grantedPermissions ? { grantedPermissions } : {}),
     };
     const caller: McpCaller = {
       context,
@@ -1069,6 +1165,9 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
         tail.push(...memory.tail);
         this.#setMeta("memory", JSON.stringify(memory.state));
         if (request.spoken) tail.push(spokenTail(request.spoken));
+        if (!store.list({ beforeSeq: running.userSeq, limit: 1 }).length) {
+          tail.push(firstChatTail());
+        }
         const assembled = await assembleContext({
           prefix: {
             instructions: this.#instructions(settings, user, mcp),

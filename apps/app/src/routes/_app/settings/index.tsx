@@ -17,6 +17,7 @@ import {
   PlugIcon,
   PlugZapIcon,
   PuzzleIcon,
+  RepeatIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
   SparklesIcon,
@@ -42,6 +43,7 @@ function Section({
   to?:
     | "/settings/approval-policy"
     | "/settings/assistant-memory"
+    | "/settings/assistant-routines"
     | "/settings/adjudicator"
     | "/settings/users"
     | "/settings/assignment-rules"
@@ -184,6 +186,12 @@ function SettingsPage() {
             title="What your assistant remembers"
             description="See, edit and pause what your assistant remembers, and the team's shared lines."
             to="/settings/assistant-memory"
+          />
+          <Section
+            icon={<RepeatIcon className="size-5" />}
+            title="My routines"
+            description="What your assistant does on its own: pause, edit, test or delete it."
+            to="/settings/assistant-routines"
           />
           <Section
             icon={<PlugIcon className="size-5" />}

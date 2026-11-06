@@ -192,7 +192,13 @@ export async function startRuns(
         object,
         ofObject.map((c) => c.record?.id as string),
         spec.conditions,
-        { userId: `extension:${(group[0] as RunCandidate).automation.extensionId}`, now },
+        {
+          // A routine's "me" is its owner (ADR 0343).
+          userId:
+            (group[0] as RunCandidate).automation.ownerUserId ??
+            `extension:${(group[0] as RunCandidate).automation.extensionId}`,
+          now,
+        },
       );
       for (const c of ofObject) {
         if (ok.has(c.record?.id as string)) kept.push(c);
@@ -386,14 +392,18 @@ export async function pauseAutomation(
   if (!paused.length) return false;
   console.warn(`automation ${automation.id} auto-paused: ${reason}`);
   try {
+    // A routine is its owner's business: they hear about it, and they resume it in My routines.
+    const owner = automation.ownerUserId;
     const plan = await notifyStatements(
       crm.query,
       {
-        to: [{ role: "admin" }],
+        to: owner ? [{ userId: owner }] : [{ role: "admin" }],
         type: "automation.paused",
         title: `“${automation.spec.label}” was paused`,
-        body: `${reason}. Resume it on the automation page once you have checked why.`,
-        link: { kind: "automation", automationId: automation.id },
+        body: owner
+          ? `${reason}. Resume it in Settings, under My routines.`
+          : `${reason}. Resume it on the automation page once you have checked why.`,
+        ...(owner ? {} : { link: { kind: "automation", automationId: automation.id } }),
         dedupeKey: `paused:${automation.id}:${now}`,
         source: { actor: "automation", automationId: automation.id },
       },

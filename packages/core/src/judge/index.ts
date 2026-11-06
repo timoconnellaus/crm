@@ -62,6 +62,7 @@ export function judgeFor(env: JudgeEnv, options: JudgeForOptions = {}): Judge {
   };
   return {
     provider: "jev",
+    isOn: placementOn,
     async ask<const Q extends Questions>(request: JudgeRequest<Q>): Promise<JudgeOutcome<Q>> {
       if (!(await placementOn(request.placement))) return { status: "unavailable", reason: "off" };
       return jev.ask(request);
