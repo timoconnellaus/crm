@@ -152,6 +152,9 @@
     // Hosted SaaS only (ADR 0250): the control plane's origin, for the signed deployment channel
     // (Settings → AI stores the customer's own keys through it). The key, ROS_CONTROL_KEY, is a
     // secret.
-    "ROS_CONTROL_URL": ""
+    "ROS_CONTROL_URL": "",
+    // The hosted plugin marketplace on a self-hosted deployment (ADR 0347), when set at setup. Its
+    // workspace token, ROS_MARKETPLACE_TOKEN, is a secret. Hosted deployments use the channel above.
+    "ROS_MARKETPLACE_URL": ""
   }
 }

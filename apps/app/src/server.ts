@@ -16,6 +16,7 @@ import { type AssistantHttpEnv, handleSocket, SOCKET_PATH } from "./server/assis
 import { handleRoutineDeliveries } from "./server/assistant/routines.ts";
 import { authorize } from "./server/identity.ts";
 import { createAppHandler } from "./server/mcp/handler.ts";
+import { runPluginCron } from "./server/plugins.ts";
 import { runBlobDeletionCron, runScheduledMaintenance } from "./server/purge.ts";
 import { handleSupportRoute, isSupportRoute } from "./server/support.ts";
 
@@ -55,8 +56,10 @@ export default {
       ctx.waitUntil(runEmbeddingCron(env));
       ctx.waitUntil(runAdjudicatorCron(env));
       ctx.waitUntil(runBlobDeletionCron(env));
+      ctx.waitUntil(runPluginCron(env, { updates: false }));
       return;
     }
     ctx.waitUntil(runScheduledMaintenance(env));
+    ctx.waitUntil(runPluginCron(env, { updates: true }));
   },
 } satisfies ExportedHandler<Env>;

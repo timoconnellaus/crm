@@ -2,6 +2,7 @@
 import {
   ActivityIcon,
   BellIcon,
+  BlocksIcon,
   BotIcon,
   Building2Icon,
   CheckSquareIcon,
@@ -35,6 +36,7 @@ export interface NavItem {
     | "/organisations"
     | "/tasks"
     | "/automations"
+    | "/plugins"
     | "/notifications"
     | "/activity"
     | "/approvals"
@@ -49,6 +51,7 @@ export interface NavItem {
     | "/settings/extensions"
     | "/settings/assignment-rules"
     | "/settings/automations"
+    | "/settings/plugins"
     | "/settings/integrations"
     | "/settings/ai"
     | "/settings/duplicates";
@@ -81,6 +84,12 @@ export const MAIN_NAV: NavItem[] = [
     label: "Automations",
     icon: WorkflowIcon,
     keywords: ["workflows", "triggers", "runs", "rules"],
+  },
+  {
+    to: "/plugins",
+    label: "Plugins",
+    icon: BlocksIcon,
+    keywords: ["marketplace", "skills", "install", "add-ons", "extensions"],
   },
   {
     to: "/approvals",

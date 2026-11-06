@@ -116,6 +116,9 @@ Options
                          (${Object.keys(ROLE_PRESETS).join(", ")}), a JSON file, inline JSON, or
                          default (the shipped Workers AI roles). Kept by upgrades; Settings → AI
                          overrides still win
+  --marketplace-url <u>  The hosted plugin marketplace's address (optional)
+  --marketplace-token <t> Its workspace token (or ROS_MARKETPLACE_TOKEN), stored on ros-app as
+                         ROS_MARKETPLACE_TOKEN. Leave both out to run without the marketplace.
   --ai-admin-token <t>   Settings → AI's token (or ROS_AI_ADMIN_TOKEN), stored on ros-app as
                          CLOUDFLARE_API_TOKEN; permissions in docs/deploying.md "In-app AI"
   --secret NAME=VALUE    a secret to set (repeatable); WORKER:NAME=VALUE for a gatekeeper's
@@ -547,6 +550,12 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
     deps.redactor.add(aiAdminToken);
     appSecrets.CLOUDFLARE_API_TOKEN = aiAdminToken;
   }
+  // The hosted plugin marketplace is optional here (ADR 0347): a workspace token from its operator.
+  const marketplaceToken = str(flags, "marketplace-token") ?? deps.env.ROS_MARKETPLACE_TOKEN;
+  if (marketplaceToken) {
+    deps.redactor.add(marketplaceToken);
+    appSecrets.ROS_MARKETPLACE_TOKEN = marketplaceToken;
+  }
   if (identity === "cloudflare-access") {
     for (const name of ["CF_ACCESS_TEAM_DOMAIN", "CF_ACCESS_AUD"]) {
       if (appSecrets[name] || appSet.includes(name)) continue;
@@ -579,6 +588,8 @@ async function install(flags: Flags, deps: Deps): Promise<number> {
   let vars: DeploymentState["vars"] = { ...(previous?.vars ?? {}) };
   if (identity !== "better-auth")
     vars[app.name] = { ...vars[app.name], IDENTITY_PROVIDER: identity };
+  const marketplaceUrl = str(flags, "marketplace-url");
+  if (marketplaceUrl) vars[app.name] = { ...vars[app.name], ROS_MARKETPLACE_URL: marketplaceUrl };
   if (modelRoles !== undefined) {
     // Per deployment, in the deployment state: upgrades keep it (ADR 0192).
     vars = withDeploymentVar(vars, manifest, MODEL_ROLES_VAR, modelRoles);

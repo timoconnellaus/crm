@@ -47,6 +47,7 @@ import { useEnrichAction } from "#/components/integrations/enrich-action";
 import { useMergeAction } from "#/components/merge/merge-action";
 import { faviconUrl } from "#/components/organisations/config";
 import { OrganisationDetailsCard } from "#/components/organisations/organisation-details-card";
+import { PluginRecordPanels } from "#/components/plugins/record-panels";
 import {
   OrganisationFamilyCard,
   OrganisationPeopleCard,
@@ -332,6 +333,7 @@ function OrganisationRecord({
         <>
           <OrganisationDetailsCard organisation={org} readOnly={deleted} />
           <RecordSummaryCard object="organisation" id={org.id} />
+          <PluginRecordPanels object="organisation" id={org.id} />
           {recordViews.panels}
           <RecordAutomationsCard object={"organisation"} id={org.id} />
           <ExtensionFieldsCards object="organisation" id={org.id} readOnly={deleted} />

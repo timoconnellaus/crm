@@ -2,6 +2,7 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+  BlocksIcon,
   BellIcon,
   BookmarkIcon,
   ChevronRightIcon,
@@ -44,6 +45,7 @@ function Section({
     | "/settings/approval-policy"
     | "/settings/assistant-memory"
     | "/settings/assistant-routines"
+    | "/settings/plugins"
     | "/settings/adjudicator"
     | "/settings/users"
     | "/settings/assignment-rules"
@@ -193,6 +195,14 @@ function SettingsPage() {
             description="What your assistant does on its own: pause, edit, test or delete it."
             to="/settings/assistant-routines"
           />
+          {isAdmin && (
+            <Section
+              icon={<BlocksIcon className="size-5" />}
+              title="Plugins"
+              description="Install for a team and decide who can use the marketplace."
+              to="/settings/plugins"
+            />
+          )}
           <Section
             icon={<PlugIcon className="size-5" />}
             title="Connected apps"

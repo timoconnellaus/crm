@@ -19,6 +19,8 @@ import {
   type SerializedOperationError,
   toOperationError,
   withCodeModeRateLimit,
+  type MarketplaceEnv,
+  marketplaceClientFor,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { getAgentByName } from "agents";
@@ -29,7 +31,7 @@ import { deleteGrantTokens } from "./mcp/handler.ts";
 import { runner } from "./runner.ts";
 import { updaterRuntimeFor } from "./updater.ts";
 
-export interface OperationsEnv extends AiAppEnv {
+export interface OperationsEnv extends AiAppEnv, MarketplaceEnv {
   DB: D1Database;
   /** Deploy-time approval floor (ADR 0011), JSON. Empty means none. */
   APPROVAL_FLOOR?: string;
@@ -216,6 +218,7 @@ export async function runOperation(
     const integrations = integrationRuntimeFor(env, appOrigin);
     const blobs = blobStoreFor(env);
     const assistantThreads = assistantThreadsFor(env);
+    const marketplace = marketplaceClientFor(env);
     const ctx: InvocationContext = {
       ...(integrations ? { integrations } : {}),
       ...(blobs ? { blobs } : {}),
@@ -227,6 +230,7 @@ export async function runOperation(
       ...(extensionHost ? { extensionHost } : {}),
       ...automationWiring(env),
       ...(assistantThreads ? { assistantThreads } : {}),
+      ...(marketplace ? { marketplace } : {}),
       updater: updaterRuntimeFor(env),
       ...aiContextFor(env, db),
       approvalExpiryDays: Number.parseInt(env.APPROVAL_EXPIRY_DAYS ?? "", 10) || undefined,

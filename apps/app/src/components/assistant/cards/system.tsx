@@ -202,15 +202,57 @@ export function PluginInstallComponent({ props }: RendererProps<"pluginInstall">
             ))}
           </ul>
         )}
+        {props.routines.length > 0 && (
+          <div className="grid gap-1 text-[13px]">
+            <div className="text-xs font-medium text-muted-foreground">
+              Things I'll do on my own
+            </div>
+            {props.routines.map((routine) => (
+              <div key={routine.name} className="min-w-0 break-words">
+                <div>
+                  {routine.name}, {routine.when}
+                </div>
+                {routine.tried && (
+                  <div className="text-xs text-muted-foreground">{routine.tried}</div>
+                )}
+                {routine.note && (
+                  <div className="text-xs text-amber-700 dark:text-amber-300">
+                    Jev: {routine.note}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {props.checks.length > 0 && (
+          <ul>
+            {props.checks.map((check) => (
+              <Check key={check.text} passed={check.passed}>
+                {check.text}
+              </Check>
+            ))}
+          </ul>
+        )}
         <Facts
           items={[
             ...(props.scopes.length ? [{ label: "Access", value: props.scopes.join(", ") }] : []),
             ...(props.needs.length ? [{ label: "Needs", value: props.needs.join(", ") }] : []),
+            ...(props.swaps.length ? [{ label: "Swapped", value: props.swaps.join(", ") }] : []),
           ]}
         />
       </Body>
       <ActionFooter actions={props.actions} />
     </Frame>
+  );
+}
+
+/** A quiet line, the same weight as "Saved to memory". */
+export function PluginUpdatedComponent({ props }: RendererProps<"pluginUpdated">) {
+  return (
+    <div className="grid gap-1 text-xs text-muted-foreground" data-testid="plugin-updated">
+      <span className="break-words">{props.text}</span>
+      <ActionFooter actions={props.actions} />
+    </div>
   );
 }
 
@@ -226,6 +268,7 @@ export function PluginUpdateComponent({ props }: RendererProps<"pluginUpdate">) 
     <Frame type="pluginUpdate">
       <Header title={`Update for ${props.name}`} />
       <Body>
+        {props.note && <p className="break-words text-[13px]">{props.note}</p>}
         {props.upstream.length > 0 && (
           <Facts items={[{ label: "Upstream", value: props.upstream.join("; ") }]} />
         )}

@@ -389,6 +389,41 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
       ],
     });
   }
+  if (/\binstall follow-through\b/i.test(text)) {
+    return withReasoning({
+      toolCalls: [{ name: "offer_plugin", arguments: { plugin: "follow-through" } }],
+    });
+  }
+  if (/\bsave what we just did as a skill\b/i.test(text)) {
+    return withReasoning({
+      toolCalls: [
+        {
+          name: "offer_plugin",
+          arguments: {
+            draft: {
+              id: "saved-skill",
+              name: "Weekly check-in",
+              version: "0.1.0",
+              publisher: "You",
+              description: "What you just did, as a skill you can run again.",
+              items: [
+                {
+                  kind: "skill",
+                  key: "check-in",
+                  label: "Weekly check-in",
+                  body: {
+                    name: "saved.checkIn",
+                    description: "Check in on what is open",
+                    instructions: "Read what is open this week.\nSay what needs doing first.",
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+    });
+  }
   if (/\bshow (?:me )?my overdue tasks\b/i.test(text)) {
     return withReasoning({
       toolCalls: [{ name: "a2ui_produce", arguments: { producer: "tasks.overdueCard" } }],

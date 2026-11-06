@@ -21,6 +21,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  BlocksIcon,
   BoxIcon,
   Building2Icon,
   CheckSquareIcon,
@@ -30,6 +31,7 @@ import {
   MessageSquareTextIcon,
   MonitorIcon,
   MoonIcon,
+  SearchIcon,
   SunIcon,
   UploadIcon,
   UserIcon,
@@ -37,6 +39,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { MAIN_NAV, type NavItem, NOTIFICATIONS_NAV, SETTINGS_NAV } from "#/lib/nav";
+import { callOp } from "#/lib/operations";
 import {
   type HighlightSegment,
   type SearchAdapter,
@@ -44,6 +47,7 @@ import {
   searchAdapter,
 } from "#/lib/search-adapter";
 import type { CreateKind } from "./app-commands.tsx";
+import { useOptionalAssistant } from "./assistant/assistant-provider.tsx";
 import { type Theme, useTheme } from "./theme.tsx";
 
 export interface CommandPaletteProps {
@@ -151,6 +155,14 @@ export function CommandPalette({
   const { setTheme } = useTheme();
   const [query, setQuery] = useState("");
   const debounced = useDebounced(query.trim(), 200);
+  const assistant = useOptionalAssistant();
+  const contributions = useQuery({
+    queryKey: ["plugin.contributions", "palette"],
+    queryFn: () => callOp("plugin.contributions", {}),
+    enabled: open,
+    staleTime: 60_000,
+    retry: false,
+  });
 
   useEffect(() => {
     if (!open) setQuery("");
@@ -242,8 +254,27 @@ export function CommandPalette({
     },
   ];
 
+  const fromPlugins: PaletteCommand[] = [
+    ...(contributions.data?.quickActions ?? []).map((a) => ({
+      id: `plugin:${a.key}`,
+      label: a.label,
+      icon: BlocksIcon,
+      run: close(() => {
+        if (a.href) navigate({ href: a.href });
+        else assistant?.ask({ prompt: a.prompt ?? "" });
+      }),
+    })),
+    ...(contributions.data?.savedSearches ?? []).map((s) => ({
+      id: `plugin:${s.key}`,
+      label: s.label,
+      icon: SearchIcon,
+      keywords: ["search"],
+      run: () => setQuery(s.query),
+    })),
+  ];
   const groups: [string, PaletteCommand[]][] = [
     ["Create", create.filter((c) => matches(c, query))],
+    ["From your plugins", fromPlugins.filter((c) => matches(c, query))],
     ["Navigate", nav.filter((c) => matches(c, query))],
     ["Preferences", prefs.filter((c) => matches(c, query))],
   ];

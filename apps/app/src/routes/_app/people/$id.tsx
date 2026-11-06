@@ -37,6 +37,7 @@ import { ExtensionFieldsCards } from "#/components/fields/fields-card";
 import { useEnrichAction } from "#/components/integrations/enrich-action";
 import { useMergeAction } from "#/components/merge/merge-action";
 import { PersonDetailsCard } from "#/components/people/person-details-card";
+import { PluginRecordPanels } from "#/components/plugins/record-panels";
 import {
   type ActivityType,
   type AffiliationItem,
@@ -296,6 +297,7 @@ function PersonRecord({
         side={
           <>
             <PersonDetailsCard person={person} readOnly={deleted} />
+            <PluginRecordPanels object="person" id={person.id} />
             <RecordSummaryCard object="person" id={person.id} />
             {recordViews.panels}
             <RecordAutomationsCard object={"person"} id={person.id} />

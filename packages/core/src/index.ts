@@ -117,6 +117,7 @@ export * from "./operations/plugin.ts";
 export * from "./plugins/erase.ts";
 export * from "./plugins/first-party.ts";
 export * from "./plugins/kinds.ts";
+export * from "./plugins/marketplace-client.ts";
 export * from "./plugins/resolve.ts";
 export * from "./plugins/sources.ts";
 export * from "./operations/activity.ts";

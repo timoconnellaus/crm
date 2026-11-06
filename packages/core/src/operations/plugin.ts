@@ -45,7 +45,7 @@ import { defineOperation, type HandlerContext } from "../operation.ts";
 import { adapt, assertAdaptations, childrenOf, copyState, type CopyState, currentItems, holdersOf, moveTo, needStatus, normalise, proposeExtensions, queueInstallRow, queueNeedStates, queueNewCopy, queueRemoveCopy, sameItems, upstreamOf } from "../plugins/engine.ts";
 import { FIRST_PARTY_PLUGINS } from "../plugins/first-party.ts";
 import { EXTENSION_KINDS, itemName, pluginKinds, } from "../plugins/kinds.ts";
-import { MATERIALISERS, targetsOf } from "../plugins/materialise.ts";
+import { createTarget, MATERIALISERS, targetsOf } from "../plugins/materialise.ts";
 import { comingNames, installCard, previewPlugin } from "../plugins/preview.ts";
 import { pluginSkill } from "../plugins/resolve.ts";
 import { locate, localListings, MARKETPLACE_MODES, type MarketplaceMode, marketplaceMode, PLUGIN_MARKETPLACE_SETTING, PLUGIN_SOURCES } from "../plugins/sources.ts";
@@ -1478,6 +1478,63 @@ export const pluginUninstall = defineOperation({
   },
 });
 
+export const pluginSyncMembers = defineOperation({
+  name: "plugin.syncMembers",
+  description:
+    "Bring a role's install up to date with who has that role: someone who joined gets their copy " +
+    "or, for a locked plugin, what it makes. Called by the update check.",
+  input: z.object({ id: installId }),
+  output: z.object({ added: z.number() }),
+  permission: "records:read",
+  risk: "write",
+  bookkeeping: true,
+  actors: ["automation"],
+  mcp: { expose: false },
+  async handler(input, ctx) {
+    const install = await loadInstall(ctx.db, input.id);
+    if (!install) throw new NotFoundError("plugin", input.id);
+    if (install.scope !== "role") return { added: 0 };
+    const people = await holdersOf(ctx.db, install);
+    let added = 0;
+    if (membersGetCopies(install)) {
+      const children = await Promise.all(
+        (await childrenOf(ctx.db, install.id)).map((id) => loadInstall(ctx.db, id)),
+      );
+      const held = new Set(children.map((c) => c?.ownerUserId));
+      for (const member of people.filter((p) => !held.has(p))) {
+        await queueNewCopy(ctx, {
+          manifest: install.manifest,
+          fingerprint: install.row.fingerprint,
+          source: install.row.source,
+          scope: "personal",
+          ownerUserId: member,
+          locked: false,
+          parentInstallId: install.id,
+          adaptations: install.adaptations,
+        });
+        added += 1;
+      }
+      return { added };
+    }
+    const targets = await targetsOf(ctx.db, install.id);
+    const items = await itemsOf(ctx.db, [install.id]);
+    for (const person of people) {
+      for (const item of items) {
+        if (!MATERIALISERS[item.kind]?.perPerson(install.scope)) continue;
+        if (targets.some((t) => t.item_key === item.key && t.holder_user_id === person)) continue;
+        await createTarget(ctx, install.id, {
+          item,
+          holder: person,
+          installedBy: install.row.installed_by,
+          waiting: null,
+        });
+        added += 1;
+      }
+    }
+    return { added };
+  },
+});
+
 export const pluginCheckNeeds = defineOperation({
   name: "plugin.checkNeeds",
   description:
@@ -1809,6 +1866,7 @@ export const pluginOperations = [
   pluginDetach,
   pluginReattach,
   pluginUninstall,
+  pluginSyncMembers,
   pluginCheckNeeds,
   pluginAcceptPreset,
   pluginPublish,
