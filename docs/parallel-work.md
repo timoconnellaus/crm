@@ -22,6 +22,7 @@ commit**, by editing this table. Use the next free block. Unused numbers in a bl
 | K | 0320–0329 | 0300–0309 (free) | Stage 16, Duplicates (migrations only) | specced |
 | L | 0330–0339 | 0320–0329 | Erase completeness (every store) | in flight |
 | M | 0340–0349 | 0330–0339 | Self-hosted Workers AI over REST (no prompt logging); narrower organisation erase (ADR 0330 used; no migrations) | merged |
+| N | 0350–0379 | 0340–0359 | Stage 17, One proactive assistant (ADRs 0340–0351 used by the spec) | specced |
 
 Add more blocks of ten as needed. `CORE_SCHEMA_VERSION` is the highest migration number on `main`;
 when you merge `main`, keep the larger value.
@@ -37,6 +38,7 @@ Avoid these unless your build is the one named, because another build is changin
 | `packages/core/src/ai/roles.ts`, `ai/client.ts`, hosted provisioning in `packages/release`, `apps/control` AI metering | Hosted platform AI |
 | `person.erase`, `organisation.erase`, `records/erase.ts`, `assistant/erase.ts`, sync ingest's suppression check | Erase completeness |
 | Visibility and permissions anywhere | Stage 14, once it starts |
+| `packages/agent-*`, `apps/app/src/server/assistant/`, the assistant UI (sidebar, `/assistant`, settings pages for memory, routines, agents, plugins and voice) | Stage 17 |
 
 Remove a row when its build merges.
 
