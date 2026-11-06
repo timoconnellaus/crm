@@ -42,6 +42,90 @@ export function compactionBoundary(
   return boundary;
 }
 
+/** Where a compaction would cut, and how much of the history stays. */
+export interface CompactionCut {
+  /** Messages at or before this seq go into the note. */
+  boundary: number;
+  /** Characters of the messages that stay. */
+  keptChars: number;
+}
+
+/** The cut that keeps the newest `keep` exchanges; null when nothing is older than them. */
+export function compactionCut(
+  messages: readonly ThreadMessage[],
+  keep: number = KEEP_EXCHANGES,
+): CompactionCut | null {
+  const boundary = compactionBoundary(messages, keep);
+  if (boundary === null) return null;
+  let keptChars = 0;
+  for (const m of messages) if (m.seq > boundary) keptChars += messageChars(m);
+  return { boundary, keptChars };
+}
+
+/**
+ * The cut for a compaction the ceiling forced. Normally the last `KEEP_EXCHANGES` stay, but a few
+ * huge exchanges can fill the window on their own, so this keeps fewer until the compacted context
+ * fits under the ceiling, down to the newest exchange alone. Null when there is one exchange only.
+ */
+export function ceilingCut(
+  messages: readonly ThreadMessage[],
+  fits: (cut: CompactionCut) => boolean,
+): CompactionCut | null {
+  let last: CompactionCut | null = null;
+  for (let keep = KEEP_EXCHANGES; keep >= 1; keep--) {
+    const cut = compactionCut(messages, keep);
+    if (!cut) continue;
+    if (fits(cut)) return cut;
+    last = cut;
+  }
+  return last;
+}
+
+/**
+ * A planner decision whose following turns are still being counted, so that predicted and actual
+ * cost can be compared (spec W2, "Review data").
+ */
+export interface OpenDecision {
+  id: string;
+  /** Close after this many turns: the decision's horizon, rounded up. */
+  target: number;
+  turns: number;
+  cost: number;
+}
+
+/** What the following turns of a decision actually cost. */
+export interface DecisionActual {
+  id: string;
+  turns: number;
+  cost: number;
+}
+
+/**
+ * Adds spending to every open decision, and closes those that reached their horizon. `countsTurn`
+ * is false for a compaction's summary call, which is a cost of the option taken, not a turn. When
+ * the cost is unknown the open decisions are dropped: a partial sum would read as a cheap turn.
+ */
+export function advanceDecisions(
+  open: readonly OpenDecision[],
+  cost: number | null,
+  countsTurn: boolean,
+): { open: OpenDecision[]; closed: DecisionActual[] } {
+  if (cost === null) return { open: [], closed: [] };
+  const stillOpen: OpenDecision[] = [];
+  const closed: DecisionActual[] = [];
+  for (const decision of open) {
+    const next = {
+      ...decision,
+      turns: decision.turns + (countsTurn ? 1 : 0),
+      cost: decision.cost + cost,
+    };
+    if (next.turns >= next.target) {
+      closed.push({ id: next.id, turns: next.turns, cost: next.cost });
+    } else stillOpen.push(next);
+  }
+  return { open: stillOpen, closed };
+}
+
 /** The last request made on a prefix: what the next request's cache observation compares with. */
 export interface LastRequest {
   provider: string;

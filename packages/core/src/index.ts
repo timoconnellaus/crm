@@ -9,6 +9,7 @@ export * from "./ai/embedding.ts";
 export * from "./ai/hosted-admin.ts";
 export * from "./ai/hybrid.ts";
 export * from "./ai/summaries.ts";
+export * from "./ai/cache-review.ts";
 export * from "./ai/usage.ts";
 export * from "./ai/vectors.ts";
 export * from "./ai/workers-ai-rest.ts";

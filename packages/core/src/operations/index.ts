@@ -8,6 +8,7 @@ import { adjudicatorOperations } from "./adjudicator.ts";
 import { affiliationOperations } from "./affiliation.ts";
 import { aiOperations } from "./ai.ts";
 import { approvalOperations } from "./approval.ts";
+import { aiCacheOperations } from "./ai-cache.ts";
 import { assistantOperations } from "./assistant.ts";
 import { auditOperations } from "./audit.ts";
 import { automationOperations } from "./automation.ts";
@@ -89,6 +90,7 @@ export const coreOperations = [
   ...notificationOperations,
   ...notificationDeliveryOperations,
   ...assistantOperations,
+  ...aiCacheOperations,
   ...planOperations,
   ...supportOperations,
   ...erasureOperations,

@@ -59,6 +59,11 @@ export interface TurnInput<X extends object = Record<never, never>> {
   describeResult?: (output: unknown, isError: boolean) => X | undefined;
   /** Model steps per turn (each step may call tools). */
   maxSteps?: number;
+  /**
+   * `none` sends the tools (so the request keeps the cached prefix) but forbids calling them: a
+   * compaction's summary call (ADR 0341).
+   */
+  toolChoice?: "none";
   signal?: AbortSignal;
 }
 
@@ -191,6 +196,7 @@ async function attemptTurn<X extends object>(
     maxRetries: 1,
     ...(model.providerOptions ? { providerOptions: model.providerOptions } : {}),
     ...(model.headers ? { headers: model.headers } : {}),
+    ...(input.toolChoice ? { toolChoice: input.toolChoice } : {}),
     ...(input.signal ? { abortSignal: input.signal } : {}),
     // Raw chunks carry usage fields the SDK does not map (DeepSeek's prompt_cache_hit_tokens).
     includeRawChunks: true,
