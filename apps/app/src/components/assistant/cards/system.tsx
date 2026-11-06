@@ -180,9 +180,7 @@ export function PluginInstallComponent({ props }: RendererProps<"pluginInstall">
         )}
         <Facts
           items={[
-            ...(props.scopes.length
-              ? [{ label: "Access", value: props.scopes.join(", ") }]
-              : []),
+            ...(props.scopes.length ? [{ label: "Access", value: props.scopes.join(", ") }] : []),
             ...(props.needs.length ? [{ label: "Needs", value: props.needs.join(", ") }] : []),
           ]}
         />
@@ -238,7 +236,9 @@ export function ConnectionNeededComponent({ props }: RendererProps<"connectionNe
       <Body>
         <p className="break-words text-[13px]">{props.reason}</p>
       </Body>
-      <ActionFooter actions={props.connect ? [{ style: "primary", ...props.connect }] : undefined} />
+      <ActionFooter
+        actions={props.connect ? [{ style: "primary", ...props.connect }] : undefined}
+      />
     </Frame>
   );
 }

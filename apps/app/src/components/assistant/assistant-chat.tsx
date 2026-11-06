@@ -205,96 +205,107 @@ export function Transcript({
   before?: ReactNode;
 }) {
   let lastDay = "";
+  // A card keeps its key when the stored thread replaces the streamed one, so it keeps what the
+  // person did to it (a ticked task). Its seq is new then; its place in the turn is not.
+  const cardsInTurn = new Map<number, number>();
+  const cardKey = (turn: number) => {
+    const n = cardsInTurn.get(turn) ?? 0;
+    cardsInTurn.set(turn, n + 1);
+    return `card-${turn}-${n}`;
+  };
   return (
     <ChatCardHost canApprove={canApprove}>
-    <ol className="space-y-4" aria-live="polite" data-testid="assistant-transcript">
-      {before && <li>{before}</li>}
-      {items.map((item, index) => {
-        const key = `${item.kind}-${item.turn}-${item.seq ?? `i${index}`}`;
-        const day = item.at ? dayLabel(item.at) : "";
-        const divider =
-          day && day !== lastDay ? (
-            <li
-              className="text-center text-xs font-medium text-muted-foreground"
-              data-testid="assistant-day"
-            >
-              {day}
-            </li>
-          ) : null;
-        if (day) lastDay = day;
-        const seqAttr = item.seq !== undefined ? { "data-seq": item.seq } : {};
-        let row: ReactNode = null;
-        switch (item.kind) {
-          case "user":
-            row = (
+      <ol className="space-y-4" aria-live="polite" data-testid="assistant-transcript">
+        {before && <li>{before}</li>}
+        {items.map((item, index) => {
+          const key =
+            item.kind === "card"
+              ? cardKey(item.turn)
+              : `${item.kind}-${item.turn}-${item.seq ?? `i${index}`}`;
+          const day = item.at ? dayLabel(item.at) : "";
+          const divider =
+            day && day !== lastDay ? (
               <li
-                className="group/msg flex flex-col items-end"
-                data-testid="assistant-user"
-                {...seqAttr}
+                className="text-center text-xs font-medium text-muted-foreground"
+                data-testid="assistant-day"
               >
-                <div className="max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm whitespace-pre-wrap text-primary-foreground">
-                  {item.text}
-                </div>
-                <Meta
-                  at={item.at}
-                  seq={item.seq}
-                  onDelete={onDelete}
-                  align="end"
-                  label="your message"
-                />
+                {day}
               </li>
-            );
-            break;
-          case "assistant":
-            row = (
-              <li className="group/msg" data-testid="assistant-reply" {...seqAttr}>
-                <span className="sr-only">{name}: </span>
-                <Markdown>{item.text}</Markdown>
-                <Meta at={item.at} seq={item.seq} onDelete={onDelete} label={`${name}'s reply`} />
-              </li>
-            );
-            break;
-          case "tool":
-            row =
-              CARD_TOOLS.has(item.tool) && !item.isError ? null : (
-                <li {...seqAttr}>
-                  <ToolItem item={item} />
+            ) : null;
+          if (day) lastDay = day;
+          const seqAttr = item.seq !== undefined ? { "data-seq": item.seq } : {};
+          let row: ReactNode = null;
+          switch (item.kind) {
+            case "user":
+              row = (
+                <li
+                  className="group/msg flex flex-col items-end"
+                  data-testid="assistant-user"
+                  {...seqAttr}
+                >
+                  <div className="max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm whitespace-pre-wrap text-primary-foreground">
+                    {item.text}
+                  </div>
+                  <Meta
+                    at={item.at}
+                    seq={item.seq}
+                    onDelete={onDelete}
+                    align="end"
+                    label="your message"
+                  />
                 </li>
               );
-            break;
-          case "card":
-            row = (
-              <li className="group/msg" data-testid="assistant-card" {...seqAttr}>
-                <Card part={item.part} />
-                <Meta at={item.at} seq={item.seq} onDelete={onDelete} label={`${name}'s card`} />
-              </li>
-            );
-            break;
-          case "error":
-            row = (
-              <li className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-sm text-destructive">
-                <CircleAlertIcon className="mt-0.5 size-4 shrink-0" />
-                {item.message}
-              </li>
-            );
-            break;
-          default:
-            row = null;
-        }
-        return (
-          <Fragment key={key}>
-            {divider}
-            {row}
-          </Fragment>
-        );
-      })}
-      {running && (
-        <li className="flex items-center gap-2 text-xs text-muted-foreground">
-          <LoaderCircleIcon className="size-3 animate-spin" />
-          {thinking ? `${name} is thinking…` : `${name} is working…`}
-        </li>
-      )}
-    </ol>
+              break;
+            case "assistant":
+              row = (
+                <li className="group/msg" data-testid="assistant-reply" {...seqAttr}>
+                  <span className="sr-only">{name}: </span>
+                  <Markdown>{item.text}</Markdown>
+                  <Meta at={item.at} seq={item.seq} onDelete={onDelete} label={`${name}'s reply`} />
+                </li>
+              );
+              break;
+            case "tool":
+              row =
+                CARD_TOOLS.has(item.tool) && !item.isError ? null : (
+                  <li {...seqAttr}>
+                    <ToolItem item={item} />
+                  </li>
+                );
+              break;
+            case "card":
+              row = (
+                <li className="group/msg" data-testid="assistant-card" {...seqAttr}>
+                  <Card part={item.part} />
+                  <Meta at={item.at} seq={item.seq} onDelete={onDelete} label={`${name}'s card`} />
+                </li>
+              );
+              break;
+            case "error":
+              row = (
+                <li className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-sm text-destructive">
+                  <CircleAlertIcon className="mt-0.5 size-4 shrink-0" />
+                  {item.message}
+                </li>
+              );
+              break;
+            default:
+              row = null;
+          }
+          return (
+            <Fragment key={key}>
+              {divider}
+              {row}
+            </Fragment>
+          );
+        })}
+        {running && (
+          <li className="flex items-center gap-2 text-xs text-muted-foreground">
+            <LoaderCircleIcon className="size-3 animate-spin" />
+            {thinking ? `${name} is thinking…` : `${name} is working…`}
+          </li>
+        )}
+      </ol>
     </ChatCardHost>
   );
 }

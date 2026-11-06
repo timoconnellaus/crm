@@ -284,7 +284,9 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
                     type: "card",
                     title: subject,
                     children: [{ type: "text", text: `A card about ${subject}.` }],
-                    actions: [{ kind: "reply", label: "Tell me more", text: `More about ${subject}` }],
+                    actions: [
+                      { kind: "reply", label: "Tell me more", text: `More about ${subject}` },
+                    ],
                   },
             },
           },

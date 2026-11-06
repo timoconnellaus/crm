@@ -306,7 +306,7 @@ function ExtensionRelationEditor({
   );
 }
 
-export function UserEditor({
+function UserEditor({
   value,
   onChange,
   id,

@@ -35,6 +35,7 @@ import {
   CODE_TIMEOUT_MS,
   codeWorkerCode,
 } from "../extensions/code-mode.ts";
+import { buildProducer, producerWorkerCode, producerWorkerId } from "../extensions/producers.ts";
 import { recordRun } from "../extensions/runs.ts";
 import { type BuildEnv, prepare, workspaceStub } from "./build-cache.ts";
 import type { CodeModeGate } from "./code-gate.ts";
@@ -47,11 +48,6 @@ import {
   type RunState,
 } from "./host.ts";
 import { extensionWorkerCode, manifestWorkerId, moduleSet, toolWorkerId } from "./worker-code.ts";
-import {
-  buildProducer,
-  producerWorkerCode,
-  producerWorkerId,
-} from "../extensions/producers.ts";
 
 /** Consecutive failed runs that quarantine an extension (ADR 0025). */
 export const QUARANTINE_AFTER = 3;

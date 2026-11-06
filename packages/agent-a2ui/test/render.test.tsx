@@ -37,7 +37,9 @@ describe("A2uiView", () => {
   });
 
   it("shows the fallback for a card that was invalid when stored", () => {
-    const out = html(prepareCard({ a2ui: 1, root: { type: "nope" } }, { source: "model", text: "Plain words" }));
+    const out = html(
+      prepareCard({ a2ui: 1, root: { type: "nope" } }, { source: "model", text: "Plain words" }),
+    );
     expect(out).toContain("Plain words");
     expect(out).not.toContain("nope");
   });
@@ -94,7 +96,10 @@ describe("A2uiView", () => {
 describe("action input", () => {
   it("merges field values into the fixed input, dotted names into objects", () => {
     expect(
-      mergeInput({ object: "deals.deal", values: { stage: "a" } }, { "values.name": "Pilot", note: "x" }),
+      mergeInput(
+        { object: "deals.deal", values: { stage: "a" } },
+        { "values.name": "Pilot", note: "x" },
+      ),
     ).toEqual({ object: "deals.deal", values: { stage: "a", name: "Pilot" }, note: "x" });
   });
 
@@ -113,6 +118,12 @@ describe("action input", () => {
   it("turns a form's submit into an operation action", () => {
     expect(
       submitAction({ label: "Save", operation: "task.create", input: { a: 1 }, done: "Saved" }),
-    ).toEqual({ kind: "operation", label: "Save", operation: "task.create", input: { a: 1 }, done: "Saved" });
+    ).toEqual({
+      kind: "operation",
+      label: "Save",
+      operation: "task.create",
+      input: { a: 1 },
+      done: "Saved",
+    });
   });
 });

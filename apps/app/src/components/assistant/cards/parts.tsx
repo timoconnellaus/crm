@@ -73,7 +73,9 @@ export function Body({ children, className }: { children: ReactNode; className?:
 }
 
 export function Footer({ children }: { children: ReactNode }) {
-  return <footer className="flex flex-wrap items-center gap-2 border-t px-3 py-2.5">{children}</footer>;
+  return (
+    <footer className="flex flex-wrap items-center gap-2 border-t px-3 py-2.5">{children}</footer>
+  );
 }
 
 /** Rows of a list inside a card. */
@@ -86,7 +88,9 @@ export function Rows({ children, label }: { children: ReactNode; label?: string 
 }
 
 export function Row({ children, className }: { children: ReactNode; className?: string }) {
-  return <li className={cn("flex min-w-0 items-center gap-2.5 px-3 py-2", className)}>{children}</li>;
+  return (
+    <li className={cn("flex min-w-0 items-center gap-2.5 px-3 py-2", className)}>{children}</li>
+  );
 }
 
 export function RowText({ title, sub }: { title: ReactNode; sub?: ReactNode }) {

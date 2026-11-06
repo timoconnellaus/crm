@@ -98,10 +98,11 @@ test("the model's card draws; an invalid one shows its words; both are in the th
   );
 
   // Stored, not just streamed.
-  await page.reload();
-  const again = await openPanel(page);
-  await expect(again.locator(`[data-a2ui="card"]`, { hasText: token }).last()).toBeVisible();
-  await expect(again.getByTestId("a2ui-fallback").last()).toContainText(`Plain words about ${token}.`);
+  await open(page, "/assistant");
+  await expect(page.locator(`[data-a2ui="card"]`, { hasText: token }).first()).toBeVisible();
+  await expect(
+    page.getByTestId("a2ui-fallback").filter({ hasText: `Plain words about ${token}.` }).first(),
+  ).toBeVisible();
 });
 
 test("a saved producer draws a card, and its checkbox completes the task", async ({ page }) => {
@@ -115,12 +116,21 @@ test("a saved producer draws a card, and its checkbox completes the task", async
   await expect(card).toContainText("Overdue tasks");
   await expect(card).toContainText(title);
   const box = card.getByRole("checkbox", { name: `Complete: ${title}` });
+  // The tick is optimistic, so wait for the operation itself.
+  const acted = page.waitForResponse(
+    (r) => r.url().includes("/_serverFn/") && (r.request().postData() ?? "").includes("a2ui.act"),
+  );
   await box.click();
   await expect(box).toBeChecked();
   await expect(box).toBeDisabled();
-  // Balanced: a write by the assistant applies, so the task is really done.
-  await open(page, "/tasks");
-  await expect(page.getByTestId("my-tasks")).not.toContainText(title);
+  await acted;
+  // Balanced: a write by the assistant applies, so the task is really done: a fresh card, read
+  // from the CRM again, no longer lists it.
+  const cards = panel.getByTestId("assistant-card");
+  const before = await cards.count();
+  await ask(panel, "Show my overdue tasks");
+  await expect(cards).toHaveCount(before + 1);
+  await expect(cards.last()).not.toContainText(title);
 });
 
 test("the stale deals producer draws a card", async ({ page }) => {

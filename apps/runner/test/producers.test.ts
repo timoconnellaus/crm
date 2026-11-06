@@ -2,14 +2,13 @@
 // every viewer; no model and no network; read operations only; and two people's concurrent runs
 // on one warm worker never mix.
 import { env } from "cloudflare:workers";
-import { prepareCard } from "@relationship-os/agent-a2ui";
+import { prepareCard, producerRef } from "@relationship-os/agent-a2ui";
 import {
   type ActingUser,
   type CodeCaller,
   FIRST_PARTY_PRODUCERS,
   invokeByName,
   type ProducerRun,
-  producerRef,
 } from "@relationship-os/core";
 import { beforeAll, describe, expect, it } from "vitest";
 import { buildProducer, producerWorkerId } from "../src/extensions/producers.ts";
@@ -142,7 +141,7 @@ describe("a producer's worker", () => {
     );
     expect(thrown).toMatchObject({ ok: false, error: { code: "script_error", message: "boom" } });
     const slow = await extensionHost(env, { codeTimeoutMs: 50 }).runProducer(
-      run(`export default () => new Promise(() => {});`),
+      run(`export default () => new Promise((resolve) => setTimeout(resolve, 5000));`),
     );
     expect(slow).toMatchObject({ ok: false, error: { code: "timeout" } });
   });

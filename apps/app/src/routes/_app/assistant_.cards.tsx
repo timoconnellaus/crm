@@ -7,7 +7,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { ApprovalView } from "#/components/assistant/cards/approval";
-import { CardHostContext, type CardHost } from "#/components/assistant/cards/host";
+import { type CardHost, CardHostContext } from "#/components/assistant/cards/host";
 import { Card } from "#/components/assistant/cards/index";
 
 export const Route = createFileRoute("/_app/assistant_/cards")({
@@ -42,7 +42,11 @@ function CardGallery() {
             <Card part={prepareCard(sampleDocument(type), { source: "host" })} />
           </div>
         ))}
-        <div className="grid min-w-0 gap-1" data-testid="a2ui-sample" data-type="approval-high-risk">
+        <div
+          className="grid min-w-0 gap-1"
+          data-testid="a2ui-sample"
+          data-type="approval-high-risk"
+        >
           <p className="text-xs text-muted-foreground">approval, high risk</p>
           <ApprovalView
             title="Send the Q3 newsletter"

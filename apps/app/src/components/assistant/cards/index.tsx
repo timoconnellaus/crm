@@ -134,9 +134,7 @@ function CardFallback({ text }: { text: string; problems?: string[] }) {
 export function Card({ part }: { part: A2uiPart }) {
   const host = useCardHost();
   const onAction = useMemo(() => cardActions(host), [host]);
-  return (
-    <A2uiView part={part} components={crmCards} onAction={onAction} Fallback={CardFallback} />
-  );
+  return <A2uiView part={part} components={crmCards} onAction={onAction} Fallback={CardFallback} />;
 }
 
 export { CardHostContext };

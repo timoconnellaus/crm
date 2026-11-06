@@ -100,6 +100,12 @@ export function readableText(message: Pick<ThreadMessage, "parts">): string {
   return [messageText(message), ...cards].filter(Boolean).join("\n").trim();
 }
 
+/** Does search index this message? The person's and assistant's words, and cards. */
+export function isSearchable(message: Pick<ThreadMessage, "role" | "parts">): boolean {
+  if (message.role === "user" || message.role === "assistant") return true;
+  return message.parts.some((p) => p.type === "a2ui");
+}
+
 /** The tail block a user message is sent with, wrapped so the model can tell it from the words. */
 export function wrapTail(tail: string): string {
   return `<context>\n${tail.trim()}\n</context>`;

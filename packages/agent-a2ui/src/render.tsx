@@ -4,9 +4,9 @@
 // or a renderer that throws shows the card's text fallback instead: nothing is rendered blindly.
 import {
   Component,
-  type ComponentType as ReactComponentType,
   createContext,
   type ErrorInfo,
+  type ComponentType as ReactComponentType,
   type ReactNode,
   useCallback,
   useContext,
@@ -168,7 +168,9 @@ export function A2uiView({
     () => ({ source: from, components, onAction }),
     [from, components, onAction],
   );
-  const fallback = <Fallback text={text} {...(part?.problems ? { problems: part.problems } : {})} />;
+  const fallback = (
+    <Fallback text={text} {...(part?.problems ? { problems: part.problems } : {})} />
+  );
   if (!checked?.ok) {
     if (checked && !checked.ok) onFallback?.(checked.problems.join("; "));
     return fallback;

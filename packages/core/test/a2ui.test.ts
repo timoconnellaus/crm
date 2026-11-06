@@ -6,13 +6,13 @@ import {
   prepareCard,
   producerRef,
 } from "@relationship-os/agent-a2ui";
-import type { ThreadMessage } from "@relationship-os/agent-core";
 import { sampleDocument } from "@relationship-os/agent-a2ui/samples";
+import type { ThreadMessage } from "@relationship-os/agent-core";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   type ActingUser,
-  applyEvent,
   type AssistantEvent,
+  applyEvent,
   cardModelText,
   cardOf,
   describeAssistantResult,
@@ -78,7 +78,10 @@ describe("cards in tool results", () => {
   });
 
   it("tell the model when a card was not shown, and why", () => {
-    const part = prepareCard({ a2ui: 1, root: { type: "nope" } }, { source: "model", text: "Words" });
+    const part = prepareCard(
+      { a2ui: 1, root: { type: "nope" } },
+      { source: "model", text: "Words" },
+    );
     expect(JSON.parse(cardModelText(part))).toEqual({
       status: "not_shown",
       shownAsText: "Words",
@@ -105,7 +108,15 @@ describe("the transcript", () => {
     const events: AssistantEvent[] = [
       { seq: 1, type: "turn-start", turn: 3, text: "hi", at: "2026-11-06T00:00:00Z" },
       { seq: 2, type: "tool-call", id: "c1", tool: "show_card", input: {} },
-      { seq: 3, type: "tool-result", id: "c1", tool: "show_card", output: {}, isError: false, card: part },
+      {
+        seq: 3,
+        type: "tool-result",
+        id: "c1",
+        tool: "show_card",
+        output: {},
+        isError: false,
+        card: part,
+      },
     ];
     const items = events.reduce(applyEvent, []);
     expect(items.map((i) => i.kind)).toEqual(["user", "tool", "card"]);

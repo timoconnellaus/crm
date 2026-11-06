@@ -6,8 +6,8 @@
 // - the script imports nothing; `crm` is handed to its default export;
 // - there is no network and there are no bindings, and the run host answers only read operations.
 import { transform } from "sucrase";
-import type { ScriptBuild } from "./code-mode.ts";
 import { COMPATIBILITY_DATE, sha256 } from "../executor/worker-code.ts";
+import type { ScriptBuild } from "./code-mode.ts";
 
 const ENTRY = "entry.js";
 const SCRIPT = "script.js";

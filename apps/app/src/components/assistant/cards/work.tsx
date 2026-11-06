@@ -61,7 +61,7 @@ export function snoozePresets(now = new Date()): { label: string; at: Date }[] {
   const tomorrow = new Date(now);
   tomorrow.setDate(now.getDate() + 1);
   const monday = new Date(now);
-  monday.setDate(now.getDate() + (((8 - now.getDay()) % 7) || 7));
+  monday.setDate(now.getDate() + ((8 - now.getDay()) % 7 || 7));
   const later = new Date(now.getTime() + 3 * 3_600_000);
   return [
     { label: "Later today", at: later },
@@ -87,9 +87,12 @@ function taskDetail(task: TaskItem): string {
 }
 
 function TaskRow({ task }: { task: TaskItem }) {
-  const complete = useA2uiAction(
-    { kind: "operation", label: "Complete", operation: "task.complete", input: { id: task.id } },
-  );
+  const complete = useA2uiAction({
+    kind: "operation",
+    label: "Complete",
+    operation: "task.complete",
+    input: { id: task.id },
+  });
   const run = useA2uiRunner();
   const [done, setDone] = useState(task.done);
   const [problem, setProblem] = useState<string | null>(null);
@@ -166,11 +169,12 @@ function TaskRow({ task }: { task: TaskItem }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {snoozePresets().map((preset) => (
-              <DropdownMenuItem key={preset.label} onSelect={() => void snooze(preset.label, preset.at)}>
+              <DropdownMenuItem
+                key={preset.label}
+                onSelect={() => void snooze(preset.label, preset.at)}
+              >
                 <span className="flex-1">{preset.label}</span>
-                <span className="ml-3 text-xs text-muted-foreground">
-                  {when.format(preset.at)}
-                </span>
+                <span className="ml-3 text-xs text-muted-foreground">{when.format(preset.at)}</span>
               </DropdownMenuItem>
             ))}
             <DropdownMenuItem onSelect={() => void run(reassign())}>Reassign</DropdownMenuItem>
@@ -243,8 +247,14 @@ export function TimelineComponent({ props }: RendererProps<"timeline">) {
           const Icon = KIND_ICON[entry.kind] ?? MessageSquareIcon;
           return (
             <Row key={`${entry.when}:${entry.title}`} className="items-start">
-              <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-label={entry.kind} />
-              <RowText title={entry.title} sub={[entry.when, entry.text].filter(Boolean).join(" · ")} />
+              <Icon
+                className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                aria-label={entry.kind}
+              />
+              <RowText
+                title={entry.title}
+                sub={[entry.when, entry.text].filter(Boolean).join(" · ")}
+              />
             </Row>
           );
         })}
@@ -455,15 +465,7 @@ export function LoggerComponent({ props }: RendererProps<"logger">) {
 
 // --- Deals -----------------------------------------------------------------------------------
 
-function StageTrack({
-  stage,
-  index,
-  count,
-}: {
-  stage: string;
-  index: number;
-  count: number;
-}) {
+function StageTrack({ stage, index, count }: { stage: string; index: number; count: number }) {
   return (
     <div
       className="flex gap-1"
@@ -700,4 +702,3 @@ export function AvailabilitySlotsComponent({ props }: RendererProps<"availabilit
     </Frame>
   );
 }
-

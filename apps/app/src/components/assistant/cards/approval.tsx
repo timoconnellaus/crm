@@ -88,9 +88,7 @@ export function ApprovalView({
     >
       <Header
         title={title}
-        aside={
-          <Badge variant="outline">{pending ? "Waiting for approval" : state}</Badge>
-        }
+        aside={<Badge variant="outline">{pending ? "Waiting for approval" : state}</Badge>}
       />
       <Body>
         {children}
@@ -188,7 +186,8 @@ export function ApprovalCard({ changeSetId, actionIds, title, youAsked }: Approv
       </Frame>
     );
   }
-  if (!status.data) return <Skeleton className="h-28 rounded-[var(--radius)]" data-a2ui="approval" />;
+  if (!status.data)
+    return <Skeleton className="h-28 rounded-[var(--radius)]" data-a2ui="approval" />;
 
   const pending = actions.filter((a) => a.status === "pending");
   const [first] = actions;
@@ -211,7 +210,9 @@ export function ApprovalCard({ changeSetId, actionIds, title, youAsked }: Approv
 
   return (
     <ApprovalView
-      title={title ?? (actions.length === 1 && first ? titleOf(first) : `${actions.length} changes`)}
+      title={
+        title ?? (actions.length === 1 && first ? titleOf(first) : `${actions.length} changes`)
+      }
       state={pending.length ? "pending" : (first?.status ?? "pending")}
       youAsked={youAsked}
       reason={first?.reason}

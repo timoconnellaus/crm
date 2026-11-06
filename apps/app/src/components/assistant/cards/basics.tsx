@@ -52,7 +52,7 @@ export function StackComponent({ children }: RendererProps<"stack">) {
 /** Links a card's Markdown may hold: allowed ones only. No images: they would load from anywhere. */
 const cardMarkdown: ComponentProps<typeof Markdown>["components"] = {
   a: ({ href, children }) =>
-    href && isAllowedHref(href) ? <CardLink href={href}>{children}</CardLink> : <>{children}</>,
+    href && isAllowedHref(href) ? <CardLink href={href}>{children}</CardLink> : children,
 };
 
 export function TextComponent({ props }: RendererProps<"text">) {
@@ -380,9 +380,7 @@ export function SearchResultsComponent({ props }: RendererProps<"searchResults">
                   sub={hit.snippet}
                 />
                 {hit.matchedBy && (
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    by {hit.matchedBy}
-                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">by {hit.matchedBy}</span>
                 )}
               </Row>
             ))}

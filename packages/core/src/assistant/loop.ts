@@ -3,10 +3,11 @@
 // result that is an MCP `pending_approval` envelope becomes the event's `pending`, so the UI can
 // show Approve and Reject, and a tool result that holds a card becomes the event's `card` while the
 // model reads only the card's text fallback (ADR 0346).
+
+import type { A2uiPart } from "@relationship-os/agent-a2ui";
 import { runTurn, type TurnTool } from "@relationship-os/agent-core";
 import type { ModelMessage } from "ai";
 import type { ChatModel } from "../ai/client.ts";
-import type { A2uiPart } from "@relationship-os/agent-a2ui";
 import {
   type AssistantEventInput,
   type AssistantPending,

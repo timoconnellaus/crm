@@ -76,7 +76,11 @@ export function ChartComponent({ props }: RendererProps<"chart">) {
     <Frame type="chart">
       <Header title={props.title} />
       <Body>
-        <div className="h-44 min-w-0" role="img" aria-label={`${props.title}, ${props.chart} chart`}>
+        <div
+          className="h-44 min-w-0"
+          role="img"
+          aria-label={`${props.title}, ${props.chart} chart`}
+        >
           <WidgetBody widget={spec} data={data(props.rows)} />
         </div>
       </Body>

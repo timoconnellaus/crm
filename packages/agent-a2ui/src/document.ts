@@ -73,7 +73,9 @@ export function validateDocument(input: unknown, options: ValidateOptions): Vali
   if (version > supported) {
     return {
       ok: false,
-      problems: [`the card targets catalogue version ${version}; this app renders up to ${supported}`],
+      problems: [
+        `the card targets catalogue version ${version}; this app renders up to ${supported}`,
+      ],
     };
   }
   const problems: string[] = [];

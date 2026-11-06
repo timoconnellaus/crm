@@ -33,7 +33,8 @@ const operation = (label: string, name: string, input: Record<string, unknown> =
 export const SAMPLES: Record<ComponentType, A2uiNode> = {
   card: {
     type: "card",
-    title: "Kestrel Energy renewal notes with a long title that has to wrap or cut in a narrow panel",
+    title:
+      "Kestrel Energy renewal notes with a long title that has to wrap or cut in a narrow panel",
     subtitle: "Updated today",
     badge: { text: "Pending", tone: "warning" },
     children: [
@@ -58,7 +59,10 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
       { label: "Owner", value: "Maya Chen" },
       { label: "Stage", value: "Proposal" },
       { label: "Organisation", value: "Kestrel Energy", record: kestrel },
-      { label: "Email", value: "a.very.long.address.for.ade.okafor@brightwater-health.example.com" },
+      {
+        label: "Email",
+        value: "a.very.long.address.for.ade.okafor@brightwater-health.example.com",
+      },
     ],
   },
   badge: { type: "badge", text: "Overdue", tone: "danger" },
@@ -81,8 +85,20 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
       { key: "close", label: "Expected close" },
     ],
     rows: [
-      { name: "Harbour & Finch rollout", stage: "Proposal", value: 32000, owner: "Sam Ortiz", close: "15 Dec 2026" },
-      { name: "Fernhill Foods trial", stage: "Negotiation", value: 24500, owner: "Maya Chen", close: "30 Jan 2027" },
+      {
+        name: "Harbour & Finch rollout",
+        stage: "Proposal",
+        value: 32000,
+        owner: "Sam Ortiz",
+        close: "15 Dec 2026",
+      },
+      {
+        name: "Fernhill Foods trial",
+        stage: "Negotiation",
+        value: 24500,
+        owner: "Maya Chen",
+        close: "30 Jan 2027",
+      },
     ],
     viewAll: { label: "View all", href: "/x/deals.deal" },
   },
@@ -91,7 +107,11 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
     actions: [
       operation("Create follow-up tasks", "task.create"),
       { kind: "reply", label: "Show me more", text: "Show me more" },
-      { ...operation("Delete", "person.delete", { id: ade.id }), style: "destructive", confirm: "Confirm: delete Ade Okafor" },
+      {
+        ...operation("Delete", "person.delete", { id: ade.id }),
+        style: "destructive",
+        confirm: "Confirm: delete Ade Okafor",
+      },
       open("Open", "/tasks"),
     ],
   },
@@ -180,8 +200,19 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
         dueLabel: "Due Fri 7 Nov",
         record: { object: "organisation", id: "org_2", label: "Brightwater Health" },
       },
-      { id: "tsk_2", title: "Chase Kestrel NDA", dueLabel: "Due Mon 3 Nov", overdue: true, record: kestrel },
-      { id: "tsk_3", title: "Call back Lena Fischer", done: true, assignee: { id: "usr_1", name: "Maya Chen" } },
+      {
+        id: "tsk_2",
+        title: "Chase Kestrel NDA",
+        dueLabel: "Due Mon 3 Nov",
+        overdue: true,
+        record: kestrel,
+      },
+      {
+        id: "tsk_3",
+        title: "Call back Lena Fischer",
+        done: true,
+        assignee: { id: "usr_1", name: "Maya Chen" },
+      },
     ],
     total: 4,
     viewAll: "/tasks",
@@ -201,7 +232,12 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
     type: "timeline",
     record: kestrel,
     entries: [
-      { kind: "email", title: "Re: site count for January", when: "Today", text: "Confirmed 14 sites." },
+      {
+        kind: "email",
+        title: "Re: site count for January",
+        when: "Today",
+        text: "Confirmed 14 sites.",
+      },
       { kind: "call", title: "Call with Tom Becker", when: "Thu 30 Oct" },
       { kind: "note", title: "Prefers calls before 10", when: "Mon 27 Oct" },
     ],
@@ -242,17 +278,34 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
       { label: "Close date", value: "Mon 15 Dec" },
       { label: "Last activity", value: "Today, email from Ade" },
     ],
-    actions: [operation("Move to Negotiation", "x.deals.moveStage"), open("Open", "/x/deals.deal/1")],
+    actions: [
+      operation("Move to Negotiation", "x.deals.moveStage"),
+      open("Open", "/x/deals.deal/1"),
+    ],
   },
   dealList: {
     type: "dealList",
     title: "Quiet for 14+ days",
     summary: "3 deals · $142,500",
     deals: [
-      { deal: { ...deal, label: "Harbour & Finch rollout" }, detail: "Proposal · 21 days since activity", value: "$32,000" },
-      { deal: { ...deal, label: "Kestrel Energy expansion" }, detail: "Qualified · 15 days since activity", value: "$86,000" },
+      {
+        deal: { ...deal, label: "Harbour & Finch rollout" },
+        detail: "Proposal · 21 days since activity",
+        value: "$32,000",
+      },
+      {
+        deal: { ...deal, label: "Kestrel Energy expansion" },
+        detail: "Qualified · 15 days since activity",
+        value: "$86,000",
+      },
     ],
-    actions: [{ kind: "reply", label: "Create follow-up tasks", text: "Create follow-up tasks for these deals" }],
+    actions: [
+      {
+        kind: "reply",
+        label: "Create follow-up tasks",
+        text: "Create follow-up tasks for these deals",
+      },
+    ],
   },
   pipelineSnapshot: {
     type: "pipelineSnapshot",
@@ -274,7 +327,12 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
       { name: "values.expectedClose", label: "Expected close", kind: "date", required: true },
       { name: "values.nextStep", label: "Next step", kind: "text" },
     ],
-    submit: { label: "Move deal", operation: "record.update", input: { id: deal.id }, done: "Deal moved" },
+    submit: {
+      label: "Move deal",
+      operation: "record.update",
+      input: { id: deal.id },
+      done: "Deal moved",
+    },
   },
   meetingCard: {
     type: "meetingCard",
@@ -345,7 +403,13 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
     title: "New deal",
     object: "deals.deal",
     fields: [
-      { name: "values.name", label: "Name", kind: "text", required: true, value: "Lumen Labs pilot" },
+      {
+        name: "values.name",
+        label: "Name",
+        kind: "text",
+        required: true,
+        value: "Lumen Labs pilot",
+      },
       {
         name: "values.organisation",
         label: "Organisation",
@@ -366,7 +430,12 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
         ],
       },
     ],
-    submit: { label: "Create deal", operation: "record.create", input: { object: "deals.deal" }, done: "Deal created" },
+    submit: {
+      label: "Create deal",
+      operation: "record.create",
+      input: { object: "deals.deal" },
+      done: "Deal created",
+    },
   },
   form: {
     type: "form",
@@ -391,7 +460,10 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
     type: "confirm",
     title: "Delete Kestrel Energy?",
     consequences: ["14 people lose their organisation", "It stays in Trash for 30 days"],
-    confirm: { ...operation("Delete", "organisation.delete", { id: kestrel.id }), style: "destructive" },
+    confirm: {
+      ...operation("Delete", "organisation.delete", { id: kestrel.id }),
+      style: "destructive",
+    },
   },
   fileUpload: {
     type: "fileUpload",
@@ -423,7 +495,10 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
         { text: "Sat 1 Nov: weekend", passed: false },
       ],
     },
-    actions: [operation("Turn on", "settings.update"), { kind: "reply", label: "Edit", text: "Change it" }],
+    actions: [
+      operation("Turn on", "settings.update"),
+      { kind: "reply", label: "Edit", text: "Change it" },
+    ],
   },
   routineList: {
     type: "routineList",

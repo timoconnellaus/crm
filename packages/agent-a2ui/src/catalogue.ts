@@ -383,8 +383,8 @@ const searchResults = define({
   fallback: (p) =>
     joinLines(
       `Results for "${p.query}"`,
-      ...p.groups.map(
-        (g) => `${g.label}:\n${numbered(g.hits.map((h) => record(h.record)))}`.trimEnd(),
+      ...p.groups.map((g) =>
+        `${g.label}:\n${numbered(g.hits.map((h) => record(h.record)))}`.trimEnd(),
       ),
     ),
 });
@@ -510,11 +510,7 @@ const emailPreview = define({
     actions: actionsSchema.optional(),
   }),
   fallback: (p) =>
-    joinLines(
-      `Email from ${p.from.name}, ${p.when}: ${p.subject}`,
-      p.snippet,
-      buttons(p.actions),
-    ),
+    joinLines(`Email from ${p.from.name}, ${p.when}: ${p.subject}`, p.snippet, buttons(p.actions)),
 });
 
 const emailDraft = define({
@@ -609,9 +605,7 @@ const dealList = define({
   fallback: (p) =>
     joinLines(
       p.summary ? `${p.title} (${p.summary})` : p.title,
-      numbered(
-        p.deals.map((d) => [d.deal.label, d.detail, d.value].filter(Boolean).join(", ")),
-      ),
+      numbered(p.deals.map((d) => [d.deal.label, d.detail, d.value].filter(Boolean).join(", "))),
       buttons(p.actions),
     ),
 });
@@ -771,8 +765,7 @@ const chart = define({
   type: "chart",
   group: "charts",
   since: 1,
-  description:
-    "A small bar, line, donut or funnel chart over rows, drawn like a dashboard widget",
+  description: "A small bar, line, donut or funnel chart over rows, drawn like a dashboard widget",
   props: z.object({
     title: line(),
     chart: z.enum(["bar", "line", "donut", "funnel"]),
@@ -816,7 +809,8 @@ const recordForm = define({
   type: "recordForm",
   group: "forms",
   since: 1,
-  description: "Create or edit a record; submits as an operation (a change set where review applies)",
+  description:
+    "Create or edit a record; submits as an operation (a change set where review applies)",
   props: z.object({
     title: line(),
     object: line(80),
@@ -826,7 +820,7 @@ const recordForm = define({
   fallback: (p) =>
     joinLines(
       p.title,
-      ...p.fields.map((f) => `${f.label}: ${f.valueLabel ?? (f.value ?? "")}`.trimEnd()),
+      ...p.fields.map((f) => `${f.label}: ${f.valueLabel ?? f.value ?? ""}`.trimEnd()),
     ),
 });
 
@@ -834,7 +828,8 @@ const form = define({
   type: "form",
   group: "forms",
   since: 1,
-  description: "A form of text, number, date, select, user and record fields for skills and plugins",
+  description:
+    "A form of text, number, date, select, user and record fields for skills and plugins",
   props: z.object({
     title: line(),
     text: z.string().max(400).optional(),
@@ -940,7 +935,8 @@ const routineReadBack = define({
       p.summary,
       `When: ${p.trigger}`,
       ...p.gates.map((g) => `Only if: ${g.text}`),
-      p.backtest && `In the last ${p.backtest.days} days it would have run ${p.backtest.fired} times.`,
+      p.backtest &&
+        `In the last ${p.backtest.days} days it would have run ${p.backtest.fired} times.`,
       buttons(p.actions),
     ),
 });
@@ -1007,8 +1003,7 @@ const memorySaved = define({
     condition: z.string().max(300).optional(),
     actions: actionsSchema.optional(),
   }),
-  fallback: (p) =>
-    `Saved to memory: ${p.line}${p.condition ? ` (when ${p.condition})` : ""}`,
+  fallback: (p) => `Saved to memory: ${p.line}${p.condition ? ` (when ${p.condition})` : ""}`,
 });
 
 const conditionalMemoryReadBack = define({
@@ -1283,8 +1278,9 @@ export function catalogueGuide(): string {
     const props = shape({
       type: "object",
       properties: fields,
-      required: (z.toJSONSchema(c.props, { io: "input", unrepresentable: "any" }) as JsonSchema)
-        .required ?? [],
+      required:
+        (z.toJSONSchema(c.props, { io: "input", unrepresentable: "any" }) as JsonSchema).required ??
+        [],
     });
     return `- ${c.type} ${"container" in c && c.container ? `${props} + children:[component]` : props}: ${c.description}`;
   });

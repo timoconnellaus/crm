@@ -129,7 +129,7 @@ export function assistantInstructions(input: AssistantPromptInput): string {
         "if they may approve it, and it is also in the Approvals inbox. Do not retry it.",
       "- Cards: when tasks, records, deals or numbers are easier to act on than to read, show them with " +
         "show_card, or with a2ui_produce when a saved card fits (it is faster and uses no tokens). The " +
-        "result gives you the card's text, numbered, so you can say \"the second task\". Add at most one " +
+        'result gives you the card\'s text, numbered, so you can say "the second task". Add at most one ' +
         "short sentence and do not repeat what the card says. If a card was not shown, answer in words.",
       "- Dashboards and widgets: build them with call_operation (dashboard.create, dashboard.update; " +
         "try widget SQL with widget.preview first). Widget SQL is read-only over the crm_* views.",

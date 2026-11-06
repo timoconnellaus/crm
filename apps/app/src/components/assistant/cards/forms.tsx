@@ -22,8 +22,8 @@ import { Textarea } from "@relationship-os/ui/components/textarea";
 import { cn } from "@relationship-os/ui/lib/utils";
 import { UploadIcon } from "lucide-react";
 import { useId, useMemo, useState } from "react";
-import { UserEditor } from "#/components/fields/field-widgets";
 import { RecordPicker } from "#/components/record-picker";
+import { useOp } from "#/lib/query";
 import { ActionButton, Body, CardLink, Footer, Frame, Header } from "./parts.tsx";
 
 type Value = string | number | boolean | null;
@@ -62,6 +62,38 @@ export function formValues(fields: readonly FormField[], values: Values): Record
       field.kind === "number" || field.kind === "money" ? Number(value) : (value as Value);
   }
   return out;
+}
+
+/** Pick a user. It reads the list itself, so a card needs no page around it. */
+function UserSelect({
+  id,
+  field,
+  value,
+  onChange,
+}: {
+  id: string;
+  field: FormField;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const users = useOp("user.list", { limit: 200 }, { staleTime: 60_000 });
+  const known = users.data?.items ?? [];
+  const current = value && !known.some((u) => u.id === value);
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger id={id} size="sm" className="w-full min-w-0">
+        <SelectValue placeholder={field.placeholder ?? "Choose someone"} />
+      </SelectTrigger>
+      <SelectContent>
+        {current && <SelectItem value={value}>{field.valueLabel ?? value}</SelectItem>}
+        {known.map((user) => (
+          <SelectItem key={user.id} value={user.id}>
+            {user.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 function Control({ field, form, id }: { field: FormField; form: FormState; id: string }) {
@@ -117,7 +149,7 @@ function Control({ field, form, id }: { field: FormField; form: FormState; id: s
         </Select>
       );
     case "user":
-      return <UserEditor id={id} value={value} onChange={(next) => set(next as Value)} />;
+      return <UserSelect id={id} field={field} value={text} onChange={set} />;
     case "record":
       if (field.object === "person" || field.object === "organisation") {
         return (
@@ -131,9 +163,7 @@ function Control({ field, form, id }: { field: FormField; form: FormState; id: s
           />
         );
       }
-      return (
-        <Input {...common} className="h-8" readOnly value={field.valueLabel ?? text} />
-      );
+      return <Input {...common} className="h-8" readOnly value={field.valueLabel ?? text} />;
     case "checkbox":
       return (
         <Checkbox id={id} checked={value === true} onCheckedChange={(next) => set(next === true)} />
@@ -252,7 +282,7 @@ export function ChoiceComponent({ props }: RendererProps<"choice">) {
   return (
     <Frame type="choice" className="grid gap-2 px-3 py-2.5">
       {props.question && <p>{props.question}</p>}
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={props.question ?? "Choices"}>
+      <fieldset className="flex flex-wrap gap-1.5" aria-label={props.question ?? "Choices"}>
         {props.options.map((option) => {
           const on = picked.includes(option.label);
           return (
@@ -280,7 +310,7 @@ export function ChoiceComponent({ props }: RendererProps<"choice">) {
             </button>
           );
         })}
-      </div>
+      </fieldset>
       {props.multiple && !sent && (
         <div>
           <Button
@@ -327,12 +357,7 @@ export function ConfirmComponent({ props }: RendererProps<"confirm">) {
       </Body>
       <Footer>
         <ActionButton action={props.confirm} />
-        <Button
-          size="xs"
-          variant="ghost"
-          className="max-md:h-8"
-          onClick={() => setCancelled(true)}
-        >
+        <Button size="xs" variant="ghost" className="max-md:h-8" onClick={() => setCancelled(true)}>
           {props.cancelLabel}
         </Button>
       </Footer>
