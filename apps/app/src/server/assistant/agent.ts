@@ -755,7 +755,6 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
           instructions: this.#instructions(settings, user, mcp),
           tools: mcp.tools,
           memory: memory.block,
-          note: null,
         },
         history: [],
         tail: [

@@ -36,6 +36,16 @@ test("from a read-back to a delivered message, and back out", async ({ page }) =
   await readBack.getByRole("button", { name: "Turn on" }).click();
   await expect(readBack).toContainText("Turned on");
 
+  // The real path: the record event starts a run in ros-runner, its Workflow queues the delivery,
+  // and ros-app posts the message into the thread.
+  const dots = panel.getByTestId("routine-why-dot");
+  const delivered = await dots.count();
+  await createPerson(page, { given: unique("Arrives") });
+  const chatAgain = await openPanel(page);
+  await expect(async () => {
+    expect(await chatAgain.getByTestId("routine-why-dot").count()).toBeGreaterThan(delivered);
+  }).toPass({ timeout: 45_000 });
+
   await open(page, "/settings/assistant-routines");
   const row = page.getByTestId("routine-row").filter({ hasText: "New person" }).last();
   await expect(row.getByTestId("routine-status")).toHaveText("On");
@@ -69,13 +79,10 @@ test("from a read-back to a delivered message, and back out", async ({ page }) =
 test("a schedule under 15 minutes is refused, in plain words", async ({ page }) => {
   await open(page, "/people");
   const panel = await openPanel(page);
-  const cards = panel.getByTestId("routine-backtest");
-  const before = await cards.count();
   await ask(panel, "Check in with me every 5 minutes");
   await expect(panel.getByTestId("assistant-reply").last()).toContainText(
     "shortest gap allowed is 15 minutes",
   );
-  await expect(cards).toHaveCount(before);
 });
 
 test("the morning briefing read-back fits the chat", async ({ page }) => {

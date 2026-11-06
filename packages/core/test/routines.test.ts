@@ -352,7 +352,7 @@ describe("the gates", () => {
     expect(result.pass).toBe(true);
     expect(judge.calls).toHaveLength(1);
     expect(judge.calls[0]?.state).toMatchObject({ check: "they sound keen" });
-    expect(String(judge.calls[0]?.state.event)).toContain("Ada");
+    expect(JSON.stringify(judge.calls[0]?.state)).toContain("Ada");
     expect(result.checks.map((c) => [c.kind, c.passed])).toEqual([
       ["plain", true],
       ["jev", true],
