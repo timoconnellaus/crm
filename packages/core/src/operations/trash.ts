@@ -224,6 +224,18 @@ export const trashPurge = defineOperation({
         );
       }
     }
+    // Duplicate pairs have no foreign key: a purged record's pairs (dismissed ones too) go with it.
+    for (const object of ["person", "organisation"] as const) {
+      const ids = purged.filter((r) => r.object === object).map((r) => r.id);
+      for (const part of chunk(ids)) {
+        ctx.write(
+          ctx.db
+            .deleteFrom("core_duplicate_pair")
+            .where("object", "=", object)
+            .where((eb) => eb.or([eb("a_id", "in", part), eb("b_id", "in", part)])),
+        );
+      }
+    }
     for (const record of purged) {
       ctx.recordChange({
         object: record.object,

@@ -87,6 +87,23 @@ export async function loadScanState(db: Kysely<CoreDatabase>): Promise<ScanState
   }
 }
 
+/**
+ * After an import: asks for an incremental scan on the runner's next tick, which covers the
+ * imported records (they are what changed since the cursor). One statement in the import's batch;
+ * before the first scan there is no state row and the first full scan covers them anyway.
+ */
+export function queueScanAfterImport(ctx: ScanContext): void {
+  ctx.write(
+    ctx.db
+      .updateTable("core_settings")
+      .set({
+        value: sql<string>`json_set(value, '$.incrementalMore', json('true'))`,
+        updated_at: ctx.now,
+      })
+      .where("key", "=", DUPLICATE_SCAN_KEY),
+  );
+}
+
 function queueSaveState(ctx: ScanContext, state: ScanState): void {
   const value = JSON.stringify(state);
   ctx.write(
@@ -539,8 +556,11 @@ export async function runScan(ctx: ScanContext, mode: ScanMode): Promise<ScanRes
     }
     state.incrementalMore = more;
     state.lastIncrementalAt = ctx.now;
-    const { timezone } = await loadGeneralSettings(ctx.db);
-    state.lastIncrementalDate = zonedTime(new Date(ctx.now), timezone).date;
+    // Only a nightly (or requested) run counts: a scan after an import leaves tonight's in place.
+    if (mode === "incremental") {
+      const { timezone } = await loadGeneralSettings(ctx.db);
+      state.lastIncrementalDate = zonedTime(new Date(ctx.now), timezone).date;
+    }
     result.done = !more;
     queueSaveState(ctx, state);
   }

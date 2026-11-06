@@ -3,8 +3,16 @@
 // assertions look only at the records each test made.
 import { env } from "cloudflare:workers";
 import { beforeAll, describe, expect, it } from "vitest";
-import { type ActingUser, invoke, organisationNameKey, personNameKey } from "../src/index.ts";
-import { auditRows, context, createUser, setPreset, unique } from "./helpers.ts";
+import {
+  type ActingUser,
+  invoke,
+  organisationNameKey,
+  personNameKey,
+  runDuplicateCron,
+  runTrashPurge,
+} from "../src/index.ts";
+import { loadScanState } from "../src/duplicates/scan.ts";
+import { auditRows, context, createUser, db, setPreset, unique } from "./helpers.ts";
 
 let admin: ActingUser;
 let member: ActingUser;
@@ -394,6 +402,64 @@ describe("the scan", () => {
     await invoke("person.merge", { survivorId: a.id, mergedId: b.id }, context(member));
     expect(await pair("person", a.id, b.id)).toMatchObject({ status: "merged" });
     expect(await groupsFor("person", [a.id])).toEqual([]);
+  });
+
+  it("an import asks for a scan on the next tick, over the imported records", async () => {
+    await scan("full");
+    const name = unique("Imported ");
+    const existing = await person({ displayName: name });
+
+    // The dry run flags the row, which still creates.
+    const input = { object: "person" as const, csv: `name,email\n${name},${unique("i")}@x.example\n` };
+    const preview = await invoke("import.csv.preview", input, context(member));
+    expect(preview.rows[0]).toMatchObject({
+      action: "create",
+      reason: `Possible duplicate of ${name}: same name`,
+    });
+
+    const before = await loadScanState(db.query);
+    const committed = await invoke("import.csv.commit", input, context(member));
+    const importedId = committed.rows[0]?.id as string;
+    expect(await pair("person", existing.id, importedId)).toBeNull();
+
+    const tick = await runDuplicateCron(db, new Date());
+    expect(tick.mode).toBe("continue");
+    expect(await pair("person", existing.id, importedId)).toMatchObject({ status: "open" });
+    // Tonight's scan still runs.
+    expect((await loadScanState(db.query)).lastIncrementalDate).toBe(before.lastIncrementalDate);
+  });
+
+  it("erasing or purging a record removes its pairs, dismissed ones too", async () => {
+    const name = unique("Gone ");
+    const a = await person({ displayName: name });
+    const b = await person({ displayName: name });
+    const c = await person({ displayName: name });
+    await scan("incremental");
+    await invoke("duplicate.dismiss", { object: "person", ids: [a.id, b.id] }, context(member));
+    await invoke("person.erase", { id: a.id }, context(admin));
+    expect(await pair("person", a.id, b.id)).toBeNull();
+    expect(await pair("person", a.id, c.id)).toBeNull();
+    expect(await pair("person", b.id, c.id)).toMatchObject({ status: "open" });
+
+    await invoke("person.delete", { id: c.id }, context(member));
+    await env.DB.prepare("UPDATE core_person SET deleted_at = '2020-01-01T00:00:00.000Z' WHERE id = ?")
+      .bind(c.id)
+      .run();
+    await runTrashPurge(db);
+    expect(await pair("person", b.id, c.id)).toBeNull();
+  });
+
+  it("an erased organisation leaves no reason naming it on other pairs", async () => {
+    const org = await organisation(unique("Erased Org "));
+    const name = unique("Staff ");
+    const a = await person({ displayName: name });
+    const b = await person({ displayName: name });
+    await joins(a.id, org.id);
+    await joins(b.id, org.id);
+    await scan("incremental");
+    expect((await pair("person", a.id, b.id))?.details).toContain(org.id);
+    await invoke("organisation.erase", { id: org.id }, context(admin));
+    expect(await pair("person", a.id, b.id)).toBeNull();
   });
 
   it("groups of three show as one group, with a proposed survivor", async () => {

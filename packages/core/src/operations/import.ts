@@ -13,6 +13,7 @@ import { type Compilable, type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { diffRecords } from "../diff.ts";
 import { organisationNameKey, personNameKey } from "../duplicates/normalise.ts";
+import { queueScanAfterImport } from "../duplicates/scan.ts";
 import { assertRecordCapacity } from "../entitlements.ts";
 import { ValidationError } from "../errors.ts";
 import { newId } from "../ids.ts";
@@ -1361,6 +1362,51 @@ function fieldsFor(object: ImportObject) {
   }));
 }
 
+/** The name a row would create a record under, as a name key. */
+function rowNameKey(object: ImportObject, values: PlannedRow["values"]): string | null {
+  if (object === "organisation") return organisationNameKey(str(values.name));
+  const name =
+    str(values.displayName) ??
+    [str(values.givenName), str(values.familyName)].filter(Boolean).join(" ");
+  return personNameKey(name);
+}
+
+/**
+ * Duplicates (ADR 0247): a row that would create a record with the same name as a live one says
+ * so. The row still creates unless the person skips it. One indexed lookup for the whole file.
+ */
+async function flagPossibleDuplicates(
+  db: Kysely<CoreDatabase>,
+  object: ImportObject,
+  rows: PlannedRow[],
+): Promise<void> {
+  const keyed = rows.flatMap((r) => {
+    const key = r.action === "create" ? rowNameKey(object, r.values) : null;
+    return key ? [{ row: r, key }] : [];
+  });
+  if (!keyed.length) return;
+  const keys = jsonList([...new Set(keyed.map((k) => k.key))]);
+  const found =
+    object === "person"
+      ? await db
+          .selectFrom("core_person")
+          .select(["name_key", "display_name as title"])
+          .where("name_key", "in", keys)
+          .where("deleted_at", "is", null)
+          .execute()
+      : await db
+          .selectFrom("core_organisation")
+          .select(["name_key", "name as title"])
+          .where("name_key", "in", keys)
+          .where("deleted_at", "is", null)
+          .execute();
+  const titles = new Map(found.map((f) => [f.name_key, f.title]));
+  for (const { row, key } of keyed) {
+    const title = titles.get(key);
+    if (title) row.reason = `Possible duplicate of ${title}: same name`;
+  }
+}
+
 export const importCsvPreview = defineOperation({
   name: "import.csv.preview",
   description:
@@ -1368,7 +1414,8 @@ export const importCsvPreview = defineOperation({
     "column mapping from the headers (pass mapping to change it), then decides per row: people " +
     "are matched to existing people by email, organisations by domain (by name when a row has " +
     "no domain). Matched rows update (filling in given fields, adding new emails, phones and " +
-    "tags); unmatched rows create; invalid or duplicate rows skip. For people, an organisation " +
+    "tags); unmatched rows create; invalid or duplicate rows skip. A row that would create a " +
+    "record with the same name as an existing one says so in its reason. For people, an organisation " +
     "column is matched by domain or name or creates the organisation, and a current affiliation " +
     "(primary if the person has none) is added with the job title. Each row lists its options " +
     "for overrides. Pass the same csv, mapping and overrides to import.csv.commit. Read-only.",
@@ -1380,6 +1427,7 @@ export const importCsvPreview = defineOperation({
   mcp: { idempotent: true },
   async handler(input, ctx) {
     const result = await plan(ctx.db, input);
+    await flagPossibleDuplicates(ctx.db, input.object, result.rows);
     return {
       object: input.object,
       headers: result.headers,
@@ -1446,6 +1494,8 @@ export const importCsvCommit = defineOperation({
       input.object === "person" ? create + organisationsCreated : organisationsCreated,
     );
     result.queue(ctx);
+    // Duplicates (ADR 0247): the runner's next tick scans the imported records.
+    queueScanAfterImport(ctx);
     return {
       counts: result.counts,
       rows: result.rows.map((r) => ({
