@@ -146,7 +146,8 @@ export const JUDGE_PLACEMENTS = [
   place({
     id: "memory.write",
     label: "Memory lines before the assistant saves them",
-    askedWhen: "memory.propose and teamMemory.propose, when the assistant saves a line from the chat",
+    askedWhen:
+      "memory.propose and teamMemory.propose, when the assistant saves a line from the chat",
     failMode: "closed",
     onFailure:
       "The deterministic checks decide what they can, and the line is read back and saved only when the person confirms",

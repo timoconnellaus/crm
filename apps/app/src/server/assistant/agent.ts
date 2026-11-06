@@ -13,12 +13,13 @@
 // Writes to D1 go only through operations: the turn's tool calls, `thread.open` once, and one
 // `thread.finishTurn` per turn (unread count, preview, and the records it referenced, for erase).
 // No alarms yet: compaction (W2) and agent reminders will add them.
+//
+// Memory (ADR 0342) lives in D1 and is read live each turn (core's `memoryForTurn`); the object
+// keeps only when the memory block was last folded. Compaction calls `foldPendingLines()`.
 import {
   assembleContext,
   messagesFromResponse,
   messageText,
-  type PendingLine,
-  pendingTailBlock,
   runTurn,
   SqliteMessageStore,
   type TailBlock,
@@ -39,10 +40,14 @@ import {
   type ConversationScrub,
   conversationRefs,
   describeAssistantResult,
+  EMPTY_THREAD_MEMORY,
   errorForLog,
+  foldPendingLines,
   type InvocationContext,
   invokeByName,
   loadGeneralSettings,
+  memoryForTurn,
+  memorySaveOf,
   parseFloor,
   personsWordsInThread,
   type RateLimitBinding,
@@ -55,10 +60,12 @@ import {
   scrubText,
   scrubValue,
   type ThreadClientFrame,
+  type ThreadMemoryState,
   type ThreadSearchHit,
   type ThreadServerFrame,
   type TranscriptItem,
   transcriptFromThread,
+  withSavedLines,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { Agent, type Connection, type ConnectionContext, type WSMessage } from "agents";
@@ -208,9 +215,23 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     return unreadCount(this.#messages.list({ afterSeq: lastSeen }), lastSeen);
   }
 
-  #pendingLines(): PendingLine[] {
-    const raw = this.#meta("pending_lines");
-    return raw ? (JSON.parse(raw) as PendingLine[]) : [];
+  #memoryState(): ThreadMemoryState {
+    const raw = this.#meta("memory");
+    return raw ? (JSON.parse(raw) as ThreadMemoryState) : EMPTY_THREAD_MEMORY;
+  }
+
+  /**
+   * Compaction's hook (ADR 0342): the prefix is being rewritten, so every pending memory line joins
+   * the memory block and leaves the tail. Call it after the compaction is committed; the next turn
+   * sends the block returned here.
+   */
+  async foldPendingLines(): Promise<{ block: string | undefined; folded: string[] }> {
+    const owner = this.#meta("owner");
+    if (!owner) return { block: undefined, folded: [] };
+    const db = createCrmDb(this.#env.DB);
+    const { state, block, folded } = await foldPendingLines(db.query, owner, this.#memoryState());
+    this.#setMeta("memory", JSON.stringify(state));
+    return { block, folded };
   }
 
   // -------------------------------------------------------------------------------------------
@@ -310,7 +331,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
   /**
    * Deletes a message: one of the person's, or a whole reply (every assistant and tool message of
    * its turn, so a tool call never loses its result). Gone from the thread, search and what the
-   * model sees. Memory lines saved from it go too (ADR 0342, once memory exists).
+   * model sees. `thread.deleteMessage` deletes the memory lines saved from it (ADR 0342).
    */
   async deleteMessage(userId: string, seq: number): Promise<{ deleted: number[] }> {
     this.#assertOwner(userId);
@@ -327,11 +348,6 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
             .filter((m) => !m.deletedAt && m.role !== "user")
             .map((m) => m.seq);
     this.#messages.delete(seqs, new Date().toISOString());
-    const pending = this.#pendingLines();
-    const kept = pending.filter(
-      (l) => l.sourceMessageSeq === undefined || !seqs.includes(l.sourceMessageSeq),
-    );
-    if (kept.length !== pending.length) this.#setMeta("pending_lines", JSON.stringify(kept));
     this.#broadcast({ type: "deleted", seqs });
     return { deleted: seqs };
   }
@@ -700,6 +716,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
         // The person's own turns, by code: what authoring.intent checks an automation against
         // (ADR 0230). The model never writes them; a request it passes is ignored.
         personsWords: personsWordsInThread(history, request.text),
+        assistantTurn: { threadId, messageSeq: running.userSeq, text: request.text },
       };
       const caller: McpCaller = {
         context,
@@ -723,8 +740,14 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
             context: request.context,
           }),
         ];
-        const pending = pendingTailBlock(this.#pendingLines());
-        if (pending) tail.push(pending);
+        // With no history there is no cached prefix to protect, so everything starts in the block.
+        const memory = await memoryForTurn(db.query, user.id, {
+          state: this.#memoryState(),
+          fold: !history.length,
+          record: request.context?.record,
+        });
+        tail.push(...memory.tail);
+        this.#setMeta("memory", JSON.stringify(memory.state));
         const assembled = await assembleContext({
           prefix: {
             instructions: assistantInstructions({
@@ -734,6 +757,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
               serverInstructions: mcp.instructions,
             }),
             tools: mcp.tools,
+            memory: memory.block,
           },
           history,
           tail,
@@ -750,7 +774,14 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
           system: assembled.system,
           messages: assembled.messages,
           tools: mcp.tools,
-          emit: (event) => this.#emit(event as AssistantEventInput),
+          emit: (event) => {
+            this.#emit(event as AssistantEventInput);
+            const save = event.type === "tool-result" ? memorySaveOf(event.output) : undefined;
+            if (save) {
+              const state = withSavedLines(this.#memoryState(), [save.line]);
+              this.#setMeta("memory", JSON.stringify(state));
+            }
+          },
           describeResult: describeAssistantResult,
           signal: running.abort.signal,
         });

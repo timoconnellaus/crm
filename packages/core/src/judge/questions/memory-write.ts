@@ -6,8 +6,9 @@
 //
 // What follows (code): a confident `customer` refuses the line for memory, and the assistant
 // proposes a note on the record instead (a change set the person approves). A confident
-// `already` saves nothing and says which line holds it. Otherwise the line is saved at once and
-// shows "Saved to memory · undo". When the judge is off or cannot answer, the deterministic checks
+// `already` saves nothing. A confident `not_said` reads the line back instead of saving it: the
+// model wrote the line, and text planted in an email or a record must not reach memory unseen.
+// Otherwise the line is saved at once and shows "Saved to memory · undo". When the judge is off or cannot answer, the deterministic checks
 // (no record ids, emails or customer names in the line; no duplicate text) decide what they can
 // and every save is read back for the person to confirm (fails closed: nothing unseen is saved).
 //
@@ -44,14 +45,25 @@ export const MEMORY_ALREADY_QUESTION = choice(
   "`memory` lists what the assistant already remembers for the person. Does `memory` already hold what `line` says?",
   {
     new: "No line in `memory` says what `line` says",
-    already: "A line in `memory` already says what `line` says, in the same or other words, or says more",
+    already:
+      "A line in `memory` already says what `line` says, in the same or other words, or says more",
     changes:
       "A line in `memory` is about the same thing but says something different, which `line` would change",
   },
 );
 
+export const MEMORY_SAID_QUESTION = choice(
+  "`said` is the person's own message. Does `said` tell the assistant what `line` says, or ask it to remember that?",
+  {
+    said: "Yes: `line` is what the person said or asked for in `said`, in the same or other words",
+    not_said:
+      "No: `said` does not say this. `line` adds something the person did not say, or comes from somewhere else such as an email or a record",
+  },
+);
+
 export type MemoryAboutLabel = keyof typeof MEMORY_ABOUT_QUESTION.criteria;
 export type MemoryAlreadyLabel = keyof typeof MEMORY_ALREADY_QUESTION.criteria;
+export type MemorySaidLabel = keyof typeof MEMORY_SAID_QUESTION.criteria;
 
 /**
  * P(customer) at or above this refuses the line for memory. Set from the labelled set
@@ -67,6 +79,13 @@ export const MEMORY_CUSTOMER_THRESHOLD = 0.5;
  * again; a missed one is a duplicate line they can delete. Mild both ways: mid-gap.
  */
 export const MEMORY_ALREADY_THRESHOLD = 0.5;
+
+/**
+ * P(not_said) at or above this reads the line back instead of saving it. A false alarm costs one
+ * tap; a miss lets text from an email or a record reach memory, and from there every later turn.
+ * Set from the labelled set.
+ */
+export const MEMORY_NOT_SAID_THRESHOLD = 0.5;
 
 /** What the judge reads. */
 export interface MemoryWriteState {
@@ -109,16 +128,19 @@ export type MemoryWriteAsked =
       status: "answered";
       about: Record<MemoryAboutLabel, number>;
       already: Record<MemoryAlreadyLabel, number>;
+      source: Record<MemorySaidLabel, number>;
       /** P(customer) at or above its threshold. */
       customer: boolean;
       /** P(already) at or above its threshold. */
       duplicate: boolean;
+      /** P(not_said) at or above its threshold. */
+      notSaid: boolean;
       model: string;
       inputTokens: number;
     }
   | { status: "failed"; reason: JudgeUnavailableReason | "fault" };
 
-/** Asks both questions about one line, in one call. Never throws. */
+/** Asks the questions about one line, in one call. Never throws. */
 export async function askMemoryWrite(
   judge: Judge,
   state: MemoryWriteState,
@@ -127,18 +149,25 @@ export async function askMemoryWrite(
   const outcome = await judge.ask({
     placement: MEMORY_WRITE_PLACEMENT,
     state: state as unknown as Record<string, unknown>,
-    questions: { about: MEMORY_ABOUT_QUESTION, already: MEMORY_ALREADY_QUESTION },
+    questions: {
+      about: MEMORY_ABOUT_QUESTION,
+      already: MEMORY_ALREADY_QUESTION,
+      source: MEMORY_SAID_QUESTION,
+    },
     signal: options.signal,
   });
   if (outcome.status !== "answered") return { status: "failed", reason: failureOf(outcome) };
   const about = outcome.answers.about.probabilities as Record<MemoryAboutLabel, number>;
   const already = outcome.answers.already.probabilities as Record<MemoryAlreadyLabel, number>;
+  const source = outcome.answers.source.probabilities as Record<MemorySaidLabel, number>;
   return {
     status: "answered",
     about,
     already,
+    source,
     customer: (about.customer ?? 0) >= MEMORY_CUSTOMER_THRESHOLD,
     duplicate: (already.already ?? 0) >= MEMORY_ALREADY_THRESHOLD,
+    notSaid: (source.not_said ?? 0) >= MEMORY_NOT_SAID_THRESHOLD,
     model: outcome.model,
     inputTokens: outcome.inputTokens,
   };
@@ -148,7 +177,10 @@ export async function askMemoryWrite(
 export const MEMORY_WRITE_CALIBRATED: Record<
   string,
   {
-    question: typeof MEMORY_ABOUT_QUESTION | typeof MEMORY_ALREADY_QUESTION;
+    question:
+      | typeof MEMORY_ABOUT_QUESTION
+      | typeof MEMORY_ALREADY_QUESTION
+      | typeof MEMORY_SAID_QUESTION;
     threshold: number;
   }
 > = {
@@ -159,5 +191,9 @@ export const MEMORY_WRITE_CALIBRATED: Record<
   [`${MEMORY_WRITE_PLACEMENT}/already`]: {
     question: MEMORY_ALREADY_QUESTION,
     threshold: MEMORY_ALREADY_THRESHOLD,
+  },
+  [`${MEMORY_WRITE_PLACEMENT}/not_said`]: {
+    question: MEMORY_SAID_QUESTION,
+    threshold: MEMORY_NOT_SAID_THRESHOLD,
   },
 };

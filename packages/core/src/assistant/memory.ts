@@ -5,6 +5,7 @@
 // deterministic checks used when the judge is off, and the erase index.
 //
 // Customer facts never live here: they go on the record as a note (ADR 0342 decision 5).
+import { type PendingLine, pendingTailBlock, type TailBlock } from "@relationship-os/agent-core";
 import type { CoreDatabase } from "@relationship-os/db";
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
@@ -13,6 +14,7 @@ import { getObject } from "../fields/index.ts";
 import type { ObjectDefinition } from "../fields/types.ts";
 import { compileFilter, type Filter, filterSchema } from "../filter.ts";
 import type { HandlerContext } from "../operation.ts";
+import { searchTerms } from "../operations/search.ts";
 import { jsonList } from "../records/common.ts";
 import { mentionsSql } from "../records/erase-subject.ts";
 import { conversationRefs } from "./scrub.ts";
@@ -146,9 +148,11 @@ export async function memoryRow(
   db: Kysely<CoreDatabase>,
   id: string,
 ): Promise<MemoryRow | undefined> {
-  return (await db.selectFrom("core_memory").select(COLUMNS).where("id", "=", id).executeTakeFirst()) as
-    | MemoryRow
-    | undefined;
+  return (await db
+    .selectFrom("core_memory")
+    .select(COLUMNS)
+    .where("id", "=", id)
+    .executeTakeFirst()) as MemoryRow | undefined;
 }
 
 /** The person's lines (every kind and status) and the team's, oldest first. */
@@ -236,7 +240,8 @@ export async function memoryForAssistant(
       id: r.id,
       kind: r.kind,
       text: r.text,
-      condition: r.kind === "conditional" ? parseJson<MemoryCondition | null>(r.condition, null) : null,
+      condition:
+        r.kind === "conditional" ? parseJson<MemoryCondition | null>(r.condition, null) : null,
       activeSince: r.active_since ?? r.created_at,
     })),
   };
@@ -269,13 +274,10 @@ export function renderMemoryBlock(lines: readonly ActiveMemoryLine[]): string | 
   return sections.length ? sections.join("\n\n") : undefined;
 }
 
-/** The text of matching conditional lines for the tail (null when none match). */
-export function conditionalTailText(
-  matched: readonly ActiveMemoryLine[],
-  recordLabel: string,
-): string | null {
+/** The text of the conditional lines that hold on the record in view (null when none do). */
+export function conditionalTailText(matched: readonly ActiveMemoryLine[]): string | null {
   if (!matched.length) return null;
-  return `Because the person is on ${recordLabel}, also remember:\n${matched.map((l) => `- ${flat(l.text)}`).join("\n")}`;
+  return `Because of the record in view, also remember:\n${matched.map((l) => `- ${flat(l.text)}`).join("\n")}`;
 }
 
 /**
@@ -317,6 +319,146 @@ export async function recordMatches(
   const result = await sql<{ x: number }>`SELECT 1 AS x FROM ${sql.table(object.source)} AS m
     WHERE m.id = ${id} AND ${condition} LIMIT 1`.execute(db);
   return result.rows.length > 0;
+}
+
+// ---------------------------------------------------------------------------------------------
+// What a turn sends, and the fold (ADR 0342 decisions 3 and 4)
+//
+// Only one thing is kept between turns: `foldedAt`, when the memory block was last rewritten. A
+// line active since then is pending and rides in the tail; a line active before it is in the block.
+// Both are read live from D1 each turn, so a line that is undone, deleted, erased or paused simply
+// stops being sent, and the prefix bytes change only when a line in the block does (the person
+// edited memory, which ADR 0342 accepts) or at a fold.
+
+/** What the thread keeps between turns. */
+export interface ThreadMemoryState {
+  /** The newest `activeSince` the memory block covers (null: nothing folded yet). */
+  foldedAt: string | null;
+  /** Pending lines already sent in a tail since the last fold, as `<id>@<activeSince>`. */
+  shown: string[];
+}
+
+export const EMPTY_THREAD_MEMORY: ThreadMemoryState = { foldedAt: null, shown: [] };
+
+export interface TurnMemory {
+  /** For the cached prefix. */
+  block: string | undefined;
+  tail: TailBlock[];
+  state: ThreadMemoryState;
+}
+
+const shownKey = (line: ActiveMemoryLine) => `${line.id}@${line.activeSince}`;
+
+const pendingLine = (line: ActiveMemoryLine): PendingLine => ({
+  id: line.id,
+  text: line.text,
+  addedAt: line.activeSince,
+});
+
+/** Lines of the block (or the prefix's next rewrite): everything but conditional lines. */
+const unconditional = (lines: readonly ActiveMemoryLine[]) =>
+  lines.filter((l) => l.kind !== "conditional");
+
+/** `foldedAt` that covers every line. Lines saved later are active later, so they stay pending. */
+function foldedThrough(lines: readonly ActiveMemoryLine[], before: string | null): string | null {
+  return lines.reduce<string | null>(
+    (latest, l) => (latest === null || l.activeSince > latest ? l.activeSince : latest),
+    before,
+  );
+}
+
+/**
+ * The memory of one turn: the block for the prefix, and for the tail the pending lines and the
+ * conditional lines that hold on the record in view. `fold` puts every pending line in the block
+ * at once (a thread with no history has no cached prefix to protect). Tails stay in the history
+ * they were sent with, so when a line shown in one has since gone or changed, the tail says to
+ * stop relying on it.
+ */
+export async function memoryForTurn(
+  db: Kysely<CoreDatabase>,
+  userId: string,
+  input: {
+    state: ThreadMemoryState;
+    fold?: boolean;
+    record?: { object: string; id: string } | undefined;
+  },
+): Promise<TurnMemory> {
+  const { lines } = await memoryForAssistant(db, userId);
+  const plain = unconditional(lines);
+  const foldedAt = input.fold ? foldedThrough(plain, input.state.foldedAt) : input.state.foldedAt;
+  const folded = (l: ActiveMemoryLine) => foldedAt !== null && l.activeSince <= foldedAt;
+  const pending = plain.filter((l) => !folded(l));
+  const current = new Set(lines.map(shownKey));
+  const shown = input.fold ? [] : input.state.shown;
+
+  const tail: TailBlock[] = [];
+  const pendingBlock = pendingTailBlock(pending.map(pendingLine));
+  if (pendingBlock) tail.push(pendingBlock);
+  if (shown.some((key) => !current.has(key))) {
+    tail.push({
+      kind: "pending",
+      text: "Lines listed as saved in earlier messages have changed or been removed since. Go only by the memory above and any lines listed now.",
+    });
+  }
+  if (input.record) {
+    const matched = await matchingConditional(db, lines, input.record);
+    const text = conditionalTailText(matched);
+    if (text) tail.push({ kind: "page", text });
+  }
+  return {
+    block: renderMemoryBlock(plain.filter(folded)),
+    tail,
+    state: { foldedAt, shown: [...new Set([...shown, ...pending.map(shownKey)])] },
+  };
+}
+
+/**
+ * A line saved during a turn is already in the history, in its tool result, so it counts as
+ * shown: undoing it before the next turn must also tell the model.
+ */
+export function withSavedLines(
+  state: ThreadMemoryState,
+  saved: readonly { id: string; activeSince: string | null }[],
+): ThreadMemoryState {
+  const keys = saved.flatMap((l) => (l.activeSince ? [`${l.id}@${l.activeSince}`] : []));
+  return keys.length ? { ...state, shown: [...new Set([...state.shown, ...keys])] } : state;
+}
+
+/**
+ * `foldPendingLines()` (ADR 0342 decision 3): compaction has rewritten the prefix, so every
+ * pending line joins the block and the tail empties. Returns the new state, the block as the next
+ * turn sends it, and the ids folded.
+ */
+export async function foldPendingLines(
+  db: Kysely<CoreDatabase>,
+  userId: string,
+  state: ThreadMemoryState,
+): Promise<{ state: ThreadMemoryState; block: string | undefined; folded: string[] }> {
+  const plain = unconditional((await memoryForAssistant(db, userId)).lines);
+  const foldedAt = foldedThrough(plain, state.foldedAt);
+  return {
+    state: { foldedAt, shown: [] },
+    block: renderMemoryBlock(plain),
+    folded: plain
+      .filter((l) => state.foldedAt === null || l.activeSince > state.foldedAt)
+      .map((l) => l.id),
+  };
+}
+
+/**
+ * What an agent reads when it starts (ADR 0342 decision 4): the person's memory as it is now,
+ * pending lines included, and the conditional lines that hold on `record`. Live, read-only, and
+ * outside the thread's fold: an agent has no cached prefix of the thread's to protect.
+ */
+export async function memoryForAgent(
+  db: Kysely<CoreDatabase>,
+  userId: string,
+  record?: { object: string; id: string },
+): Promise<string | undefined> {
+  const { lines } = await memoryForAssistant(db, userId);
+  const matched = record ? await matchingConditional(db, lines, record) : [];
+  const parts = [renderMemoryBlock(lines), conditionalTailText(matched)].filter(Boolean);
+  return parts.length ? parts.join("\n\n") : undefined;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -409,7 +551,10 @@ export function normaliseLine(text: string): string {
 }
 
 /** An existing line that already says this exactly, or contains it. */
-export function duplicateOf<T extends { text: string }>(text: string, lines: readonly T[]): T | null {
+export function duplicateOf<T extends { text: string }>(
+  text: string,
+  lines: readonly T[],
+): T | null {
   const mine = normaliseLine(text);
   if (!mine) return null;
   for (const line of lines) {
@@ -419,79 +564,92 @@ export function duplicateOf<T extends { text: string }>(text: string, lines: rea
   return null;
 }
 
-/** Capitalised words and pairs in a line that could be a name (not its first word, not "I"). */
-function nameCandidates(text: string): string[] {
-  const words = text.match(/\p{Lu}[\p{L}'’-]+/gu) ?? [];
-  const first = /^\s*(\p{Lu}[\p{L}'’-]+)/u.exec(text)?.[1];
-  const skip = new Set(["I", "I'm", "I'd", "I'll", "I’ve", "When", "Always", "Never"]);
-  const single = words.filter((w, i) => !(i === 0 && w === first) && !skip.has(w) && w.length >= 3);
-  const pairs: string[] = [];
-  const pairRe = /(\p{Lu}[\p{L}'’-]+)\s+(\p{Lu}[\p{L}'’-]+)/gu;
-  for (const m of text.matchAll(pairRe)) pairs.push(`${m[1]} ${m[2]}`);
-  return [...new Set([...single, ...pairs])].slice(0, 40);
+/** Capitalised words that are not names. A month can be a name, so it never counts as one here. */
+const NOT_NAMES = new Set(
+  (
+    "i i'm i'd i'll i've when always never only please prefer use my the a an in on at for no not " +
+    "don't do if call calls email emails monday tuesday wednesday thursday friday saturday sunday " +
+    "january february march april may june july august september october november december"
+  ).split(" "),
+);
+
+/** Capitalised words in a line that could be part of a name, lower-cased. */
+function nameWords(text: string): string[] {
+  const words = (text.match(/\p{Lu}[\p{L}'’-]+/gu) ?? []).map((w) => w.toLowerCase());
+  return [...new Set(words.filter((w) => !NOT_NAMES.has(w)))].slice(0, 20);
+}
+
+export interface CustomersNamed {
+  /** How the line names them. */
+  names: string[];
+  /** Their ids, for the erase index. */
+  ids: string[];
 }
 
 /**
- * Names of people and organisations in the CRM that a line mentions (whole names, or a person's
- * given or family name), from capitalised words: at most two indexed lookups. The person's own
- * name is ignored.
+ * People and organisations in the CRM that a line names, from its capitalised words, in one
+ * search-index lookup on record titles: a person by any word of their name, an organisation by
+ * its whole name. The person's own name is ignored.
  */
-export async function customerNamesIn(
+export async function customersNamedIn(
   db: Kysely<CoreDatabase>,
   text: string,
   ownName: string | null,
-): Promise<string[]> {
-  const own = new Set(
-    (ownName ?? "")
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((n) => n.toLowerCase()),
-  );
-  const candidates = nameCandidates(text).filter((c) => !own.has(c.toLowerCase()));
-  if (!candidates.length) return [];
-  const lower = candidates.map((c) => c.toLowerCase());
-  const people = await db
-    .selectFrom("crm_people")
-    .select(["display_name", "given_name", "family_name"])
-    .where((eb) =>
-      eb.or([
-        eb(sql`lower(display_name)`, "in", jsonList(lower)),
-        eb(sql`lower(given_name)`, "in", jsonList(lower)),
-        eb(sql`lower(family_name)`, "in", jsonList(lower)),
-      ]),
-    )
-    .limit(5)
-    .execute();
-  const orgs = await db
-    .selectFrom("crm_organisations")
-    .select("name")
-    .where(sql`lower(name)`, "in", jsonList(lower))
-    .limit(5)
-    .execute();
-  const found = new Set<string>();
-  for (const p of people) {
-    for (const n of [p.display_name, p.given_name, p.family_name]) {
-      if (n && lower.includes(n.toLowerCase()) && !own.has(n.toLowerCase())) found.add(n);
+): Promise<CustomersNamed> {
+  const own = new Set(searchTerms(ownName ?? ""));
+  const words = searchTerms(nameWords(text).join(" ")).filter((w) => !own.has(w));
+  if (!words.length) return { names: [], ids: [] };
+  // searchTerms leaves letters and digits only, so no FTS syntax gets through.
+  const match = `title : (${words.map((w) => `"${w}"`).join(" OR ")})`;
+  const hits = await sql<{ object_type: string; record_id: string; title: string }>`
+    SELECT d.object_type, d.record_id, d.title
+    FROM core_search
+    JOIN core_search_docs d ON d.id = core_search.rowid
+    WHERE core_search MATCH ${match} AND d.object_type IN ('person', 'organisation')
+    LIMIT 50
+  `.execute(db);
+  const line = searchTerms(text).join(" ");
+  const names = new Set<string>();
+  const ids: string[] = [];
+  for (const hit of hits.rows) {
+    const title = searchTerms(hit.title);
+    if (hit.object_type === "person") {
+      const said = words.filter((w) => title.includes(w));
+      if (!said.length) continue;
+      for (const w of said) names.add(w);
+    } else {
+      if (!` ${line} `.includes(` ${title.join(" ")} `)) continue;
+      names.add(hit.title);
     }
+    ids.push(hit.record_id);
   }
-  for (const o of orgs) if (o.name) found.add(o.name);
-  return [...found];
+  return { names: [...names], ids };
 }
 
 // ---------------------------------------------------------------------------------------------
 // Erase (ADR 0320, ADR 0342 decision 10)
 
-/** The refs a line names (people and organisation ids, hashed emails), for erase. */
-export async function memoryRefs(text: string, condition: unknown): Promise<string[]> {
-  return conversationRefs([text, condition ?? null]);
+/**
+ * The refs a line names, for erase: people and organisation ids and hashed emails written in it or
+ * its condition, and the customers it names in words.
+ */
+export async function memoryRefs(
+  db: Kysely<CoreDatabase>,
+  text: string,
+  condition: unknown,
+  ownName: string | null,
+): Promise<string[]> {
+  const [written, named] = await Promise.all([
+    conversationRefs([text, condition ?? null]),
+    customersNamedIn(db, text, ownName),
+  ]);
+  return [...new Set([...written, ...named.ids])];
 }
 
-/** Statements that index a line's refs (replacing what it had). */
-export function memoryRefStatements(ctx: HandlerContext, id: string, refs: readonly string[]) {
-  const statements = [ctx.db.deleteFrom("core_memory_refs").where("memory_id", "=", id)];
-  if (!refs.length) return statements;
-  return [
-    ...statements,
+/** Queues a line's refs. A line keeps refs it had: a team line's history still holds old text. */
+export function queueMemoryRefs(ctx: HandlerContext, id: string, refs: readonly string[]): void {
+  if (!refs.length) return;
+  ctx.write(
     ctx.db
       .insertInto("core_memory_refs")
       .orIgnore()
@@ -501,20 +659,58 @@ export function memoryRefStatements(ctx: HandlerContext, id: string, refs: reado
           .selectFrom(sql<{ value: string }>`json_each(${JSON.stringify(refs)})`.as("j"))
           .select([sql<string>`${id}`.as("memory_id"), "j.value as ref"]),
       ),
-  ];
+  );
+}
+
+/** Queues deleting lines and their refs. */
+export function queueDeleteMemory(ctx: HandlerContext, ids: readonly string[]): void {
+  if (!ids.length) return;
+  ctx.write(ctx.db.deleteFrom("core_memory_refs").where("memory_id", "in", jsonList(ids)));
+  ctx.write(ctx.db.deleteFrom("core_memory").where("id", "in", jsonList(ids)));
 }
 
 /**
- * The memory side of an erase: lines that name an erased person or organisation, found through
- * `core_memory_refs` (ids and hashed emails) or by a term in their text (an email or phone written
- * out), are deleted in the erase's batch, refs and all. Names are not matched (they are matched
- * only where a row is known to be about the subject, ADR 0320). Returns how many go.
+ * Deleting messages deletes the lines saved from them (ADR 0342 decision 9). Returns how many.
+ */
+export async function queueDeleteMemoryFromMessages(
+  ctx: HandlerContext,
+  threadId: string,
+  seqs: readonly number[],
+): Promise<number> {
+  if (!seqs.length) return 0;
+  const rows = await ctx.db
+    .selectFrom("core_memory")
+    .select("id")
+    .where("source_thread_id", "=", threadId)
+    .where("source_message_seq", "in", jsonList(seqs))
+    .execute();
+  queueDeleteMemory(
+    ctx,
+    rows.map((r) => r.id),
+  );
+  return rows.length;
+}
+
+/**
+ * The memory side of an erase: lines that name an erased person or organisation are deleted in the
+ * erase's batch, refs and all. They are found through `core_memory_refs` (ids, hashed emails, and
+ * the customers a line named when it was saved), or by a term in their text, condition or history
+ * (an email or phone written out, or a full name saved before the record existed). A single name
+ * alone is not matched: it is matched only where a row is known to be about the subject
+ * (ADR 0320). Returns how many go.
  */
 export async function queueEraseMemory(
   ctx: HandlerContext,
-  subject: { recordIds: readonly string[]; terms: readonly string[]; refs: readonly string[] },
+  subject: {
+    recordIds: readonly string[];
+    terms: readonly string[];
+    names: readonly string[];
+    refs: readonly string[];
+  },
 ): Promise<number> {
-  const terms = subject.terms.filter((t) => t.length >= 6).map((t) => t.toLowerCase());
+  const terms = [...subject.terms, ...subject.names.filter((n) => /\s/.test(n.trim()))]
+    .filter((t) => t.length >= 6)
+    .map((t) => t.toLowerCase());
   const refs = [...new Set([...subject.recordIds, ...subject.refs])];
   if (!refs.length && !terms.length) return 0;
   const rows = await ctx.db
@@ -536,15 +732,22 @@ export async function queueEraseMemory(
           : []),
         ...(terms.length
           ? [
-              eb(mentionsSql(terms, sql`text || ' ' || coalesce(condition, '')`), "=", sql<boolean>`1`),
+              eb(
+                mentionsSql(
+                  terms,
+                  sql`text || ' ' || coalesce(condition, '') || ' ' || coalesce(history, '')`,
+                ),
+                "=",
+                sql<boolean>`1`,
+              ),
             ]
           : []),
       ]),
     )
     .execute();
-  const ids = rows.map((r) => r.id);
-  if (!ids.length) return 0;
-  ctx.write(ctx.db.deleteFrom("core_memory_refs").where("memory_id", "in", jsonList(ids)));
-  ctx.write(ctx.db.deleteFrom("core_memory").where("id", "in", jsonList(ids)));
-  return ids.length;
+  queueDeleteMemory(
+    ctx,
+    rows.map((r) => r.id),
+  );
+  return rows.length;
 }
