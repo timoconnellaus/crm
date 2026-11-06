@@ -1,6 +1,6 @@
 // Deterministic stand-ins for the model roles (ADR 0150): local development and e2e without an
 // `AI` binding (AI_FAKE_MODEL=true), and tests. Never used when a binding exists.
-import { fakeAssistantModel } from "../assistant/fake.ts";
+import { fakeAssistantModel, fakeStandIn } from "../assistant/fake.ts";
 import { fakeBuildModel } from "../dashboards/describe.ts";
 import type { FakeModels, ModelMessage } from "./client.ts";
 import type { ModelRole } from "./roles.ts";
@@ -133,5 +133,9 @@ export function fakeModels(): FakeModels {
     // The front agent and its agents share it (ADR 0351).
     chat: (role: ModelRole) =>
       role === "assistant.core" || role === "assistant.subagent" ? fakeAssistantModel() : undefined,
+    chatInfo: () => ({
+      pricing: fakeStandIn.pricing,
+      contextTokens: fakeStandIn.contextTokens,
+    }),
   };
 }

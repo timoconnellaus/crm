@@ -5,6 +5,7 @@ export * from "./adjudicator/review.ts";
 export * from "./adjudicator/reviewers.ts";
 export * from "./adjudicator/run.ts";
 export * from "./ai/admin.ts";
+export * from "./ai/cache-review.ts";
 export * from "./ai/embedding.ts";
 export * from "./ai/hosted-admin.ts";
 export * from "./ai/hybrid.ts";

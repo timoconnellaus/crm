@@ -8,6 +8,7 @@
 // `reasoning_content` is refused with HTTP 400.
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
+import type { ModelPricing } from "../ai/roles.ts";
 import { fakeWidget } from "../dashboards/describe.ts";
 
 export interface ScriptedToolCall {
@@ -36,9 +37,61 @@ export interface ChatRequestBody {
   [key: string]: unknown;
 }
 
+export interface FakeUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  prompt_cache_hit_tokens?: number;
+}
+
 export interface FakeChatServerOptions {
   /** DeepSeek's rule with thinking on: tool-call turns must carry reasoning_content back. */
   requireReasoningContent?: boolean;
+  /** Waits before answering (a test holding a call open). */
+  beforeReply?: (body: ChatRequestBody) => Promise<void> | void;
+  /** The usage to report for an answer. The default is a flat 10 in, 5 out. */
+  usage?: (body: ChatRequestBody, reply: ScriptedReply) => FakeUsage;
+}
+
+/** How the scripted assistant's summary call is recognised (agent-core's NOTE_REQUEST). */
+const NOTE_REQUEST_START = "Write the where-we-left-off note";
+
+/**
+ * What tests can change about the scripted assistant (ADR 0341). It stays the same object for the
+ * whole isolate, so a test in workerd reaches the model its Durable Object runs. Local development
+ * and e2e keep the defaults: no prices and no window, so only the rails and the fallback apply.
+ */
+export const fakeStandIn: {
+  pricing: ModelPricing | null;
+  contextTokens: number;
+  /** Report the request's history as read from the provider's cache. */
+  cacheHits: boolean;
+  /** While set, a summary call waits for this. */
+  holdSummary: Promise<void> | null;
+  /** When set, every request the assistant model gets is kept here. */
+  requests: ChatRequestBody[] | null;
+} = { pricing: null, contextTokens: 0, cacheHits: true, holdSummary: null, requests: null };
+
+function tokensOf(value: unknown): number {
+  return Math.ceil((JSON.stringify(value ?? null) ?? "").length / 4);
+}
+
+/** About four characters a token, and everything before the newest message found cached. */
+function estimatedUsage(body: ChatRequestBody, reply: ScriptedReply): FakeUsage {
+  const prompt = tokensOf(body.messages) + tokensOf(body.tools);
+  const completion = tokensOf(reply.content ?? reply.toolCalls ?? "");
+  return {
+    prompt_tokens: prompt,
+    completion_tokens: completion,
+    total_tokens: prompt + completion,
+    prompt_cache_hit_tokens: fakeStandIn.cacheHits
+      ? Math.max(0, prompt - tokensOf(body.messages?.at(-1)))
+      : 0,
+  };
+}
+
+function isSummaryCall(body: ChatRequestBody): boolean {
+  return textOf(body.messages?.at(-1)?.content).startsWith(NOTE_REQUEST_START);
 }
 
 export interface FakeChatCall {
@@ -100,7 +153,13 @@ export function fakeChatServer(
       );
     }
     calls.push({ url, headers, body, status: 200 });
+    await options.beforeReply?.(body);
     const out = reply(body);
+    const usage = options.usage?.(body, out) ?? {
+      prompt_tokens: 10,
+      completion_tokens: 5,
+      total_tokens: 15,
+    };
     const model = body.model ?? "fake";
     const toolCalls = (out.toolCalls ?? []).map((t) => {
       callCounter += 1;
@@ -126,7 +185,7 @@ export function fakeChatServer(
       chunks.push({
         ...chunk(model, {}),
         choices: [],
-        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        usage,
       });
       return sse(chunks);
     }
@@ -147,7 +206,7 @@ export function fakeChatServer(
           finish_reason: finish,
         },
       ],
-      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+      usage,
     });
   }) as typeof fetch;
   return { calls, fetch: fetchFn };
@@ -222,6 +281,17 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
   const reasoning = body.thinking?.type === "enabled" ? "Working out what to do." : undefined;
   const withReasoning = (reply: ScriptedReply): ScriptedReply =>
     reasoning ? { ...reply, reasoning } : reply;
+  // A compaction's summary call (ADR 0341): the note keeps the person's first words.
+  if (isSummaryCall(body)) {
+    const earlier = /^We were talking about: .+$/m.exec(system)?.[0];
+    if (earlier) return withReasoning({ content: earlier });
+    const first = messages.find((m) => m.role === "user");
+    const words = textOf(first?.content);
+    const end = words.lastIndexOf("</context>");
+    const opening = (end >= 0 ? words.slice(end + "</context>".length) : words).trim();
+    const firstWords = opening.split(/\s+/).slice(0, 2).join(" ");
+    return withReasoning({ content: `We were talking about: ${firstWords}` });
+  }
   if (last?.role === "tool") {
     return withReasoning({ content: describeResult(textOf(last.content)) });
   }
@@ -301,7 +371,14 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
 
 /** The scripted assistant as an AI SDK language model. */
 export function fakeAssistantModel(options: FakeChatServerOptions = {}): LanguageModel {
-  const server = fakeChatServer(scriptedAssistant, options);
+  const server = fakeChatServer(scriptedAssistant, {
+    usage: estimatedUsage,
+    async beforeReply(body) {
+      fakeStandIn.requests?.push(body);
+      if (isSummaryCall(body)) await fakeStandIn.holdSummary;
+    },
+    ...options,
+  });
   return createOpenAICompatible({
     name: "fake",
     baseURL: "https://fake-assistant.invalid/v1",
