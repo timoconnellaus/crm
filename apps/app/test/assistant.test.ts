@@ -209,7 +209,11 @@ describe("the in-app assistant", () => {
     expect(JSON.parse(audit?.origin ?? "{}")).toEqual({ surface: "assistant", sessionId: id });
     const approved = (await invokeByName(
       "approval.approve",
-      { actionIds: [result.pending?.actionId] },
+      {
+        actionIds: [result.pending?.actionId],
+        // Deleting is high risk: the second button's words (ADR 0345).
+        confirm: `Confirm: delete ${grace.displayName}`,
+      },
       human(user),
     )) as { results: { status: string }[] };
     expect(approved.results[0]?.status).toBe("applied");

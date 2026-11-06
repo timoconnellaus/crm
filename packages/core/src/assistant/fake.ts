@@ -276,7 +276,7 @@ function toolNames(body: ChatRequestBody): string[] {
 /**
  * The scripted agent: for each organisation in its brief, read it, then write the website: filling
  * it when it is empty, changing it when it is not (which is staged for review), and report
- * progress. "Also change the owner" in the brief asks for something outside the grant, once.
+ * progress. "Delete tsk_…" in the brief asks for something outside the grant, once.
  */
 function scriptedAgent(body: ChatRequestBody): ScriptedReply {
   const messages = body.messages ?? [];
@@ -314,14 +314,15 @@ function scriptedAgent(body: ChatRequestBody): ScriptedReply {
       };
     }
   }
-  if (/also change the owner/i.test(brief) && !calls.some((c) => c.includes("task.delete"))) {
+  const outside = /\bdelete (tsk_\w+)/.exec(brief)?.[1];
+  if (outside && !calls.some((c) => c.includes("task.delete"))) {
     return {
       toolCalls: [
         {
           name: "call_operation",
           arguments: {
             name: "task.delete",
-            input: { id: "tsk_00000000000000000000000000" },
+            input: { id: outside },
             reason: "Outside the grant, on purpose",
           },
         },
@@ -455,7 +456,7 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
   // Longer work goes to an agent (ADR 0344).
   const research = /\bresearch\b.*\b(accounts|organisations)\b/i.test(text);
   if (research && hasTool(body, "start_agent")) {
-    const ids = (selection ?? "").split(/\s+/).filter((part) => part.startsWith("org_"));
+    const ids = [...`${selection ?? ""} ${text}`.matchAll(/\borg_\w+/g)].map((m) => m[0]);
     return withReasoning({
       toolCalls: [
         {
