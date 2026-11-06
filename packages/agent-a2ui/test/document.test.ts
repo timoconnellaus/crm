@@ -49,7 +49,7 @@ describe("the catalogue", () => {
     }
     expect(guide).toContain("taskList {title:string, tasks:[{id:string, title:string");
     // The tool description sits in the cached prefix: keep it small.
-    expect(guide.length).toBeLessThan(14_000);
+    expect(guide.length).toBeLessThan(10_000);
   });
 });
 

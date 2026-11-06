@@ -106,7 +106,10 @@ export function ListComponent({ props }: RendererProps<"list">) {
   return (
     <Tag
       data-a2ui="list"
-      className={cn("grid min-w-0 gap-1 pl-5 text-sm", props.ordered ? "list-decimal" : "list-disc")}
+      className={cn(
+        "grid min-w-0 gap-1 pl-5 text-sm",
+        props.ordered ? "list-decimal" : "list-disc",
+      )}
     >
       {props.items.map((item) => (
         <li key={item.text} className="break-words">

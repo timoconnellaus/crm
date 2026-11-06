@@ -1272,16 +1272,9 @@ function shape(schema: JsonSchema, depth = 0): string {
  */
 export function catalogueGuide(): string {
   const lines = CATALOGUE.filter((c) => !("hostOnly" in c && c.hostOnly)).map((c) => {
-    const { children: _children, ...fields } =
-      (z.toJSONSchema(c.props, { io: "input", unrepresentable: "any" }) as JsonSchema).properties ??
-      {};
-    const props = shape({
-      type: "object",
-      properties: fields,
-      required:
-        (z.toJSONSchema(c.props, { io: "input", unrepresentable: "any" }) as JsonSchema).required ??
-        [],
-    });
+    const schema = z.toJSONSchema(c.props, { io: "input", unrepresentable: "any" }) as JsonSchema;
+    const { children: _children, ...fields } = schema.properties ?? {};
+    const props = shape({ type: "object", properties: fields, required: schema.required ?? [] });
     return `- ${c.type} ${"container" in c && c.container ? `${props} + children:[component]` : props}: ${c.description}`;
   });
   return [

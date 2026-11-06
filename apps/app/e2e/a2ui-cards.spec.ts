@@ -101,7 +101,10 @@ test("the model's card draws; an invalid one shows its words; both are in the th
   await open(page, "/assistant");
   await expect(page.locator(`[data-a2ui="card"]`, { hasText: token }).first()).toBeVisible();
   await expect(
-    page.getByTestId("a2ui-fallback").filter({ hasText: `Plain words about ${token}.` }).first(),
+    page
+      .getByTestId("a2ui-fallback")
+      .filter({ hasText: `Plain words about ${token}.` })
+      .first(),
   ).toBeVisible();
 });
 

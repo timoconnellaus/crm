@@ -63,7 +63,7 @@ is wasteful.
   the Cautious preset, ticking a task on a model's card asks for approval.
 - **`a2ui.show` is the model's tool** (`show_card`, assistant only): the card plus the same answer
   in words, which is the fallback if the card is invalid. Its description holds the catalogue with
-  each component's props (`catalogueGuide`, about 12,000 characters of cached prefix).
+  each component's props (`catalogueGuide`, about 8,000 characters of cached prefix).
 - **The model reads the fallback, not the card.** A card's tool result goes to the reader whole, and
   the model gets `{ status, text }`, so a card is not paid for twice. `TurnTool.call` gained
   `modelText` for this.
