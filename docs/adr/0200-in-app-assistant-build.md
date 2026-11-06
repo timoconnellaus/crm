@@ -99,3 +99,12 @@ batch (migration 0270), and the object has a `scrub` RPC that redacts an erased 
 stored messages, turn errors and a running turn. `person.erase` and `organisation.erase` use both
 before they commit. The design, what is redacted and the limits are in
 [ADR 0019](0019-audit-redaction-for-erasure.md)'s amendment of the same date.
+
+## Amendment, 2026-11-06 (one thread per user)
+The `AssistantConversation` object, the conversation list (`core_assistant_conversation`) and "no
+alarms" are superseded by [ADR 0340](0340-one-assistant-thread-per-user.md): one
+`AssistantAgent` thread per user on the Agents SDK, with alarms for compaction
+([ADR 0341](0341-compaction-cost-model-and-cache-lifetime-learner.md)) and agent reminders. The
+in-process MCP client, the assistant's column in the presets, the refs for erase and
+`EVAL_VIA=assistant` carry over. The `assistant` model role becomes `assistant.core`
+([ADR 0351](0351-assistant-model-roles.md)).

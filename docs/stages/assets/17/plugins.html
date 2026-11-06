@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plugins</title>
+<style>
+/* Tokens copied from packages/ui/src/styles/globals.css (shadcn new-york, neutral). */
+:root{
+  --radius:.625rem;
+  --background:oklch(1 0 0);--foreground:oklch(.145 0 0);
+  --card:oklch(1 0 0);--card-foreground:oklch(.145 0 0);
+  --popover:oklch(1 0 0);
+  --primary:oklch(.205 0 0);--primary-foreground:oklch(.985 0 0);
+  --secondary:oklch(.97 0 0);--secondary-foreground:oklch(.205 0 0);
+  --muted:oklch(.97 0 0);--muted-foreground:oklch(.556 0 0);
+  --accent:oklch(.97 0 0);--accent-foreground:oklch(.205 0 0);
+  --destructive:oklch(.577 .245 27.325);
+  --border:oklch(.922 0 0);--input:oklch(.922 0 0);--ring:oklch(.708 0 0);
+  --success:oklch(.627 .17 149.2);
+  --chart-1:oklch(.646 .222 41.116);--chart-2:oklch(.6 .118 184.704);--chart-3:oklch(.398 .07 227.392);--chart-4:oklch(.828 .189 84.429);--chart-5:oklch(.769 .188 70.08);
+  --sidebar:oklch(.985 0 0);--sidebar-accent:oklch(.97 0 0);--sidebar-border:oklch(.922 0 0);
+  --amber:oklch(.769 .188 70.08);--amber-fg:oklch(.555 .163 48.998);
+  --green-fg:oklch(.527 .154 150.069);--red-fg:oklch(.505 .213 27.518);
+  --violet:oklch(.606 .25 292.717);
+  --mk-h:44px;
+  --font:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  --shadow-xs:0 1px 2px 0 rgb(0 0 0/.05);
+  --shadow-sm:0 1px 3px 0 rgb(0 0 0/.1),0 1px 2px -1px rgb(0 0 0/.1);
+  --shadow-lg:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);
+}
+.dark{
+  --background:oklch(.145 0 0);--foreground:oklch(.985 0 0);
+  --card:oklch(.205 0 0);--card-foreground:oklch(.985 0 0);--popover:oklch(.205 0 0);
+  --primary:oklch(.922 0 0);--primary-foreground:oklch(.205 0 0);
+  --secondary:oklch(.269 0 0);--secondary-foreground:oklch(.985 0 0);
+  --muted:oklch(.269 0 0);--muted-foreground:oklch(.708 0 0);
+  --accent:oklch(.269 0 0);--accent-foreground:oklch(.985 0 0);
+  --destructive:oklch(.704 .191 22.216);
+  --border:oklch(1 0 0/10%);--input:oklch(1 0 0/15%);--ring:oklch(.556 0 0);
+  --success:oklch(.723 .19 149.6);
+  --chart-1:oklch(.488 .243 264.376);--chart-2:oklch(.696 .17 162.48);--chart-3:oklch(.769 .188 70.08);--chart-4:oklch(.627 .265 303.9);--chart-5:oklch(.645 .246 16.439);
+  --sidebar:oklch(.205 0 0);--sidebar-accent:oklch(.269 0 0);--sidebar-border:oklch(1 0 0/10%);
+  --amber-fg:oklch(.828 .189 84.429);--green-fg:oklch(.792 .209 151.711);--red-fg:oklch(.704 .191 22.216);
+}
+*,*::before,*::after{box-sizing:border-box;border:0 solid var(--border);margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);font-size:14px;line-height:1.43;color:var(--foreground);background:var(--background);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,textarea,select{font:inherit;color:inherit;background:none}
+button{cursor:pointer}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+[hidden]{display:none!important}
+.i{width:16px;height:16px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle}
+.i.s3{width:12px;height:12px}.i.s35{width:14px;height:14px}.i.s5{width:20px;height:20px}.i.s6{width:24px;height:24px}.i.s8{width:32px;height:32px}
+.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+
+/* utilities */
+.row{display:flex;align-items:center}.col{display:flex;flex-direction:column}.wrap{flex-wrap:wrap}
+.g1{gap:4px}.g15{gap:6px}.g2{gap:8px}.g3{gap:12px}.g4{gap:16px}.g6{gap:24px}
+.grow{flex:1 1 0;min-width:0}.shrink0{flex-shrink:0}.ml-auto{margin-left:auto}
+.start{align-items:flex-start}.between{justify-content:space-between}.end{justify-content:flex-end}
+.xs{font-size:12px;line-height:16px}.sm{font-size:14px;line-height:20px}.base{font-size:16px;line-height:24px}.lg{font-size:18px;line-height:28px}.xl{font-size:20px;line-height:28px}.x2l{font-size:24px;line-height:32px}
+.muted{color:var(--muted-foreground)}.fg{color:var(--foreground)}.med{font-weight:500}.semi{font-weight:600}.tight{letter-spacing:-.025em}.italic{font-style:italic}
+.mono{font-family:var(--mono)}.tnum{font-variant-numeric:tabular-nums}
+.trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.mt1{margin-top:4px}.mt2{margin-top:8px}.mt3{margin-top:12px}.mt4{margin-top:16px}.mb1{margin-bottom:4px}.mb2{margin-bottom:8px}
+.p3{padding:12px}.p4{padding:16px}.px3{padding-left:12px;padding-right:12px}.py2{padding-top:8px;padding-bottom:8px}
+.stack>*+*{margin-top:8px}.stack3>*+*{margin-top:12px}.stack4>*+*{margin-top:16px}
+.green{color:var(--green-fg)}.red{color:var(--red-fg)}.amber{color:var(--amber-fg)}
+.sep{height:1px;background:var(--border)}
+.link{text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.link-q{color:var(--muted-foreground);cursor:pointer}.link-q:hover{color:var(--foreground);text-decoration:underline;text-underline-offset:2px}
+
+/* button (packages/ui button.tsx) */
+.btn{display:inline-flex;flex-shrink:0;align-items:center;justify-content:center;gap:8px;border-radius:calc(var(--radius) - 2px);font-size:14px;line-height:20px;font-weight:500;white-space:nowrap;height:36px;padding:0 16px;transition:background .15s,color .15s;position:relative;outline:none}
+.btn:focus-visible{box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}
+.btn:has(>.i:first-child){padding-left:12px}
+.btn-default{background:var(--primary);color:var(--primary-foreground)}.btn-default:hover{background:color-mix(in oklch,var(--primary) 90%,transparent)}
+.btn-destructive{background:var(--destructive);color:#fff}
+.btn-outline{border:1px solid var(--border);background:var(--background);box-shadow:var(--shadow-xs)}.btn-outline:hover{background:var(--accent)}
+.dark .btn-outline{border-color:var(--input);background:color-mix(in oklch,var(--input) 30%,transparent)}
+.btn-secondary{background:var(--secondary);color:var(--secondary-foreground)}.btn-secondary:hover{background:color-mix(in oklch,var(--secondary) 80%,transparent)}
+.btn-ghost:hover{background:var(--accent)}
+.btn-link{text-decoration:none;padding:0;height:auto}.btn-link:hover{text-decoration:underline}
+.btn-sm{height:32px;padding:0 12px;gap:6px}.btn-sm:has(>.i:first-child){padding-left:10px}
+.btn-xs{height:24px;padding:0 8px;gap:4px;font-size:12px;line-height:16px;border-radius:calc(var(--radius) - 2px)}.btn-xs .i{width:12px;height:12px}.btn-xs:has(>.i:first-child){padding-left:6px}
+.btn-icon{width:36px;padding:0!important}.btn-icon.btn-sm{width:32px;height:32px}.btn-icon.btn-xs{width:24px;height:24px}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.kbd{display:inline-flex;align-items:center;height:20px;min-width:20px;padding:0 4px;border-radius:calc(var(--radius) - 4px);background:var(--muted);color:var(--muted-foreground);font:500 12px/1 var(--font);justify-content:center}
+.btn-default .kbd{background:color-mix(in oklch,var(--background) 20%,transparent);color:var(--primary-foreground)}
+
+/* badge */
+.badge{display:inline-flex;align-items:center;gap:4px;width:fit-content;border-radius:999px;border:1px solid transparent;padding:2px 8px;font-size:12px;line-height:16px;font-weight:500;white-space:nowrap}
+.badge .i{width:12px;height:12px}
+.badge-default{background:var(--primary);color:var(--primary-foreground)}
+.badge-secondary{background:var(--secondary);color:var(--secondary-foreground)}
+.badge-outline{border-color:var(--border)}
+.badge-destructive{background:var(--destructive);color:#fff}
+.badge-amber{background:color-mix(in oklch,var(--amber) 15%,transparent);color:var(--amber-fg)}
+.badge-green{background:color-mix(in oklch,var(--success) 14%,transparent);color:var(--green-fg)}
+.badge-red{background:color-mix(in oklch,var(--destructive) 12%,transparent);color:var(--red-fg)}
+.badge-sq{border-radius:4px;padding:1px 6px;font-weight:400}
+
+/* inputs */
+.input,.textarea,.select{display:flex;width:100%;border:1px solid var(--input);border-radius:calc(var(--radius) - 2px);background:transparent;box-shadow:var(--shadow-xs);font-size:14px;line-height:20px;outline:none}
+.input{height:36px;padding:4px 12px;align-items:center}
+.input-sm{height:32px}
+.textarea{padding:8px 12px;min-height:64px;resize:none}
+.select{height:36px;padding:0 12px;align-items:center;justify-content:space-between;gap:8px}
+.select::after{content:"";width:8px;height:8px;border-right:1.5px solid var(--muted-foreground);border-bottom:1.5px solid var(--muted-foreground);transform:translateY(-2px) rotate(45deg);opacity:.7}
+.input:focus,.textarea:focus{border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}
+.dark .input,.dark .textarea,.dark .select{background:color-mix(in oklch,var(--input) 30%,transparent)}
+.label{font-size:14px;line-height:1;font-weight:500}
+.field{display:grid;gap:8px}
+.switch{display:inline-flex;align-items:center;width:32px;height:18.4px;border-radius:999px;background:var(--input);padding:1px;flex-shrink:0;cursor:pointer;border:1px solid transparent;transition:background .15s}
+.switch::before{content:"";width:16px;height:16px;border-radius:999px;background:var(--background);transition:transform .15s}
+.switch.on{background:var(--primary)}.switch.on::before{transform:translateX(12px)}
+.dark .switch::before{background:var(--foreground)}.dark .switch.on::before{background:var(--primary-foreground)}
+.check{width:16px;height:16px;border:1px solid var(--input);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--shadow-xs);cursor:pointer;background:var(--background)}
+.check.on{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
+.check.on::after{content:"";width:8px;height:4.5px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-1px) rotate(-45deg)}
+.radio{width:16px;height:16px;border:1px solid var(--input);border-radius:999px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--shadow-xs)}
+.radio.on::after{content:"";width:8px;height:8px;border-radius:999px;background:var(--primary)}
+.slider{position:relative;height:6px;border-radius:999px;background:var(--muted);width:100%}
+.slider>span{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--primary)}
+.slider>b{position:absolute;top:50%;width:16px;height:16px;border-radius:999px;background:var(--background);border:1px solid var(--primary);transform:translate(-50%,-50%);box-shadow:var(--shadow-sm)}
+
+/* avatar, chips */
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--muted);color:var(--foreground);font-size:12px;font-weight:500;width:32px;height:32px;flex-shrink:0;overflow:hidden}
+.avatar-sm{width:28px;height:28px;font-size:11px}.avatar-xs{width:20px;height:20px;font-size:9px}.avatar-lg{width:40px;height:40px;font-size:14px}
+.avatar.sq{border-radius:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:6px;padding:1px 8px 1px 2px;font-size:12px;line-height:18px;background:var(--background);white-space:nowrap;max-width:100%;cursor:pointer}
+.chip:hover{background:var(--accent)}
+.chip .avatar{width:16px;height:16px;font-size:8px}
+.chip-ic{padding-left:6px}.chip-ic .i{width:12px;height:12px;color:var(--muted-foreground)}
+
+/* card (packages/ui card.tsx) */
+.card{display:flex;flex-direction:column;gap:12px;border-radius:calc(var(--radius) + 4px);border:1px solid var(--border);background:var(--card);color:var(--card-foreground);padding:16px 0;box-shadow:var(--shadow-sm)}
+.card>.card-h,.card>.card-c{padding:0 16px}
+.card-t{font-weight:600;line-height:1;font-size:14px}
+.kv{display:grid;gap:2px}.kv dt{font-size:12px;color:var(--muted-foreground)}.kv dd{font-size:14px}
+
+/* progress */
+.prog{height:6px;border-radius:999px;background:var(--muted);overflow:hidden}
+.prog>span{display:block;height:100%;background:var(--primary);border-radius:999px}
+
+/* ===== mockup chrome (not product UI) ===== */
+.mk{position:relative;z-index:60;height:var(--mk-h);display:flex;align-items:center;gap:12px;padding:0 12px;background:oklch(.28 .03 260);color:oklch(.96 0 0);font-size:12px;overflow:hidden}
+.mk-title{font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.mk-pill{font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:4px;background:oklch(.45 .08 260)}
+.mk-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.mk-tabs::-webkit-scrollbar{display:none}
+.mk-tab{white-space:nowrap;padding:5px 10px;border-radius:6px;color:oklch(.85 0 0);font-weight:500}
+.mk-tab:hover{background:oklch(.36 .04 260)}
+.mk-tab[aria-selected=true]{background:oklch(.98 0 0);color:oklch(.2 0 0)}
+.mk-theme{color:oklch(.85 0 0);padding:4px;border-radius:6px;display:inline-flex}.mk-theme:hover{background:oklch(.36 .04 260)}
+.mk-note{font-size:12px;color:var(--muted-foreground);border:1px dashed var(--border);border-radius:8px;padding:8px 10px;background:color-mix(in oklch,var(--muted) 50%,transparent)}
+.mk-sub{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--muted);flex-wrap:wrap}
+.mk-sub button{padding:4px 10px;border-radius:7px;font-size:12px;font-weight:500;color:var(--muted-foreground)}
+.mk-sub button[aria-selected=true]{background:var(--background);color:var(--foreground);box-shadow:var(--shadow-sm)}
+.mk-caption{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted-foreground);font-weight:600}
+
+/* ===== app shell (routes/_app.tsx) ===== */
+.app{display:flex;height:calc(100dvh - var(--mk-h));overflow:hidden;background:var(--background)}
+.nav{width:256px;flex-shrink:0;background:var(--sidebar);border-right:1px solid var(--sidebar-border);display:flex;flex-direction:column;padding:8px}
+.nav-brand{padding:6px 8px;font-size:18px;line-height:28px;font-weight:600;letter-spacing:-.025em}
+.nav-scroll{flex:1;overflow-y:auto;min-height:0}
+.nav-group{padding:8px 0;display:flex;flex-direction:column;gap:4px}
+.nav-label{height:32px;display:flex;align-items:center;padding:0 8px;font-size:12px;font-weight:500;color:color-mix(in oklch,var(--foreground) 70%,transparent)}
+.nav-item{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:calc(var(--radius) - 2px);font-size:14px;position:relative;cursor:pointer}
+.nav-item:hover{background:var(--sidebar-accent)}
+.nav-item.active{background:var(--sidebar-accent);font-weight:500}
+.nav-badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:500;display:inline-flex;align-items:center;justify-content:center}
+.nav-foot{display:flex;flex-direction:column;gap:4px;padding-top:8px}
+.main{flex:1;min-width:320px;display:flex;flex-direction:column;min-height:0}
+.app-header{min-height:56px;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid var(--border);flex-shrink:0;container-type:inline-size}
+.hdr-search{flex:1;justify-content:flex-start;color:var(--muted-foreground);max-width:384px;padding:0 12px;min-width:0}
+.hdr-search .kbd{margin-left:auto}
+.ask-btn{position:relative}
+.ask-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 0 0 2px var(--background)}
+.page{flex:1;min-height:0;overflow-y:auto}
+.dock{width:384px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0;background:var(--background);position:relative}
+.dock::before{content:"";position:absolute;inset:0 auto 0 -1px;width:1px}
+.dock-h{display:flex;align-items:center;gap:6px;padding:8px 8px 8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;min-height:53px}
+.dock-h h2{flex:1;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dock-body{flex:1;min-height:0;overflow-y:auto;padding:16px}
+.dock-foot{border-top:1px solid var(--border);padding:12px}
+.app.dock-closed .dock{display:none}
+.app.wide-dock .dock{width:480px}
+.phone-only{display:none}
+
+/* page layout */
+.pg-h{border-bottom:1px solid var(--border);background:var(--background)}
+.pg-hi{max-width:1280px;margin:0 auto;padding:12px 24px;display:grid;gap:8px}
+.pg-title{font-size:24px;line-height:32px;font-weight:600;letter-spacing:-.025em}
+.pg-b{max-width:1280px;margin:0 auto;padding:16px 24px 32px}
+.w3{max-width:768px}.w4{max-width:896px}.w5{max-width:1024px}
+.back{display:inline-flex;align-items:center;gap:4px;font-size:14px;color:var(--muted-foreground);width:fit-content}
+.tabs-line{display:flex;gap:16px;height:40px;align-items:stretch;overflow-x:auto;scrollbar-width:none}
+.tabs-line>*{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:color-mix(in oklch,var(--foreground) 60%,transparent);position:relative;white-space:nowrap}
+.tabs-line>[aria-selected=true]{color:var(--foreground)}
+.tabs-line>[aria-selected=true]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--foreground)}
+.tabs-line .cnt{border-radius:999px;background:var(--muted);padding:0 6px;font-size:12px;color:var(--muted-foreground);font-weight:400}
+.tabs-pill{display:inline-flex;align-items:center;height:36px;padding:3px;border-radius:var(--radius);background:var(--muted);color:var(--muted-foreground);width:fit-content}
+.tabs-pill>*{height:100%;padding:4px 10px;border-radius:calc(var(--radius) - 2px);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px;color:color-mix(in oklch,var(--foreground) 60%,transparent)}
+.tabs-pill>[aria-selected=true]{background:var(--background);color:var(--foreground);box-shadow:var(--shadow-sm)}
+
+/* record page (record-layout.tsx) */
+.rec{height:100%;display:flex;flex-direction:column;min-height:0}
+.rec-h{max-width:1280px;margin:0 auto;width:100%;padding:12px 24px;display:grid;gap:8px}
+.rec-tabs{border-bottom:1px solid var(--border)}
+.rec-tabs>div{max-width:1280px;margin:0 auto;padding:0 24px}
+.rec-grid{max-width:1280px;margin:0 auto;width:100%;display:grid;grid-template-columns:minmax(0,1fr) 22rem;flex:1;min-height:0}
+.rec-main{padding:16px 24px 24px;overflow-y:auto;display:grid;gap:16px;align-content:start}
+.rec-side{padding:16px 24px 24px 16px;border-left:1px solid var(--border);overflow-y:auto;display:grid;gap:16px;align-content:start}
+.tl-item{display:grid;grid-template-columns:28px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.tl-ic{width:28px;height:28px;border-radius:999px;background:var(--muted);display:flex;align-items:center;justify-content:center;color:var(--muted-foreground)}
+
+/* ===== chat (assistant-chat.tsx) ===== */
+.thread{display:flex;flex-direction:column;gap:16px}
+.u{display:flex;justify-content:flex-end}
+.u>.bub{max-width:85%;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);padding:8px 12px;font-size:14px;line-height:20px;white-space:pre-wrap}
+.u.voice>.bub{font-style:italic}
+.u.voice>.bub .i{width:14px;height:14px;margin:-2px 6px 0 0;opacity:.75;font-style:normal}
+.u .meta{justify-content:flex-end}
+.u-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.a{font-size:14px;line-height:1.625;overflow-wrap:break-word}
+.a p{margin:8px 0}.a>*:first-child{margin-top:0}.a>*:last-child{margin-bottom:0}
+.a ul{list-style:disc;padding-left:20px;margin:8px 0}.a ol{list-style:decimal;padding-left:20px;margin:8px 0}.a li{margin:2px 0}
+.a a,.a .rl{text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.a strong{font-weight:600}
+.msg{display:flex;flex-direction:column;gap:8px;position:relative}
+.meta{display:flex;align-items:center;gap:6px;font-size:12px;line-height:16px;color:var(--muted-foreground);min-height:16px}
+.info-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;color:var(--muted-foreground);opacity:0;transition:opacity .15s}
+.info-dot .i{width:13px;height:13px}
+.msg:hover .info-dot,.msg:focus-within .info-dot,.info-dot[aria-expanded=true],.show-dots .info-dot{opacity:1}
+.info-dot:hover{color:var(--foreground)}
+.why{border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:color-mix(in oklch,var(--muted) 40%,transparent);padding:10px 12px;font-size:12px;line-height:16px;display:grid;gap:8px}
+.why dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+.why dt{color:var(--muted-foreground)}
+.why .q{font-style:italic}
+.saved{display:flex;align-items:center;gap:6px;font-size:12px;line-height:16px;color:var(--muted-foreground);flex-wrap:wrap}
+.saved .i{width:13px;height:13px}
+.saved b{font-weight:500;color:var(--foreground)}
+.saved.undone{text-decoration:line-through}
+.tool{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground)}
+.tool .i{width:12px;height:12px}
+.working{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted-foreground)}
+.working .i{width:12px;height:12px}
+.day{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted-foreground)}
+.day::before,.day::after{content:"";flex:1;height:1px;background:var(--border)}
+.compact{border:1px solid var(--border);border-radius:var(--radius);padding:12px;background:color-mix(in oklch,var(--muted) 40%,transparent);display:grid;gap:8px;font-size:13px;line-height:1.55}
+.composer{display:grid;gap:8px}
+.ctx{display:inline-flex;max-width:100%;border-radius:999px;background:var(--secondary);padding:2px 8px;font-size:12px;line-height:16px;color:var(--muted-foreground);width:fit-content}
+.ctx b{font-weight:400;color:var(--foreground)}
+.comp-row{display:flex;align-items:flex-end;gap:8px}
+.comp-row .textarea{min-height:40px;height:60px;flex:1}
+.comp-row .placeholder{color:var(--muted-foreground)}
+
+/* ===== A2UI cards ===== */
+.a2{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-xs);font-size:14px;line-height:20px;overflow:hidden}
+.a2-h{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.a2-h .t{font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.a2-h>.i{color:var(--muted-foreground)}
+.a2-b{padding:0 12px 12px}
+.a2-f{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--border);align-items:center}
+.a2-sub{font-size:12px;color:var(--muted-foreground)}
+.a2.pending{border-color:color-mix(in oklch,var(--amber) 40%,transparent);background:color-mix(in oklch,var(--amber) 5%,var(--card))}
+.a2.done{opacity:.85}
+.a2.blocked{border-color:color-mix(in oklch,var(--destructive) 35%,transparent);background:color-mix(in oklch,var(--destructive) 4%,var(--card))}
+.a2.ok{border-color:color-mix(in oklch,var(--success) 35%,transparent)}
+.a2-list>li{display:flex;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--border)}
+.a2-list>li:first-child{border-top:0}
+.a2-list .ttl{font-size:14px;line-height:20px}
+.a2-list .sub{font-size:12px;line-height:16px;color:var(--muted-foreground)}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px}
+.facts dt{color:var(--muted-foreground)}
+.diff{border-radius:calc(var(--radius) - 2px);background:color-mix(in oklch,var(--muted) 60%,transparent);padding:6px 10px;font-family:var(--mono);font-size:12px;line-height:1.6}
+.diff .k{font-family:var(--font);color:var(--muted-foreground)}
+.diff del{color:var(--red-fg);text-decoration-color:color-mix(in oklch,var(--red-fg) 50%,transparent)}
+.diff ins{color:var(--green-fg);text-decoration:none}
+.diff .add{color:var(--green-fg)}.diff .rm{color:var(--red-fg)}
+.verdict{display:grid;gap:4px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);padding:8px 10px;font-size:12px;line-height:16px;background:color-mix(in oklch,var(--muted) 40%,transparent)}
+.verdict.ok{border-color:color-mix(in oklch,var(--success) 30%,transparent);background:color-mix(in oklch,var(--success) 5%,transparent)}
+.verdict.no{border-color:color-mix(in oklch,var(--destructive) 30%,transparent);background:color-mix(in oklch,var(--destructive) 5%,transparent)}
+.verdict .row .i{width:14px;height:14px;color:var(--muted-foreground)}
+.phrase{border:1px dashed color-mix(in oklch,var(--foreground) 35%,transparent);border-radius:calc(var(--radius) - 2px);padding:10px 12px;font-size:15px;line-height:22px;font-weight:500;background:var(--background)}
+.pill-cond{display:inline-flex;align-items:center;gap:4px;border-radius:6px;background:var(--secondary);padding:2px 8px;font-size:12px;line-height:18px}
+.pill-cond .op{color:var(--muted-foreground)}
+.steps{display:grid;gap:6px}
+.steps li{display:grid;grid-template-columns:16px 1fr;gap:8px;font-size:13px;line-height:18px}
+.steps li .i{width:14px;height:14px;margin-top:2px;color:var(--muted-foreground)}
+.spark{display:grid;grid-template-columns:repeat(30,1fr);gap:2px;align-items:end;height:28px}
+.spark>i{background:var(--muted);border-radius:2px;height:6px;display:block}
+.spark>i.f{background:var(--primary);height:100%}
+.sec-title{font-size:12px;font-weight:500;color:var(--muted-foreground);margin-bottom:6px}
+
+/* frames for galleries */
+.gallery{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;padding:24px;background:color-mix(in oklch,var(--muted) 60%,var(--background));min-height:100%}
+.frame{width:384px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+.frame-box{background:var(--background);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:12px}
+.frame-wide{width:640px}
+
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;font-weight:500;color:var(--muted-foreground);font-size:12px;height:36px;padding:0 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:auto}
+
+/* responsive: tablet (834) hides the nav; phone (390) makes the dock a full-screen sheet */
+@media (max-width:1100px){.nav{display:none}}
+@media (max-width:1023px){.rec-grid{grid-template-columns:1fr;overflow-y:auto}.rec-side{border-left:0;padding:0 24px 24px;order:-1}.rec-main{overflow:visible}.rec{overflow-y:auto}.rec-grid{overflow:visible}}
+@media (max-width:767px){
+  .hide-sm{display:none!important}
+  .phone-only{display:revert}
+  .dock{position:fixed;inset:var(--mk-h) 0 0 0;width:auto!important;z-index:40;border-left:0}
+  .dock-h{padding-left:16px}
+  .pg-hi,.pg-b,.rec-h,.rec-tabs>div{padding-left:16px;padding-right:16px}
+  .rec-main,.rec-side{padding-left:16px;padding-right:16px}
+  .pg-title{font-size:20px;line-height:28px}
+  .gallery{padding:16px;gap:16px}
+  .frame,.frame-wide{width:100%}
+  .app-header{padding:0 12px}
+  .mk-title .mk-name{display:none}
+}
+.f-off{display:none!important}.flipped .f-on{display:none!important}.flipped .f-off{display:revert!important}
+.flipped.saved{opacity:.8}
+mark{background:color-mix(in oklch,var(--chart-4) 45%,transparent);color:inherit;border-radius:2px;padding:0 1px}
+.mk-hint{white-space:nowrap;color:oklch(.8 0 0);font-size:12px;overflow:hidden;text-overflow:ellipsis;max-width:40%}
+@media (max-width:1100px){.mk-hint{display:none}}
+@media (max-width:1023px){.rec{height:auto}.rec-grid{flex:none;display:flex;flex-direction:column}.rec-side,.rec-main{overflow:visible}}
+.saved{align-items:flex-start}.saved>.i{margin-top:1.5px}.saved>span{flex:1;min-width:0}
+.spark{height:20px}
+.mk2{height:40px;display:flex;align-items:center;gap:10px;padding:0 12px;background:oklch(.94 .01 260);border-bottom:1px solid oklch(.88 .02 260);font-size:12px;color:oklch(.35 .03 260);overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.dark .mk2{background:oklch(.25 .02 260);border-color:oklch(.32 .02 260);color:oklch(.85 0 0)}
+.mk2 .mk-sub{flex-wrap:nowrap;background:oklch(.89 .015 260)}
+.dark .mk2 .mk-sub{background:oklch(.32 .02 260)}
+.has-mk2>.app,.app.has-mk2{height:calc(100dvh - var(--mk-h) - 40px)}
+.has-mk2 .dock{top:auto}
+@media (max-width:767px){.has-mk2 .dock{inset:calc(var(--mk-h) + 40px) 0 0 0}}
+.gallery{align-content:flex-start}
+
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-sun-moon" viewBox="0 0 24 24"><path d="M12 2v2"/><path d="M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715"/><path d="M16 12a4 4 0 0 0-4-4"/><path d="m19 5-1.256 1.256"/><path d="M20 12h2"/></symbol><symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol><symbol id="i-layout-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol><symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></symbol><symbol id="i-building-2" viewBox="0 0 24 24"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></symbol><symbol id="i-square-check-big" viewBox="0 0 24 24"><path d="M21 10.656V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.344"/><path d="m9 11 3 3L22 4"/></symbol><symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></symbol><symbol id="i-workflow" viewBox="0 0 24 24"><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></symbol><symbol id="i-blocks" viewBox="0 0 24 24"><path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect x="14" y="2" width="8" height="8" rx="1"/></symbol><symbol id="i-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol><symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></symbol><symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></symbol><symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol><symbol id="i-handshake" viewBox="0 0 24 24"><path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/></symbol><symbol id="i-folder-kanban" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M8 10v4"/><path d="M12 10v2"/><path d="M16 10v6"/></symbol><symbol id="i-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-square-activity" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M17 12h-2l-2 5-2-10-2 5H7"/></symbol><symbol id="i-panel-left" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol><symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol><symbol id="i-calendar-sync" viewBox="0 0 24 24"><path d="M11 10v4h4"/><path d="m11 14 1.535-1.605a5 5 0 018 1.5"/><path d="M16 2v3"/><path d="m21 18-1.535 1.605a5 5 0 01-8-1.5"/><path d="M21 22v-4h-4"/><path d="M21 8.517V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h3.517"/><path d="M3 9h4"/><path d="M8 2v3"/></symbol><symbol id="i-notebook-tabs" viewBox="0 0 24 24"><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M15 2v20"/><path d="M15 7h5"/><path d="M15 12h5"/><path d="M15 17h5"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="i-brush-cleaning" viewBox="0 0 24 24"><path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol><symbol id="i-mail-check" viewBox="0 0 24 24"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/><path d="m16 19 2 2 4-4"/></symbol><symbol id="i-badge-check" viewBox="0 0 24 24"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m16 9-5.5 5.5L8 12"/></symbol><symbol id="i-ticket" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></symbol><symbol id="i-presentation" viewBox="0 0 24 24"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></symbol><symbol id="i-chart-column" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol><symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="i-message-square" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></symbol><symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></symbol><symbol id="i-wand-sparkles" viewBox="0 0 24 24"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></symbol><symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol><symbol id="i-telescope" viewBox="0 0 24 24"><path d="m10.065 12.493-6.18 1.318a.934.934 0 0 1-1.108-.702l-.537-2.15a1.07 1.07 0 0 1 .691-1.265l13.504-4.44"/><path d="m13.56 11.747 4.332-.924"/><path d="m16 21-3.105-6.21"/><path d="M16.485 5.94a2 2 0 0 1 1.455-2.425l1.09-.272a1 1 0 0 1 1.212.727l1.515 6.06a1 1 0 0 1-.727 1.213l-1.09.272a2 2 0 0 1-2.425-1.455z"/><path d="m6.158 8.633 1.114 4.456"/><path d="m8 21 3.105-6.21"/><circle cx="12" cy="13" r="2"/></symbol><symbol id="i-square-code" viewBox="0 0 24 24"><path d="m10 9-3 3 3 3"/><path d="m14 15 3-3-3-3"/><rect x="3" y="3" width="18" height="18" rx="2"/></symbol><symbol id="i-puzzle" viewBox="0 0 24 24"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></symbol><symbol id="i-mail" viewBox="0 0 24 24"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol><symbol id="i-hand" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></symbol><symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="i-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol><symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></symbol><symbol id="i-phone" viewBox="0 0 24 24"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/></symbol><symbol id="i-notebook-pen" viewBox="0 0 24 24"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></symbol><symbol id="i-audio-lines" viewBox="0 0 24 24"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></symbol><symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></symbol><symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol><symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5"/><path d="M15 8V2"/><path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z"/><path d="M9 8V2"/></symbol><symbol id="i-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol><symbol id="i-unlink" viewBox="0 0 24 24"><path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" x2="8" y1="2" y2="5"/><line x1="2" x2="5" y1="8" y2="8"/><line x1="16" x2="16" y1="19" y2="22"/><line x1="19" x2="22" y1="16" y2="16"/></symbol><symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol><symbol id="i-arrow-up-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4"/><path d="M12 16V8"/></symbol><symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol><symbol id="i-life-buoy" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></symbol></svg>
+<style>
+.pl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.pl-card{border:1px solid var(--border);border-radius:calc(var(--radius) + 4px);background:var(--card);box-shadow:var(--shadow-sm);padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer}
+.pl-card:hover{border-color:color-mix(in oklch,var(--foreground) 25%,transparent)}
+.pl-ic{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff}
+.pl-ic .i{width:20px;height:20px}
+.pl-ic.sm{width:28px;height:28px;border-radius:7px}.pl-ic.sm .i{width:15px;height:15px}
+.c1{background:oklch(.55 .15 160)}.c2{background:oklch(.55 .17 260)}.c3{background:oklch(.6 .17 40)}.c4{background:oklch(.5 .02 260)}.c5{background:oklch(.55 .2 330)}.c6{background:oklch(.6 .13 200)}.c7{background:oklch(.55 .12 100)}.c8{background:oklch(.45 .1 290)}
+.adds{display:flex;flex-wrap:wrap;gap:4px}
+.adds span{font-size:11px;line-height:16px;padding:1px 6px;border-radius:4px;background:var(--secondary);color:var(--muted-foreground)}
+.what-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.what{border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:grid;gap:6px;align-content:start}
+.what h4{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.what h4 .i{color:var(--muted-foreground);width:15px;height:15px}
+.what li{font-size:13px;line-height:18px}
+.what li .xs{display:block}
+.detail-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+@media (max-width:1023px){.detail-grid{grid-template-columns:1fr}}
+.inst-row{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:14px 16px;border-top:1px solid var(--border)}
+.inst-row:first-child{border-top:0}
+@media (max-width:767px){.inst-row{grid-template-columns:auto 1fr}.inst-row>.acts{grid-column:1/-1}}
+.cmp3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:767px){.cmp3{grid-template-columns:1fr}}
+.cmp3 .diff{white-space:pre-wrap;font-size:12px;line-height:1.55}
+.ln{display:block}.ln.add{background:color-mix(in oklch,var(--success) 10%,transparent)}.ln.rm{background:color-mix(in oklch,var(--destructive) 8%,transparent);text-decoration:line-through}.ln.mine{background:color-mix(in oklch,var(--chart-2) 14%,transparent)}
+</style>
+<div class="mk" data-name="mockup state bar">
+  <div class="mk-title"><span class="mk-pill">Mockup</span><span class="mk-name">Plugins</span></div>
+  <div class="mk-tabs" role="tablist">
+    <button class="mk-tab" data-tab="pl:market" aria-selected="true">Marketplace</button>
+    <button class="mk-tab" data-tab="pl:detail">Plugin detail</button>
+    <button class="mk-tab" data-tab="pl:install">Install in chat</button>
+    <button class="mk-tab" data-tab="pl:connect">Connection needed</button>
+    <button class="mk-tab" data-tab="pl:update">Updates</button>
+    <button class="mk-tab" data-tab="pl:installed">Installed, locked, detached</button>
+    <button class="mk-tab" data-tab="pl:org">Org admin</button>
+  </div>
+  <span class="mk-hint" data-panel="pl:installed" hidden>Try "Stop updates" on Renewals desk</span><span class="mk-hint" data-panel="pl:update" hidden>The merge card's tabs are clickable</span>
+  <button class="mk-theme" data-theme-toggle aria-label="Toggle dark mode"><svg class="i" aria-hidden="true"><use href="#i-sun-moon"/></svg></button>
+</div>
+
+<!-- ============ 1. Marketplace ============ -->
+<div class="app dock-closed" data-panel="pl:market" data-name="plugins marketplace">
+  <nav class="nav" data-name="main navigation" aria-label="Main navigation">
+  <div class="nav-brand" data-name="product name">Relationship OS</div>
+  <div class="nav-scroll">
+    <div class="nav-group"><a class="nav-item" data-name="nav home"><svg class="i" aria-hidden="true"><use href="#i-house"/></svg><span>Home</span></a><a class="nav-item" data-name="nav dashboards"><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg><span>Dashboards</span></a><a class="nav-item" data-name="nav people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>People</span></a><a class="nav-item" data-name="nav organisations"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg><span>Organisations</span></a><a class="nav-item" data-name="nav tasks"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span>Tasks</span></a><a class="nav-item" data-name="nav assistant"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Assistant</span></a><a class="nav-item" data-name="nav automations"><svg class="i" aria-hidden="true"><use href="#i-workflow"/></svg><span>Automations</span></a><a class="nav-item active" data-name="nav plugins"><svg class="i" aria-hidden="true"><use href="#i-blocks"/></svg><span>Plugins</span></a><a class="nav-item" data-name="nav approvals"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span>Approvals</span><span class="nav-badge" data-name="approvals count">3</span></a><a class="nav-item" data-name="nav suggested contacts"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg><span>Suggested contacts</span></a><a class="nav-item" data-name="nav activity"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg><span>Activity</span></a><a class="nav-item" data-name="nav trash"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Trash</span></a></div>
+    <div class="nav-group"><div class="nav-label">Extensions</div><a class="nav-item" data-name="nav deals"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg><span>Deals</span></a><a class="nav-item" data-name="nav projects"><svg class="i" aria-hidden="true"><use href="#i-folder-kanban"/></svg><span>Projects</span></a></div>
+  </div>
+  <div class="nav-foot"><a class="nav-item" data-name="nav settings"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></a><a class="nav-item" data-name="nav system status"><svg class="i" aria-hidden="true"><use href="#i-square-activity"/></svg><span>System status</span></a></div>
+</nav>
+  <div class="main"><header class="app-header" data-name="app header">
+  <button class="btn btn-icon btn-ghost hdr-trigger" aria-label="Toggle navigation" data-name="toggle navigation"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+  <button class="btn btn-outline hdr-search" data-name="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="trunc">Search or jump to…</span><kbd class="kbd hide-sm">⌘K</kbd></button>
+  <div class="grow hide-sm"></div>
+  <button class="btn btn-sm btn-ghost ask-btn" data-name="ask ai button"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-sm">Ask AI</span><kbd class="kbd hide-sm">⌘J</kbd></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Notifications" data-name="notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+  <span class="avatar avatar-sm" data-name="user menu">MC</span>
+</header>
+    <div class="col" style="flex:1;min-height:0">
+      <div class="pg-h"><div class="pg-hi">
+        <div class="row g2 wrap"><h1 class="pg-title">Plugins</h1><div class="row g2 ml-auto"><button class="btn btn-sm btn-outline"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>Make one with the assistant</button></div></div>
+        <div class="sm muted">Add skills, dashboards, views and things your assistant does for you. Each install is your own copy.</div>
+        <div class="tabs-line" style="border-bottom:0"><button aria-selected="true">Marketplace</button><button>Installed <span class="cnt">5</span></button><button>Your workspace <span class="cnt">3</span></button></div>
+        <div class="row g2 wrap" data-name="marketplace filters"><div class="input input-sm row g2" style="max-width:280px"><svg class="i s35 muted" aria-hidden="true"><use href="#i-search"/></svg><span class="muted">Search plugins</span></div>
+          <div class="tabs-pill" style="height:32px"><button aria-selected="true" style="font-size:13px">All</button><button style="font-size:13px">Built-in</button><button style="font-size:13px">Reviewed</button><button style="font-size:13px">Your workspace</button></div></div>
+      </div></div>
+      <div class="page"><div class="pg-b">
+        <div class="pl-grid" data-name="plugin cards">
+          <div class="pl-card" data-name="plugin card renewals desk"><div class="row g3"><span class="pl-ic c1"><svg class="i" aria-hidden="true"><use href="#i-calendar-sync"/></svg></span><div class="grow"><div class="med">Renewals desk</div><div class="xs muted">Relationship OS</div></div><span class="badge badge-secondary">Built-in</span></div>
+            <p class="sm muted">A Monday round-up of renewals due, renewal briefs on request, and a renewals dashboard.</p>
+            <div class="adds"><span>2 skills</span><span>2 routines</span><span>1 dashboard</span><span>1 view</span><span>1 job profile</span></div>
+            <div class="row between xs muted"><span>Needs your email</span><span>1,240 installs</span></div></div>
+          <div class="pl-card" data-name="plugin card meeting prep"><div class="row g3"><span class="pl-ic c2"><svg class="i" aria-hidden="true"><use href="#i-notebook-tabs"/></svg></span><div class="grow"><div class="med">Meeting prep</div><div class="xs muted">Relationship OS</div></div><span class="badge badge-outline"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Installed</span></div>
+            <p class="sm muted">A brief before each external meeting: who's coming, recent activity, open deals and tasks.</p>
+            <div class="adds"><span>1 skill</span><span>1 routine</span><span>1 chat card</span></div>
+            <div class="row between xs muted"><span>Needs your calendar</span><span>3,100 installs</span></div></div>
+          <div class="pl-card" data-name="plugin card pipeline hygiene"><div class="row g3"><span class="pl-ic c3"><svg class="i" aria-hidden="true"><use href="#i-brush-cleaning"/></svg></span><div class="grow"><div class="med">Pipeline hygiene</div><div class="xs muted">Relationship OS</div></div><span class="badge badge-outline"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>From admin</span></div>
+            <p class="sm muted">Flags deals with no next step, past close dates and missing amounts. Plain lists, no scores.</p>
+            <div class="adds"><span>3 skills</span><span>1 routine</span><span>2 views</span></div>
+            <div class="row between xs muted"><span>No connections</span><span>2,480 installs</span></div></div>
+          <div class="pl-card" data-name="plugin card gmail follow-ups"><div class="row g3"><span class="pl-ic c5"><svg class="i" aria-hidden="true"><use href="#i-mail-check"/></svg></span><div class="grow"><div class="med">Follow-up nudges</div><div class="xs muted">Inboxwise</div></div><span class="badge badge-outline"><svg class="i" aria-hidden="true"><use href="#i-badge-check"/></svg>Reviewed</span></div>
+            <p class="sm muted">Spots emails you sent that got no reply in 5 days and drafts a polite nudge for you to check.</p>
+            <div class="adds"><span>1 skill</span><span>1 routine</span><span>1 email template</span></div>
+            <div class="row between xs muted"><span>Needs Gmail</span><span>860 installs</span></div></div>
+          <div class="pl-card" data-name="plugin card partner deals"><div class="row g3"><span class="pl-ic c4"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg></span><div class="grow"><div class="med">Partner deals</div><div class="xs muted">Priya Nair · Northwind</div></div><span class="badge badge-outline"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg>Workspace</span></div>
+            <p class="sm muted">Our partner referral process: a referral form, a partner view and a weekly partner summary.</p>
+            <div class="adds"><span>1 form</span><span>1 view</span><span>1 routine</span><span>1 dashboard</span></div>
+            <div class="row between xs muted"><span>No connections</span><span>Northwind only</span></div></div>
+          <div class="pl-card" data-name="plugin card event leads"><div class="row g3"><span class="pl-ic c6"><svg class="i" aria-hidden="true"><use href="#i-ticket"/></svg></span><div class="grow"><div class="med">Event leads</div><div class="xs muted">Fieldnote Labs</div></div><span class="badge badge-outline"><svg class="i" aria-hidden="true"><use href="#i-badge-check"/></svg>Reviewed</span></div>
+            <p class="sm muted">Turns an event attendee list into people, a follow-up list and draft emails for your review.</p>
+            <div class="adds"><span>2 skills</span><span>1 job profile</span><span>1 sequence</span></div>
+            <div class="row between xs muted"><span>Needs your email</span><span>410 installs</span></div></div>
+          <div class="pl-card" data-name="plugin card qbr"><div class="row g3"><span class="pl-ic c7"><svg class="i" aria-hidden="true"><use href="#i-presentation"/></svg></span><div class="grow"><div class="med">Quarterly business review</div><div class="xs muted">Relationship OS</div></div><span class="badge badge-secondary">Built-in</span></div>
+            <p class="sm muted">Gathers a customer's quarter: meetings, deals won and lost, open tasks, into a review you can edit.</p>
+            <div class="adds"><span>1 skill</span><span>1 dashboard</span><span>1 report</span></div>
+            <div class="row between xs muted"><span>No connections</span><span>1,020 installs</span></div></div>
+          <div class="pl-card" data-name="plugin card board report"><div class="row g3"><span class="pl-ic c8"><svg class="i" aria-hidden="true"><use href="#i-chart-column"/></svg></span><div class="grow"><div class="med">Board pack numbers</div><div class="xs muted">Northstar Ops</div></div><span class="badge badge-outline"><svg class="i" aria-hidden="true"><use href="#i-badge-check"/></svg>Reviewed</span></div>
+            <p class="sm muted">Pipeline, wins and new customers by month, as dashboard widgets you can drop into any dashboard.</p>
+            <div class="adds"><span>4 widgets</span><span>1 report</span></div>
+            <div class="row between xs muted"><span>No connections</span><span>290 installs</span></div></div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 2. Plugin detail ============ -->
+<div class="app dock-closed" data-panel="pl:detail" hidden data-name="plugin detail page">
+  <nav class="nav" data-name="main navigation" aria-label="Main navigation">
+  <div class="nav-brand" data-name="product name">Relationship OS</div>
+  <div class="nav-scroll">
+    <div class="nav-group"><a class="nav-item" data-name="nav home"><svg class="i" aria-hidden="true"><use href="#i-house"/></svg><span>Home</span></a><a class="nav-item" data-name="nav dashboards"><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg><span>Dashboards</span></a><a class="nav-item" data-name="nav people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>People</span></a><a class="nav-item" data-name="nav organisations"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg><span>Organisations</span></a><a class="nav-item" data-name="nav tasks"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span>Tasks</span></a><a class="nav-item" data-name="nav assistant"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Assistant</span></a><a class="nav-item" data-name="nav automations"><svg class="i" aria-hidden="true"><use href="#i-workflow"/></svg><span>Automations</span></a><a class="nav-item active" data-name="nav plugins"><svg class="i" aria-hidden="true"><use href="#i-blocks"/></svg><span>Plugins</span></a><a class="nav-item" data-name="nav approvals"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span>Approvals</span><span class="nav-badge" data-name="approvals count">3</span></a><a class="nav-item" data-name="nav suggested contacts"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg><span>Suggested contacts</span></a><a class="nav-item" data-name="nav activity"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg><span>Activity</span></a><a class="nav-item" data-name="nav trash"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Trash</span></a></div>
+    <div class="nav-group"><div class="nav-label">Extensions</div><a class="nav-item" data-name="nav deals"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg><span>Deals</span></a><a class="nav-item" data-name="nav projects"><svg class="i" aria-hidden="true"><use href="#i-folder-kanban"/></svg><span>Projects</span></a></div>
+  </div>
+  <div class="nav-foot"><a class="nav-item" data-name="nav settings"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></a><a class="nav-item" data-name="nav system status"><svg class="i" aria-hidden="true"><use href="#i-square-activity"/></svg><span>System status</span></a></div>
+</nav>
+  <div class="main"><header class="app-header" data-name="app header">
+  <button class="btn btn-icon btn-ghost hdr-trigger" aria-label="Toggle navigation" data-name="toggle navigation"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+  <button class="btn btn-outline hdr-search" data-name="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="trunc">Search or jump to…</span><kbd class="kbd hide-sm">⌘K</kbd></button>
+  <div class="grow hide-sm"></div>
+  <button class="btn btn-sm btn-ghost ask-btn" data-name="ask ai button"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-sm">Ask AI</span><kbd class="kbd hide-sm">⌘J</kbd></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Notifications" data-name="notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+  <span class="avatar avatar-sm" data-name="user menu">MC</span>
+</header>
+    <div class="col" style="flex:1;min-height:0">
+      <div class="pg-h"><div class="pg-hi">
+        <a class="back"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"/></svg>Plugins</a>
+        <div class="row g3 wrap"><span class="pl-ic c1" style="width:48px;height:48px"><svg class="i" aria-hidden="true"><use href="#i-calendar-sync"/></svg></span>
+          <div class="grow"><div class="row g2 wrap"><h1 class="pg-title">Renewals desk</h1><span class="badge badge-secondary">Built-in</span></div><div class="sm muted">Relationship OS · version 1.4.0 · updated 28 Oct · 1,240 installs</div></div>
+          <div class="row g2"><button class="btn btn-outline"><svg class="i" aria-hidden="true"><use href="#i-message-square"/></svg>Ask about it</button><button class="btn btn-default" data-name="install button"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Install</button></div></div>
+      </div></div>
+      <div class="page"><div class="pg-b detail-grid">
+        <div class="stack4">
+          <p class="sm" style="line-height:1.6">For anyone who looks after existing customers. Every Monday you get the renewals due in the next 90 days. Ask for a renewal brief on any account and get the deal history, open issues and contacts on one page. Includes a renewals dashboard and a saved view.</p>
+          <h2 class="base semi">What it adds</h2>
+          <div class="what-grid" data-name="what it adds">
+            <div class="what" data-name="skills"><h4><svg class="i" aria-hidden="true"><use href="#i-wand-sparkles"/></svg>Skills · 2</h4><ul><li>Prepare a renewal brief<span class="xs muted">Deal history, open issues and who signs</span></li><li>Draft a renewal email<span class="xs muted">Uses your writing style; you send it</span></li></ul></div>
+            <div class="what" data-name="routines"><h4><svg class="i" aria-hidden="true"><use href="#i-repeat"/></svg>Routines · 2</h4><ul><li>Monday renewals round-up<span class="xs muted">Mondays 8:00 am. Tried on 30 days: 4 messages</span></li><li>Renewal reply watch<span class="xs muted">When a customer renewing within 60 days emails you</span></li></ul><span class="xs muted">Added to My routines, where you can pause them.</span></div>
+            <div class="what" data-name="job profiles"><h4><svg class="i" aria-hidden="true"><use href="#i-telescope"/></svg>Agent profiles · 1</h4><ul><li>Renewal researcher<span class="xs muted">Reads organisations, deals and your emails with them. Up to $1.00 a run.</span></li></ul></div>
+            <div class="what" data-name="saved code and chat cards"><h4><svg class="i" aria-hidden="true"><use href="#i-square-code"/></svg>Saved code and chat cards · 2</h4><ul><li>Upcoming renewals<span class="xs muted">Builds the round-up card straight from your data</span></li><li>Renewal brief card</li></ul></div>
+            <div class="what" data-name="dashboards and views"><h4><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg>Dashboard and view · 2</h4><ul><li>Renewals dashboard<span class="xs muted">Your own copy. Share it if you like.</span></li><li>Deals: renewals in the next 90 days</li></ul></div>
+            <div class="what" data-name="extension needed"><h4><svg class="i" aria-hidden="true"><use href="#i-puzzle"/></svg>Fields it uses</h4><ul><li>Renewal date on Deals<span class="xs muted green">Already in your workspace</span></li></ul></div>
+          </div>
+          <h2 class="base semi">What's new in 1.4.0</h2>
+          <ul class="sm" style="list-style:disc;padding-left:20px;line-height:1.7"><li>The round-up now groups renewals by month.</li><li>Renewal briefs include the last three support notes.</li></ul>
+        </div>
+        <aside class="stack4">
+          <section class="card" data-name="connections needed"><div class="card-h"><span class="card-t">Connections</span></div><div class="card-c stack">
+            <div class="row g2"><svg class="i s35 muted" aria-hidden="true"><use href="#i-mail"/></svg><span class="sm grow">Your email</span><span class="badge badge-green"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Outlook</span></div>
+            <p class="xs muted">Built for Gmail. You use Outlook, so the assistant will switch it over when you install.</p></div></section>
+          <section class="card" data-name="access it asks for"><div class="card-h"><span class="card-t">Access it asks for</span></div><div class="card-c"><ul class="steps">
+            <li><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg><span>Read organisations, deals, people and tasks you can see</span></li><li><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg><span>Read your emails with customers</span></li><li><svg class="i" aria-hidden="true"><use href="#i-pencil"/></svg><span>Create tasks and notes</span></li><li><svg class="i" aria-hidden="true"><use href="#i-hand"/></svg><span>Draft emails. Sending always needs you.</span></li></ul></div></section>
+          <section class="card" data-name="checks"><div class="card-h"><span class="card-t">Checks before install</span></div><div class="card-c stack3">
+            <ul class="steps"><li><svg class="i" aria-hidden="true"><use href="#i-check"/></svg><span>Messages you at most once a day</span></li><li><svg class="i" aria-hidden="true"><use href="#i-check"/></svg><span>Only touches records you can see</span></li><li><svg class="i" aria-hidden="true"><use href="#i-check"/></svg><span>Sends nothing without you</span></li></ul>
+            <div class="verdict" style="border-color:color-mix(in oklch,var(--amber) 40%,transparent);background:color-mix(in oklch,var(--amber) 6%,transparent)"><div class="row g15"><svg class="i" aria-hidden="true"><use href="#i-triangle-alert"/></svg><span class="med">Jev: the reply watch could be busy</span></div><span class="muted">It watches every email from 23 customers with renewals in 60 days. You could narrow it to 30 days.</span></div></div></section>
+        </aside>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 3. Install card in chat ============ -->
+<div class="app" data-panel="pl:install" hidden data-name="install in chat">
+  <nav class="nav" data-name="main navigation" aria-label="Main navigation">
+  <div class="nav-brand" data-name="product name">Relationship OS</div>
+  <div class="nav-scroll">
+    <div class="nav-group"><a class="nav-item" data-name="nav home"><svg class="i" aria-hidden="true"><use href="#i-house"/></svg><span>Home</span></a><a class="nav-item" data-name="nav dashboards"><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg><span>Dashboards</span></a><a class="nav-item" data-name="nav people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>People</span></a><a class="nav-item active" data-name="nav organisations"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg><span>Organisations</span></a><a class="nav-item" data-name="nav tasks"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span>Tasks</span></a><a class="nav-item" data-name="nav assistant"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Assistant</span></a><a class="nav-item" data-name="nav automations"><svg class="i" aria-hidden="true"><use href="#i-workflow"/></svg><span>Automations</span></a><a class="nav-item" data-name="nav plugins"><svg class="i" aria-hidden="true"><use href="#i-blocks"/></svg><span>Plugins</span></a><a class="nav-item" data-name="nav approvals"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span>Approvals</span><span class="nav-badge" data-name="approvals count">3</span></a><a class="nav-item" data-name="nav suggested contacts"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg><span>Suggested contacts</span></a><a class="nav-item" data-name="nav activity"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg><span>Activity</span></a><a class="nav-item" data-name="nav trash"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Trash</span></a></div>
+    <div class="nav-group"><div class="nav-label">Extensions</div><a class="nav-item" data-name="nav deals"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg><span>Deals</span></a><a class="nav-item" data-name="nav projects"><svg class="i" aria-hidden="true"><use href="#i-folder-kanban"/></svg><span>Projects</span></a></div>
+  </div>
+  <div class="nav-foot"><a class="nav-item" data-name="nav settings"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></a><a class="nav-item" data-name="nav system status"><svg class="i" aria-hidden="true"><use href="#i-square-activity"/></svg><span>System status</span></a></div>
+</nav>
+  <div class="main"><header class="app-header" data-name="app header">
+  <button class="btn btn-icon btn-ghost hdr-trigger" aria-label="Toggle navigation" data-name="toggle navigation"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+  <button class="btn btn-outline hdr-search" data-name="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="trunc">Search or jump to…</span><kbd class="kbd hide-sm">⌘K</kbd></button>
+  <div class="grow hide-sm"></div>
+  <button class="btn btn-sm btn-secondary ask-btn" data-name="ask ai button"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-sm">Ask AI</span><kbd class="kbd hide-sm">⌘J</kbd></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Notifications" data-name="notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+  <span class="avatar avatar-sm" data-name="user menu">MC</span>
+</header><div class="page" data-name="record page">
+<div class="rec" data-name="organisation record">
+  <header class="rec-h" data-name="record header">
+    <a class="back" data-name="back to organisations"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"/></svg>Organisations</a>
+    <div class="row g3 wrap">
+      <span class="avatar avatar-lg sq" data-name="organisation logo">BH</span>
+      <div class="grow" style="display:grid;gap:2px">
+        <div class="row g2 wrap"><h1 class="lg semi tight trunc" data-name="record name">Brightwater Health</h1><span class="badge badge-outline" data-name="pending changes badge">1 pending</span></div>
+        <div class="sm muted trunc" data-name="record subtitle">brightwater.health · Healthcare · 1,200 employees</div>
+      </div>
+      <div class="row g2">
+        <button class="btn btn-sm btn-outline" data-name="ask ai about record"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>Ask AI</button>
+        <button class="btn btn-icon btn-sm btn-ghost" aria-label="More actions" data-name="more actions"><svg class="i" aria-hidden="true"><use href="#i-ellipsis"/></svg></button>
+      </div>
+    </div>
+  </header>
+  <div class="rec-tabs" data-name="record tabs"><div><div class="tabs-line">
+    <button aria-selected="true">Overview</button><button>Timeline</button><button>People <span class="cnt">14</span></button><button>Deals <span class="cnt">2</span></button><button>Tasks <span class="cnt">3</span></button><button>History</button>
+  </div></div></div>
+  <div class="rec-grid">
+    <div class="rec-main" data-name="record main column">
+      <section class="card" data-name="summary card">
+        <div class="card-h row g2"><span class="card-t">Summary</span><span class="badge badge-secondary ml-auto">AI</span></div>
+        <div class="card-c sm" style="line-height:1.6">Long-standing customer since 2023. The 2027 renewal ($48,000) is at Proposal. Ade Okafor is the main contact; Lena Fischer (CFO) signs. Last activity 2 days ago: an email from Ade about pricing.</div>
+      </section>
+      <section class="card" data-name="recent activity">
+        <div class="card-h"><span class="card-t">Recent activity</span></div>
+        <div class="card-c">
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-mail"/></svg></span><div><div class="sm med">Ade Okafor: Re: Brightwater renewal pricing</div><div class="xs muted">Email · Today 10:38 am</div><div class="sm muted mt1">Thanks Maya, the three-year option works for us. Can you send the order form by Friday?</div></div></div>
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-calendar"/></svg></span><div><div class="sm med">Quarterly check-in</div><div class="xs muted">Meeting · Tue 14 Oct · Ade Okafor, Lena Fischer</div></div></div>
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-phone"/></svg></span><div><div class="sm med">Call with Lena Fischer</div><div class="xs muted">Call · Thu 2 Oct · 18 min</div><div class="sm muted mt1">Budget approved for 2027. Wants a three-year price.</div></div></div>
+          <div class="tl-item" style="border-bottom:0"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-notebook-pen"/></svg></span><div><div class="sm med">Note from Sam Ortiz</div><div class="xs muted">Note · Mon 22 Sep</div><div class="sm muted mt1">IT wants SSO before rollout to the second site.</div></div></div>
+        </div>
+      </section>
+    </div>
+    <aside class="rec-side" data-name="record side panel">
+      <section class="card" data-name="details card">
+        <div class="card-h"><span class="card-t">Details</span></div>
+        <dl class="card-c" style="display:grid;gap:12px">
+          <div class="kv"><dt>Domain</dt><dd>brightwater.health</dd></div>
+          <div class="kv"><dt>Industry</dt><dd>Healthcare</dd></div>
+          <div class="kv"><dt>Employees</dt><dd>1,200</dd></div>
+          <div class="kv"><dt>Owner</dt><dd>Maya Chen</dd></div>
+        </dl>
+      </section>
+      <section class="card" data-name="people card">
+        <div class="card-h row"><span class="card-t">People</span><span class="xs muted ml-auto">14</span></div>
+        <ul class="card-c" style="display:grid;gap:10px">
+          <li class="row g2"><span class="avatar avatar-sm">AO</span><div class="grow"><div class="sm">Ade Okafor</div><div class="xs muted">Head of Operations</div></div></li>
+          <li class="row g2"><span class="avatar avatar-sm">LF</span><div class="grow"><div class="sm">Lena Fischer</div><div class="xs muted">CFO</div></div></li>
+          <li class="row g2"><span class="avatar avatar-sm">RP</span><div class="grow"><div class="sm">Raj Patel</div><div class="xs muted">IT Director</div></div></li>
+        </ul>
+      </section>
+      <section class="card" data-name="tasks card">
+        <div class="card-h"><span class="card-t">Tasks</span></div>
+        <ul class="card-c" style="display:grid;gap:10px">
+          <li class="row g2 start"><span class="check"></span><div><div class="sm">Send renewal order form</div><div class="xs muted">Due Fri 7 Nov</div></div></li>
+          <li class="row g2 start"><span class="check"></span><div><div class="sm">Book SSO workshop with Raj</div><div class="xs muted">Due Wed 12 Nov</div></div></li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</div>
+</div>
+</div>
+  <aside class="dock" data-name="assistant sidebar">
+    <div class="dock-h" data-name="assistant panel header">
+  <svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>
+  <h2 data-name="assistant name">Assistant</h2>
+  <button class="btn btn-icon btn-ghost" aria-label="Search this chat" title="Search this chat" data-name="search chat"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Voice chat" title="Voice chat" data-name="start voice chat"><svg class="i" aria-hidden="true"><use href="#i-audio-lines"/></svg></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Open full page" title="Open full page" data-name="open full page"><svg class="i" aria-hidden="true"><use href="#i-maximize"/></svg></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Close Assistant" data-name="close assistant"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+</div>
+
+    <div class="dock-body">
+      <ol class="thread">
+        <li class="u"><div class="bub">Install the renewals desk for me</div></li>
+        <li class="msg" data-name="install reply">
+          <div class="a"><p>Here's what Renewals desk would set up for you. I tried its two automatic checks on your last 30 days first.</p></div>
+          <div class="a2" data-name="plugin install card">
+            <div class="a2-h"><span class="pl-ic sm c1"><svg class="i" aria-hidden="true"><use href="#i-calendar-sync"/></svg></span><span class="t">Renewals desk 1.4.0</span><span class="badge badge-secondary">Built-in</span></div>
+            <div class="a2-b stack3">
+              <div class="adds"><span>2 skills</span><span>1 job profile</span><span>2 chat cards</span><span>1 dashboard</span><span>1 view</span></div>
+              <div data-name="things it does on its own"><div class="sec-title">Things I'll do on my own</div>
+                <ul class="steps"><li><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg><span><b class="med">Monday renewals round-up</b>, 8:00 am<br><span class="xs muted">Would have messaged you 4 times in 30 days</span></span></li>
+                  <li><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg><span><b class="med">Tell you when a renewing customer emails</b><br><span class="xs muted">Would have messaged you 11 times in 30 days</span></span></li></ul></div>
+              <div class="verdict" style="border-color:color-mix(in oklch,var(--amber) 40%,transparent);background:color-mix(in oklch,var(--amber) 6%,transparent)" data-name="jev risk note"><div class="row g15"><svg class="i" aria-hidden="true"><use href="#i-triangle-alert"/></svg><span class="med">This one could get busy</span></div><span class="muted">Jev: it watches every email from 23 customers. Narrowing it to renewals in the next 30 days would have cut it to 4 messages.</span>
+                <div class="row g1 mt1"><button class="btn btn-xs btn-outline">Narrow it to 30 days</button></div></div>
+              <div data-name="checks passed"><div class="sec-title">Checks</div><ul class="steps"><li><svg class="i" aria-hidden="true"><use href="#i-check"/></svg><span>At most one message a day from each</span></li><li><svg class="i" aria-hidden="true"><use href="#i-check"/></svg><span>Sends nothing without you</span></li></ul></div>
+              <div data-name="connection swap"><div class="sec-title">Connections</div>
+                <div class="row g2 sm"><span class="switch on"></span><span class="grow">Use Outlook instead of Gmail</span></div>
+                <div class="row g2 xs muted mt1"><svg class="i s3 green" aria-hidden="true"><use href="#i-check"/></svg>Outlook connected as maya@northwind.co</div></div>
+            </div>
+            <div class="a2-f"><button class="btn btn-xs btn-default" data-name="install"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Install</button><button class="btn btn-xs btn-outline">Details</button><button class="btn btn-xs btn-ghost">Cancel</button></div>
+          </div>
+          <p class="xs muted">It's your own copy, so you can change anything in it later.</p>
+          <div class="meta"><span>3:02 pm</span></div>
+        </li>
+      </ol>
+    </div>
+    <div class="dock-foot" data-name="composer">
+  <div class="composer">
+    <span class="ctx" data-name="context chip"><span class="trunc">On: <b>Brightwater Health</b></span></span>
+    <div class="comp-row">
+      <div class="textarea placeholder" data-name="message box">Ask Assistant…</div>
+      <button class="btn btn-icon btn-ghost" aria-label="Dictate" title="Dictate" data-name="dictation mic"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg></button>
+      <button class="btn btn-icon btn-default" aria-label="Send" disabled data-name="send"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button>
+    </div>
+  </div>
+</div>
+
+  </aside>
+</div>
+
+<!-- ============ 4. Connection needed ============ -->
+<div class="app dock-closed" data-panel="pl:connect" hidden><div class="page"><div class="gallery" data-name="connection needed states">
+  <div class="frame"><div class="mk-caption">Needs your sign-in</div>
+    <div class="a2 pending" data-name="connection needed card"><div class="a2-h"><svg class="i" aria-hidden="true"><use href="#i-plug"/></svg><span class="t">Meeting prep needs your calendar</span></div>
+      <div class="a2-b stack"><p class="sm">It reads tomorrow's meetings to build each brief. Only you can sign in to your calendar.</p>
+        <div class="row g2 wrap"><button class="btn btn-sm btn-outline"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg>Google Calendar</button><button class="btn btn-sm btn-outline"><svg class="i" aria-hidden="true"><use href="#i-calendar"/></svg>Outlook Calendar</button></div></div>
+      <div class="a2-f"><span class="xs muted">Installed, waiting for this</span><button class="btn btn-xs btn-ghost ml-auto">Later</button></div></div></div>
+  <div class="frame"><div class="mk-caption">Signing in</div>
+    <div class="a2" data-name="connection signing in"><div class="a2-h"><svg class="i" aria-hidden="true"><use href="#i-plug"/></svg><span class="t">Meeting prep needs your calendar</span></div>
+      <div class="a2-b row g2 sm"><svg class="i spin" aria-hidden="true"><use href="#i-loader-circle"/></svg><span>Waiting for you to finish signing in to Outlook in the new tab.</span></div>
+      <div class="a2-f"><button class="btn btn-xs btn-ghost">Cancel</button></div></div></div>
+  <div class="frame"><div class="mk-caption">Connected</div>
+    <div class="a2 ok" data-name="connection connected"><div class="a2-h"><svg class="i" aria-hidden="true"><use href="#i-plug"/></svg><span class="t">Calendar connected</span><span class="badge badge-green"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Outlook</span></div>
+      <div class="a2-b sm">Meeting prep is ready. Your first brief comes tomorrow at 7:30 am for the 9:00 am with Oakridge Partners.</div></div></div>
+  <div class="frame"><div class="mk-caption">Needs a workspace connection (admin)</div>
+    <div class="a2 pending" data-name="connection needs admin"><div class="a2-h"><svg class="i" aria-hidden="true"><use href="#i-plug"/></svg><span class="t">Partner deals needs Slack</span></div>
+      <div class="a2-b stack"><p class="sm">It posts the weekly partner summary to a Slack channel. Slack is a workspace connection, so an admin has to add it.</p></div>
+      <div class="a2-f"><button class="btn btn-xs btn-default">Ask an admin</button><button class="btn btn-xs btn-outline">Install without Slack</button></div></div></div>
+</div></div></div>
+
+<!-- ============ 5. Updates ============ -->
+<div class="app dock-closed" data-panel="pl:update" hidden><div class="page"><div class="gallery" data-name="update states">
+  <div class="frame"><div class="mk-caption">Unchanged copy: updated by itself</div>
+    <div class="frame-box">
+      <div class="saved" data-name="auto update line"><svg class="i" aria-hidden="true"><use href="#i-refresh-cw"/></svg><span>Renewals desk updated to 1.5.0 by itself, since you hadn't changed your copy. · <button class="link-q">What's new</button> · <button class="link-q">Go back to 1.4.0</button></span></div>
+    </div>
+    <p class="xs muted">A quiet line in the chat, the same weight as "Saved to memory".</p></div>
+  <div class="frame"><div class="mk-caption">Unchanged copy, but it wants more access</div>
+    <div class="a2 pending" data-name="update needs approval"><div class="a2-h"><span class="pl-ic sm c1"><svg class="i" aria-hidden="true"><use href="#i-calendar-sync"/></svg></span><span class="t">Renewals desk 1.6.0</span><span class="badge badge-amber">Needs your OK</span></div>
+      <div class="a2-b stack"><p class="sm">This version asks for something new:</p>
+        <div class="diff"><span class="add">+ Send emails from your account (each one still needs your OK)</span></div>
+        <p class="xs muted">You haven't changed your copy, but new access always waits for you.</p></div>
+      <div class="a2-f"><button class="btn btn-xs btn-default">Update</button><button class="btn btn-xs btn-outline">What's new</button><button class="btn btn-xs btn-ghost">Not now</button></div></div></div>
+  <div class="frame" data-scope><div class="mk-caption">Changed copy: compare and merge</div>
+    <div class="a2" data-name="update merge card"><div class="a2-h"><span class="pl-ic sm c2"><svg class="i" aria-hidden="true"><use href="#i-notebook-tabs"/></svg></span><span class="t">Meeting prep 2.1.0 is out</span></div>
+      <div class="a2-b stack">
+        <p class="sm">You've changed your copy, so I've combined their changes with yours. Please check it.</p>
+        <div class="tabs-pill" style="height:30px;width:100%"><button data-tab="mg:theirs" style="font-size:12px;flex:1">Their changes</button><button data-tab="mg:mine" style="font-size:12px;flex:1">Your edits</button><button data-tab="mg:merged" aria-selected="true" style="font-size:12px;flex:1">Merged</button></div>
+        <div class="xs muted">Skill: Prepare a meeting brief</div>
+        <div class="diff" data-panel="mg:theirs" hidden><span class="ln">List attendees and their roles.</span><span class="ln add">+ Add each attendee's last email with us.</span><span class="ln">Show open deals and tasks.</span><span class="ln rm">- Keep it under 300 words.</span><span class="ln add">+ Keep it under 250 words.</span></div>
+        <div class="diff" data-panel="mg:mine" hidden><span class="ln">List attendees and their roles.</span><span class="ln add">+ Put the buying committee first.</span><span class="ln">Show open deals and tasks.</span><span class="ln">Keep it under 300 words.</span><span class="ln add">+ No exclamation marks.</span></div>
+        <div class="diff" data-panel="mg:merged"><span class="ln">List attendees and their roles.</span><span class="ln mine">  Put the buying committee first.</span><span class="ln add">+ Add each attendee's last email with us.</span><span class="ln">Show open deals and tasks.</span><span class="ln add">+ Keep it under 250 words.</span><span class="ln mine">  No exclamation marks.</span></div>
+        <div class="row g3 xs muted"><span class="row g1"><span style="width:10px;height:10px;border-radius:2px;background:color-mix(in oklch,var(--success) 25%,transparent)"></span>Theirs</span><span class="row g1"><span style="width:10px;height:10px;border-radius:2px;background:color-mix(in oklch,var(--chart-2) 30%,transparent)"></span>Yours, kept</span></div>
+      </div>
+      <div class="a2-f"><button class="btn btn-xs btn-default" data-name="apply merged">Apply</button><button class="btn btn-xs btn-outline" data-name="keep mine">Keep mine</button><button class="btn btn-xs btn-ghost" data-name="review merge">Review</button></div></div></div>
+  <div class="frame frame-wide"><div class="mk-caption">Review: full compare page</div>
+    <div class="frame-box" data-name="full compare view">
+      <div class="row g2 wrap"><span class="semi">Meeting prep: 2.0.0 (yours) and 2.1.0</span><span class="badge badge-outline">3 items changed</span></div>
+      <div class="tabs-line" style="border-bottom:1px solid var(--border)"><button aria-selected="true">Skill: Prepare a meeting brief</button><button>Routine: Brief before meetings</button><button>Chat card</button></div>
+      <div class="cmp3">
+        <div><div class="sec-title">Their 2.1.0</div><div class="diff"><span class="ln">List attendees and their roles.</span><span class="ln add">Add each attendee's last email with us.</span><span class="ln">Show open deals and tasks.</span><span class="ln add">Keep it under 250 words.</span></div></div>
+        <div><div class="sec-title">Your copy</div><div class="diff"><span class="ln">List attendees and their roles.</span><span class="ln mine">Put the buying committee first.</span><span class="ln">Show open deals and tasks.</span><span class="ln">Keep it under 300 words.</span><span class="ln mine">No exclamation marks.</span></div></div>
+        <div><div class="sec-title">Merged (editable)</div><div class="diff" style="border:1px solid var(--ring);background:var(--background)"><span class="ln">List attendees and their roles.</span><span class="ln mine">Put the buying committee first.</span><span class="ln add">Add each attendee's last email with us.</span><span class="ln">Show open deals and tasks.</span><span class="ln add">Keep it under 250 words.</span><span class="ln mine">No exclamation marks.</span></div></div>
+      </div>
+      <div class="row g2 wrap"><button class="btn btn-sm btn-default">Apply merged</button><button class="btn btn-sm btn-outline">Keep mine</button><button class="btn btn-sm btn-ghost">Take theirs</button></div>
+    </div></div>
+</div></div></div>
+
+<!-- ============ 6. Installed: locked, unlocked, detached ============ -->
+<div class="app dock-closed" data-panel="pl:installed" hidden data-name="installed plugins">
+  <nav class="nav" data-name="main navigation" aria-label="Main navigation">
+  <div class="nav-brand" data-name="product name">Relationship OS</div>
+  <div class="nav-scroll">
+    <div class="nav-group"><a class="nav-item" data-name="nav home"><svg class="i" aria-hidden="true"><use href="#i-house"/></svg><span>Home</span></a><a class="nav-item" data-name="nav dashboards"><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg><span>Dashboards</span></a><a class="nav-item" data-name="nav people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>People</span></a><a class="nav-item" data-name="nav organisations"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg><span>Organisations</span></a><a class="nav-item" data-name="nav tasks"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span>Tasks</span></a><a class="nav-item" data-name="nav assistant"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Assistant</span></a><a class="nav-item" data-name="nav automations"><svg class="i" aria-hidden="true"><use href="#i-workflow"/></svg><span>Automations</span></a><a class="nav-item active" data-name="nav plugins"><svg class="i" aria-hidden="true"><use href="#i-blocks"/></svg><span>Plugins</span></a><a class="nav-item" data-name="nav approvals"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span>Approvals</span><span class="nav-badge" data-name="approvals count">3</span></a><a class="nav-item" data-name="nav suggested contacts"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg><span>Suggested contacts</span></a><a class="nav-item" data-name="nav activity"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg><span>Activity</span></a><a class="nav-item" data-name="nav trash"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Trash</span></a></div>
+    <div class="nav-group"><div class="nav-label">Extensions</div><a class="nav-item" data-name="nav deals"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg><span>Deals</span></a><a class="nav-item" data-name="nav projects"><svg class="i" aria-hidden="true"><use href="#i-folder-kanban"/></svg><span>Projects</span></a></div>
+  </div>
+  <div class="nav-foot"><a class="nav-item" data-name="nav settings"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></a><a class="nav-item" data-name="nav system status"><svg class="i" aria-hidden="true"><use href="#i-square-activity"/></svg><span>System status</span></a></div>
+</nav>
+  <div class="main"><header class="app-header" data-name="app header">
+  <button class="btn btn-icon btn-ghost hdr-trigger" aria-label="Toggle navigation" data-name="toggle navigation"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+  <button class="btn btn-outline hdr-search" data-name="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="trunc">Search or jump to…</span><kbd class="kbd hide-sm">⌘K</kbd></button>
+  <div class="grow hide-sm"></div>
+  <button class="btn btn-sm btn-ghost ask-btn" data-name="ask ai button"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-sm">Ask AI</span><kbd class="kbd hide-sm">⌘J</kbd></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Notifications" data-name="notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+  <span class="avatar avatar-sm" data-name="user menu">MC</span>
+</header>
+    <div class="col" style="flex:1;min-height:0">
+      <div class="pg-h"><div class="pg-hi"><h1 class="pg-title">Plugins</h1>
+        <div class="tabs-line"><button>Marketplace</button><button aria-selected="true">Installed <span class="cnt">5</span></button><button>Your workspace <span class="cnt">3</span></button></div></div></div>
+      <div class="page"><div class="pg-b w4" style="margin:0">
+        <section class="card" style="padding:0;gap:0" data-name="installed list">
+          <div class="inst-row" data-flip-root data-name="installed renewals desk">
+            <span class="pl-ic c1"><svg class="i" aria-hidden="true"><use href="#i-calendar-sync"/></svg></span>
+            <div><div class="row g2 wrap"><span class="med">Renewals desk</span><span class="xs muted">1.5.0</span><span class="badge badge-secondary">Your copy</span></div>
+              <div class="xs muted mt1 f-on row g1"><svg class="i s3" aria-hidden="true"><use href="#i-refresh-cw"/></svg>Following updates. Unchanged, so updates apply by themselves.</div>
+              <div class="xs mt1 f-off" data-name="detached state"><span class="row g1 amber"><svg class="i s3" aria-hidden="true"><use href="#i-unlink"/></svg>Not following updates</span><span class="muted">You won't hear about new versions. Your copy stays as it is.</span></div></div>
+            <div class="row g2 acts"><button class="btn btn-sm btn-outline f-on" data-flip data-name="stop updates"><svg class="i" aria-hidden="true"><use href="#i-unlink"/></svg>Stop updates</button><button class="btn btn-sm btn-outline f-off" data-flip data-name="resume updates"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg>Resume updates</button><button class="btn btn-sm btn-ghost btn-icon" aria-label="More"><svg class="i" aria-hidden="true"><use href="#i-ellipsis"/></svg></button></div>
+          </div>
+          <div class="inst-row" data-name="installed meeting prep">
+            <span class="pl-ic c2"><svg class="i" aria-hidden="true"><use href="#i-notebook-tabs"/></svg></span>
+            <div><div class="row g2 wrap"><span class="med">Meeting prep</span><span class="xs muted">2.0.0</span><span class="badge badge-secondary">Your copy, changed</span></div>
+              <div class="xs mt1 row g1"><svg class="i s3" aria-hidden="true"><use href="#i-arrow-up-circle"/></svg><span>2.1.0 is out. You changed 2 things, so it needs a merge.</span></div></div>
+            <div class="row g2 acts"><button class="btn btn-sm btn-default">Compare</button><button class="btn btn-sm btn-ghost btn-icon" aria-label="More"><svg class="i" aria-hidden="true"><use href="#i-ellipsis"/></svg></button></div>
+          </div>
+          <div class="inst-row" data-name="admin installed locked">
+            <span class="pl-ic c3"><svg class="i" aria-hidden="true"><use href="#i-brush-cleaning"/></svg></span>
+            <div><div class="row g2 wrap"><span class="med">Pipeline hygiene</span><span class="xs muted">3.2.0</span><span class="badge badge-outline"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>Locked</span></div>
+              <div class="xs muted mt1">Installed by Priya Nair for the Sales team. You can't change it, and updates are handled for everyone. Make your own copy if you want to change it.</div></div>
+            <div class="row g2 acts"><button class="btn btn-sm btn-outline"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg>Make my own copy</button></div>
+          </div>
+          <div class="inst-row" data-name="admin installed unlocked">
+            <span class="pl-ic c7"><svg class="i" aria-hidden="true"><use href="#i-presentation"/></svg></span>
+            <div><div class="row g2 wrap"><span class="med">Quarterly business review</span><span class="xs muted">1.1.0</span><span class="badge badge-secondary">Your copy</span></div>
+              <div class="xs muted mt1">Installed by Priya Nair for Managers. It's your own copy: change it, follow updates or stop them, like your other plugins.</div></div>
+            <div class="row g2 acts"><button class="btn btn-sm btn-ghost btn-icon" aria-label="More"><svg class="i" aria-hidden="true"><use href="#i-ellipsis"/></svg></button></div>
+          </div>
+          <div class="inst-row" data-name="installed detached">
+            <span class="pl-ic c4"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg></span>
+            <div><div class="row g2 wrap"><span class="med">Partner deals</span><span class="xs muted">0.3.0</span><span class="badge badge-secondary">Your copy, changed</span></div>
+              <div class="xs mt1"><span class="row g1 amber"><svg class="i s3" aria-hidden="true"><use href="#i-unlink"/></svg>Not following updates since 12 Oct</span><span class="muted">0.5.0 is out. Resuming compares it with your copy first.</span></div></div>
+            <div class="row g2 acts"><button class="btn btn-sm btn-outline"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg>Resume updates</button></div>
+          </div>
+        </section>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 7. Org admin ============ -->
+<div class="app dock-closed" data-panel="pl:org" hidden data-name="org plugin admin">
+  <nav class="nav" data-name="main navigation" aria-label="Main navigation">
+  <div class="nav-brand" data-name="product name">Relationship OS</div>
+  <div class="nav-scroll">
+    <div class="nav-group"><a class="nav-item" data-name="nav home"><svg class="i" aria-hidden="true"><use href="#i-house"/></svg><span>Home</span></a><a class="nav-item" data-name="nav dashboards"><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg><span>Dashboards</span></a><a class="nav-item" data-name="nav people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>People</span></a><a class="nav-item" data-name="nav organisations"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg><span>Organisations</span></a><a class="nav-item" data-name="nav tasks"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span>Tasks</span></a><a class="nav-item" data-name="nav assistant"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Assistant</span></a><a class="nav-item" data-name="nav automations"><svg class="i" aria-hidden="true"><use href="#i-workflow"/></svg><span>Automations</span></a><a class="nav-item" data-name="nav plugins"><svg class="i" aria-hidden="true"><use href="#i-blocks"/></svg><span>Plugins</span></a><a class="nav-item" data-name="nav approvals"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span>Approvals</span><span class="nav-badge" data-name="approvals count">3</span></a><a class="nav-item" data-name="nav suggested contacts"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg><span>Suggested contacts</span></a><a class="nav-item" data-name="nav activity"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg><span>Activity</span></a><a class="nav-item" data-name="nav trash"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Trash</span></a></div>
+    <div class="nav-group"><div class="nav-label">Extensions</div><a class="nav-item" data-name="nav deals"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg><span>Deals</span></a><a class="nav-item" data-name="nav projects"><svg class="i" aria-hidden="true"><use href="#i-folder-kanban"/></svg><span>Projects</span></a></div>
+  </div>
+  <div class="nav-foot"><a class="nav-item active" data-name="nav settings"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></a><a class="nav-item" data-name="nav system status"><svg class="i" aria-hidden="true"><use href="#i-square-activity"/></svg><span>System status</span></a></div>
+</nav>
+  <div class="main"><header class="app-header" data-name="app header">
+  <button class="btn btn-icon btn-ghost hdr-trigger" aria-label="Toggle navigation" data-name="toggle navigation"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+  <button class="btn btn-outline hdr-search" data-name="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="trunc">Search or jump to…</span><kbd class="kbd hide-sm">⌘K</kbd></button>
+  <div class="grow hide-sm"></div>
+  <button class="btn btn-sm btn-ghost ask-btn" data-name="ask ai button"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-sm">Ask AI</span><kbd class="kbd hide-sm">⌘J</kbd></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Notifications" data-name="notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+  <span class="avatar avatar-sm" data-name="user menu">MC</span>
+</header>
+    <div class="col" style="flex:1;min-height:0">
+      <div class="pg-h"><div class="pg-hi"><a class="back"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"/></svg>Settings</a>
+        <div class="row g2 wrap"><h1 class="pg-title">Plugins</h1><span class="badge badge-outline">Admin</span><button class="btn btn-sm btn-default ml-auto"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Install for a team</button></div>
+        <div class="sm muted">Plugins installed for the whole workspace, teams or roles, and who can install from the marketplace.</div></div></div>
+      <div class="page"><div class="pg-b stack4">
+        <section class="card" data-name="workspace plugins table"><div class="card-h"><span class="card-t">Workspace plugins</span></div>
+          <div class="card-c"><div class="tbl-wrap"><table class="tbl">
+            <thead><tr><th>Plugin</th><th>For</th><th>Members</th><th>Version</th><th>Updates</th></tr></thead>
+            <tbody>
+              <tr><td><div class="row g2"><span class="pl-ic sm c3"><svg class="i" aria-hidden="true"><use href="#i-brush-cleaning"/></svg></span><span class="med">Pipeline hygiene</span></div></td><td>Sales team</td><td><span class="badge badge-outline"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>Locked</span></td><td>3.2.0</td><td class="muted">Automatic</td></tr>
+              <tr><td><div class="row g2"><span class="pl-ic sm c7"><svg class="i" aria-hidden="true"><use href="#i-presentation"/></svg></span><span class="med">Quarterly business review</span></div></td><td>Managers</td><td><span class="badge badge-secondary">Own copies</span></td><td>1.1.0</td><td class="muted">Each member</td></tr>
+              <tr><td><div class="row g2"><span class="pl-ic sm c6"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg></span><span class="med">Lead intake</span></div><div class="xs muted mt1">Org plugin: adds fields to Leads</div></td><td>Everyone</td><td><span class="badge badge-outline"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>Locked</span></td><td>2.4.0</td><td><div class="row g2"><span class="badge badge-amber">3.0.0 waiting</span><button class="btn btn-xs btn-outline">Review</button></div><div class="xs muted mt1">Adds 2 fields to Leads, so it needs you</div></td></tr>
+              <tr><td><div class="row g2"><span class="pl-ic sm c8"><svg class="i" aria-hidden="true"><use href="#i-life-buoy"/></svg></span><span class="med">Support handover</span></div><div class="xs muted mt1">Edited by admins</div></td><td>Support role</td><td><span class="badge badge-outline"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>Locked</span></td><td>1.2.0</td><td><div class="row g2"><span class="badge badge-secondary">1.3.0</span><button class="btn btn-xs btn-outline">Compare</button></div><div class="xs muted mt1">Merged proposal ready</div></td></tr>
+            </tbody></table></div></div></section>
+        <div style="display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+          <section class="card" data-name="marketplace access"><div class="card-h"><span class="card-t">Marketplace</span><p class="sm muted mt1">Signed in to the Relationship OS marketplace as Northwind Studio.</p></div>
+            <div class="card-c stack"><div class="opt"><span class="radio"></span><div><div class="sm med">Anyone can install</div></div></div><div class="opt on"><span class="radio on"></span><div><div class="sm med">Ask an admin first</div><div class="xs muted mt1">Members request, an admin approves.</div></div></div><div class="opt"><span class="radio"></span><div><div class="sm med">Off</div><div class="xs muted mt1">Only built-in and workspace plugins.</div></div></div></div></section>
+          <section class="card" data-name="install requests"><div class="card-h row"><span class="card-t">Requests</span><span class="badge badge-default ml-auto">2</span></div>
+            <ul class="card-c stack3">
+              <li class="stack"><div class="row g2"><span class="avatar avatar-xs">SO</span><span class="sm grow"><b class="med">Sam Ortiz</b> wants Event leads</span></div><div class="xs muted">Fieldnote Labs · Reviewed · needs his email</div><div class="row g1"><button class="btn btn-xs btn-default">Approve</button><button class="btn btn-xs btn-outline">Decline</button></div></li>
+              <li class="stack"><div class="row g2"><span class="avatar avatar-xs">PN</span><span class="sm grow"><b class="med">Priya Nair</b> wants Board pack numbers</span></div><div class="xs muted">Northstar Ops · Reviewed · no connections</div><div class="row g1"><button class="btn btn-xs btn-default">Approve</button><button class="btn btn-xs btn-outline">Decline</button></div></li>
+            </ul></section>
+          <section class="card" data-name="install for a team form"><div class="card-h"><span class="card-t">Install Renewals desk for a team</span></div>
+            <div class="card-c stack3"><div class="field"><span class="label">For</span><div class="select">Account management team</div></div>
+              <div class="row g3 start"><span class="switch on"></span><div><div class="sm med">Locked</div><div class="xs muted mt1">Members can't change it and you handle updates. They can still make their own copy.</div></div></div>
+              <button class="btn btn-sm btn-default" style="width:fit-content">Install for 6 people</button></div></section>
+          <section class="card" data-name="private registry"><div class="card-h"><span class="card-t">Your workspace's plugins</span></div>
+            <ul class="card-c stack"><li class="row g2 sm"><span class="grow">Partner deals</span><span class="badge badge-amber">In marketplace review</span></li><li class="row g2 sm"><span class="grow">Lead intake</span><span class="badge badge-secondary">Workspace only</span></li><li class="row g2 sm"><span class="grow">Support handover</span><span class="badge badge-secondary">Workspace only</span></li></ul></section>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Mockup behaviour: state tabs (data-tab="group:value" / data-panel="group:value ..."),
+// show/hide toggles (data-toggle="#id"), flip states (data-flip inside data-flip-root),
+// theme toggle, and #group=value in the URL to open a state directly.
+(function () {
+  function activate(group, value) {
+    document.querySelectorAll('[data-tab^="' + group + ':"]').forEach(function (b) {
+      b.setAttribute("aria-selected", b.getAttribute("data-tab") === group + ":" + value ? "true" : "false");
+    });
+    document.querySelectorAll("[data-panel]").forEach(function (p) {
+      var keys = p.getAttribute("data-panel").split(/\s+/);
+      var mine = keys.filter(function (k) { return k.indexOf(group + ":") === 0; });
+      if (!mine.length) return;
+      p.hidden = mine.indexOf(group + ":" + value) === -1;
+    });
+    document.body.setAttribute("data-" + group, value);
+    requestAnimationFrame(function () {
+      document.querySelectorAll(".dock-body:not([data-keep-top]),.scroll-end").forEach(function (el) { el.scrollTop = el.scrollHeight; });
+    });
+  }
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-tab]");
+    if (t) {
+      var parts = t.getAttribute("data-tab").split(":");
+      activate(parts[0], parts.slice(1).join(":"));
+      if (t.closest(".mk")) { try { history.replaceState(null, "", "#" + parts[0] + "=" + parts.slice(1).join(":")); } catch (_) {} }
+      return;
+    }
+    var g = e.target.closest("[data-toggle]");
+    if (g) {
+      var sel = g.getAttribute("data-toggle");
+      var el = sel.charAt(0) === "~" ? (g.closest("[data-scope]") || document).querySelector(sel.slice(1)) : document.querySelector(sel);
+      if (el) {
+        el.hidden = !el.hidden;
+        g.setAttribute("aria-expanded", el.hidden ? "false" : "true");
+      }
+      return;
+    }
+    var f = e.target.closest("[data-flip]");
+    if (f) {
+      var root = f.closest("[data-flip-root]");
+      if (root) root.classList.toggle("flipped");
+      return;
+    }
+    var th = e.target.closest("[data-theme-toggle]");
+    if (th) document.documentElement.classList.toggle("dark");
+  });
+  var groups = {};
+  document.querySelectorAll('[data-tab][aria-selected="true"]').forEach(function (b) {
+    var parts = b.getAttribute("data-tab").split(":");
+    groups[parts[0]] = parts.slice(1).join(":");
+  });
+  (location.hash || "").replace(/^#/, "").split("&").forEach(function (kv) {
+    var p = kv.split("=");
+    if (p[0] && p[1]) groups[p[0]] = decodeURIComponent(p[1]);
+  });
+  Object.keys(groups).forEach(function (k) { activate(k, groups[k]); });
+})();
+
+</script>
+</body>
+</html>

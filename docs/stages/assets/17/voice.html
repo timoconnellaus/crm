@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistant voice</title>
+<style>
+/* Tokens copied from packages/ui/src/styles/globals.css (shadcn new-york, neutral). */
+:root{
+  --radius:.625rem;
+  --background:oklch(1 0 0);--foreground:oklch(.145 0 0);
+  --card:oklch(1 0 0);--card-foreground:oklch(.145 0 0);
+  --popover:oklch(1 0 0);
+  --primary:oklch(.205 0 0);--primary-foreground:oklch(.985 0 0);
+  --secondary:oklch(.97 0 0);--secondary-foreground:oklch(.205 0 0);
+  --muted:oklch(.97 0 0);--muted-foreground:oklch(.556 0 0);
+  --accent:oklch(.97 0 0);--accent-foreground:oklch(.205 0 0);
+  --destructive:oklch(.577 .245 27.325);
+  --border:oklch(.922 0 0);--input:oklch(.922 0 0);--ring:oklch(.708 0 0);
+  --success:oklch(.627 .17 149.2);
+  --chart-1:oklch(.646 .222 41.116);--chart-2:oklch(.6 .118 184.704);--chart-3:oklch(.398 .07 227.392);--chart-4:oklch(.828 .189 84.429);--chart-5:oklch(.769 .188 70.08);
+  --sidebar:oklch(.985 0 0);--sidebar-accent:oklch(.97 0 0);--sidebar-border:oklch(.922 0 0);
+  --amber:oklch(.769 .188 70.08);--amber-fg:oklch(.555 .163 48.998);
+  --green-fg:oklch(.527 .154 150.069);--red-fg:oklch(.505 .213 27.518);
+  --violet:oklch(.606 .25 292.717);
+  --mk-h:44px;
+  --font:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  --shadow-xs:0 1px 2px 0 rgb(0 0 0/.05);
+  --shadow-sm:0 1px 3px 0 rgb(0 0 0/.1),0 1px 2px -1px rgb(0 0 0/.1);
+  --shadow-lg:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);
+}
+.dark{
+  --background:oklch(.145 0 0);--foreground:oklch(.985 0 0);
+  --card:oklch(.205 0 0);--card-foreground:oklch(.985 0 0);--popover:oklch(.205 0 0);
+  --primary:oklch(.922 0 0);--primary-foreground:oklch(.205 0 0);
+  --secondary:oklch(.269 0 0);--secondary-foreground:oklch(.985 0 0);
+  --muted:oklch(.269 0 0);--muted-foreground:oklch(.708 0 0);
+  --accent:oklch(.269 0 0);--accent-foreground:oklch(.985 0 0);
+  --destructive:oklch(.704 .191 22.216);
+  --border:oklch(1 0 0/10%);--input:oklch(1 0 0/15%);--ring:oklch(.556 0 0);
+  --success:oklch(.723 .19 149.6);
+  --chart-1:oklch(.488 .243 264.376);--chart-2:oklch(.696 .17 162.48);--chart-3:oklch(.769 .188 70.08);--chart-4:oklch(.627 .265 303.9);--chart-5:oklch(.645 .246 16.439);
+  --sidebar:oklch(.205 0 0);--sidebar-accent:oklch(.269 0 0);--sidebar-border:oklch(1 0 0/10%);
+  --amber-fg:oklch(.828 .189 84.429);--green-fg:oklch(.792 .209 151.711);--red-fg:oklch(.704 .191 22.216);
+}
+*,*::before,*::after{box-sizing:border-box;border:0 solid var(--border);margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);font-size:14px;line-height:1.43;color:var(--foreground);background:var(--background);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,textarea,select{font:inherit;color:inherit;background:none}
+button{cursor:pointer}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+[hidden]{display:none!important}
+.i{width:16px;height:16px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle}
+.i.s3{width:12px;height:12px}.i.s35{width:14px;height:14px}.i.s5{width:20px;height:20px}.i.s6{width:24px;height:24px}.i.s8{width:32px;height:32px}
+.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+
+/* utilities */
+.row{display:flex;align-items:center}.col{display:flex;flex-direction:column}.wrap{flex-wrap:wrap}
+.g1{gap:4px}.g15{gap:6px}.g2{gap:8px}.g3{gap:12px}.g4{gap:16px}.g6{gap:24px}
+.grow{flex:1 1 0;min-width:0}.shrink0{flex-shrink:0}.ml-auto{margin-left:auto}
+.start{align-items:flex-start}.between{justify-content:space-between}.end{justify-content:flex-end}
+.xs{font-size:12px;line-height:16px}.sm{font-size:14px;line-height:20px}.base{font-size:16px;line-height:24px}.lg{font-size:18px;line-height:28px}.xl{font-size:20px;line-height:28px}.x2l{font-size:24px;line-height:32px}
+.muted{color:var(--muted-foreground)}.fg{color:var(--foreground)}.med{font-weight:500}.semi{font-weight:600}.tight{letter-spacing:-.025em}.italic{font-style:italic}
+.mono{font-family:var(--mono)}.tnum{font-variant-numeric:tabular-nums}
+.trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.mt1{margin-top:4px}.mt2{margin-top:8px}.mt3{margin-top:12px}.mt4{margin-top:16px}.mb1{margin-bottom:4px}.mb2{margin-bottom:8px}
+.p3{padding:12px}.p4{padding:16px}.px3{padding-left:12px;padding-right:12px}.py2{padding-top:8px;padding-bottom:8px}
+.stack>*+*{margin-top:8px}.stack3>*+*{margin-top:12px}.stack4>*+*{margin-top:16px}
+.green{color:var(--green-fg)}.red{color:var(--red-fg)}.amber{color:var(--amber-fg)}
+.sep{height:1px;background:var(--border)}
+.link{text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.link-q{color:var(--muted-foreground);cursor:pointer}.link-q:hover{color:var(--foreground);text-decoration:underline;text-underline-offset:2px}
+
+/* button (packages/ui button.tsx) */
+.btn{display:inline-flex;flex-shrink:0;align-items:center;justify-content:center;gap:8px;border-radius:calc(var(--radius) - 2px);font-size:14px;line-height:20px;font-weight:500;white-space:nowrap;height:36px;padding:0 16px;transition:background .15s,color .15s;position:relative;outline:none}
+.btn:focus-visible{box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}
+.btn:has(>.i:first-child){padding-left:12px}
+.btn-default{background:var(--primary);color:var(--primary-foreground)}.btn-default:hover{background:color-mix(in oklch,var(--primary) 90%,transparent)}
+.btn-destructive{background:var(--destructive);color:#fff}
+.btn-outline{border:1px solid var(--border);background:var(--background);box-shadow:var(--shadow-xs)}.btn-outline:hover{background:var(--accent)}
+.dark .btn-outline{border-color:var(--input);background:color-mix(in oklch,var(--input) 30%,transparent)}
+.btn-secondary{background:var(--secondary);color:var(--secondary-foreground)}.btn-secondary:hover{background:color-mix(in oklch,var(--secondary) 80%,transparent)}
+.btn-ghost:hover{background:var(--accent)}
+.btn-link{text-decoration:none;padding:0;height:auto}.btn-link:hover{text-decoration:underline}
+.btn-sm{height:32px;padding:0 12px;gap:6px}.btn-sm:has(>.i:first-child){padding-left:10px}
+.btn-xs{height:24px;padding:0 8px;gap:4px;font-size:12px;line-height:16px;border-radius:calc(var(--radius) - 2px)}.btn-xs .i{width:12px;height:12px}.btn-xs:has(>.i:first-child){padding-left:6px}
+.btn-icon{width:36px;padding:0!important}.btn-icon.btn-sm{width:32px;height:32px}.btn-icon.btn-xs{width:24px;height:24px}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.kbd{display:inline-flex;align-items:center;height:20px;min-width:20px;padding:0 4px;border-radius:calc(var(--radius) - 4px);background:var(--muted);color:var(--muted-foreground);font:500 12px/1 var(--font);justify-content:center}
+.btn-default .kbd{background:color-mix(in oklch,var(--background) 20%,transparent);color:var(--primary-foreground)}
+
+/* badge */
+.badge{display:inline-flex;align-items:center;gap:4px;width:fit-content;border-radius:999px;border:1px solid transparent;padding:2px 8px;font-size:12px;line-height:16px;font-weight:500;white-space:nowrap}
+.badge .i{width:12px;height:12px}
+.badge-default{background:var(--primary);color:var(--primary-foreground)}
+.badge-secondary{background:var(--secondary);color:var(--secondary-foreground)}
+.badge-outline{border-color:var(--border)}
+.badge-destructive{background:var(--destructive);color:#fff}
+.badge-amber{background:color-mix(in oklch,var(--amber) 15%,transparent);color:var(--amber-fg)}
+.badge-green{background:color-mix(in oklch,var(--success) 14%,transparent);color:var(--green-fg)}
+.badge-red{background:color-mix(in oklch,var(--destructive) 12%,transparent);color:var(--red-fg)}
+.badge-sq{border-radius:4px;padding:1px 6px;font-weight:400}
+
+/* inputs */
+.input,.textarea,.select{display:flex;width:100%;border:1px solid var(--input);border-radius:calc(var(--radius) - 2px);background:transparent;box-shadow:var(--shadow-xs);font-size:14px;line-height:20px;outline:none}
+.input{height:36px;padding:4px 12px;align-items:center}
+.input-sm{height:32px}
+.textarea{padding:8px 12px;min-height:64px;resize:none}
+.select{height:36px;padding:0 12px;align-items:center;justify-content:space-between;gap:8px}
+.select::after{content:"";width:8px;height:8px;border-right:1.5px solid var(--muted-foreground);border-bottom:1.5px solid var(--muted-foreground);transform:translateY(-2px) rotate(45deg);opacity:.7}
+.input:focus,.textarea:focus{border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}
+.dark .input,.dark .textarea,.dark .select{background:color-mix(in oklch,var(--input) 30%,transparent)}
+.label{font-size:14px;line-height:1;font-weight:500}
+.field{display:grid;gap:8px}
+.switch{display:inline-flex;align-items:center;width:32px;height:18.4px;border-radius:999px;background:var(--input);padding:1px;flex-shrink:0;cursor:pointer;border:1px solid transparent;transition:background .15s}
+.switch::before{content:"";width:16px;height:16px;border-radius:999px;background:var(--background);transition:transform .15s}
+.switch.on{background:var(--primary)}.switch.on::before{transform:translateX(12px)}
+.dark .switch::before{background:var(--foreground)}.dark .switch.on::before{background:var(--primary-foreground)}
+.check{width:16px;height:16px;border:1px solid var(--input);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--shadow-xs);cursor:pointer;background:var(--background)}
+.check.on{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
+.check.on::after{content:"";width:8px;height:4.5px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-1px) rotate(-45deg)}
+.radio{width:16px;height:16px;border:1px solid var(--input);border-radius:999px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--shadow-xs)}
+.radio.on::after{content:"";width:8px;height:8px;border-radius:999px;background:var(--primary)}
+.slider{position:relative;height:6px;border-radius:999px;background:var(--muted);width:100%}
+.slider>span{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--primary)}
+.slider>b{position:absolute;top:50%;width:16px;height:16px;border-radius:999px;background:var(--background);border:1px solid var(--primary);transform:translate(-50%,-50%);box-shadow:var(--shadow-sm)}
+
+/* avatar, chips */
+.avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--muted);color:var(--foreground);font-size:12px;font-weight:500;width:32px;height:32px;flex-shrink:0;overflow:hidden}
+.avatar-sm{width:28px;height:28px;font-size:11px}.avatar-xs{width:20px;height:20px;font-size:9px}.avatar-lg{width:40px;height:40px;font-size:14px}
+.avatar.sq{border-radius:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:6px;padding:1px 8px 1px 2px;font-size:12px;line-height:18px;background:var(--background);white-space:nowrap;max-width:100%;cursor:pointer}
+.chip:hover{background:var(--accent)}
+.chip .avatar{width:16px;height:16px;font-size:8px}
+.chip-ic{padding-left:6px}.chip-ic .i{width:12px;height:12px;color:var(--muted-foreground)}
+
+/* card (packages/ui card.tsx) */
+.card{display:flex;flex-direction:column;gap:12px;border-radius:calc(var(--radius) + 4px);border:1px solid var(--border);background:var(--card);color:var(--card-foreground);padding:16px 0;box-shadow:var(--shadow-sm)}
+.card>.card-h,.card>.card-c{padding:0 16px}
+.card-t{font-weight:600;line-height:1;font-size:14px}
+.kv{display:grid;gap:2px}.kv dt{font-size:12px;color:var(--muted-foreground)}.kv dd{font-size:14px}
+
+/* progress */
+.prog{height:6px;border-radius:999px;background:var(--muted);overflow:hidden}
+.prog>span{display:block;height:100%;background:var(--primary);border-radius:999px}
+
+/* ===== mockup chrome (not product UI) ===== */
+.mk{position:relative;z-index:60;height:var(--mk-h);display:flex;align-items:center;gap:12px;padding:0 12px;background:oklch(.28 .03 260);color:oklch(.96 0 0);font-size:12px;overflow:hidden}
+.mk-title{font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.mk-pill{font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:4px;background:oklch(.45 .08 260)}
+.mk-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.mk-tabs::-webkit-scrollbar{display:none}
+.mk-tab{white-space:nowrap;padding:5px 10px;border-radius:6px;color:oklch(.85 0 0);font-weight:500}
+.mk-tab:hover{background:oklch(.36 .04 260)}
+.mk-tab[aria-selected=true]{background:oklch(.98 0 0);color:oklch(.2 0 0)}
+.mk-theme{color:oklch(.85 0 0);padding:4px;border-radius:6px;display:inline-flex}.mk-theme:hover{background:oklch(.36 .04 260)}
+.mk-note{font-size:12px;color:var(--muted-foreground);border:1px dashed var(--border);border-radius:8px;padding:8px 10px;background:color-mix(in oklch,var(--muted) 50%,transparent)}
+.mk-sub{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--muted);flex-wrap:wrap}
+.mk-sub button{padding:4px 10px;border-radius:7px;font-size:12px;font-weight:500;color:var(--muted-foreground)}
+.mk-sub button[aria-selected=true]{background:var(--background);color:var(--foreground);box-shadow:var(--shadow-sm)}
+.mk-caption{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted-foreground);font-weight:600}
+
+/* ===== app shell (routes/_app.tsx) ===== */
+.app{display:flex;height:calc(100dvh - var(--mk-h));overflow:hidden;background:var(--background)}
+.nav{width:256px;flex-shrink:0;background:var(--sidebar);border-right:1px solid var(--sidebar-border);display:flex;flex-direction:column;padding:8px}
+.nav-brand{padding:6px 8px;font-size:18px;line-height:28px;font-weight:600;letter-spacing:-.025em}
+.nav-scroll{flex:1;overflow-y:auto;min-height:0}
+.nav-group{padding:8px 0;display:flex;flex-direction:column;gap:4px}
+.nav-label{height:32px;display:flex;align-items:center;padding:0 8px;font-size:12px;font-weight:500;color:color-mix(in oklch,var(--foreground) 70%,transparent)}
+.nav-item{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:calc(var(--radius) - 2px);font-size:14px;position:relative;cursor:pointer}
+.nav-item:hover{background:var(--sidebar-accent)}
+.nav-item.active{background:var(--sidebar-accent);font-weight:500}
+.nav-badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:500;display:inline-flex;align-items:center;justify-content:center}
+.nav-foot{display:flex;flex-direction:column;gap:4px;padding-top:8px}
+.main{flex:1;min-width:320px;display:flex;flex-direction:column;min-height:0}
+.app-header{min-height:56px;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid var(--border);flex-shrink:0;container-type:inline-size}
+.hdr-search{flex:1;justify-content:flex-start;color:var(--muted-foreground);max-width:384px;padding:0 12px;min-width:0}
+.hdr-search .kbd{margin-left:auto}
+.ask-btn{position:relative}
+.ask-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 0 0 2px var(--background)}
+.page{flex:1;min-height:0;overflow-y:auto}
+.dock{width:384px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0;background:var(--background);position:relative}
+.dock::before{content:"";position:absolute;inset:0 auto 0 -1px;width:1px}
+.dock-h{display:flex;align-items:center;gap:6px;padding:8px 8px 8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;min-height:53px}
+.dock-h h2{flex:1;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dock-body{flex:1;min-height:0;overflow-y:auto;padding:16px}
+.dock-foot{border-top:1px solid var(--border);padding:12px}
+.app.dock-closed .dock{display:none}
+.app.wide-dock .dock{width:480px}
+.phone-only{display:none}
+
+/* page layout */
+.pg-h{border-bottom:1px solid var(--border);background:var(--background)}
+.pg-hi{max-width:1280px;margin:0 auto;padding:12px 24px;display:grid;gap:8px}
+.pg-title{font-size:24px;line-height:32px;font-weight:600;letter-spacing:-.025em}
+.pg-b{max-width:1280px;margin:0 auto;padding:16px 24px 32px}
+.w3{max-width:768px}.w4{max-width:896px}.w5{max-width:1024px}
+.back{display:inline-flex;align-items:center;gap:4px;font-size:14px;color:var(--muted-foreground);width:fit-content}
+.tabs-line{display:flex;gap:16px;height:40px;align-items:stretch;overflow-x:auto;scrollbar-width:none}
+.tabs-line>*{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:color-mix(in oklch,var(--foreground) 60%,transparent);position:relative;white-space:nowrap}
+.tabs-line>[aria-selected=true]{color:var(--foreground)}
+.tabs-line>[aria-selected=true]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--foreground)}
+.tabs-line .cnt{border-radius:999px;background:var(--muted);padding:0 6px;font-size:12px;color:var(--muted-foreground);font-weight:400}
+.tabs-pill{display:inline-flex;align-items:center;height:36px;padding:3px;border-radius:var(--radius);background:var(--muted);color:var(--muted-foreground);width:fit-content}
+.tabs-pill>*{height:100%;padding:4px 10px;border-radius:calc(var(--radius) - 2px);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px;color:color-mix(in oklch,var(--foreground) 60%,transparent)}
+.tabs-pill>[aria-selected=true]{background:var(--background);color:var(--foreground);box-shadow:var(--shadow-sm)}
+
+/* record page (record-layout.tsx) */
+.rec{height:100%;display:flex;flex-direction:column;min-height:0}
+.rec-h{max-width:1280px;margin:0 auto;width:100%;padding:12px 24px;display:grid;gap:8px}
+.rec-tabs{border-bottom:1px solid var(--border)}
+.rec-tabs>div{max-width:1280px;margin:0 auto;padding:0 24px}
+.rec-grid{max-width:1280px;margin:0 auto;width:100%;display:grid;grid-template-columns:minmax(0,1fr) 22rem;flex:1;min-height:0}
+.rec-main{padding:16px 24px 24px;overflow-y:auto;display:grid;gap:16px;align-content:start}
+.rec-side{padding:16px 24px 24px 16px;border-left:1px solid var(--border);overflow-y:auto;display:grid;gap:16px;align-content:start}
+.tl-item{display:grid;grid-template-columns:28px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.tl-ic{width:28px;height:28px;border-radius:999px;background:var(--muted);display:flex;align-items:center;justify-content:center;color:var(--muted-foreground)}
+
+/* ===== chat (assistant-chat.tsx) ===== */
+.thread{display:flex;flex-direction:column;gap:16px}
+.u{display:flex;justify-content:flex-end}
+.u>.bub{max-width:85%;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);padding:8px 12px;font-size:14px;line-height:20px;white-space:pre-wrap}
+.u.voice>.bub{font-style:italic}
+.u.voice>.bub .i{width:14px;height:14px;margin:-2px 6px 0 0;opacity:.75;font-style:normal}
+.u .meta{justify-content:flex-end}
+.u-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.a{font-size:14px;line-height:1.625;overflow-wrap:break-word}
+.a p{margin:8px 0}.a>*:first-child{margin-top:0}.a>*:last-child{margin-bottom:0}
+.a ul{list-style:disc;padding-left:20px;margin:8px 0}.a ol{list-style:decimal;padding-left:20px;margin:8px 0}.a li{margin:2px 0}
+.a a,.a .rl{text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.a strong{font-weight:600}
+.msg{display:flex;flex-direction:column;gap:8px;position:relative}
+.meta{display:flex;align-items:center;gap:6px;font-size:12px;line-height:16px;color:var(--muted-foreground);min-height:16px}
+.info-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;color:var(--muted-foreground);opacity:0;transition:opacity .15s}
+.info-dot .i{width:13px;height:13px}
+.msg:hover .info-dot,.msg:focus-within .info-dot,.info-dot[aria-expanded=true],.show-dots .info-dot{opacity:1}
+.info-dot:hover{color:var(--foreground)}
+.why{border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:color-mix(in oklch,var(--muted) 40%,transparent);padding:10px 12px;font-size:12px;line-height:16px;display:grid;gap:8px}
+.why dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+.why dt{color:var(--muted-foreground)}
+.why .q{font-style:italic}
+.saved{display:flex;align-items:center;gap:6px;font-size:12px;line-height:16px;color:var(--muted-foreground);flex-wrap:wrap}
+.saved .i{width:13px;height:13px}
+.saved b{font-weight:500;color:var(--foreground)}
+.saved.undone{text-decoration:line-through}
+.tool{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground)}
+.tool .i{width:12px;height:12px}
+.working{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted-foreground)}
+.working .i{width:12px;height:12px}
+.day{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted-foreground)}
+.day::before,.day::after{content:"";flex:1;height:1px;background:var(--border)}
+.compact{border:1px solid var(--border);border-radius:var(--radius);padding:12px;background:color-mix(in oklch,var(--muted) 40%,transparent);display:grid;gap:8px;font-size:13px;line-height:1.55}
+.composer{display:grid;gap:8px}
+.ctx{display:inline-flex;max-width:100%;border-radius:999px;background:var(--secondary);padding:2px 8px;font-size:12px;line-height:16px;color:var(--muted-foreground);width:fit-content}
+.ctx b{font-weight:400;color:var(--foreground)}
+.comp-row{display:flex;align-items:flex-end;gap:8px}
+.comp-row .textarea{min-height:40px;height:60px;flex:1}
+.comp-row .placeholder{color:var(--muted-foreground)}
+
+/* ===== A2UI cards ===== */
+.a2{border:1px solid var(--border);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow-xs);font-size:14px;line-height:20px;overflow:hidden}
+.a2-h{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.a2-h .t{font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.a2-h>.i{color:var(--muted-foreground)}
+.a2-b{padding:0 12px 12px}
+.a2-f{display:flex;gap:8px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--border);align-items:center}
+.a2-sub{font-size:12px;color:var(--muted-foreground)}
+.a2.pending{border-color:color-mix(in oklch,var(--amber) 40%,transparent);background:color-mix(in oklch,var(--amber) 5%,var(--card))}
+.a2.done{opacity:.85}
+.a2.blocked{border-color:color-mix(in oklch,var(--destructive) 35%,transparent);background:color-mix(in oklch,var(--destructive) 4%,var(--card))}
+.a2.ok{border-color:color-mix(in oklch,var(--success) 35%,transparent)}
+.a2-list>li{display:flex;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid var(--border)}
+.a2-list>li:first-child{border-top:0}
+.a2-list .ttl{font-size:14px;line-height:20px}
+.a2-list .sub{font-size:12px;line-height:16px;color:var(--muted-foreground)}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px}
+.facts dt{color:var(--muted-foreground)}
+.diff{border-radius:calc(var(--radius) - 2px);background:color-mix(in oklch,var(--muted) 60%,transparent);padding:6px 10px;font-family:var(--mono);font-size:12px;line-height:1.6}
+.diff .k{font-family:var(--font);color:var(--muted-foreground)}
+.diff del{color:var(--red-fg);text-decoration-color:color-mix(in oklch,var(--red-fg) 50%,transparent)}
+.diff ins{color:var(--green-fg);text-decoration:none}
+.diff .add{color:var(--green-fg)}.diff .rm{color:var(--red-fg)}
+.verdict{display:grid;gap:4px;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);padding:8px 10px;font-size:12px;line-height:16px;background:color-mix(in oklch,var(--muted) 40%,transparent)}
+.verdict.ok{border-color:color-mix(in oklch,var(--success) 30%,transparent);background:color-mix(in oklch,var(--success) 5%,transparent)}
+.verdict.no{border-color:color-mix(in oklch,var(--destructive) 30%,transparent);background:color-mix(in oklch,var(--destructive) 5%,transparent)}
+.verdict .row .i{width:14px;height:14px;color:var(--muted-foreground)}
+.phrase{border:1px dashed color-mix(in oklch,var(--foreground) 35%,transparent);border-radius:calc(var(--radius) - 2px);padding:10px 12px;font-size:15px;line-height:22px;font-weight:500;background:var(--background)}
+.pill-cond{display:inline-flex;align-items:center;gap:4px;border-radius:6px;background:var(--secondary);padding:2px 8px;font-size:12px;line-height:18px}
+.pill-cond .op{color:var(--muted-foreground)}
+.steps{display:grid;gap:6px}
+.steps li{display:grid;grid-template-columns:16px 1fr;gap:8px;font-size:13px;line-height:18px}
+.steps li .i{width:14px;height:14px;margin-top:2px;color:var(--muted-foreground)}
+.spark{display:grid;grid-template-columns:repeat(30,1fr);gap:2px;align-items:end;height:28px}
+.spark>i{background:var(--muted);border-radius:2px;height:6px;display:block}
+.spark>i.f{background:var(--primary);height:100%}
+.sec-title{font-size:12px;font-weight:500;color:var(--muted-foreground);margin-bottom:6px}
+
+/* frames for galleries */
+.gallery{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;padding:24px;background:color-mix(in oklch,var(--muted) 60%,var(--background));min-height:100%}
+.frame{width:384px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+.frame-box{background:var(--background);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:12px}
+.frame-wide{width:640px}
+
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;font-weight:500;color:var(--muted-foreground);font-size:12px;height:36px;padding:0 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:auto}
+
+/* responsive: tablet (834) hides the nav; phone (390) makes the dock a full-screen sheet */
+@media (max-width:1100px){.nav{display:none}}
+@media (max-width:1023px){.rec-grid{grid-template-columns:1fr;overflow-y:auto}.rec-side{border-left:0;padding:0 24px 24px;order:-1}.rec-main{overflow:visible}.rec{overflow-y:auto}.rec-grid{overflow:visible}}
+@media (max-width:767px){
+  .hide-sm{display:none!important}
+  .phone-only{display:revert}
+  .dock{position:fixed;inset:var(--mk-h) 0 0 0;width:auto!important;z-index:40;border-left:0}
+  .dock-h{padding-left:16px}
+  .pg-hi,.pg-b,.rec-h,.rec-tabs>div{padding-left:16px;padding-right:16px}
+  .rec-main,.rec-side{padding-left:16px;padding-right:16px}
+  .pg-title{font-size:20px;line-height:28px}
+  .gallery{padding:16px;gap:16px}
+  .frame,.frame-wide{width:100%}
+  .app-header{padding:0 12px}
+  .mk-title .mk-name{display:none}
+}
+.f-off{display:none!important}.flipped .f-on{display:none!important}.flipped .f-off{display:revert!important}
+.flipped.saved{opacity:.8}
+mark{background:color-mix(in oklch,var(--chart-4) 45%,transparent);color:inherit;border-radius:2px;padding:0 1px}
+.mk-hint{white-space:nowrap;color:oklch(.8 0 0);font-size:12px;overflow:hidden;text-overflow:ellipsis;max-width:40%}
+@media (max-width:1100px){.mk-hint{display:none}}
+@media (max-width:1023px){.rec{height:auto}.rec-grid{flex:none;display:flex;flex-direction:column}.rec-side,.rec-main{overflow:visible}}
+.saved{align-items:flex-start}.saved>.i{margin-top:1.5px}.saved>span{flex:1;min-width:0}
+.spark{height:20px}
+.mk2{height:40px;display:flex;align-items:center;gap:10px;padding:0 12px;background:oklch(.94 .01 260);border-bottom:1px solid oklch(.88 .02 260);font-size:12px;color:oklch(.35 .03 260);overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.dark .mk2{background:oklch(.25 .02 260);border-color:oklch(.32 .02 260);color:oklch(.85 0 0)}
+.mk2 .mk-sub{flex-wrap:nowrap;background:oklch(.89 .015 260)}
+.dark .mk2 .mk-sub{background:oklch(.32 .02 260)}
+.has-mk2>.app,.app.has-mk2{height:calc(100dvh - var(--mk-h) - 40px)}
+.has-mk2 .dock{top:auto}
+@media (max-width:767px){.has-mk2 .dock{inset:calc(var(--mk-h) + 40px) 0 0 0}}
+.gallery{align-content:flex-start}
+
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-sun-moon" viewBox="0 0 24 24"><path d="M12 2v2"/><path d="M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715"/><path d="M16 12a4 4 0 0 0-4-4"/><path d="m19 5-1.256 1.256"/><path d="M20 12h2"/></symbol><symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol><symbol id="i-layout-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol><symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></symbol><symbol id="i-building-2" viewBox="0 0 24 24"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></symbol><symbol id="i-square-check-big" viewBox="0 0 24 24"><path d="M21 10.656V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.344"/><path d="m9 11 3 3L22 4"/></symbol><symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></symbol><symbol id="i-workflow" viewBox="0 0 24 24"><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></symbol><symbol id="i-blocks" viewBox="0 0 24 24"><path d="M10 22V7a1 1 0 0 0-1-1H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5a1 1 0 0 0-1-1H2"/><rect x="14" y="2" width="8" height="8" rx="1"/></symbol><symbol id="i-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol><symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></symbol><symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></symbol><symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol><symbol id="i-handshake" viewBox="0 0 24 24"><path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/></symbol><symbol id="i-folder-kanban" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M8 10v4"/><path d="M12 10v2"/><path d="M16 10v6"/></symbol><symbol id="i-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-square-activity" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M17 12h-2l-2 5-2-10-2 5H7"/></symbol><symbol id="i-panel-left" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol><symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></symbol><symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol><symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="i-ellipsis" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol><symbol id="i-mail" viewBox="0 0 24 24"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></symbol><symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></symbol><symbol id="i-phone" viewBox="0 0 24 24"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/></symbol><symbol id="i-notebook-pen" viewBox="0 0 24 24"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol><symbol id="i-audio-lines" viewBox="0 0 24 24"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></symbol><symbol id="i-hand" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></symbol><symbol id="i-ear" viewBox="0 0 24 24"><path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 1 1-7 0"/><path d="M15 8.5a2.5 2.5 0 0 0-5 0v1a2 2 0 1 1 0 4"/></symbol><symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></symbol><symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol><symbol id="i-volume-2" viewBox="0 0 24 24"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/></symbol><symbol id="i-alarm-clock" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/><path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/></symbol><symbol id="i-loader-circle" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol><symbol id="i-mic-off" viewBox="0 0 24 24"><path d="M12 19v3"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M16.95 16.95A7 7 0 0 1 5 12v-2"/><path d="M18.89 13.23A7 7 0 0 0 19 12v-2"/><path d="m2 2 20 20"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/></symbol><symbol id="i-phone-off" viewBox="0 0 24 24"><path d="M10.1 13.9a14 14 0 0 0 3.732 2.668 1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2 18 18 0 0 1-12.728-5.272"/><path d="M22 2 2 22"/><path d="M4.76 13.582A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 .244.473"/></symbol><symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol><symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol><symbol id="i-circle-pause" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="10" x2="10" y1="15" y2="9"/><line x1="14" x2="14" y1="15" y2="9"/></symbol><symbol id="i-mails" viewBox="0 0 24 24"><path d="M17 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 1-1.732"/><path d="m22 5.5-6.419 4.179a2 2 0 0 1-2.162 0L7 5.5"/><rect x="7" y="3" width="15" height="12" rx="2"/></symbol><symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol><symbol id="i-list-filter" viewBox="0 0 24 24"><path d="M2 5h20"/><path d="M6 12h12"/><path d="M9 19h6"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/></symbol><symbol id="i-circle-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol><symbol id="i-square" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="i-settings-2" viewBox="0 0 24 24"><path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol><symbol id="i-message-square" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></symbol><symbol id="i-rotate-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol></svg>
+<style>
+.live-dot{width:8px;height:8px;border-radius:999px;background:var(--success);box-shadow:0 0 0 0 color-mix(in oklch,var(--success) 50%,transparent);animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in oklch,var(--success) 45%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.callchip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:var(--secondary);padding:2px 8px 2px 7px;font-size:12px;font-weight:500}
+.wave{display:inline-flex;align-items:center;gap:2px;height:20px}
+.wave i{display:block;width:3px;border-radius:2px;background:currentColor;height:30%;animation:wv 1s ease-in-out infinite}
+.wave i:nth-child(2){animation-delay:.1s}.wave i:nth-child(3){animation-delay:.25s}.wave i:nth-child(4){animation-delay:.05s}.wave i:nth-child(5){animation-delay:.3s}.wave i:nth-child(6){animation-delay:.15s}.wave i:nth-child(7){animation-delay:.2s}
+@keyframes wv{0%,100%{height:25%}50%{height:100%}}
+.wave.still i{animation:none;height:20%}
+@media (prefers-reduced-motion:reduce){.wave i,.live-dot,.orb-ring{animation:none!important}}
+.callbar{border-top:1px solid var(--border);padding:12px;display:grid;gap:10px;background:var(--background)}
+.call-status{display:flex;align-items:center;gap:8px;font-size:13px;min-height:20px}
+.call-status .st{font-weight:500}
+.call-ctrls{display:flex;align-items:center;gap:8px}
+.ptt{flex:1;height:44px;border-radius:999px;border:1px solid var(--border);background:var(--secondary);display:flex;align-items:center;justify-content:center;gap:8px;font-weight:500;font-size:14px;user-select:none}
+.ptt.held{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+.hf{flex:1;height:44px;border-radius:999px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--muted-foreground)}
+.btn-round{width:44px;height:44px;border-radius:999px;padding:0!important}
+.btn-end{background:var(--destructive);color:#fff}
+.btn-end:hover{background:color-mix(in oklch,var(--destructive) 90%,transparent)}
+.ghost-bub{max-width:85%;border-radius:var(--radius);border:1px dashed color-mix(in oklch,var(--foreground) 25%,transparent);padding:8px 12px;font-style:italic;color:var(--muted-foreground);font-size:14px}
+.caret{display:inline-block;width:1px;height:14px;background:currentColor;vertical-align:-2px;margin-left:1px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.said{display:flex;gap:6px;align-items:flex-start;font-size:12px;line-height:16px;color:var(--muted-foreground)}
+.said .i{width:13px;height:13px;margin-top:1.5px}
+.said q{font-style:italic}
+.speaking-now{background:color-mix(in oklch,var(--chart-2) 18%,transparent);border-radius:3px}
+.unheard{color:var(--muted-foreground);text-decoration:line-through;text-decoration-color:color-mix(in oklch,var(--muted-foreground) 45%,transparent)}
+.cut{display:inline-block;width:2px;height:16px;background:var(--amber);vertical-align:-3px;margin:0 3px;border-radius:1px}
+.opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;cursor:pointer}
+.opt.on{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.opt .radio{margin-top:2px}
+.voice-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:calc(var(--radius) - 2px);cursor:pointer}
+.voice-row.on{background:var(--accent)}
+.phone{width:390px;height:800px;max-width:100%;border-radius:28px;border:8px solid oklch(.2 0 0);overflow:hidden;background:var(--background);display:flex;flex-direction:column;box-shadow:var(--shadow-lg);position:relative}
+.orb{width:168px;height:168px;border-radius:999px;position:relative;display:flex;align-items:center;justify-content:center;margin:0 auto}
+.orb-core{width:112px;height:112px;border-radius:999px;background:radial-gradient(circle at 35% 30%,color-mix(in oklch,var(--chart-2) 60%,white),var(--chart-2) 60%,color-mix(in oklch,var(--chart-2) 70%,black));box-shadow:0 10px 30px color-mix(in oklch,var(--chart-2) 35%,transparent)}
+.orb-ring{position:absolute;inset:0;border-radius:999px;border:2px solid color-mix(in oklch,var(--chart-2) 35%,transparent);animation:ring 2s ease-out infinite}
+.orb-ring.r2{animation-delay:1s}
+@keyframes ring{0%{transform:scale(.7);opacity:1}100%{transform:scale(1.15);opacity:0}}
+.caption{font-size:20px;line-height:30px;font-weight:500;letter-spacing:-.01em}
+.caption .past{color:var(--muted-foreground)}
+.gal-phone{display:flex;justify-content:center;align-items:flex-start;gap:32px;padding:24px;flex-wrap:wrap;background:color-mix(in oklch,var(--muted) 60%,var(--background));min-height:100%}
+@media (max-width:767px){.gal-phone{padding:0;gap:0}.phone{width:100%;height:calc(100dvh - var(--mk-h));border:0;border-radius:0;box-shadow:none}.gal-phone .side-note{display:none}}
+</style>
+
+<div class="mk" data-name="mockup state bar">
+  <div class="mk-title"><span class="mk-pill">Mockup</span><span class="mk-name">Voice</span></div>
+  <div class="mk-tabs" role="tablist">
+    <button class="mk-tab" data-tab="v:setup" aria-selected="true">First-use setup</button>
+    <button class="mk-tab" data-tab="v:ptt">Push to talk</button>
+    <button class="mk-tab" data-tab="v:hf">Hands-free</button>
+    <button class="mk-tab" data-tab="v:approve">Spoken approval</button>
+    <button class="mk-tab" data-tab="v:phrase">High-risk approval</button>
+    <button class="mk-tab" data-tab="v:dictate">Dictation</button>
+    <button class="mk-tab" data-tab="v:mobile">Mobile full screen</button>
+    <button class="mk-tab" data-tab="v:settings">Voice settings</button>
+  </div>
+  <button class="mk-theme" data-theme-toggle aria-label="Toggle dark mode"><svg class="i" aria-hidden="true"><use href="#i-sun-moon"/></svg></button>
+</div>
+
+<!-- ============ 1. First-use setup ============ -->
+<div class="app" data-panel="v:setup" data-name="voice setup screen">
+  <nav class="nav" data-name="main navigation" aria-label="Main navigation">
+  <div class="nav-brand" data-name="product name">Relationship OS</div>
+  <div class="nav-scroll">
+    <div class="nav-group"><a class="nav-item" data-name="nav home"><svg class="i" aria-hidden="true"><use href="#i-house"/></svg><span>Home</span></a><a class="nav-item" data-name="nav dashboards"><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg><span>Dashboards</span></a><a class="nav-item" data-name="nav people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>People</span></a><a class="nav-item active" data-name="nav organisations"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg><span>Organisations</span></a><a class="nav-item" data-name="nav tasks"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span>Tasks</span></a><a class="nav-item" data-name="nav assistant"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Assistant</span></a><a class="nav-item" data-name="nav automations"><svg class="i" aria-hidden="true"><use href="#i-workflow"/></svg><span>Automations</span></a><a class="nav-item" data-name="nav plugins"><svg class="i" aria-hidden="true"><use href="#i-blocks"/></svg><span>Plugins</span></a><a class="nav-item" data-name="nav approvals"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span>Approvals</span><span class="nav-badge" data-name="approvals count">3</span></a><a class="nav-item" data-name="nav suggested contacts"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg><span>Suggested contacts</span></a><a class="nav-item" data-name="nav activity"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg><span>Activity</span></a><a class="nav-item" data-name="nav trash"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Trash</span></a></div>
+    <div class="nav-group"><div class="nav-label">Extensions</div><a class="nav-item" data-name="nav deals"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg><span>Deals</span></a><a class="nav-item" data-name="nav projects"><svg class="i" aria-hidden="true"><use href="#i-folder-kanban"/></svg><span>Projects</span></a></div>
+  </div>
+  <div class="nav-foot"><a class="nav-item" data-name="nav settings"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></a><a class="nav-item" data-name="nav system status"><svg class="i" aria-hidden="true"><use href="#i-square-activity"/></svg><span>System status</span></a></div>
+</nav>
+  <div class="main"><header class="app-header" data-name="app header">
+  <button class="btn btn-icon btn-ghost hdr-trigger" aria-label="Toggle navigation" data-name="toggle navigation"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+  <button class="btn btn-outline hdr-search" data-name="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="trunc">Search or jump to…</span><kbd class="kbd hide-sm">⌘K</kbd></button>
+  <div class="grow hide-sm"></div>
+  <button class="btn btn-sm btn-secondary ask-btn" data-name="ask ai button"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-sm">Ask AI</span><kbd class="kbd hide-sm">⌘J</kbd></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Notifications" data-name="notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+  <span class="avatar avatar-sm" data-name="user menu">MC</span>
+</header><div class="page" data-name="record page">
+<div class="rec" data-name="organisation record">
+  <header class="rec-h" data-name="record header">
+    <a class="back" data-name="back to organisations"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"/></svg>Organisations</a>
+    <div class="row g3 wrap">
+      <span class="avatar avatar-lg sq" data-name="organisation logo">BH</span>
+      <div class="grow" style="display:grid;gap:2px">
+        <div class="row g2 wrap"><h1 class="lg semi tight trunc" data-name="record name">Brightwater Health</h1><span class="badge badge-outline" data-name="pending changes badge">1 pending</span></div>
+        <div class="sm muted trunc" data-name="record subtitle">brightwater.health · Healthcare · 1,200 employees</div>
+      </div>
+      <div class="row g2">
+        <button class="btn btn-sm btn-outline" data-name="ask ai about record"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>Ask AI</button>
+        <button class="btn btn-icon btn-sm btn-ghost" aria-label="More actions" data-name="more actions"><svg class="i" aria-hidden="true"><use href="#i-ellipsis"/></svg></button>
+      </div>
+    </div>
+  </header>
+  <div class="rec-tabs" data-name="record tabs"><div><div class="tabs-line">
+    <button aria-selected="true">Overview</button><button>Timeline</button><button>People <span class="cnt">14</span></button><button>Deals <span class="cnt">2</span></button><button>Tasks <span class="cnt">3</span></button><button>History</button>
+  </div></div></div>
+  <div class="rec-grid">
+    <div class="rec-main" data-name="record main column">
+      <section class="card" data-name="summary card">
+        <div class="card-h row g2"><span class="card-t">Summary</span><span class="badge badge-secondary ml-auto">AI</span></div>
+        <div class="card-c sm" style="line-height:1.6">Long-standing customer since 2023. The 2027 renewal ($48,000) is at Proposal. Ade Okafor is the main contact; Lena Fischer (CFO) signs. Last activity 2 days ago: an email from Ade about pricing.</div>
+      </section>
+      <section class="card" data-name="recent activity">
+        <div class="card-h"><span class="card-t">Recent activity</span></div>
+        <div class="card-c">
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-mail"/></svg></span><div><div class="sm med">Ade Okafor: Re: Brightwater renewal pricing</div><div class="xs muted">Email · Today 10:38 am</div><div class="sm muted mt1">Thanks Maya, the three-year option works for us. Can you send the order form by Friday?</div></div></div>
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-calendar"/></svg></span><div><div class="sm med">Quarterly check-in</div><div class="xs muted">Meeting · Tue 14 Oct · Ade Okafor, Lena Fischer</div></div></div>
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-phone"/></svg></span><div><div class="sm med">Call with Lena Fischer</div><div class="xs muted">Call · Thu 2 Oct · 18 min</div><div class="sm muted mt1">Budget approved for 2027. Wants a three-year price.</div></div></div>
+          <div class="tl-item" style="border-bottom:0"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-notebook-pen"/></svg></span><div><div class="sm med">Note from Sam Ortiz</div><div class="xs muted">Note · Mon 22 Sep</div><div class="sm muted mt1">IT wants SSO before rollout to the second site.</div></div></div>
+        </div>
+      </section>
+    </div>
+    <aside class="rec-side" data-name="record side panel">
+      <section class="card" data-name="details card">
+        <div class="card-h"><span class="card-t">Details</span></div>
+        <dl class="card-c" style="display:grid;gap:12px">
+          <div class="kv"><dt>Domain</dt><dd>brightwater.health</dd></div>
+          <div class="kv"><dt>Industry</dt><dd>Healthcare</dd></div>
+          <div class="kv"><dt>Employees</dt><dd>1,200</dd></div>
+          <div class="kv"><dt>Owner</dt><dd>Maya Chen</dd></div>
+        </dl>
+      </section>
+      <section class="card" data-name="people card">
+        <div class="card-h row"><span class="card-t">People</span><span class="xs muted ml-auto">14</span></div>
+        <ul class="card-c" style="display:grid;gap:10px">
+          <li class="row g2"><span class="avatar avatar-sm">AO</span><div class="grow"><div class="sm">Ade Okafor</div><div class="xs muted">Head of Operations</div></div></li>
+          <li class="row g2"><span class="avatar avatar-sm">LF</span><div class="grow"><div class="sm">Lena Fischer</div><div class="xs muted">CFO</div></div></li>
+          <li class="row g2"><span class="avatar avatar-sm">RP</span><div class="grow"><div class="sm">Raj Patel</div><div class="xs muted">IT Director</div></div></li>
+        </ul>
+      </section>
+      <section class="card" data-name="tasks card">
+        <div class="card-h"><span class="card-t">Tasks</span></div>
+        <ul class="card-c" style="display:grid;gap:10px">
+          <li class="row g2 start"><span class="check"></span><div><div class="sm">Send renewal order form</div><div class="xs muted">Due Fri 7 Nov</div></div></li>
+          <li class="row g2 start"><span class="check"></span><div><div class="sm">Book SSO workshop with Raj</div><div class="xs muted">Due Wed 12 Nov</div></div></li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</div>
+</div>
+</div>
+  <aside class="dock" data-name="assistant sidebar">
+    <div class="dock-h"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><h2>Assistant</h2><button class="btn btn-icon btn-ghost" aria-label="Close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+    <div class="dock-body" data-keep-top data-name="voice setup">
+      <div class="stack4">
+        <div>
+          <div class="row g2"><span class="avatar" style="background:var(--secondary)"><svg class="i" aria-hidden="true"><use href="#i-audio-lines"/></svg></span><h3 class="base semi">Set up voice chat</h3></div>
+          <p class="sm muted mt2">Pick how I sound and how you'd like to talk. You can change any of this later in Settings.</p>
+        </div>
+        <section data-name="voice picker">
+          <div class="label mb2">Voice</div>
+          <div class="col g1">
+            <div class="voice-row on" data-name="voice option charlotte"><span class="radio on"></span><div class="grow"><div class="sm med">Charlotte</div><div class="xs muted">Warm, unhurried</div></div><button class="btn btn-xs btn-outline" data-name="preview voice"><span class="wave" style="height:12px"><i></i><i></i><i></i><i></i></span>Playing</button></div>
+            <div class="voice-row" data-name="voice option daniel"><span class="radio"></span><div class="grow"><div class="sm med">Daniel</div><div class="xs muted">Steady, clear</div></div><button class="btn btn-xs btn-ghost"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg>Preview</button></div>
+            <div class="voice-row" data-name="voice option aria"><span class="radio"></span><div class="grow"><div class="sm med">Aria</div><div class="xs muted">Bright, quick</div></div><button class="btn btn-xs btn-ghost"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg>Preview</button></div>
+            <div class="voice-row" data-name="voice option roger"><span class="radio"></span><div class="grow"><div class="sm med">Roger</div><div class="xs muted">Deep, relaxed</div></div><button class="btn btn-xs btn-ghost"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg>Preview</button></div>
+          </div>
+        </section>
+        <section data-name="speed">
+          <div class="row between mb2"><span class="label">Speed</span><span class="sm tnum">1.0×</span></div>
+          <div class="slider" style="margin:10px 0"><span style="width:33%"></span><b style="left:33%"></b></div>
+          <div class="row between xs muted"><span>Slower</span><span>Faster</span></div>
+        </section>
+        <section data-name="talk mode">
+          <div class="label mb2">How you'll talk</div>
+          <div class="col g2">
+            <div class="opt on" data-name="push to talk option"><span class="radio on"></span><div><div class="sm med row g15"><svg class="i s35" aria-hidden="true"><use href="#i-hand"/></svg>Push to talk</div><div class="xs muted mt1">Hold Space or the talk button while you speak. Good for open offices.</div></div></div>
+            <div class="opt" data-name="hands-free option"><span class="radio"></span><div><div class="sm med row g15"><svg class="i s35" aria-hidden="true"><use href="#i-ear"/></svg>Hands-free</div><div class="xs muted mt1">I listen until you end the chat. Start talking any time to interrupt me.</div></div></div>
+          </div>
+          <p class="xs muted mt2" data-name="per device note">This choice starts the same on all your devices. If you change it later on one device, only that device changes.</p>
+        </section>
+        <div class="mk-note row g2 start" style="border-style:solid"><svg class="i s35" aria-hidden="true"><use href="#i-mic"/></svg><span>Your browser will ask to use the microphone.</span></div>
+        <div class="row g2"><button class="btn btn-default grow" data-name="start voice chat"><svg class="i" aria-hidden="true"><use href="#i-audio-lines"/></svg>Start voice chat</button><button class="btn btn-ghost" data-name="not now">Not now</button></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ============ 2/3. Calls: push to talk and hands-free ============ -->
+<div data-panel="v:ptt v:hf" hidden class="has-mk2" data-name="voice call">
+  <div class="mk2" data-name="call state picker"><span>Call state</span>
+    <div class="mk-sub" role="tablist">
+      <button data-tab="s:idle"><span data-panel="v:ptt">Idle</span><span data-panel="v:hf" hidden>Muted</span></button>
+      <button data-tab="s:listening">Listening</button>
+      <button data-tab="s:thinking">Thinking</button>
+      <button data-tab="s:speaking" aria-selected="true">Speaking</button>
+      <button data-tab="s:interrupted">Interrupted</button>
+    </div>
+    <span class="hide-sm">Cards stay in the chat during the call. The spoken version is shorter.</span>
+  </div>
+  <div class="app">
+    <nav class="nav" data-name="main navigation" aria-label="Main navigation">
+  <div class="nav-brand" data-name="product name">Relationship OS</div>
+  <div class="nav-scroll">
+    <div class="nav-group"><a class="nav-item" data-name="nav home"><svg class="i" aria-hidden="true"><use href="#i-house"/></svg><span>Home</span></a><a class="nav-item" data-name="nav dashboards"><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg><span>Dashboards</span></a><a class="nav-item" data-name="nav people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>People</span></a><a class="nav-item active" data-name="nav organisations"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg><span>Organisations</span></a><a class="nav-item" data-name="nav tasks"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span>Tasks</span></a><a class="nav-item" data-name="nav assistant"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Assistant</span></a><a class="nav-item" data-name="nav automations"><svg class="i" aria-hidden="true"><use href="#i-workflow"/></svg><span>Automations</span></a><a class="nav-item" data-name="nav plugins"><svg class="i" aria-hidden="true"><use href="#i-blocks"/></svg><span>Plugins</span></a><a class="nav-item" data-name="nav approvals"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span>Approvals</span><span class="nav-badge" data-name="approvals count">3</span></a><a class="nav-item" data-name="nav suggested contacts"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg><span>Suggested contacts</span></a><a class="nav-item" data-name="nav activity"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg><span>Activity</span></a><a class="nav-item" data-name="nav trash"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Trash</span></a></div>
+    <div class="nav-group"><div class="nav-label">Extensions</div><a class="nav-item" data-name="nav deals"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg><span>Deals</span></a><a class="nav-item" data-name="nav projects"><svg class="i" aria-hidden="true"><use href="#i-folder-kanban"/></svg><span>Projects</span></a></div>
+  </div>
+  <div class="nav-foot"><a class="nav-item" data-name="nav settings"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></a><a class="nav-item" data-name="nav system status"><svg class="i" aria-hidden="true"><use href="#i-square-activity"/></svg><span>System status</span></a></div>
+</nav>
+    <div class="main"><header class="app-header" data-name="app header">
+  <button class="btn btn-icon btn-ghost hdr-trigger" aria-label="Toggle navigation" data-name="toggle navigation"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+  <button class="btn btn-outline hdr-search" data-name="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="trunc">Search or jump to…</span><kbd class="kbd hide-sm">⌘K</kbd></button>
+  <div class="grow hide-sm"></div>
+  <button class="btn btn-sm btn-secondary ask-btn" data-name="ask ai button"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-sm">Ask AI</span><kbd class="kbd hide-sm">⌘J</kbd></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Notifications" data-name="notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+  <span class="avatar avatar-sm" data-name="user menu">MC</span>
+</header><div class="page" data-name="record page">
+<div class="rec" data-name="organisation record">
+  <header class="rec-h" data-name="record header">
+    <a class="back" data-name="back to organisations"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"/></svg>Organisations</a>
+    <div class="row g3 wrap">
+      <span class="avatar avatar-lg sq" data-name="organisation logo">BH</span>
+      <div class="grow" style="display:grid;gap:2px">
+        <div class="row g2 wrap"><h1 class="lg semi tight trunc" data-name="record name">Brightwater Health</h1><span class="badge badge-outline" data-name="pending changes badge">1 pending</span></div>
+        <div class="sm muted trunc" data-name="record subtitle">brightwater.health · Healthcare · 1,200 employees</div>
+      </div>
+      <div class="row g2">
+        <button class="btn btn-sm btn-outline" data-name="ask ai about record"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>Ask AI</button>
+        <button class="btn btn-icon btn-sm btn-ghost" aria-label="More actions" data-name="more actions"><svg class="i" aria-hidden="true"><use href="#i-ellipsis"/></svg></button>
+      </div>
+    </div>
+  </header>
+  <div class="rec-tabs" data-name="record tabs"><div><div class="tabs-line">
+    <button aria-selected="true">Overview</button><button>Timeline</button><button>People <span class="cnt">14</span></button><button>Deals <span class="cnt">2</span></button><button>Tasks <span class="cnt">3</span></button><button>History</button>
+  </div></div></div>
+  <div class="rec-grid">
+    <div class="rec-main" data-name="record main column">
+      <section class="card" data-name="summary card">
+        <div class="card-h row g2"><span class="card-t">Summary</span><span class="badge badge-secondary ml-auto">AI</span></div>
+        <div class="card-c sm" style="line-height:1.6">Long-standing customer since 2023. The 2027 renewal ($48,000) is at Proposal. Ade Okafor is the main contact; Lena Fischer (CFO) signs. Last activity 2 days ago: an email from Ade about pricing.</div>
+      </section>
+      <section class="card" data-name="recent activity">
+        <div class="card-h"><span class="card-t">Recent activity</span></div>
+        <div class="card-c">
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-mail"/></svg></span><div><div class="sm med">Ade Okafor: Re: Brightwater renewal pricing</div><div class="xs muted">Email · Today 10:38 am</div><div class="sm muted mt1">Thanks Maya, the three-year option works for us. Can you send the order form by Friday?</div></div></div>
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-calendar"/></svg></span><div><div class="sm med">Quarterly check-in</div><div class="xs muted">Meeting · Tue 14 Oct · Ade Okafor, Lena Fischer</div></div></div>
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-phone"/></svg></span><div><div class="sm med">Call with Lena Fischer</div><div class="xs muted">Call · Thu 2 Oct · 18 min</div><div class="sm muted mt1">Budget approved for 2027. Wants a three-year price.</div></div></div>
+          <div class="tl-item" style="border-bottom:0"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-notebook-pen"/></svg></span><div><div class="sm med">Note from Sam Ortiz</div><div class="xs muted">Note · Mon 22 Sep</div><div class="sm muted mt1">IT wants SSO before rollout to the second site.</div></div></div>
+        </div>
+      </section>
+    </div>
+    <aside class="rec-side" data-name="record side panel">
+      <section class="card" data-name="details card">
+        <div class="card-h"><span class="card-t">Details</span></div>
+        <dl class="card-c" style="display:grid;gap:12px">
+          <div class="kv"><dt>Domain</dt><dd>brightwater.health</dd></div>
+          <div class="kv"><dt>Industry</dt><dd>Healthcare</dd></div>
+          <div class="kv"><dt>Employees</dt><dd>1,200</dd></div>
+          <div class="kv"><dt>Owner</dt><dd>Maya Chen</dd></div>
+        </dl>
+      </section>
+      <section class="card" data-name="people card">
+        <div class="card-h row"><span class="card-t">People</span><span class="xs muted ml-auto">14</span></div>
+        <ul class="card-c" style="display:grid;gap:10px">
+          <li class="row g2"><span class="avatar avatar-sm">AO</span><div class="grow"><div class="sm">Ade Okafor</div><div class="xs muted">Head of Operations</div></div></li>
+          <li class="row g2"><span class="avatar avatar-sm">LF</span><div class="grow"><div class="sm">Lena Fischer</div><div class="xs muted">CFO</div></div></li>
+          <li class="row g2"><span class="avatar avatar-sm">RP</span><div class="grow"><div class="sm">Raj Patel</div><div class="xs muted">IT Director</div></div></li>
+        </ul>
+      </section>
+      <section class="card" data-name="tasks card">
+        <div class="card-h"><span class="card-t">Tasks</span></div>
+        <ul class="card-c" style="display:grid;gap:10px">
+          <li class="row g2 start"><span class="check"></span><div><div class="sm">Send renewal order form</div><div class="xs muted">Due Fri 7 Nov</div></div></li>
+          <li class="row g2 start"><span class="check"></span><div><div class="sm">Book SSO workshop with Raj</div><div class="xs muted">Due Wed 12 Nov</div></div></li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</div>
+</div>
+</div>
+    <aside class="dock" data-name="assistant sidebar in a call">
+      <div class="dock-h"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><h2>Assistant</h2>
+        <span class="callchip" data-name="call indicator"><span class="live-dot"></span><span data-panel="v:ptt">Push to talk</span><span data-panel="v:hf" hidden>Hands-free</span> · 2:14</span>
+        <button class="btn btn-icon btn-ghost" aria-label="Open full page"><svg class="i" aria-hidden="true"><use href="#i-maximize"/></svg></button>
+        <button class="btn btn-icon btn-ghost" aria-label="Close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="dock-body">
+        <ol class="thread" data-name="call thread">
+          <li class="day">Voice chat started 11:29 am</li>
+  <li class="u voice" data-name="voice message"><div class="bub"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>what's overdue today?</div></li>
+  <li class="msg" data-name="short spoken reply with card">
+    <div class="a"><p>Six overdue tasks, oldest first:</p></div>
+    <div class="said" data-name="what was said aloud"><svg class="i" aria-hidden="true"><use href="#i-volume-2"/></svg><span>Said: <q>You have six overdue tasks. The top one is the Acme pilot proposal, due Monday.</q></span></div>
+    <div class="a2" data-name="task list card">
+      <div class="a2-h"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span class="t">Overdue tasks</span><span class="badge badge-red">6</span></div>
+      <ul class="a2-list" style="border-top:1px solid var(--border)">
+        <li><span class="check"></span><div class="grow"><div class="ttl trunc">Send Acme pilot proposal</div><div class="sub">Due Mon 3 Nov · Acme Logistics</div></div></li>
+        <li><span class="check"></span><div class="grow"><div class="ttl trunc">Call back Lena Fischer</div><div class="sub">Due Tue 4 Nov · Brightwater Health</div></div></li>
+        <li><span class="check"></span><div class="grow"><div class="ttl trunc">Fernhill trial check-in</div><div class="sub">Due Tue 4 Nov · Fernhill Foods</div></div></li>
+        <li><span class="check"></span><div class="grow"><div class="ttl trunc">Chase Kestrel NDA</div><div class="sub">Due Wed 5 Nov · Kestrel Energy</div></div></li>
+      </ul>
+      <div class="a2-f"><button class="btn btn-xs btn-ghost">Show 2 more</button><button class="btn btn-xs btn-outline ml-auto"><svg class="i" aria-hidden="true"><use href="#i-alarm-clock"/></svg>Snooze all</button></div>
+    </div>
+    <div class="meta"><span>11:31 am</span></div>
+  </li>
+  <li class="u voice" data-name="voice message"><div class="bub"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>snooze the Fernhill one to Monday</div></li>
+  <li class="msg">
+    <div class="a"><p>Moved to Monday 10 November.</p></div>
+    <div class="saved" data-flip-root><svg class="i" aria-hidden="true"><use href="#i-alarm-clock"/></svg><span class="f-on">Snoozed <b>Fernhill trial check-in</b> to Mon 10 Nov · <button class="link-q" data-flip>Undo</button></span><span class="f-off">Put back to Tue 4 Nov · <button class="link-q" data-flip>Redo</button></span></div>
+    <div class="said"><svg class="i" aria-hidden="true"><use href="#i-volume-2"/></svg><span>Said: <q>Done, it's on Monday now.</q></span></div>
+  </li>
+  <li class="u voice" data-name="voice message"><div class="bub"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>what did Lena say on our last call?</div></li>
+
+          <li class="working" data-panel="s:thinking" hidden data-name="thinking indicator"><svg class="i spin" aria-hidden="true"><use href="#i-loader-circle"/></svg>Thinking…</li>
+          <li class="msg" data-panel="s:idle s:listening" hidden data-name="finished spoken reply">
+            <div class="a"><p>On the call on Thu 2 Oct, Lena said the 2027 budget is approved and she wants a three-year price. She also asked for SSO before the second site goes live.</p></div>
+            <div class="said"><svg class="i" aria-hidden="true"><use href="#i-volume-2"/></svg><span>Said all of it.</span></div>
+            <div class="meta"><span>11:33 am</span></div>
+          </li>
+          <li class="msg" data-panel="s:speaking" data-name="reply being spoken">
+            <div class="a"><p>On the call on Thu 2 Oct, Lena said the 2027 budget is approved and she wants a three-year price. <span class="speaking-now">She also asked for SSO before the second site goes live.</span></p></div>
+            <div class="said"><svg class="i" aria-hidden="true"><use href="#i-volume-2"/></svg><span>Speaking now</span><span class="wave" style="height:12px;color:var(--chart-2)"><i></i><i></i><i></i><i></i></span></div>
+          </li>
+          <li class="msg" data-panel="s:interrupted" hidden data-name="partly heard reply">
+            <div class="a"><p>On the call on Thu 2 Oct, Lena said the 2027 budget<span class="cut" title="You started talking here"></span><span class="unheard"> is approved and she wants a three-year price. She also asked for SSO before the second site goes live.</span></p></div>
+            <div class="meta" data-name="partly heard marker"><span class="badge badge-amber"><svg class="i" aria-hidden="true"><use href="#i-ear"/></svg>Partly heard</span><span>You spoke over the rest, so I'll treat only the first part as heard.</span></div>
+          </li>
+          <li class="u voice" data-panel="s:interrupted" hidden data-name="barge-in voice message"><div class="bub"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>sorry, which call was that?</div></li>
+          <li class="u" data-panel="s:listening" hidden data-name="live transcript"><div class="ghost-bub"><svg class="i s35" aria-hidden="true"><use href="#i-mic"/></svg> remind me to send her the order form on Fri<span class="caret"></span></div></li>
+        </ol>
+      </div>
+      <div class="callbar" data-name="call bar">
+        <div class="call-status" data-name="call status">
+          <span data-panel="s:idle" class="row g2"><span class="st" data-panel="v:ptt">Hold Space or the button to talk</span><span class="st" data-panel="v:hf" hidden>Muted. I'm not listening.</span></span>
+          <span data-panel="s:listening" hidden class="row g2"><span class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="st">Listening</span><span class="muted" data-panel="v:hf" hidden>I'll reply when you pause</span><span class="muted" data-panel="v:ptt">Let go to send</span></span>
+          <span data-panel="s:thinking" hidden class="row g2"><svg class="i spin" aria-hidden="true"><use href="#i-loader-circle"/></svg><span class="st">Thinking</span></span>
+          <span data-panel="s:speaking" class="row g2"><span class="wave" style="color:var(--chart-2)"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="st">Speaking</span><span class="muted" data-panel="v:hf" hidden>Talk to interrupt</span><span class="muted" data-panel="v:ptt">Hold to interrupt</span></span>
+          <span data-panel="s:interrupted" hidden class="row g2"><span class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="st">Stopped speaking. Listening</span></span>
+        </div>
+        <div class="call-ctrls">
+          <button class="btn btn-outline btn-round" aria-label="Mute" data-name="mute"><svg class="i" aria-hidden="true"><use href="#i-mic-off"/></svg></button>
+          <div class="ptt" data-panel="v:ptt" data-name="hold to talk button"><span data-panel="s:idle s:thinking s:speaking" class="row g2"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>Hold to talk</span><span data-panel="s:listening s:interrupted" hidden class="row g2"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>Release to send</span></div>
+          <div class="hf" data-panel="v:hf" hidden data-name="hands-free indicator"><svg class="i s35" aria-hidden="true"><use href="#i-ear"/></svg><span data-panel="s:idle" hidden>Muted</span><span data-panel="s:listening s:thinking s:speaking s:interrupted">Hands-free is on</span></div>
+          <button class="btn btn-round btn-end" aria-label="End voice chat" data-name="end call"><svg class="i" aria-hidden="true"><use href="#i-phone-off"/></svg></button>
+        </div>
+        <div class="row between xs muted"><button class="link-q" data-name="switch mode"><span data-panel="v:ptt">Switch to hands-free</span><span data-panel="v:hf" hidden>Switch to push to talk</span></button><button class="link-q">Type instead</button></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ 4. Spoken approval ============ -->
+<div data-panel="v:approve" hidden class="has-mk2" data-name="spoken approval">
+  <div class="mk2"><span>What you say</span>
+    <div class="mk-sub" role="tablist">
+      <button data-tab="a:ask" aria-selected="true">Asking</button>
+      <button data-tab="a:yes">"yes, send it"</button>
+      <button data-tab="a:typed">Typed "send it"</button>
+      <button data-tab="a:unclear">"maybe after lunch"</button>
+    </div>
+    <span class="hide-sm">The card stays tappable the whole time.</span>
+  </div>
+  <div class="app">
+    <nav class="nav" data-name="main navigation" aria-label="Main navigation">
+  <div class="nav-brand" data-name="product name">Relationship OS</div>
+  <div class="nav-scroll">
+    <div class="nav-group"><a class="nav-item" data-name="nav home"><svg class="i" aria-hidden="true"><use href="#i-house"/></svg><span>Home</span></a><a class="nav-item" data-name="nav dashboards"><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg><span>Dashboards</span></a><a class="nav-item" data-name="nav people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>People</span></a><a class="nav-item active" data-name="nav organisations"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg><span>Organisations</span></a><a class="nav-item" data-name="nav tasks"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span>Tasks</span></a><a class="nav-item" data-name="nav assistant"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Assistant</span></a><a class="nav-item" data-name="nav automations"><svg class="i" aria-hidden="true"><use href="#i-workflow"/></svg><span>Automations</span></a><a class="nav-item" data-name="nav plugins"><svg class="i" aria-hidden="true"><use href="#i-blocks"/></svg><span>Plugins</span></a><a class="nav-item" data-name="nav approvals"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span>Approvals</span><span class="nav-badge" data-name="approvals count">3</span></a><a class="nav-item" data-name="nav suggested contacts"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg><span>Suggested contacts</span></a><a class="nav-item" data-name="nav activity"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg><span>Activity</span></a><a class="nav-item" data-name="nav trash"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Trash</span></a></div>
+    <div class="nav-group"><div class="nav-label">Extensions</div><a class="nav-item" data-name="nav deals"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg><span>Deals</span></a><a class="nav-item" data-name="nav projects"><svg class="i" aria-hidden="true"><use href="#i-folder-kanban"/></svg><span>Projects</span></a></div>
+  </div>
+  <div class="nav-foot"><a class="nav-item" data-name="nav settings"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></a><a class="nav-item" data-name="nav system status"><svg class="i" aria-hidden="true"><use href="#i-square-activity"/></svg><span>System status</span></a></div>
+</nav>
+    <div class="main"><header class="app-header" data-name="app header">
+  <button class="btn btn-icon btn-ghost hdr-trigger" aria-label="Toggle navigation" data-name="toggle navigation"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+  <button class="btn btn-outline hdr-search" data-name="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="trunc">Search or jump to…</span><kbd class="kbd hide-sm">⌘K</kbd></button>
+  <div class="grow hide-sm"></div>
+  <button class="btn btn-sm btn-secondary ask-btn" data-name="ask ai button"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-sm">Ask AI</span><kbd class="kbd hide-sm">⌘J</kbd></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Notifications" data-name="notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+  <span class="avatar avatar-sm" data-name="user menu">MC</span>
+</header><div class="page" data-name="record page">
+<div class="rec" data-name="organisation record">
+  <header class="rec-h" data-name="record header">
+    <a class="back" data-name="back to organisations"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"/></svg>Organisations</a>
+    <div class="row g3 wrap">
+      <span class="avatar avatar-lg sq" data-name="organisation logo">BH</span>
+      <div class="grow" style="display:grid;gap:2px">
+        <div class="row g2 wrap"><h1 class="lg semi tight trunc" data-name="record name">Brightwater Health</h1><span class="badge badge-outline" data-name="pending changes badge">1 pending</span></div>
+        <div class="sm muted trunc" data-name="record subtitle">brightwater.health · Healthcare · 1,200 employees</div>
+      </div>
+      <div class="row g2">
+        <button class="btn btn-sm btn-outline" data-name="ask ai about record"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>Ask AI</button>
+        <button class="btn btn-icon btn-sm btn-ghost" aria-label="More actions" data-name="more actions"><svg class="i" aria-hidden="true"><use href="#i-ellipsis"/></svg></button>
+      </div>
+    </div>
+  </header>
+  <div class="rec-tabs" data-name="record tabs"><div><div class="tabs-line">
+    <button aria-selected="true">Overview</button><button>Timeline</button><button>People <span class="cnt">14</span></button><button>Deals <span class="cnt">2</span></button><button>Tasks <span class="cnt">3</span></button><button>History</button>
+  </div></div></div>
+  <div class="rec-grid">
+    <div class="rec-main" data-name="record main column">
+      <section class="card" data-name="summary card">
+        <div class="card-h row g2"><span class="card-t">Summary</span><span class="badge badge-secondary ml-auto">AI</span></div>
+        <div class="card-c sm" style="line-height:1.6">Long-standing customer since 2023. The 2027 renewal ($48,000) is at Proposal. Ade Okafor is the main contact; Lena Fischer (CFO) signs. Last activity 2 days ago: an email from Ade about pricing.</div>
+      </section>
+      <section class="card" data-name="recent activity">
+        <div class="card-h"><span class="card-t">Recent activity</span></div>
+        <div class="card-c">
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-mail"/></svg></span><div><div class="sm med">Ade Okafor: Re: Brightwater renewal pricing</div><div class="xs muted">Email · Today 10:38 am</div><div class="sm muted mt1">Thanks Maya, the three-year option works for us. Can you send the order form by Friday?</div></div></div>
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-calendar"/></svg></span><div><div class="sm med">Quarterly check-in</div><div class="xs muted">Meeting · Tue 14 Oct · Ade Okafor, Lena Fischer</div></div></div>
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-phone"/></svg></span><div><div class="sm med">Call with Lena Fischer</div><div class="xs muted">Call · Thu 2 Oct · 18 min</div><div class="sm muted mt1">Budget approved for 2027. Wants a three-year price.</div></div></div>
+          <div class="tl-item" style="border-bottom:0"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-notebook-pen"/></svg></span><div><div class="sm med">Note from Sam Ortiz</div><div class="xs muted">Note · Mon 22 Sep</div><div class="sm muted mt1">IT wants SSO before rollout to the second site.</div></div></div>
+        </div>
+      </section>
+    </div>
+    <aside class="rec-side" data-name="record side panel">
+      <section class="card" data-name="details card">
+        <div class="card-h"><span class="card-t">Details</span></div>
+        <dl class="card-c" style="display:grid;gap:12px">
+          <div class="kv"><dt>Domain</dt><dd>brightwater.health</dd></div>
+          <div class="kv"><dt>Industry</dt><dd>Healthcare</dd></div>
+          <div class="kv"><dt>Employees</dt><dd>1,200</dd></div>
+          <div class="kv"><dt>Owner</dt><dd>Maya Chen</dd></div>
+        </dl>
+      </section>
+      <section class="card" data-name="people card">
+        <div class="card-h row"><span class="card-t">People</span><span class="xs muted ml-auto">14</span></div>
+        <ul class="card-c" style="display:grid;gap:10px">
+          <li class="row g2"><span class="avatar avatar-sm">AO</span><div class="grow"><div class="sm">Ade Okafor</div><div class="xs muted">Head of Operations</div></div></li>
+          <li class="row g2"><span class="avatar avatar-sm">LF</span><div class="grow"><div class="sm">Lena Fischer</div><div class="xs muted">CFO</div></div></li>
+          <li class="row g2"><span class="avatar avatar-sm">RP</span><div class="grow"><div class="sm">Raj Patel</div><div class="xs muted">IT Director</div></div></li>
+        </ul>
+      </section>
+      <section class="card" data-name="tasks card">
+        <div class="card-h"><span class="card-t">Tasks</span></div>
+        <ul class="card-c" style="display:grid;gap:10px">
+          <li class="row g2 start"><span class="check"></span><div><div class="sm">Send renewal order form</div><div class="xs muted">Due Fri 7 Nov</div></div></li>
+          <li class="row g2 start"><span class="check"></span><div><div class="sm">Book SSO workshop with Raj</div><div class="xs muted">Due Wed 12 Nov</div></div></li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</div>
+</div>
+</div>
+    <aside class="dock">
+      <div class="dock-h"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><h2>Assistant</h2><span class="callchip"><span class="live-dot"></span>Hands-free · 6:02</span><button class="btn btn-icon btn-ghost" aria-label="Close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+      <div class="dock-body">
+        <ol class="thread">
+          <li class="u voice"><div class="bub"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>draft a reply to Ade saying the order form will be with him on Friday</div></li>
+          <li class="msg">
+            <div class="a"><p>Here's the reply. Shall I send it?</p></div>
+            <div class="said"><svg class="i" aria-hidden="true"><use href="#i-volume-2"/></svg><span>Said: <q>I've drafted the reply to Ade. Shall I send it?</q></span></div>
+            <div class="a2" data-name="email draft card" data-panel="a:ask a:unclear">
+              <div class="a2-h"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg><span class="t">Reply to Ade Okafor</span><span class="badge badge-amber">Needs your OK</span></div>
+              <div class="a2-b">
+                <dl class="facts xs"><dt>To</dt><dd>ade.okafor@brightwater.health</dd><dt>Subject</dt><dd>Re: Brightwater renewal pricing</dd></dl>
+                <div class="sm mt2" style="line-height:1.55">Hi Ade,<br><br>Thanks for confirming the three-year option. I'll send the order form to you and Lena by Friday 7 November so it's ready before the board meeting.<br><br>Best,<br>Maya</div>
+              </div>
+              <div class="a2-f"><button class="btn btn-xs btn-default" data-name="send email"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg>Send</button><button class="btn btn-xs btn-outline">Edit</button><button class="btn btn-xs btn-ghost">Discard</button></div>
+            </div>
+            <div class="a2 ok" data-panel="a:yes a:typed" hidden data-name="sent email card">
+              <div class="a2-h"><svg class="i" aria-hidden="true"><use href="#i-mail"/></svg><span class="t">Reply to Ade Okafor</span><span class="badge badge-green"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Sent 11:42 am</span></div>
+              <div class="a2-b sm muted">Hi Ade, Thanks for confirming the three-year option. I'll send the order form to you and Lena by Friday 7 November…</div>
+              <div class="a2-f"><button class="btn btn-xs btn-ghost">Open in timeline</button></div>
+            </div>
+          </li>
+          <li class="u voice" data-panel="a:yes" hidden><div class="bub"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>yes, send it</div></li>
+          <li class="u" data-panel="a:typed" hidden><div class="bub">send it</div></li>
+          <li class="msg" data-panel="a:yes a:typed" hidden data-name="approval verdict">
+            <div class="verdict ok"><div class="row g15"><svg class="i" aria-hidden="true"><use href="#i-shield-check"/></svg><span class="med"><span data-panel="a:yes">Approved by voice</span><span data-panel="a:typed" hidden>Approved by message</span></span></div><span class="muted">Jev: a clear yes to sending this reply to Ade Okafor.</span></div>
+            <div class="a"><p>Sent.</p></div>
+          </li>
+          <li class="u voice" data-panel="a:unclear" hidden><div class="bub"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>hmm, yeah, maybe after lunch</div></li>
+          <li class="msg" data-panel="a:unclear" hidden data-name="not an approval">
+            <div class="verdict"><div class="row g15"><svg class="i" aria-hidden="true"><use href="#i-circle-pause"/></svg><span class="med">Not taken as approval</span></div><span class="muted">Jev: not a clear yes to sending this now.</span></div>
+            <div class="a"><p>I'll hold it. Do you want me to send it at 1:00 pm, or leave it as a draft?</p></div>
+            <div class="row g1 wrap"><button class="btn btn-xs btn-outline">Send at 1:00 pm</button><button class="btn btn-xs btn-outline">Leave as draft</button></div>
+          </li>
+        </ol>
+      </div>
+      <div class="callbar"><div class="call-status"><span class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="st">Listening</span></div>
+        <div class="call-ctrls"><button class="btn btn-outline btn-round" aria-label="Mute"><svg class="i" aria-hidden="true"><use href="#i-mic-off"/></svg></button><div class="hf"><svg class="i s35" aria-hidden="true"><use href="#i-ear"/></svg>Hands-free is on</div><button class="btn btn-round btn-end" aria-label="End"><svg class="i" aria-hidden="true"><use href="#i-phone-off"/></svg></button></div></div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ 5. High-risk exact phrase ============ -->
+<div data-panel="v:phrase" hidden class="has-mk2" data-name="high-risk approval">
+  <div class="mk2"><span>What you say</span>
+    <div class="mk-sub" role="tablist">
+      <button data-tab="p:ask" aria-selected="true">Asking for the phrase</button>
+      <button data-tab="p:match">"…to quarter 3 leads"</button>
+      <button data-tab="p:miss">"yes send them all"</button>
+    </div>
+  </div>
+  <div class="app">
+    <nav class="nav" data-name="main navigation" aria-label="Main navigation">
+  <div class="nav-brand" data-name="product name">Relationship OS</div>
+  <div class="nav-scroll">
+    <div class="nav-group"><a class="nav-item" data-name="nav home"><svg class="i" aria-hidden="true"><use href="#i-house"/></svg><span>Home</span></a><a class="nav-item" data-name="nav dashboards"><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg><span>Dashboards</span></a><a class="nav-item" data-name="nav people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>People</span></a><a class="nav-item active" data-name="nav organisations"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg><span>Organisations</span></a><a class="nav-item" data-name="nav tasks"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span>Tasks</span></a><a class="nav-item" data-name="nav assistant"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Assistant</span></a><a class="nav-item" data-name="nav automations"><svg class="i" aria-hidden="true"><use href="#i-workflow"/></svg><span>Automations</span></a><a class="nav-item" data-name="nav plugins"><svg class="i" aria-hidden="true"><use href="#i-blocks"/></svg><span>Plugins</span></a><a class="nav-item" data-name="nav approvals"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span>Approvals</span><span class="nav-badge" data-name="approvals count">3</span></a><a class="nav-item" data-name="nav suggested contacts"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg><span>Suggested contacts</span></a><a class="nav-item" data-name="nav activity"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg><span>Activity</span></a><a class="nav-item" data-name="nav trash"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Trash</span></a></div>
+    <div class="nav-group"><div class="nav-label">Extensions</div><a class="nav-item" data-name="nav deals"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg><span>Deals</span></a><a class="nav-item" data-name="nav projects"><svg class="i" aria-hidden="true"><use href="#i-folder-kanban"/></svg><span>Projects</span></a></div>
+  </div>
+  <div class="nav-foot"><a class="nav-item" data-name="nav settings"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></a><a class="nav-item" data-name="nav system status"><svg class="i" aria-hidden="true"><use href="#i-square-activity"/></svg><span>System status</span></a></div>
+</nav>
+    <div class="main"><header class="app-header" data-name="app header">
+  <button class="btn btn-icon btn-ghost hdr-trigger" aria-label="Toggle navigation" data-name="toggle navigation"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+  <button class="btn btn-outline hdr-search" data-name="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="trunc">Search or jump to…</span><kbd class="kbd hide-sm">⌘K</kbd></button>
+  <div class="grow hide-sm"></div>
+  <button class="btn btn-sm btn-secondary ask-btn" data-name="ask ai button"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-sm">Ask AI</span><kbd class="kbd hide-sm">⌘J</kbd></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Notifications" data-name="notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+  <span class="avatar avatar-sm" data-name="user menu">MC</span>
+</header><div class="page" data-name="record page">
+<div class="rec" data-name="organisation record">
+  <header class="rec-h" data-name="record header">
+    <a class="back" data-name="back to organisations"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"/></svg>Organisations</a>
+    <div class="row g3 wrap">
+      <span class="avatar avatar-lg sq" data-name="organisation logo">BH</span>
+      <div class="grow" style="display:grid;gap:2px">
+        <div class="row g2 wrap"><h1 class="lg semi tight trunc" data-name="record name">Brightwater Health</h1><span class="badge badge-outline" data-name="pending changes badge">1 pending</span></div>
+        <div class="sm muted trunc" data-name="record subtitle">brightwater.health · Healthcare · 1,200 employees</div>
+      </div>
+      <div class="row g2">
+        <button class="btn btn-sm btn-outline" data-name="ask ai about record"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>Ask AI</button>
+        <button class="btn btn-icon btn-sm btn-ghost" aria-label="More actions" data-name="more actions"><svg class="i" aria-hidden="true"><use href="#i-ellipsis"/></svg></button>
+      </div>
+    </div>
+  </header>
+  <div class="rec-tabs" data-name="record tabs"><div><div class="tabs-line">
+    <button aria-selected="true">Overview</button><button>Timeline</button><button>People <span class="cnt">14</span></button><button>Deals <span class="cnt">2</span></button><button>Tasks <span class="cnt">3</span></button><button>History</button>
+  </div></div></div>
+  <div class="rec-grid">
+    <div class="rec-main" data-name="record main column">
+      <section class="card" data-name="summary card">
+        <div class="card-h row g2"><span class="card-t">Summary</span><span class="badge badge-secondary ml-auto">AI</span></div>
+        <div class="card-c sm" style="line-height:1.6">Long-standing customer since 2023. The 2027 renewal ($48,000) is at Proposal. Ade Okafor is the main contact; Lena Fischer (CFO) signs. Last activity 2 days ago: an email from Ade about pricing.</div>
+      </section>
+      <section class="card" data-name="recent activity">
+        <div class="card-h"><span class="card-t">Recent activity</span></div>
+        <div class="card-c">
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-mail"/></svg></span><div><div class="sm med">Ade Okafor: Re: Brightwater renewal pricing</div><div class="xs muted">Email · Today 10:38 am</div><div class="sm muted mt1">Thanks Maya, the three-year option works for us. Can you send the order form by Friday?</div></div></div>
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-calendar"/></svg></span><div><div class="sm med">Quarterly check-in</div><div class="xs muted">Meeting · Tue 14 Oct · Ade Okafor, Lena Fischer</div></div></div>
+          <div class="tl-item"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-phone"/></svg></span><div><div class="sm med">Call with Lena Fischer</div><div class="xs muted">Call · Thu 2 Oct · 18 min</div><div class="sm muted mt1">Budget approved for 2027. Wants a three-year price.</div></div></div>
+          <div class="tl-item" style="border-bottom:0"><span class="tl-ic"><svg class="i s35" aria-hidden="true"><use href="#i-notebook-pen"/></svg></span><div><div class="sm med">Note from Sam Ortiz</div><div class="xs muted">Note · Mon 22 Sep</div><div class="sm muted mt1">IT wants SSO before rollout to the second site.</div></div></div>
+        </div>
+      </section>
+    </div>
+    <aside class="rec-side" data-name="record side panel">
+      <section class="card" data-name="details card">
+        <div class="card-h"><span class="card-t">Details</span></div>
+        <dl class="card-c" style="display:grid;gap:12px">
+          <div class="kv"><dt>Domain</dt><dd>brightwater.health</dd></div>
+          <div class="kv"><dt>Industry</dt><dd>Healthcare</dd></div>
+          <div class="kv"><dt>Employees</dt><dd>1,200</dd></div>
+          <div class="kv"><dt>Owner</dt><dd>Maya Chen</dd></div>
+        </dl>
+      </section>
+      <section class="card" data-name="people card">
+        <div class="card-h row"><span class="card-t">People</span><span class="xs muted ml-auto">14</span></div>
+        <ul class="card-c" style="display:grid;gap:10px">
+          <li class="row g2"><span class="avatar avatar-sm">AO</span><div class="grow"><div class="sm">Ade Okafor</div><div class="xs muted">Head of Operations</div></div></li>
+          <li class="row g2"><span class="avatar avatar-sm">LF</span><div class="grow"><div class="sm">Lena Fischer</div><div class="xs muted">CFO</div></div></li>
+          <li class="row g2"><span class="avatar avatar-sm">RP</span><div class="grow"><div class="sm">Raj Patel</div><div class="xs muted">IT Director</div></div></li>
+        </ul>
+      </section>
+      <section class="card" data-name="tasks card">
+        <div class="card-h"><span class="card-t">Tasks</span></div>
+        <ul class="card-c" style="display:grid;gap:10px">
+          <li class="row g2 start"><span class="check"></span><div><div class="sm">Send renewal order form</div><div class="xs muted">Due Fri 7 Nov</div></div></li>
+          <li class="row g2 start"><span class="check"></span><div><div class="sm">Book SSO workshop with Raj</div><div class="xs muted">Due Wed 12 Nov</div></div></li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</div>
+</div>
+</div>
+    <aside class="dock">
+      <div class="dock-h"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><h2>Assistant</h2><span class="callchip"><span class="live-dot"></span>Push to talk · 8:40</span><button class="btn btn-icon btn-ghost" aria-label="Close"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+      <div class="dock-body">
+        <ol class="thread">
+          <li class="u voice"><div class="bub"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>send the webinar follow-up to all the Q3 leads</div></li>
+          <li class="msg">
+            <div class="a"><p>This will send <strong>240 emails</strong> to your <strong>Q3 leads</strong> list. I need your approval to send. Please say exactly:</p></div>
+            <div class="said"><svg class="i" aria-hidden="true"><use href="#i-volume-2"/></svg><span>Said: <q>This will send 240 emails to your Q3 leads. To approve, please say exactly: I approve sending 240 emails to Q3 leads.</q></span></div>
+            <div class="a2 pending" data-panel="p:ask p:miss" data-name="high-risk approval card">
+              <div class="a2-h"><svg class="i" aria-hidden="true"><use href="#i-mails"/></svg><span class="t">Send 240 emails</span><span class="badge badge-red"><svg class="i" aria-hidden="true"><use href="#i-triangle-alert"/></svg>High risk</span></div>
+              <div class="a2-b stack3">
+                <dl class="facts">
+                  <dt>To</dt><dd><span class="chip chip-ic"><svg class="i" aria-hidden="true"><use href="#i-list-filter"/></svg>Q3 leads</span> 240 people</dd>
+                  <dt>Left out</dt><dd>12 who unsubscribed</dd>
+                  <dt>From</dt><dd>maya@northwind.co</dd>
+                  <dt>Email</dt><dd>Webinar follow-up template</dd>
+                  <dt>When</dt><dd>Now, spread over 2 hours</dd>
+                </dl>
+                <div><div class="sec-title">Say or type exactly</div>
+                  <div class="phrase" data-name="approval phrase">I approve sending 240 emails to Q3 leads</div></div>
+                <div class="row g2"><div class="input input-sm grow placeholder" data-name="type the phrase"><span class="muted">Type the phrase</span></div><button class="btn btn-sm btn-default" disabled>Approve</button></div>
+              </div>
+              <div class="a2-f"><button class="btn btn-xs btn-outline">Preview an email</button><button class="btn btn-xs btn-outline">See recipients</button><button class="btn btn-xs btn-ghost">Cancel</button></div>
+            </div>
+            <div class="a2 ok" data-panel="p:match" hidden data-name="sending progress card">
+              <div class="a2-h"><svg class="i" aria-hidden="true"><use href="#i-mails"/></svg><span class="t">Sending 240 emails</span><span class="badge badge-green">Approved</span></div>
+              <div class="a2-b stack">
+                <div class="prog"><span style="width:15%"></span></div>
+                <div class="row between xs muted"><span>37 of 240 sent</span><span>About 1 h 40 min left</span></div>
+              </div>
+              <div class="a2-f"><button class="btn btn-xs btn-outline"><svg class="i" aria-hidden="true"><use href="#i-pause"/></svg>Pause sending</button><button class="btn btn-xs btn-ghost">See recipients</button></div>
+            </div>
+          </li>
+          <li class="u voice" data-panel="p:match" hidden><div class="bub"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>I approve sending 240 emails to quarter 3 leads</div></li>
+          <li class="msg" data-panel="p:match" hidden data-name="phrase matched">
+            <div class="verdict ok"><div class="row g15"><svg class="i" aria-hidden="true"><use href="#i-shield-check"/></svg><span class="med">Matches the phrase</span></div><span class="muted">Jev: same words and numbers. "quarter 3" was heard for "Q3".</span></div>
+            <div class="a"><p>Approved. Sending now. I'll tell you when it's finished.</p></div>
+          </li>
+          <li class="u voice" data-panel="p:miss" hidden><div class="bub"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>yes send them all</div></li>
+          <li class="msg" data-panel="p:miss" hidden data-name="phrase not matched">
+            <div class="verdict no"><div class="row g15"><svg class="i" aria-hidden="true"><use href="#i-circle-x"/></svg><span class="med">Not the phrase, so nothing was sent</span></div><span class="muted">Jev: it doesn't say how many emails or to whom.</span></div>
+            <div class="a"><p>For this one I need the exact words. Please say: <strong>I approve sending 240 emails to Q3 leads</strong>.</p></div>
+          </li>
+        </ol>
+      </div>
+      <div class="callbar"><div class="call-status"><span class="st">Hold Space or the button to talk</span></div>
+        <div class="call-ctrls"><button class="btn btn-outline btn-round" aria-label="Mute"><svg class="i" aria-hidden="true"><use href="#i-mic-off"/></svg></button><div class="ptt"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>Hold to talk</div><button class="btn btn-round btn-end" aria-label="End"><svg class="i" aria-hidden="true"><use href="#i-phone-off"/></svg></button></div></div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ 6. Dictation ============ -->
+<div class="app dock-closed" data-panel="v:dictate" hidden data-name="dictation states">
+  <div class="page">
+    <div class="gallery">
+      <div class="frame" data-name="dictation idle">
+        <div class="mk-caption">1 · Mic in the chat box</div>
+        <div class="frame-box" style="padding:0;overflow:hidden">
+          <div class="dock-foot" style="border:0"><div class="composer"><span class="ctx"><span class="trunc">On: <b>Brightwater Health</b></span></span>
+            <div class="comp-row"><div class="textarea placeholder">Ask Assistant…</div><button class="btn btn-icon btn-ghost" aria-label="Dictate" data-name="dictation mic"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg></button><button class="btn btn-icon btn-default" disabled aria-label="Send"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button></div></div></div>
+        </div>
+        <p class="xs muted">The mic types what you say into the box. It's separate from voice chat, which talks back.</p>
+      </div>
+      <div class="frame" data-name="dictating">
+        <div class="mk-caption">2 · Dictating</div>
+        <div class="frame-box" style="padding:0;overflow:hidden">
+          <div class="dock-foot" style="border:0"><div class="composer"><div class="row g2 xs"><span class="live-dot" style="background:var(--destructive)"></span><span class="med">Listening</span><span class="muted tnum">0:07</span><span class="muted ml-auto">Esc to cancel</span></div>
+            <div class="comp-row"><div class="textarea" style="border-color:var(--ring)">Add a task to send Lena the SSO plan next Wednesday<span class="caret"></span></div><button class="btn btn-icon btn-destructive" aria-label="Stop dictating" data-name="stop dictating"><svg class="i" aria-hidden="true"><use href="#i-square"/></svg></button><button class="btn btn-icon btn-default" disabled aria-label="Send"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button></div></div></div>
+        </div>
+        <p class="xs muted">Words appear as you speak, using the same transcription as voice chat.</p>
+      </div>
+      <div class="frame" data-name="dictation done">
+        <div class="mk-caption">3 · Ready to edit and send</div>
+        <div class="frame-box" style="padding:0;overflow:hidden">
+          <div class="dock-foot" style="border:0"><div class="composer"><span class="ctx"><span class="trunc">On: <b>Brightwater Health</b></span></span>
+            <div class="comp-row"><div class="textarea">Add a task to send Lena the SSO plan next Wednesday.</div><button class="btn btn-icon btn-ghost" aria-label="Dictate"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg></button><button class="btn btn-icon btn-default" aria-label="Send"><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button></div></div></div>
+        </div>
+      </div>
+      <div class="frame" data-name="dictated message sent">
+        <div class="mk-caption">4 · Sent</div>
+        <div class="frame-box">
+          <ol class="thread">
+            <li class="u"><div class="bub">Add a task to send Lena the SSO plan next Wednesday.</div></li>
+            <li class="msg"><div class="a"><p>Added: <span class="rl">Send Lena the SSO plan</span>, due Wed 12 Nov, on Brightwater Health.</p></div><div class="meta"><span>11:50 am</span></div></li>
+          </ol>
+        </div>
+        <p class="xs muted">A dictated message is one you checked before sending, so it shows as typed. Only voice chat messages are in italics with a mic.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 7. Mobile full-screen voice ============ -->
+<div class="app dock-closed" data-panel="v:mobile" hidden data-name="mobile voice view">
+  <div class="page">
+    <div class="gal-phone">
+      <div class="phone" data-name="full screen voice speaking">
+        <div class="row between" style="padding:10px 16px">
+          <button class="btn btn-icon btn-ghost" aria-label="Back to chat" data-name="back to chat"><svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+          <span class="callchip"><span class="live-dot"></span>Hands-free · 3:05</span>
+          <button class="btn btn-icon btn-ghost" aria-label="Voice settings"><svg class="i" aria-hidden="true"><use href="#i-settings-2"/></svg></button>
+        </div>
+        <div class="xs muted" style="text-align:center;padding:0 24px" data-name="cards hidden note">Cards aren't shown here, so I'll read them out.</div>
+        <div style="padding:28px 0 16px"><div class="orb" data-name="speaking orb"><span class="orb-ring"></span><span class="orb-ring r2"></span><span class="orb-core"></span></div></div>
+        <div class="xs muted row g2" style="justify-content:center"><svg class="i s35" aria-hidden="true"><use href="#i-volume-2"/></svg>Speaking</div>
+        <div style="flex:1;padding:16px 24px;overflow:hidden" data-name="spoken caption">
+          <p class="caption"><span class="past">You have six overdue tasks. One, the Acme pilot proposal, due Monday. Two, call back Lena Fischer, due Tuesday.</span> Three, the Fernhill trial check-in, also due Tuesday.</p>
+          <p class="sm muted mt3">Next: Kestrel NDA, then 2 more</p>
+        </div>
+        <div class="row g3" style="padding:16px 24px 28px;justify-content:center">
+          <button class="btn btn-outline btn-round" aria-label="Mute"><svg class="i" aria-hidden="true"><use href="#i-mic-off"/></svg></button>
+          <button class="btn btn-outline btn-round" aria-label="Show the chat" data-name="show chat"><svg class="i" aria-hidden="true"><use href="#i-message-square"/></svg></button>
+          <button class="btn btn-round btn-end" aria-label="End voice chat"><svg class="i" aria-hidden="true"><use href="#i-phone-off"/></svg></button>
+        </div>
+      </div>
+      <div class="phone side-note" data-name="full screen voice listening">
+        <div class="row between" style="padding:10px 16px">
+          <button class="btn btn-icon btn-ghost" aria-label="Back to chat"><svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+          <span class="callchip"><span class="live-dot"></span>Push to talk · 3:41</span>
+          <button class="btn btn-icon btn-ghost" aria-label="Voice settings"><svg class="i" aria-hidden="true"><use href="#i-settings-2"/></svg></button>
+        </div>
+        <div style="padding:48px 0 16px"><div class="orb"><span class="orb-core" style="background:var(--muted);box-shadow:none;border:2px solid var(--border)"></span><span style="position:absolute" class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div></div>
+        <div class="xs muted row g2" style="justify-content:center">Listening</div>
+        <div style="flex:1;padding:16px 24px">
+          <p class="caption italic muted">snooze the Fernhill one to Monday<span class="caret"></span></p>
+        </div>
+        <div style="padding:16px 24px 28px" class="col g3">
+          <div class="ptt held" style="height:56px;flex:none"><svg class="i" aria-hidden="true"><use href="#i-mic"/></svg>Release to send</div>
+          <div class="row g3" style="justify-content:center"><button class="btn btn-outline btn-round" aria-label="Show the chat"><svg class="i" aria-hidden="true"><use href="#i-message-square"/></svg></button><button class="btn btn-round btn-end" aria-label="End"><svg class="i" aria-hidden="true"><use href="#i-phone-off"/></svg></button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 8. Voice settings ============ -->
+<div class="app dock-closed" data-panel="v:settings" hidden data-name="voice settings page">
+  <nav class="nav" data-name="main navigation" aria-label="Main navigation">
+  <div class="nav-brand" data-name="product name">Relationship OS</div>
+  <div class="nav-scroll">
+    <div class="nav-group"><a class="nav-item" data-name="nav home"><svg class="i" aria-hidden="true"><use href="#i-house"/></svg><span>Home</span></a><a class="nav-item" data-name="nav dashboards"><svg class="i" aria-hidden="true"><use href="#i-layout-dashboard"/></svg><span>Dashboards</span></a><a class="nav-item" data-name="nav people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>People</span></a><a class="nav-item" data-name="nav organisations"><svg class="i" aria-hidden="true"><use href="#i-building-2"/></svg><span>Organisations</span></a><a class="nav-item" data-name="nav tasks"><svg class="i" aria-hidden="true"><use href="#i-square-check-big"/></svg><span>Tasks</span></a><a class="nav-item" data-name="nav assistant"><svg class="i" aria-hidden="true"><use href="#i-bot"/></svg><span>Assistant</span></a><a class="nav-item" data-name="nav automations"><svg class="i" aria-hidden="true"><use href="#i-workflow"/></svg><span>Automations</span></a><a class="nav-item" data-name="nav plugins"><svg class="i" aria-hidden="true"><use href="#i-blocks"/></svg><span>Plugins</span></a><a class="nav-item" data-name="nav approvals"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span>Approvals</span><span class="nav-badge" data-name="approvals count">3</span></a><a class="nav-item" data-name="nav suggested contacts"><svg class="i" aria-hidden="true"><use href="#i-user-plus"/></svg><span>Suggested contacts</span></a><a class="nav-item" data-name="nav activity"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg><span>Activity</span></a><a class="nav-item" data-name="nav trash"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Trash</span></a></div>
+    <div class="nav-group"><div class="nav-label">Extensions</div><a class="nav-item" data-name="nav deals"><svg class="i" aria-hidden="true"><use href="#i-handshake"/></svg><span>Deals</span></a><a class="nav-item" data-name="nav projects"><svg class="i" aria-hidden="true"><use href="#i-folder-kanban"/></svg><span>Projects</span></a></div>
+  </div>
+  <div class="nav-foot"><a class="nav-item active" data-name="nav settings"><svg class="i" aria-hidden="true"><use href="#i-settings"/></svg><span>Settings</span></a><a class="nav-item" data-name="nav system status"><svg class="i" aria-hidden="true"><use href="#i-square-activity"/></svg><span>System status</span></a></div>
+</nav>
+  <div class="main"><header class="app-header" data-name="app header">
+  <button class="btn btn-icon btn-ghost hdr-trigger" aria-label="Toggle navigation" data-name="toggle navigation"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
+  <button class="btn btn-outline hdr-search" data-name="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="trunc">Search or jump to…</span><kbd class="kbd hide-sm">⌘K</kbd></button>
+  <div class="grow hide-sm"></div>
+  <button class="btn btn-sm btn-ghost ask-btn" data-name="ask ai button"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-sm">Ask AI</span><kbd class="kbd hide-sm">⌘J</kbd></button>
+  <button class="btn btn-icon btn-ghost" aria-label="Notifications" data-name="notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></button>
+  <span class="avatar avatar-sm" data-name="user menu">MC</span>
+</header>
+    <div class="col" style="flex:1;min-height:0">
+      <div class="pg-h"><div class="pg-hi w3"><a class="back"><svg class="i" aria-hidden="true"><use href="#i-chevron-left"/></svg>Settings</a><h1 class="pg-title">Voice</h1><div class="sm muted">How the assistant sounds and how you talk to it.</div></div></div>
+      <div class="page"><div class="pg-b w3 stack4">
+        <section class="card" data-name="voice and speed">
+          <div class="card-h"><span class="card-t">Voice</span></div>
+          <div class="card-c stack3">
+            <div class="col g1">
+              <div class="voice-row on"><span class="radio on"></span><div class="grow"><div class="sm med">Charlotte</div><div class="xs muted">Warm, unhurried</div></div><button class="btn btn-xs btn-ghost"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg>Preview</button></div>
+              <div class="voice-row"><span class="radio"></span><div class="grow"><div class="sm med">Daniel</div><div class="xs muted">Steady, clear</div></div><button class="btn btn-xs btn-ghost"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg>Preview</button></div>
+              <div class="voice-row"><span class="radio"></span><div class="grow"><div class="sm med">Aria</div><div class="xs muted">Bright, quick</div></div><button class="btn btn-xs btn-ghost"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg>Preview</button></div>
+              <div class="voice-row"><span class="radio"></span><div class="grow"><div class="sm med">Roger</div><div class="xs muted">Deep, relaxed</div></div><button class="btn btn-xs btn-ghost"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg>Preview</button></div>
+            </div>
+            <div class="sep"></div>
+            <div data-name="speed setting"><div class="row between mb2"><span class="label">Speed</span><span class="sm tnum">1.1×</span></div><div class="slider" style="margin:10px 0"><span style="width:45%"></span><b style="left:45%"></b></div><div class="row between xs muted"><span>0.8×</span><span>1.0×</span><span>1.2×</span><span>1.4×</span></div></div>
+          </div>
+        </section>
+        <section class="card" data-name="talk mode setting">
+          <div class="card-h"><span class="card-t">How you talk on this device</span><p class="sm muted mt1">MacBook Pro · Chrome</p></div>
+          <div class="card-c stack3">
+            <div class="opt on"><span class="radio on"></span><div><div class="sm med">Push to talk</div><div class="xs muted mt1">Hold <span class="kbd">Space</span> or the talk button during a voice chat.</div></div></div>
+            <div class="opt"><span class="radio"></span><div><div class="sm med">Hands-free</div><div class="xs muted mt1">I listen until you end the chat.</div></div></div>
+            <div class="tbl-wrap" data-name="per device modes"><table class="tbl"><thead><tr><th>Device</th><th>How you talk</th></tr></thead><tbody>
+              <tr><td>MacBook Pro · Chrome <span class="badge badge-secondary">This device</span></td><td>Push to talk</td></tr>
+              <tr><td>iPhone · Safari</td><td>Hands-free</td></tr>
+            </tbody></table></div>
+            <p class="xs muted">Each device keeps its own choice. A new device starts with what you picked at first setup (push to talk).</p>
+          </div>
+        </section>
+        <section class="card" data-name="what gets said aloud">
+          <div class="card-h"><span class="card-t">When you can see the screen</span></div>
+          <div class="card-c stack3">
+            <div class="opt on"><span class="radio on"></span><div><div class="sm med">Say a short version, show the full answer and cards in the chat</div><div class="xs muted mt1">"Here are your 6 overdue tasks. The top one is the Acme proposal."</div></div></div>
+            <div class="opt"><span class="radio"></span><div><div class="sm med">Read everything out</div><div class="xs muted mt1">Lists and cards are read in full.</div></div></div>
+            <p class="xs muted">In the full-screen phone view the chat is hidden, so I always read cards out. You can also just say "read me everything" during a chat.</p>
+          </div>
+        </section>
+        <section class="card" data-name="interruptions setting">
+          <div class="card-h"><span class="card-t">Interruptions</span></div>
+          <div class="card-c row g3 start"><span class="switch on" role="switch" aria-checked="true"></span><div><div class="sm med">Stop talking as soon as you speak</div><div class="xs muted mt1">Anything I didn't finish is marked "Partly heard" in the chat.</div></div></div>
+        </section>
+        <section class="card" data-name="voice providers">
+          <div class="card-h"><span class="card-t">Speech services</span></div>
+          <div class="card-c"><dl class="facts"><dt>Speech to text</dt><dd>AssemblyAI</dd><dt>Voices</dt><dd>AssemblyAI</dd></dl><p class="xs muted mt2">Set by your admin in AI settings.</p></div>
+        </section>
+        <div class="row g2"><button class="btn btn-outline btn-sm"><svg class="i" aria-hidden="true"><use href="#i-rotate-ccw"/></svg>Run voice setup again</button></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Mockup behaviour: state tabs (data-tab="group:value" / data-panel="group:value ..."),
+// show/hide toggles (data-toggle="#id"), flip states (data-flip inside data-flip-root),
+// theme toggle, and #group=value in the URL to open a state directly.
+(function () {
+  function activate(group, value) {
+    document.querySelectorAll('[data-tab^="' + group + ':"]').forEach(function (b) {
+      b.setAttribute("aria-selected", b.getAttribute("data-tab") === group + ":" + value ? "true" : "false");
+    });
+    document.querySelectorAll("[data-panel]").forEach(function (p) {
+      var keys = p.getAttribute("data-panel").split(/\s+/);
+      var mine = keys.filter(function (k) { return k.indexOf(group + ":") === 0; });
+      if (!mine.length) return;
+      p.hidden = mine.indexOf(group + ":" + value) === -1;
+    });
+    document.body.setAttribute("data-" + group, value);
+    requestAnimationFrame(function () {
+      document.querySelectorAll(".dock-body:not([data-keep-top]),.scroll-end").forEach(function (el) { el.scrollTop = el.scrollHeight; });
+    });
+  }
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-tab]");
+    if (t) {
+      var parts = t.getAttribute("data-tab").split(":");
+      activate(parts[0], parts.slice(1).join(":"));
+      if (t.closest(".mk")) { try { history.replaceState(null, "", "#" + parts[0] + "=" + parts.slice(1).join(":")); } catch (_) {} }
+      return;
+    }
+    var g = e.target.closest("[data-toggle]");
+    if (g) {
+      var sel = g.getAttribute("data-toggle");
+      var el = sel.charAt(0) === "~" ? (g.closest("[data-scope]") || document).querySelector(sel.slice(1)) : document.querySelector(sel);
+      if (el) {
+        el.hidden = !el.hidden;
+        g.setAttribute("aria-expanded", el.hidden ? "false" : "true");
+      }
+      return;
+    }
+    var f = e.target.closest("[data-flip]");
+    if (f) {
+      var root = f.closest("[data-flip-root]");
+      if (root) root.classList.toggle("flipped");
+      return;
+    }
+    var th = e.target.closest("[data-theme-toggle]");
+    if (th) document.documentElement.classList.toggle("dark");
+  });
+  var groups = {};
+  document.querySelectorAll('[data-tab][aria-selected="true"]').forEach(function (b) {
+    var parts = b.getAttribute("data-tab").split(":");
+    groups[parts[0]] = parts.slice(1).join(":");
+  });
+  (location.hash || "").replace(/^#/, "").split("&").forEach(function (kv) {
+    var p = kv.split("=");
+    if (p[0] && p[1]) groups[p[0]] = decodeURIComponent(p[1]);
+  });
+  Object.keys(groups).forEach(function (k) { activate(k, groups[k]); });
+})();
+
+</script>
+</body>
+</html>
