@@ -567,6 +567,12 @@ importers:
       '@relationship-os/extension-deals':
         specifier: workspace:*
         version: link:../../extensions/deals
+      '@relationship-os/extension-leads':
+        specifier: workspace:*
+        version: link:../../extensions/leads
+      '@relationship-os/extension-lifecycle':
+        specifier: workspace:*
+        version: link:../../extensions/lifecycle
       typescript:
         specifier: 6.0.3
         version: 6.0.3
