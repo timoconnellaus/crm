@@ -66,8 +66,9 @@ describe("core registry", () => {
     const curated = coreOperations.filter((op) => op.mcp?.curated);
     expect(curated.length).toBeGreaterThanOrEqual(12);
     // Stage 2's ~15, the extension authoring tools and Code Mode (stage 3b), and connections,
-    // integration.call and suggested contacts (stage 6a).
-    expect(curated.length).toBeLessThanOrEqual(31);
+    // integration.call and suggested contacts (stage 6a), and the assistant's cards (stage 17;
+    // show_card is the assistant's only, so external clients gain one).
+    expect(curated.length).toBeLessThanOrEqual(32);
     for (const op of curated) expect(op.description.trim().length).toBeGreaterThanOrEqual(60);
   });
 
