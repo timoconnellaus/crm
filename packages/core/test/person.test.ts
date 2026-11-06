@@ -43,7 +43,10 @@ describe("person.create and person.get", () => {
     expect(created.tags).toEqual([tag]);
 
     const read = await invoke("person.get", { id: created.id }, ctx());
-    expect(read).toEqual(created);
+    // The create also reports possible duplicates (stage 16); the record itself is the same.
+    const { possibleDuplicates, ...record } = created;
+    expect(possibleDuplicates).toEqual([]);
+    expect(read).toEqual(record);
 
     const phone = await env.DB.prepare(
       "SELECT number_normalised FROM core_person_phones WHERE person_id = ?",

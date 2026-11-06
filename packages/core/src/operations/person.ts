@@ -4,6 +4,10 @@
 import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
+import { checkPerson } from "../duplicates/check.ts";
+import { personNameKey } from "../duplicates/normalise.ts";
+import { queueClosePairs } from "../duplicates/pairs.ts";
+import { possibleDuplicatesSchema } from "../duplicates/rules.ts";
 import { assertRecordCapacity } from "../entitlements.ts";
 import { ConflictError, NotFoundError, ValidationError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
@@ -31,6 +35,7 @@ import {
 } from "../records/erase.ts";
 import { personSubject } from "../records/erase-subject.ts";
 import { countLinks, queueClearTags, queueMoveLinks } from "../records/links.ts";
+import { queueRepointRelations } from "../records/relations.ts";
 import { loadTags, queueSetTags, tagsInputSchema } from "../records/tags.ts";
 import {
   type Affiliation,
@@ -379,9 +384,12 @@ export const personCreate = defineOperation({
     "Create a person (a contact) with optional names, emails, phones, location, owner, tags and " +
     "description. Use it after checking with person.list or search that the person does not " +
     "already exist: emails must be unique across live people, and a taken email fails with a " +
-    "conflict. Returns the created person. Unknown tags are created.",
+    "conflict. Returns the created person. Unknown tags are created. Check possibleDuplicates " +
+    "in the result: existing people this one may duplicate by plain rules (same name and " +
+    "organisation, same name and email domain, same phone number, same name only), each with " +
+    "its reason. If one is the same person, merge them with person.merge.",
   input: z.object(personWritableFields),
-  output: personSchema,
+  output: personSchema.extend({ possibleDuplicates: possibleDuplicatesSchema.default([]) }),
   permission: "records:write",
   risk: "write",
   mcp: { curated: true },
@@ -400,6 +408,11 @@ export const personCreate = defineOperation({
     );
     await assertUserExists(ctx.db, input.ownerId);
     await assertRecordCapacity(ctx.db, 1);
+    const { warnings: possibleDuplicates } = await checkPerson(ctx.db, {
+      displayName,
+      emails: emails.map((e) => e.email),
+      phones: phones.map((p) => p.number),
+    });
 
     const id = newId("person");
     const row = {
@@ -407,6 +420,7 @@ export const personCreate = defineOperation({
       given_name: givenName,
       family_name: familyName,
       display_name: displayName,
+      name_key: personNameKey(displayName),
       location: blankToNull(input.location) ?? null,
       timezone: blankToNull(input.timezone) ?? null,
       social_profiles: JSON.stringify(input.socialProfiles ?? []),
@@ -445,7 +459,7 @@ export const personCreate = defineOperation({
       mergedIntoId: null,
     };
     ctx.recordChange({ object: "person", id, action: "create", after: personSnapshot(person) });
-    return person;
+    return { ...person, possibleDuplicates };
   },
 });
 
@@ -500,6 +514,7 @@ export const personUpdate = defineOperation({
     if (input.displayName !== undefined) {
       after.displayName = input.displayName;
       set.display_name = input.displayName;
+      set.name_key = personNameKey(input.displayName);
     }
     if (input.ownerId !== undefined) {
       await assertUserExists(ctx.db, input.ownerId);
@@ -1038,6 +1053,7 @@ export const personMerge = defineOperation({
         .updateTable("core_person")
         .set({
           display_name: after.displayName,
+          name_key: personNameKey(after.displayName),
           given_name: after.givenName,
           family_name: after.familyName,
           location: after.location,
@@ -1055,6 +1071,8 @@ export const personMerge = defineOperation({
     after.tags = await queueSetTags(ctx, "person", survivor.id, [...survivor.tags, ...merged.tags]);
     queueClearTags(ctx, "person", merged.id);
     queueMoveLinks(ctx, "person", merged.id, survivor.id);
+    await queueRepointRelations(ctx, "person", merged.id, survivor.id);
+    queueClosePairs(ctx, "person", survivor.id, merged.id);
 
     ctx.recordChange({
       object: "person",

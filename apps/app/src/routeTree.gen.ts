@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppAssistantRouteImport } from './routes/_app/assistant'
+import { Route as AppDuplicatesRouteImport } from './routes/_app/duplicates'
 import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppSetupRouteImport } from './routes/_app/setup'
@@ -42,6 +43,7 @@ import { Route as AppSettingsAssistantMemoryRouteImport } from './routes/_app/se
 import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
 import { Route as AppSettingsAutomationsRouteImport } from './routes/_app/settings/automations'
 import { Route as AppSettingsConnectedAppsRouteImport } from './routes/_app/settings/connected-apps'
+import { Route as AppSettingsDuplicatesRouteImport } from './routes/_app/settings/duplicates'
 import { Route as AppSettingsExtensionsRouteImport } from './routes/_app/settings/extensions'
 import { Route as AppSettingsGeneralRouteImport } from './routes/_app/settings/general'
 import { Route as AppSettingsIntegrationsRouteImport } from './routes/_app/settings/integrations'
@@ -89,6 +91,11 @@ const AppApprovalsRoute = AppApprovalsRouteImport.update({
 const AppAssistantRoute = AppAssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDuplicatesRoute = AppDuplicatesRouteImport.update({
+  id: '/duplicates',
+  path: '/duplicates',
   getParentRoute: () => AppRoute,
 } as any)
 const AppImportRoute = AppImportRouteImport.update({
@@ -229,6 +236,11 @@ const AppSettingsConnectedAppsRoute =
     path: '/settings/connected-apps',
     getParentRoute: () => AppRoute,
   } as any)
+const AppSettingsDuplicatesRoute = AppSettingsDuplicatesRouteImport.update({
+  id: '/settings/duplicates',
+  path: '/settings/duplicates',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsExtensionsRoute = AppSettingsExtensionsRouteImport.update({
   id: '/settings/extensions',
   path: '/settings/extensions',
@@ -336,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
   '/assistant': typeof AppAssistantRoute
+  '/duplicates': typeof AppDuplicatesRoute
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
   '/setup': typeof AppSetupRoute
@@ -358,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/settings/audit': typeof AppSettingsAuditRoute
   '/settings/automations': typeof AppSettingsAutomationsRoute
   '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
+  '/settings/duplicates': typeof AppSettingsDuplicatesRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/integrations': typeof AppSettingsIntegrationsRoute
@@ -388,6 +402,7 @@ export interface FileRoutesByTo {
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
   '/assistant': typeof AppAssistantRoute
+  '/duplicates': typeof AppDuplicatesRoute
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
   '/setup': typeof AppSetupRoute
@@ -411,6 +426,7 @@ export interface FileRoutesByTo {
   '/settings/audit': typeof AppSettingsAuditRoute
   '/settings/automations': typeof AppSettingsAutomationsRoute
   '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
+  '/settings/duplicates': typeof AppSettingsDuplicatesRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/integrations': typeof AppSettingsIntegrationsRoute
@@ -443,6 +459,7 @@ export interface FileRoutesById {
   '/_app/activity': typeof AppActivityRoute
   '/_app/approvals': typeof AppApprovalsRoute
   '/_app/assistant': typeof AppAssistantRoute
+  '/_app/duplicates': typeof AppDuplicatesRoute
   '/_app/import': typeof AppImportRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/setup': typeof AppSetupRoute
@@ -466,6 +483,7 @@ export interface FileRoutesById {
   '/_app/settings/audit': typeof AppSettingsAuditRoute
   '/_app/settings/automations': typeof AppSettingsAutomationsRoute
   '/_app/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
+  '/_app/settings/duplicates': typeof AppSettingsDuplicatesRoute
   '/_app/settings/extensions': typeof AppSettingsExtensionsRoute
   '/_app/settings/general': typeof AppSettingsGeneralRoute
   '/_app/settings/integrations': typeof AppSettingsIntegrationsRoute
@@ -499,6 +517,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/approvals'
     | '/assistant'
+    | '/duplicates'
     | '/import'
     | '/notifications'
     | '/setup'
@@ -521,6 +540,7 @@ export interface FileRouteTypes {
     | '/settings/audit'
     | '/settings/automations'
     | '/settings/connected-apps'
+    | '/settings/duplicates'
     | '/settings/extensions'
     | '/settings/general'
     | '/settings/integrations'
@@ -551,6 +571,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/approvals'
     | '/assistant'
+    | '/duplicates'
     | '/import'
     | '/notifications'
     | '/setup'
@@ -574,6 +595,7 @@ export interface FileRouteTypes {
     | '/settings/audit'
     | '/settings/automations'
     | '/settings/connected-apps'
+    | '/settings/duplicates'
     | '/settings/extensions'
     | '/settings/general'
     | '/settings/integrations'
@@ -605,6 +627,7 @@ export interface FileRouteTypes {
     | '/_app/activity'
     | '/_app/approvals'
     | '/_app/assistant'
+    | '/_app/duplicates'
     | '/_app/import'
     | '/_app/notifications'
     | '/_app/setup'
@@ -628,6 +651,7 @@ export interface FileRouteTypes {
     | '/_app/settings/audit'
     | '/_app/settings/automations'
     | '/_app/settings/connected-apps'
+    | '/_app/settings/duplicates'
     | '/_app/settings/extensions'
     | '/_app/settings/general'
     | '/_app/settings/integrations'
@@ -707,6 +731,13 @@ declare module '@tanstack/react-router' {
       path: '/assistant'
       fullPath: '/assistant'
       preLoaderRoute: typeof AppAssistantRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/duplicates': {
+      id: '/_app/duplicates'
+      path: '/duplicates'
+      fullPath: '/duplicates'
+      preLoaderRoute: typeof AppDuplicatesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/import': {
@@ -898,6 +929,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsConnectedAppsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/duplicates': {
+      id: '/_app/settings/duplicates'
+      path: '/settings/duplicates'
+      fullPath: '/settings/duplicates'
+      preLoaderRoute: typeof AppSettingsDuplicatesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/extensions': {
       id: '/_app/settings/extensions'
       path: '/settings/extensions'
@@ -1038,6 +1076,7 @@ interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppApprovalsRoute: typeof AppApprovalsRoute
   AppAssistantRoute: typeof AppAssistantRoute
+  AppDuplicatesRoute: typeof AppDuplicatesRoute
   AppImportRoute: typeof AppImportRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppSetupRoute: typeof AppSetupRoute
@@ -1058,6 +1097,7 @@ interface AppRouteChildren {
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
   AppSettingsAutomationsRoute: typeof AppSettingsAutomationsRoute
   AppSettingsConnectedAppsRoute: typeof AppSettingsConnectedAppsRoute
+  AppSettingsDuplicatesRoute: typeof AppSettingsDuplicatesRoute
   AppSettingsExtensionsRoute: typeof AppSettingsExtensionsRoute
   AppSettingsGeneralRoute: typeof AppSettingsGeneralRoute
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
@@ -1083,6 +1123,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppApprovalsRoute: AppApprovalsRoute,
   AppAssistantRoute: AppAssistantRoute,
+  AppDuplicatesRoute: AppDuplicatesRoute,
   AppImportRoute: AppImportRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppSetupRoute: AppSetupRoute,
@@ -1103,6 +1144,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsAuditRoute: AppSettingsAuditRoute,
   AppSettingsAutomationsRoute: AppSettingsAutomationsRoute,
   AppSettingsConnectedAppsRoute: AppSettingsConnectedAppsRoute,
+  AppSettingsDuplicatesRoute: AppSettingsDuplicatesRoute,
   AppSettingsExtensionsRoute: AppSettingsExtensionsRoute,
   AppSettingsGeneralRoute: AppSettingsGeneralRoute,
   AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,

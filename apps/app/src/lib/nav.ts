@@ -5,6 +5,7 @@ import {
   BotIcon,
   Building2Icon,
   CheckSquareIcon,
+  CopyIcon,
   HomeIcon,
   InboxIcon,
   LayoutDashboardIcon,
@@ -37,6 +38,7 @@ export interface NavItem {
     | "/activity"
     | "/approvals"
     | "/suggested-contacts"
+    | "/duplicates"
     | "/trash"
     | "/settings"
     | "/settings/approval-policy"
@@ -46,7 +48,8 @@ export interface NavItem {
     | "/settings/extensions"
     | "/settings/automations"
     | "/settings/integrations"
-    | "/settings/ai";
+    | "/settings/ai"
+    | "/settings/duplicates";
   label: string;
   icon: LucideIcon;
   /** Extra words the palette matches on. */
@@ -88,6 +91,12 @@ export const MAIN_NAV: NavItem[] = [
     label: "Suggested contacts",
     icon: UserPlusIcon,
     keywords: ["suggestions", "email", "senders", "job changes", "inbox", "add contacts"],
+  },
+  {
+    to: "/duplicates",
+    label: "Duplicates",
+    icon: CopyIcon,
+    keywords: ["merge", "dedupe", "same name", "possible duplicates", "clean up"],
   },
   { to: "/activity", label: "Activity", icon: ActivityIcon, keywords: ["timeline", "notes"] },
   { to: "/trash", label: "Trash", icon: Trash2Icon, keywords: ["deleted", "restore"] },
@@ -159,6 +168,13 @@ export const SETTINGS_NAV: NavItem[] = [
     label: "AI settings",
     icon: SparklesIcon,
     keywords: ["models", "model roles", "providers", "api keys", "usage", "embeddings"],
+    adminOnly: true,
+  },
+  {
+    to: "/settings/duplicates",
+    label: "Duplicate settings",
+    icon: CopyIcon,
+    keywords: ["merge", "dedupe", "scan", "phone", "settings"],
     adminOnly: true,
   },
 ];

@@ -21,6 +21,7 @@ import {
   type RunToolInput,
   type RunToolResult,
   retryOutbox,
+  runDuplicateCron,
   type ShippedExtension,
   type ShippedInstallResult,
   type StartRunInput,
@@ -244,7 +245,7 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
   /**
    * `* * * * *`: schedules and the daily date-relative scan (ADR 0130), the automation events
    * outbox retry (ADR 0171), integration events (webhooks, sync) as triggers (ADR 0173) and
-   * notification delivery (ADR 0172). Each
+   * notification delivery (ADR 0172) and the duplicate scan (ADR 0247). Each
    * step is independent: one failing is logged and does not stop the others.
    */
   override async scheduled(controller: ScheduledController): Promise<void> {
@@ -276,6 +277,7 @@ export async function minuteTick(env: Env, at: Date) {
       outbox: null,
       integrationEvents: null,
       notifications: null,
+      duplicates: null,
     };
   }
   const schedules = await minuteStep("schedules", () => runAutomationCron(env, at));
@@ -295,7 +297,11 @@ export async function minuteTick(env: Env, at: Date) {
   );
   // Notification delivery (ADR 0172): email / Slack per preferences, escalation, the digest.
   const notifications = await minuteStep("notifications", () => runNotificationCron(env, at));
-  return { paused: false, schedules, outbox, integrationEvents, notifications };
+  // Duplicates (ADR 0247): the name-key backfill, a full scan in progress, the nightly scan.
+  const duplicates = await minuteStep("duplicates", () =>
+    runDuplicateCron(createCrmDb(env.DB), at),
+  );
+  return { paused: false, schedules, outbox, integrationEvents, notifications, duplicates };
 }
 
 async function minuteStep<T>(name: string, run: () => Promise<T>): Promise<T | null> {

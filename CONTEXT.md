@@ -93,9 +93,28 @@ are replaced by a `summary` (records touched by action, sizes); who decided what
 
 **Merge**
 Folding a duplicate record into a **survivor**: chosen field values, combined emails/phones/domains
-and tags, and the duplicate's affiliations, activity and task links moved over. The merged-away
+and tags, the duplicate's affiliations, activity and task links moved over, and every extension
+relation field that pointed at the duplicate re-pointed at the survivor (ADR 0247). The merged-away
 record goes to Trash with a `merged_into_id` pointer and can be restored.
 _Avoid_: dedupe (that is finding duplicates), combine
+
+**Duplicate rule**
+A plain rule in code that says two records may be the same, with a reason sentence ("Same name and
+same organisation: Acme"). People: same email (creation and import only), same name and
+organisation, same name and email domain, same phone number, same name only. Organisations: same
+domain, same name. There is no score; a pair can match several rules and all are shown (ADR 0247).
+_Avoid_: match score, similarity, confidence
+
+**Name key**
+A person's or organisation's name normalised by fixed code (`name_key`): lower case, diacritics
+gone, "Family, Given" reordered, middle initials and legal forms dropped. Every write that sets a
+name writes it, so duplicate rules are indexed lookups. Two records with equal keys have the same
+name for every duplicate rule.
+
+**Duplicate pair**
+Two records the scan found by at least one duplicate rule (`core_duplicate_pair`), `open`,
+`dismissed` ("Not duplicates", never suggested again) or `merged`. Pairs that share a record show
+as one group on the Duplicates page, with a proposed survivor: more activities, then the older.
 
 **Erase**
 An admin-only hard delete for GDPR requests (`person.erase`, `organisation.erase`). Unlike a purge

@@ -6,6 +6,7 @@ import {
   BookmarkIcon,
   ChevronRightIcon,
   CoinsIcon,
+  CopyIcon,
   CreditCardIcon,
   DatabaseIcon,
   DownloadCloudIcon,
@@ -53,6 +54,7 @@ function Section({
     | "/settings/voice"
     | "/settings/general"
     | "/settings/automations"
+    | "/settings/duplicates"
     | "/settings/plan"
     | "/settings/support-access";
 }) {
@@ -203,6 +205,14 @@ function SettingsPage() {
             description="The kill switch, the schedule timezone and the debounce window."
             to="/settings/automations"
           />
+          {isAdmin && (
+            <Section
+              icon={<CopyIcon className="size-5" />}
+              title="Duplicates"
+              description="Scan for duplicates now, and when a shared phone number stops counting."
+              to="/settings/duplicates"
+            />
+          )}
           {isAdmin && (
             <Section
               icon={<ScrollTextIcon className="size-5" />}

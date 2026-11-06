@@ -19,7 +19,7 @@ commit**, by editing this table. Use the next free block. Unused numbers in a bl
 | H | 0290–0299 | 0270–0279 (free) | Stage 13, Email (migrations only) | specced |
 | I | 0300–0309 | 0280–0289 (free) | Stage 14, Teams and permissions (migrations only) | specced |
 | J | 0310–0319 | 0290–0299 (free) | Stage 15, Leads: assignment rules (migrations only) | specced |
-| K | 0320–0329 | 0300–0309 (free) | Stage 16, Duplicates (migrations only) | specced |
+| K | 0320–0329 | 0300–0309 (free) | Stage 16, Duplicates (migration 0320 used; ADR 0247 from block D) | in flight |
 | L | 0330–0339 | 0320–0329 | Erase completeness (every store) | in flight |
 | M | 0340–0349 | 0330–0339 | Self-hosted Workers AI over REST (no prompt logging); narrower organisation erase (ADR 0330 used; no migrations) | merged |
 | N | 0350–0379 | 0340–0359 | Stage 17, One proactive assistant (ADRs 0340–0351 used by the spec; wave 1 used migrations 0350–0351, W2 wiring 0358–0360, W3 memory 0352, W9 voice 0361–0362 with 0363 reserved) | in flight |

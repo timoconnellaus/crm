@@ -18,6 +18,7 @@ import { codeOperations } from "./code.ts";
 import { connectedAppOperations } from "./connected-app.ts";
 import { countOperations } from "./count.ts";
 import { dashboardOperations } from "./dashboard.ts";
+import { duplicateOperations } from "./duplicate.ts";
 import { enrichmentOperations } from "./enrichment.ts";
 import { erasureOperations } from "./erasure.ts";
 import { exportOperations } from "./export.ts";
@@ -101,4 +102,5 @@ export const coreOperations = [
   ...supportOperations,
   ...erasureOperations,
   ...judgeOperations,
+  ...duplicateOperations,
 ] as const;

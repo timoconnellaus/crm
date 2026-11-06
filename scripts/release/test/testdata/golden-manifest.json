@@ -334,6 +334,10 @@
       "sha256": "121016373844f8cc2c4e816ec8ff9b573bd3d8ec74aaaac0419fa96a008710c3"
     },
     {
+      "name": "0320_duplicates.sql",
+      "sha256": "3a7c4d2f9ee3dbcdc489091e1db2c7a6f76dc46b2b462c4fedf0ca90afe206cf"
+    },
+    {
       "name": "0330_erase_completeness.sql",
       "sha256": "15ccaf1f0ddac644c2eb9d46d07f923f74b374a5d574c67be42d8b80571dce9f"
     },

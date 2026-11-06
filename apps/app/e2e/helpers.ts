@@ -48,7 +48,8 @@ export async function createPerson(
   await dialog.getByLabel("Given name").fill(person.given);
   if (person.family) await dialog.getByLabel("Family name").fill(person.family);
   if (person.email) await dialog.getByLabel("Email").fill(person.email);
-  await dialog.getByRole("button", { name: "Create person" }).click();
+  // "Create anyway" when the name matches someone already there (a duplicate warning).
+  await dialog.getByRole("button", { name: /^Create (person|anyway)$/ }).click();
   await expect(page).toHaveURL(/\/people\/per_/);
   // Wait out the closing animation, so a following create cannot grab the closing dialog.
   // (data-state flips to closed before the animation ends, so wait for the element to go.)

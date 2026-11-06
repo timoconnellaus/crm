@@ -105,6 +105,19 @@ describe("tools from the registry (AC2)", () => {
     expect(client.getInstructions()).toMatch(/Search before you create/);
   });
 
+  it("person_create tells the client about possible duplicates", async () => {
+    const tokens = await connect(fetchApp, member);
+    const client = await mcpClient(fetchApp, tokens.access_token);
+    const displayName = unique("Twin");
+    const reason = "Adding a contact";
+    const first = await call(client, "person_create", { displayName, reason });
+    const second = await call(client, "person_create", { displayName, reason });
+    expect(second.isError).not.toBe(true);
+    expect(second.data).toMatchObject({
+      possibleDuplicates: [{ id: (first.data as { id: string }).id, reasons: ["Same name only"] }],
+    });
+  });
+
   it("requires a reason for reviewable tools", async () => {
     const tokens = await connect(fetchApp, member);
     const client = await mcpClient(fetchApp, tokens.access_token);
