@@ -48,6 +48,8 @@ export interface MergeDialogProps {
   ids: readonly string[];
   /** Called after a successful merge (e.g. to clear a list selection). */
   onMerged?: (survivorId: string) => void;
+  /** Stay on the current page after merging instead of opening the survivor (Duplicates). */
+  stayOnPage?: boolean;
 }
 
 const NOUN = {
@@ -100,7 +102,14 @@ async function loadMovePreview(object: MergeObject, id: string): Promise<MovePre
   };
 }
 
-export function MergeDialog({ object, open, onOpenChange, ids, onMerged }: MergeDialogProps) {
+export function MergeDialog({
+  object,
+  open,
+  onOpenChange,
+  ids,
+  onMerged,
+  stayOnPage = false,
+}: MergeDialogProps) {
   const noun = NOUN[object];
   const idsKey = ids.join(",");
   const [pair, setPair] = useState<string[]>([...ids]);
@@ -134,6 +143,7 @@ export function MergeDialog({ object, open, onOpenChange, ids, onMerged }: Merge
             firstId={pair[0]}
             secondId={pair[1]}
             onBack={ids.length < 2 ? () => setPair(pair.slice(0, 1)) : undefined}
+            stayOnPage={stayOnPage}
             onCancel={() => onOpenChange(false)}
             onMerged={(survivorId) => {
               onOpenChange(false);
@@ -153,10 +163,12 @@ function MergeChooser({
   onBack,
   onCancel,
   onMerged,
+  stayOnPage = false,
 }: {
   object: MergeObject;
   firstId: string;
   secondId: string;
+  stayOnPage?: boolean;
   onBack?: () => void;
   onCancel: () => void;
   onMerged: (survivorId: string) => void;
@@ -235,11 +247,12 @@ function MergeChooser({
         "organisation.",
         "affiliation.",
         "task.",
+        "duplicate.",
       ]);
       const mergedId = merged.id;
       const mergedTitle = merged.title;
       onMerged(survivor.id);
-      navigate({ to: noun.path, params: { id: survivor.id } });
+      if (!stayOnPage) navigate({ to: noun.path, params: { id: survivor.id } });
       toast.success(`Merged ${mergedTitle} into ${survivor.title}`, {
         description: `${mergedTitle} is in Trash and can be restored for 30 days.`,
         action: {

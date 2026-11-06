@@ -56,6 +56,7 @@ describe("the minute cron and the kill switch", () => {
       outbox: null,
       integrationEvents: null,
       notifications: null,
+      duplicates: null,
     });
     expect(await state(ids)).toEqual({ outboxPending: true, eventConsumed: false });
 
@@ -65,6 +66,8 @@ describe("the minute cron and the kill switch", () => {
     expect(resumed.outbox).toMatchObject({ sent: 1 });
     expect(resumed.integrationEvents).toMatchObject({ consumed: 1 });
     expect(resumed.notifications).not.toBeNull();
+    // The duplicate scan carries on its first job (the name-key backfill) one call per tick.
+    expect(resumed.duplicates).toMatchObject({ mode: "continue" });
     expect(await state(ids)).toEqual({ outboxPending: false, eventConsumed: true });
   });
 

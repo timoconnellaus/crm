@@ -13,13 +13,16 @@ export * from "./ai/summaries.ts";
 export * from "./ai/usage.ts";
 export * from "./ai/vectors.ts";
 export * from "./ai/workers-ai-rest.ts";
+export * from "./approvals/high-risk.ts";
 export { DEFAULT_APPROVAL_EXPIRY_DAYS, runSessionKey } from "./approvals/queue.ts";
 export { isSimulatedRead } from "./approvals/simulation.ts";
+export * from "./assignment/index.ts";
 export * from "./assistant/events.ts";
 export * from "./assistant/fake.ts";
 export * from "./assistant/history.ts";
 export * from "./assistant/loop.ts";
 export * from "./assistant/memory.ts";
+export * from "./assistant/producers.ts";
 export * from "./assistant/prompt.ts";
 export * from "./assistant/scrub.ts";
 export * from "./assistant/threads.ts";
@@ -44,6 +47,17 @@ export * from "./dashboards/params.ts";
 export * from "./dashboards/run.ts";
 export * from "./dashboards/spec.ts";
 export * from "./diff.ts";
+export { runDuplicateCron } from "./duplicates/cron.ts";
+export * from "./duplicates/normalise.ts";
+export * from "./duplicates/rules.ts";
+export {
+  DUPLICATE_SCAN_KEY,
+  loadScanState,
+  nightlyDue,
+  runScan,
+  type ScanState,
+  scanPending,
+} from "./duplicates/scan.ts";
 export * from "./entitlements.ts";
 export * from "./errors.ts";
 export * from "./extensions/host.ts";
@@ -93,11 +107,13 @@ export * from "./notifications/routes.ts";
 export * from "./notifications/send.ts";
 export * from "./notifications/types.ts";
 export * from "./operation.ts";
+export * from "./operations/a2ui.ts";
 export * from "./operations/activity.ts";
 export * from "./operations/adjudicator.ts";
 export * from "./operations/affiliation.ts";
 export * from "./operations/ai.ts";
 export * from "./operations/approval.ts";
+export * from "./operations/assignment.ts";
 export * from "./operations/assistant.ts";
 export * from "./operations/audit.ts";
 export * from "./operations/automation.ts";
@@ -105,11 +121,13 @@ export * from "./operations/code.ts";
 export * from "./operations/connected-app.ts";
 export * from "./operations/count.ts";
 export * from "./operations/dashboard.ts";
+export * from "./operations/duplicate.ts";
 export * from "./operations/enrichment.ts";
 export * from "./operations/export.ts";
 export * from "./operations/extension.ts";
 export * from "./operations/extension-authoring.ts";
 export * from "./operations/extension-ui.ts";
+export * from "./operations/field-options.ts";
 export * from "./operations/import.ts";
 export { coreOperations } from "./operations/index.ts";
 export * from "./operations/integration.ts";
@@ -135,6 +153,7 @@ export * from "./operations/trash.ts";
 export * from "./operations/update.ts";
 export * from "./operations/user.ts";
 export * from "./operations/view.ts";
+export * from "./operations/voice.ts";
 export {
   type CommitEvent,
   type InvocationContext,

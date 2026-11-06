@@ -67,6 +67,7 @@ const optionSchema = z.object({
   label: z.string().min(1).max(100),
   color: z.string().max(20).optional(),
   requires: z.array(z.string().max(80)).max(20).optional(),
+  fixed: z.boolean().optional(),
 });
 
 export const fieldManifestSchema = z.object({
@@ -82,6 +83,9 @@ export const fieldManifestSchema = z.object({
     .regex(/^[A-Z]{3}$/)
     .optional(),
   options: z.array(optionSchema).max(200).optional(),
+  editableOptions: z.boolean().optional(),
+  default: z.union([z.string().max(1000), z.number(), z.boolean()]).optional(),
+  defaultSetting: z.string().max(40).optional(),
   to: z.string().max(80).optional(),
   many: z.boolean().optional(),
   expression: z.string().max(2000).optional(),
@@ -123,6 +127,18 @@ export const objectManifestSchema = z.object({
     .optional(),
   timelineLinks: z.array(z.string().max(40)).max(8).optional(),
   stages: stagesManifestSchema.optional(),
+  owner: z.string().max(40).optional(),
+  navigationOrder: z.number().int().min(0).max(10_000).optional(),
+  requireOneOf: z
+    .array(z.array(z.string().max(40)).min(2).max(8))
+    .max(8)
+    .optional(),
+  titleDefault: z
+    .object({
+      from: z.array(z.string().max(40)).min(1).max(8),
+      suffix: z.string().max(40).optional(),
+    })
+    .optional(),
   seed: z
     .record(z.string().max(40), z.record(z.string().max(40), z.unknown()))
     .refine((seed) => Object.keys(seed).length <= 200, "At most 200 seed records per object")
@@ -132,9 +148,34 @@ export type ObjectManifest = z.infer<typeof objectManifestSchema>;
 
 const jsonSchemaObject = z.record(z.string(), z.unknown());
 
+export const recordActionManifestSchema = z.object({
+  object: z.string().min(1).max(80),
+  label: z.string().min(1).max(60),
+  idInput: z.string().min(1).max(40),
+  confirm: z.string().max(300).optional(),
+  ask: z
+    .object({
+      input: z.string().min(1).max(40),
+      label: z.string().min(1).max(60),
+      options: z
+        .array(z.object({ value: z.string().min(1).max(100), label: z.string().min(1).max(100) }))
+        .min(1)
+        .max(50),
+    })
+    .optional(),
+  hideWhen: z
+    .object({
+      field: z.string().min(1).max(80),
+      values: z.array(z.string().min(1).max(100)).min(1).max(50),
+    })
+    .optional(),
+});
+export type RecordActionManifest = z.infer<typeof recordActionManifestSchema>;
+
 export const toolManifestSchema = z.object({
   description: z.string().min(20).max(2000),
   risk: z.enum(TOOL_RISKS),
+  recordAction: recordActionManifestSchema.optional(),
   inputSchema: jsonSchemaObject,
   outputSchema: jsonSchemaObject,
 });
@@ -326,6 +367,7 @@ export function toManifest(extension: Extension): ExtensionManifest {
         {
           description: tool.description,
           risk: tool.risk ?? "write",
+          ...(tool.recordAction ? { recordAction: tool.recordAction } : {}),
           inputSchema: z.toJSONSchema(tool.input, { io: "input", unrepresentable: "any" }),
           outputSchema: z.toJSONSchema(tool.output, { io: "output", unrepresentable: "any" }),
         },
@@ -343,6 +385,7 @@ export function toManifest(extension: Extension): ExtensionManifest {
           ...(automation.onRejected ? { onRejected: automation.onRejected } : {}),
           ...(automation.rails ? { rails: automation.rails } : {}),
           ...(automation.connections?.length ? { connections: automation.connections } : {}),
+          ...(automation.enabled === false ? { enabled: false } : {}),
         },
       ]),
     ),
@@ -541,8 +584,21 @@ export function validateManifest(
             }
           }
         }
+        if (!field.editableOptions && field.options?.some((o) => o.fixed !== undefined)) {
+          contract(`${path}.options`, "Only fields with editableOptions take `fixed`");
+        }
       } else if (field.options) {
         contract(`${path}.options`, `Only select and multiSelect fields take options`);
+      }
+      if (
+        field.editableOptions !== undefined &&
+        field.type !== "select" &&
+        field.type !== "multiSelect"
+      ) {
+        contract(
+          `${path}.editableOptions`,
+          "Only select and multiSelect fields take editableOptions",
+        );
       }
       if (field.type === "relation") {
         if (!field.to) contract(`${path}.to`, "relation fields need `to`");
@@ -610,9 +666,59 @@ export function validateManifest(
         `titleField must be a text-like field (${TEXT_LIKE.join(", ")})`,
       );
     }
-    const env = formulaFields(object.fields);
+    // Every record's own timestamps can be read too, as on the host (formulaEnvironment).
+    const env = {
+      createdAt: { type: "datetime", sql: '"created_at"' } as FormulaFieldRef,
+      updatedAt: { type: "datetime", sql: '"updated_at"' } as FormulaFieldRef,
+      ...formulaFields(object.fields),
+    };
     checkFields(`${path}.fields`, `${m.id}.${name}`, object.fields, env);
     checkObjectBehaviour(m, name, object, contract);
+    object.requireOneOf?.forEach((group, i) => {
+      for (const field of group) {
+        if (!object.fields[field]) {
+          contract(`${path}.requireOneOf.${i}`, `"${field}" is not a field of ${name}`);
+        }
+      }
+    });
+    for (const field of object.titleDefault?.from ?? []) {
+      if (object.fields[field]?.type !== "relation") {
+        contract(`${path}.titleDefault`, `"${field}" is not a relation field of ${name}`);
+      }
+    }
+    for (const [fieldName, field] of Object.entries(object.fields)) {
+      const fieldPath = `${path}.fields.${fieldName}`;
+      if (field.default !== undefined) {
+        const expected =
+          field.type === "boolean"
+            ? "boolean"
+            : ["number", "currency", "percent"].includes(field.type)
+              ? "number"
+              : ["text", "longText", "select", "date", "email", "phone", "url"].includes(field.type)
+                ? "string"
+                : null;
+        if (!expected) contract(`${fieldPath}.default`, `${field.type} fields take no default`);
+        else if (typeof field.default !== expected) {
+          contract(`${fieldPath}.default`, `The default must be a ${expected}`);
+        } else if (
+          field.type === "select" &&
+          !field.options?.some((o) => o.value === field.default)
+        ) {
+          contract(`${fieldPath}.default`, "The default must be one of the options");
+        }
+      }
+      if (field.defaultSetting !== undefined && !m.settings[field.defaultSetting]) {
+        contract(
+          `${fieldPath}.defaultSetting`,
+          `"${field.defaultSetting}" is not one of this extension's settings`,
+        );
+      }
+    }
+    if (object.owner !== undefined) {
+      const owner = object.fields[object.owner];
+      if (!owner) contract(`${path}.owner`, `owner "${object.owner}" is not a field of ${name}`);
+      else if (owner.type !== "user") contract(`${path}.owner`, "owner must name a user field");
+    }
   }
 
   for (const [target, fields] of Object.entries(m.fields)) {
@@ -625,6 +731,11 @@ export function validateManifest(
       contract(path, "Declare fields of your own objects in objects.<name>.fields");
       continue;
     }
+    for (const [fieldName, field] of Object.entries(fields)) {
+      if (field.default !== undefined || field.defaultSetting !== undefined) {
+        contract(`${path}.${fieldName}`, "Only fields of your own objects take a default");
+      }
+    }
     const base = options.baseFields?.(target) ?? coreFormulaRefs(target);
     const env = { ...base, ...formulaFields(fields) };
     checkFields(path, target, fields, env);
@@ -636,6 +747,25 @@ export function validateManifest(
     }
     if (tool.inputSchema.type !== "object") {
       contract(`tools.${name}.input`, "A tool's input must be a z.object(...)");
+    }
+    if (tool.recordAction) {
+      const action = tool.recordAction;
+      if (!known.has(action.object)) {
+        contract(`tools.${name}.recordAction.object`, `Unknown object "${action.object}"`);
+      }
+      const properties = (tool.inputSchema.properties ?? {}) as Record<string, { type?: unknown }>;
+      if (properties[action.idInput]?.type !== "string") {
+        contract(
+          `tools.${name}.recordAction.idInput`,
+          `idInput "${action.idInput}" must be a string field of the tool's input`,
+        );
+      }
+      if (action.ask && !properties[action.ask.input]) {
+        contract(
+          `tools.${name}.recordAction.ask`,
+          `"${action.ask.input}" is not a field of the tool's input`,
+        );
+      }
     }
   }
 

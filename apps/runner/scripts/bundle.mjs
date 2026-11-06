@@ -73,7 +73,16 @@ for (const entry of (await readdir(extensionsDir, { withFileTypes: true })).sort
   }
   const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8"));
   await stat(join(dir, "index.ts"));
-  shipped.push({ id: entry.name, version: pkg.version, files: await sourceFiles(dir) });
+  // `relationshipOs.optional`: shipped but opt-in (installed by an admin, not at boot; ADR 0246).
+  const meta = pkg.relationshipOs ?? {};
+  shipped.push({
+    id: entry.name,
+    version: pkg.version,
+    ...(meta.optional ? { optional: true } : {}),
+    ...(meta.label ? { label: meta.label } : {}),
+    ...(meta.description ? { description: meta.description } : {}),
+    files: await sourceFiles(dir),
+  });
 }
 
 // 3. The declarations the in-Worker type checker needs (src/extensions/typecheck.ts): @relationship-os/sdk's
@@ -189,7 +198,7 @@ await writeFile(
 await writeFile(join(out, "sdk-bundle.txt"), sdkSource);
 await writeFile(
   join(out, "shipped.ts"),
-  `${banner}/** Shipped extensions (extensions/<id>/), as source. */\nexport const SHIPPED_EXTENSIONS: readonly { id: string; version: string; files: Record<string, string> }[] = ${JSON.stringify(shipped, null, 2)};\n`,
+  `${banner}/** Shipped extensions (extensions/<id>/), as source. */\nexport const SHIPPED_EXTENSIONS: readonly { id: string; version: string; optional?: boolean; label?: string; description?: string; files: Record<string, string> }[] = ${JSON.stringify(shipped, null, 2)};\n`,
 );
 
 // The checker's Dynamic Worker: one ES module with the compiler, the declarations and the entry.

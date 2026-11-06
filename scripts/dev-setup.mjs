@@ -89,6 +89,17 @@ if (existsSync(appVars) && !/^AI_FAKE_MODEL=/m.test(readFileSync(appVars, "utf8"
   );
 }
 
+// Stand-in speech for local dev and e2e, unless this checkout has a real key to try (ADR 0349).
+if (
+  existsSync(appVars) &&
+  !/^(AI_FAKE_VOICE|AI_KEY_ASSEMBLYAI)=/m.test(readFileSync(appVars, "utf8"))
+) {
+  writeFileSync(
+    appVars,
+    `${readFileSync(appVars, "utf8").trimEnd()}\n\n# Local only: stand-in speech with no key and no network.\nAI_FAKE_VOICE=true\n`,
+  );
+}
+
 // ros-runner bundles the SDK and the shipped extensions as source at build time (ADR 0025); vite
 // dev loads it as an auxiliary Worker, so the bundle must exist first.
 execFileSync("node", [join(root, "apps/runner/scripts/bundle.mjs")], { stdio: "inherit" });

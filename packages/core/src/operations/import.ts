@@ -11,9 +11,13 @@
 import type { CoreDatabase } from "@relationship-os/db";
 import { type Compilable, type Kysely, sql } from "kysely";
 import { z } from "zod";
+import { assignOwner, recordAssignment } from "../assignment/index.ts";
 import { diffRecords } from "../diff.ts";
+import { organisationNameKey, personNameKey } from "../duplicates/normalise.ts";
+import { queueScanAfterImport } from "../duplicates/scan.ts";
 import { assertRecordCapacity } from "../entitlements.ts";
 import { ValidationError } from "../errors.ts";
+import { getObject } from "../fields/index.ts";
 import { newId } from "../ids.ts";
 import type { HandlerContext } from "../operation.ts";
 import { defineOperation } from "../operation.ts";
@@ -22,12 +26,18 @@ import { compareTagNames, loadTags, uniqueTagNames } from "../records/tags.ts";
 import {
   loadDomainOwners,
   loadOrganisations,
+  newOrganisationValue,
   normaliseDomains,
   type OrganisationSnapshotSource,
   organisationSnapshot,
   tryNormaliseDomain,
 } from "./organisation.ts";
-import { normalisePhoneNumber, type PersonSnapshotSource, personSnapshot } from "./person.ts";
+import {
+  newPersonValue,
+  normalisePhoneNumber,
+  type PersonSnapshotSource,
+  personSnapshot,
+} from "./person.ts";
 
 // --- CSV ---------------------------------------------------------------------------------------
 
@@ -307,7 +317,7 @@ interface Plan {
     organisationsMatched: number;
   };
   /** Queues the writes (commit only). */
-  queue: (ctx: HandlerContext) => void;
+  queue: (ctx: HandlerContext) => Promise<void>;
 }
 
 function readCsv(object: ImportObject, csv: string, given?: Record<string, string | null>) {
@@ -908,13 +918,66 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
     organisationsMatched: matchedOrgs.size,
   };
 
-  const queue = (ctx: HandlerContext) => {
+  const queue = async (ctx: HandlerContext) => {
     const stamp = { created_at: ctx.now, created_by: ctx.user.id, updated_at: ctx.now };
+    // Owners for the new organisations and people, by the assignment rules (ADR 0246).
+    const orgOwners = await assignImported(
+      ctx,
+      "organisation",
+      createdOrgs.map((o) => ({
+        id: o.id,
+        get: (field: string) =>
+          newOrganisationValue(
+            field,
+            { name: o.name, website: null, industry: null, parent_id: null },
+            o.domain ? [{ domain: o.domain, primary: true }] : [],
+          ),
+      })),
+    );
+    const emailsOf = new Map<string, { email: string; primary: boolean }[]>();
+    for (const e of emailInserts) {
+      const list = emailsOf.get(e.person_id as string) ?? [];
+      list.push({ email: e.email as string, primary: e.is_primary === 1 });
+      emailsOf.set(e.person_id as string, list);
+    }
+    const phonesOf = new Map<string, { number: string; primary: boolean }[]>();
+    for (const ph of phoneInserts) {
+      const list = phonesOf.get(ph.person_id as string) ?? [];
+      list.push({ number: ph.number as string, primary: ph.is_primary === 1 });
+      phonesOf.set(ph.person_id as string, list);
+    }
+    const personOwners = await assignImported(
+      ctx,
+      "person",
+      personInserts.map((p) => ({
+        id: p.id as string,
+        get: (field: string) =>
+          newPersonValue(
+            field,
+            p as Parameters<typeof newPersonValue>[1],
+            emailsOf.get(p.id as string) ?? [],
+            phonesOf.get(p.id as string) ?? [],
+          ),
+      })),
+    );
+    for (const change of changes) {
+      const owner = change.action === "create" ? personOwners.get(change.id) : undefined;
+      if (owner && change.after) {
+        change.after.ownerId = owner.ownerId;
+        change.assignment = owner.assigned;
+      }
+    }
     queueInsert(
       ctx,
       "core_organisation",
-      ["id", "name", "created_at", "created_by", "updated_at"],
-      createdOrgs.map((o) => ({ id: o.id, name: o.name, ...stamp })),
+      ["id", "name", "name_key", "owner_id", "created_at", "created_by", "updated_at"],
+      createdOrgs.map((o) => ({
+        id: o.id,
+        name: o.name,
+        name_key: organisationNameKey(o.name),
+        owner_id: orgOwners.get(o.id)?.ownerId ?? null,
+        ...stamp,
+      })),
     );
     queueInsert(
       ctx,
@@ -943,20 +1006,28 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
         "given_name",
         "family_name",
         "display_name",
+        "name_key",
         "location",
         "timezone",
         "description",
+        "owner_id",
         "created_at",
         "created_by",
         "updated_at",
       ],
-      personInserts.map((p) => ({ ...p, ...stamp })),
+      personInserts.map((p) => ({
+        ...p,
+        name_key: personNameKey(String(p.display_name)),
+        owner_id: personOwners.get(p.id as string)?.ownerId ?? null,
+        ...stamp,
+      })),
     );
     queueUpdate(
       ctx,
       "core_person",
       [
         "display_name",
+        "name_key",
         "given_name",
         "family_name",
         "location",
@@ -964,7 +1035,11 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
         "description",
         "updated_at",
       ],
-      personUpdates.map((p) => ({ ...p, updated_at: ctx.now })),
+      personUpdates.map((p) => ({
+        ...p,
+        name_key: personNameKey(String(p.display_name)),
+        updated_at: ctx.now,
+      })),
     );
     queueInsert(
       ctx,
@@ -1012,6 +1087,7 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
     queueTags(ctx, "person", tagLinks);
 
     for (const o of createdOrgs) {
+      const owner = orgOwners.get(o.id);
       ctx.recordChange({
         object: "organisation",
         id: o.id,
@@ -1020,8 +1096,10 @@ async function planPeople(db: Kysely<CoreDatabase>, input: ImportInput): Promise
           newOrganisationSource({
             name: o.name,
             domains: normaliseDomains(o.domain ? [{ domain: o.domain }] : []),
+            ownerId: owner?.ownerId ?? null,
           }),
         ),
+        assignment: owner?.assigned,
       });
     }
     for (const change of changes) ctx.recordChange(change);
@@ -1244,22 +1322,59 @@ async function planOrganisations(db: Kysely<CoreDatabase>, input: ImportInput): 
     organisationsCreated: orgInserts.length,
     organisationsMatched: updateIds.length,
   };
-  const queue = (ctx: HandlerContext) => {
+  const queue = async (ctx: HandlerContext) => {
     const stamp = { created_at: ctx.now, created_by: ctx.user.id, updated_at: ctx.now };
+    // Owners for the new organisations, by the assignment rules (ADR 0246).
+    const domainsOf = new Map<string, { domain: string; primary: boolean }[]>();
+    for (const d of domainInserts) {
+      const list = domainsOf.get(d.organisation_id as string) ?? [];
+      list.push({ domain: d.domain as string, primary: d.is_primary === 1 });
+      domainsOf.set(d.organisation_id as string, list);
+    }
+    const owners = await assignImported(
+      ctx,
+      "organisation",
+      orgInserts.map((o) => ({
+        id: o.id as string,
+        get: (field: string) =>
+          newOrganisationValue(
+            field,
+            {
+              ...(o as { name: string; website: string | null; industry: string | null }),
+              parent_id: null,
+            },
+            domainsOf.get(o.id as string) ?? [],
+          ),
+      })),
+    );
+    for (const change of changes) {
+      const owner = change.action === "create" ? owners.get(change.id) : undefined;
+      if (owner && change.after) {
+        change.after.ownerId = owner.ownerId;
+        change.assignment = owner.assigned;
+      }
+    }
     queueInsert(
       ctx,
       "core_organisation",
       [
         "id",
         "name",
+        "name_key",
         "website",
         "industry",
         "description",
+        "owner_id",
         "created_at",
         "created_by",
         "updated_at",
       ],
-      orgInserts.map((o) => ({ ...o, ...stamp })),
+      orgInserts.map((o) => ({
+        ...o,
+        name_key: organisationNameKey(String(o.name)),
+        owner_id: owners.get(o.id as string)?.ownerId ?? null,
+        ...stamp,
+      })),
     );
     queueUpdate(
       ctx,
@@ -1277,6 +1392,37 @@ async function planOrganisations(db: Kysely<CoreDatabase>, input: ImportInput): 
     for (const change of changes) ctx.recordChange(change);
   };
   return { headers, mapping, suggestions, rows, counts, queue };
+}
+
+// --- Assignment ----------------------------------------------------------------------------------
+
+/**
+ * Owners for imported records created without one (ADR 0246): the rules are read once, each
+ * round-robin rule's state once, and the rows are assigned in order. The audit diff names the
+ * rule; bulk imports post no timeline entry per row.
+ */
+async function assignImported(
+  ctx: HandlerContext,
+  objectName: "person" | "organisation",
+  records: { id: string; get: (field: string) => unknown }[],
+): Promise<
+  Map<string, { ownerId: string; assigned: { field: string; rule: string } | undefined }>
+> {
+  const owners = new Map<
+    string,
+    { ownerId: string; assigned: { field: string; rule: string } | undefined }
+  >();
+  const object = getObject(objectName);
+  if (!object || !records.length) return owners;
+  for (const record of records) {
+    const assignment = await assignOwner(ctx, object, record);
+    if (!assignment?.ownerId) continue;
+    owners.set(record.id, {
+      ownerId: assignment.ownerId,
+      assigned: recordAssignment(ctx, object, record.id, assignment, { timeline: false }),
+    });
+  }
+  return owners;
 }
 
 // --- Operations --------------------------------------------------------------------------------
@@ -1344,6 +1490,51 @@ function fieldsFor(object: ImportObject) {
   }));
 }
 
+/** The name a row would create a record under, as a name key. */
+function rowNameKey(object: ImportObject, values: PlannedRow["values"]): string | null {
+  if (object === "organisation") return organisationNameKey(str(values.name));
+  const name =
+    str(values.displayName) ??
+    [str(values.givenName), str(values.familyName)].filter(Boolean).join(" ");
+  return personNameKey(name);
+}
+
+/**
+ * Duplicates (ADR 0247): a row that would create a record with the same name as a live one says
+ * so. The row still creates unless the person skips it. One indexed lookup for the whole file.
+ */
+async function flagPossibleDuplicates(
+  db: Kysely<CoreDatabase>,
+  object: ImportObject,
+  rows: PlannedRow[],
+): Promise<void> {
+  const keyed = rows.flatMap((r) => {
+    const key = r.action === "create" ? rowNameKey(object, r.values) : null;
+    return key ? [{ row: r, key }] : [];
+  });
+  if (!keyed.length) return;
+  const keys = jsonList([...new Set(keyed.map((k) => k.key))]);
+  const found =
+    object === "person"
+      ? await db
+          .selectFrom("core_person")
+          .select(["name_key", "display_name as title"])
+          .where("name_key", "in", keys)
+          .where("deleted_at", "is", null)
+          .execute()
+      : await db
+          .selectFrom("core_organisation")
+          .select(["name_key", "name as title"])
+          .where("name_key", "in", keys)
+          .where("deleted_at", "is", null)
+          .execute();
+  const titles = new Map(found.map((f) => [f.name_key, f.title]));
+  for (const { row, key } of keyed) {
+    const title = titles.get(key);
+    if (title) row.reason = `Possible duplicate of ${title}: same name`;
+  }
+}
+
 export const importCsvPreview = defineOperation({
   name: "import.csv.preview",
   description:
@@ -1351,7 +1542,8 @@ export const importCsvPreview = defineOperation({
     "column mapping from the headers (pass mapping to change it), then decides per row: people " +
     "are matched to existing people by email, organisations by domain (by name when a row has " +
     "no domain). Matched rows update (filling in given fields, adding new emails, phones and " +
-    "tags); unmatched rows create; invalid or duplicate rows skip. For people, an organisation " +
+    "tags); unmatched rows create; invalid or duplicate rows skip. A row that would create a " +
+    "record with the same name as an existing one says so in its reason. For people, an organisation " +
     "column is matched by domain or name or creates the organisation, and a current affiliation " +
     "(primary if the person has none) is added with the job title. Each row lists its options " +
     "for overrides. Pass the same csv, mapping and overrides to import.csv.commit. Read-only.",
@@ -1363,6 +1555,7 @@ export const importCsvPreview = defineOperation({
   mcp: { idempotent: true },
   async handler(input, ctx) {
     const result = await plan(ctx.db, input);
+    await flagPossibleDuplicates(ctx.db, input.object, result.rows);
     return {
       object: input.object,
       headers: result.headers,
@@ -1428,7 +1621,9 @@ export const importCsvCommit = defineOperation({
       ctx.db,
       input.object === "person" ? create + organisationsCreated : organisationsCreated,
     );
-    result.queue(ctx);
+    await result.queue(ctx);
+    // Duplicates (ADR 0247): the runner's next tick scans the imported records.
+    queueScanAfterImport(ctx);
     return {
       counts: result.counts,
       rows: result.rows.map((r) => ({

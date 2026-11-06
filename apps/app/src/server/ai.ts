@@ -40,8 +40,11 @@ import {
   vectorizeStore,
 } from "@relationship-os/core";
 import { type CrmDb, createCrmDb } from "@relationship-os/db";
+import { voiceContextFor } from "./assistant/voice.ts";
 
 export interface AiAppEnv extends AiEnv, HostedAiAdminEnv {
+  /** "true": stand-in speech providers (local dev and e2e only), like AI_FAKE_MODEL. */
+  AI_FAKE_VOICE?: string;
   /** Vectorize index for record embeddings (optional; docs/deploying.md). */
   VECTORIZE?: unknown;
   /** Secret: Cloudflare API token for Settings → AI (keys, usage). */
@@ -253,6 +256,7 @@ export function aiContextFor(env: AiAppEnv, db: CrmDb) {
     ...(models || judgeHasKey(judge) ? { onQueued: adjudicationHook() } : {}),
     aiAdmin: aiAdminFor(env, db),
     aiEnv: aiEnvView(env),
+    ...voiceContextFor(env, db),
   };
 }
 

@@ -49,7 +49,7 @@ const stage = (
 
 export default defineExtension({
   id: "deals",
-  version: "1.1.0",
+  version: "1.2.0",
   contractVersion: 1,
   label: "Deals",
   description:
@@ -139,6 +139,9 @@ export default defineExtension({
       icon: "handshake",
       titleField: "name",
       description: "A potential sale moving through a pipeline.",
+      // The deal's owner, which assignment rules set for deals created without one (ADR 0246).
+      owner: "owner",
+      navigationOrder: 20,
       fields: {
         name: { type: "text", label: "Name", required: true },
         value: {

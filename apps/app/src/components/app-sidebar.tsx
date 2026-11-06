@@ -22,11 +22,13 @@ import {
   FolderKanbanIcon,
   HandshakeIcon,
   type LucideIcon,
+  TargetIcon,
 } from "lucide-react";
 import { MAIN_NAV, type NavItem, SETTINGS_NAV } from "#/lib/nav";
 import { useExtensionObjects } from "#/lib/schema";
 import { usePendingCount } from "./approvals/hooks.ts";
 import { useThreadUnread } from "./assistant/thread-provider.tsx";
+import { useDuplicateCount } from "./duplicates/hooks.ts";
 
 function NavLink({
   item,
@@ -70,6 +72,7 @@ const OBJECT_ICONS: Record<string, LucideIcon> = {
   "folder-kanban": FolderKanbanIcon,
   briefcase: BriefcaseIcon,
   handshake: HandshakeIcon,
+  target: TargetIcon,
 };
 
 /** Extension objects (from the field registry), each with a generic list page. */
@@ -110,6 +113,7 @@ function ExtensionObjectsNav() {
 export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
   const pendingCount = usePendingCount();
+  const duplicateCount = useDuplicateCount();
   const unread = useThreadUnread().unread;
   return (
     <Sidebar
@@ -124,7 +128,15 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {MAIN_NAV.map((item) =>
-                item.to === "/assistant" ? (
+                item.to === "/duplicates" ? (
+                  <NavLink
+                    key={item.to}
+                    item={item}
+                    badge={duplicateCount}
+                    badgeLabel="possible duplicates to review"
+                    badgeTestId="duplicates-count"
+                  />
+                ) : item.to === "/assistant" ? (
                   <NavLink
                     key={item.to}
                     item={item}

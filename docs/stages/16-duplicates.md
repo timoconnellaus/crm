@@ -175,3 +175,9 @@ Migrations 0320–0329 (block K in `docs/parallel-work.md`). ADR 0247.
 - **Same phone number is a rule** in the first version (exact normalised number), shown as its own match reason. To keep shared office numbers from flooding suggestions, a number held by more than a small fixed number of people (an admin-adjustable count, default 3) is not used for matching. This is a plain rule, not a score.
 - **Survivor rule:** the record with more activities, then the older one. The merge screen lets you pick another.
 - **Scan frequency:** the nightly incremental scan, and also after each import (stage 12), over the imported records.
+
+## Amended (2026-11-06, build)
+Deviations are recorded in [ADR 0247](../adr/0247-duplicate-rules-and-scan.md#amendment-2026-11-06-stage-16-build):
+bulk merge runs in batches from the page rather than as a separate job; the import dry run's name
+flag is on `import.csv.preview` because stage 12 is not built; visibility and the moves for stages
+12 and 13 wait for those stages.

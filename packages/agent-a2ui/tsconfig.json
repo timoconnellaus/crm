@@ -1,7 +1,6 @@
 {
-  "extends": "@relationship-os/config/tsconfig.base.json",
+  "extends": "@relationship-os/config/tsconfig.react.json",
   "compilerOptions": {
-    "lib": ["ES2023", "DOM"],
     "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types"]
   },
   "include": ["src", "test"]

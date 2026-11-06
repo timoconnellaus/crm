@@ -49,6 +49,7 @@ import {
   writeDockWidth,
 } from "./dock-state.ts";
 import { useThread, useThreadVisible } from "./thread-provider.tsx";
+import { VoiceStartButton } from "./voice.tsx";
 
 /** "Show earlier messages", above the first loaded message when there are earlier ones. */
 export function EarlierButton({ onClick }: { onClick: () => void }) {
@@ -133,6 +134,7 @@ export function AssistantPanel({ canApprove }: { canApprove: boolean }) {
 
   const actions = (
     <>
+      <VoiceStartButton />
       <Button
         variant={searching ? "secondary" : "ghost"}
         size="icon"

@@ -303,6 +303,16 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
   // before the commit: if it cannot be written the erase fails and can be retried.
   if (!ctx.simulation) await writeEraseLog(ctx, subject);
 
+  // 3g. Duplicate pairs (ADR 0247): the subject's own, whatever their status, and any other pair
+  // whose stored reason names them (a shared organisation, domain or number).
+  const subjectIds = jsonList(recordIds);
+  ctx.write(
+    ctx.db.deleteFrom("core_duplicate_pair").where(
+      sql<SqlBool>`(object = ${object} AND (a_id IN ${subjectIds} OR b_id IN ${subjectIds}))
+          OR ${mentionsSql(terms, sql`details`)}`,
+    ),
+  );
+
   // 4. The records. Merged-away records first: they point at the survivor.
   const ordered = [...recordIds.filter((id) => id !== recordId), recordId];
   for (const ids of chunk(ordered)) {

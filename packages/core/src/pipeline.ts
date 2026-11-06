@@ -6,6 +6,7 @@
 // D1 batch (one transaction). Refusals (role, actor, gate) and failures are audited separately.
 // A gate `review` dry-runs the handler and queues a pending action instead (approvals/queue.ts);
 // reads by an MCP session see its pending actions applied (approvals/simulation.ts).
+
 import type { AuditChangeAction, CrmDb, ReviewSource } from "@relationship-os/db";
 import { checkGrant } from "@relationship-os/sdk";
 import { type Compilable, type CompiledQuery, sql } from "kysely";
@@ -21,6 +22,7 @@ import {
   overlayRead,
   simulatedTitle,
 } from "./approvals/simulation.ts";
+import { isAssignmentConflict } from "./assignment/index.ts";
 import type { AssistantThreadStore } from "./assistant/threads.ts";
 import { eventOriginOf, isBulkOperation, recordEventMessages } from "./automations/events.ts";
 import {
@@ -66,6 +68,7 @@ import {
   runAfterCommit,
   type SystemActivityInput,
 } from "./operation.ts";
+import type { VoiceRuntime } from "./operations/voice.ts";
 import {
   type ActingUser,
   type Actor,
@@ -138,6 +141,8 @@ export interface InvocationContext {
   automationHost?: AutomationHost;
   /** The assistant threads (ros-app): thread.* operations and erase reach them (ADR 0340). */
   assistantThreads?: AssistantThreadStore;
+  /** Speech providers (ADR 0349). Absent: voice is off. */
+  voice?: VoiceRuntime;
   /**
    * Test mode (ADR 0133): the call is simulated against this in-memory overlay. The gate is
    * evaluated and recorded, writes are dry-run, nothing is written and no events are sent.
@@ -506,10 +511,32 @@ function bindProvisional(
  * ForbiddenError, GateDeniedError, PendingApprovalError (queued for review), NotFoundError,
  * ConflictError.
  */
+/** How many times a call is re-run when an assignment rule's round-robin state moved under it. */
+const ASSIGNMENT_RETRIES = 5;
+
+class AssignmentRetry extends Error {
+  override name = "AssignmentRetry";
+}
+
 export async function invokeOperation<O extends AnyOperation>(
   op: O,
   rawInput: unknown,
   ctx: InvocationContext,
+): Promise<OperationOutput<O>> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await invokeOnce(op, rawInput, ctx, attempt);
+    } catch (error) {
+      if (!(error instanceof AssignmentRetry)) throw error;
+    }
+  }
+}
+
+async function invokeOnce<O extends AnyOperation>(
+  op: O,
+  rawInput: unknown,
+  ctx: InvocationContext,
+  attempt: number,
 ): Promise<OperationOutput<O>> {
   const now = (ctx.clock?.() ?? new Date()).toISOString();
   const parsed = op.input.safeParse(rawInput);
@@ -564,10 +591,12 @@ export async function invokeOperation<O extends AnyOperation>(
     await auditAlone({ ...base, gate: decision, outcome: "forbidden", error });
     throw error;
   }
+  let extensionCaller = ctx.extension;
   if (ctx.actor === "extension" || (ctx.actor === "automation" && ctx.extension)) {
     // The runtime passes the caller; an approved pending action re-run by an admin does not, so
     // it is loaded from the extension principal's installed manifest.
     const caller = ctx.extension ?? (await loadExtensionCaller(ctx.db, ctx.user.id));
+    if (caller) extensionCaller = caller;
     const grant = caller
       ? checkGrant(caller.id, caller.permissions, {
           operation: op.name,
@@ -636,7 +665,7 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.extensionHost ? { extensionHost: ctx.extensionHost } : {}),
     ...(ctx.integrations ? { integrations: ctx.integrations } : {}),
     ...(ctx.blobs ? { blobs: ctx.blobs } : {}),
-    ...(ctx.extension ? { extension: ctx.extension } : {}),
+    ...(extensionCaller ? { extension: extensionCaller } : {}),
     ...(ctx.models ? { models: ctx.models } : {}),
     ...(ctx.judge ? { judge: ctx.judge } : {}),
     ...(ctx.personsWords ? { personsWords: ctx.personsWords } : {}),
@@ -649,6 +678,7 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.events && !ctx.simulate ? { events: ctx.events } : {}),
     ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
     ...(ctx.assistantThreads ? { assistantThreads: ctx.assistantThreads } : {}),
+    ...(ctx.voice ? { voice: ctx.voice } : {}),
     pipeline: {
       crm: ctx.db,
       invoke: (name, nestedInput, nested) => {
@@ -681,6 +711,7 @@ export async function invokeOperation<O extends AnyOperation>(
           ...(ctx.events ? { events: ctx.events } : {}),
           ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
           ...(ctx.assistantThreads ? { assistantThreads: ctx.assistantThreads } : {}),
+          ...(ctx.voice ? { voice: ctx.voice } : {}),
           ...(ctx.simulate ? { simulate: ctx.simulate } : {}),
         });
       },
@@ -845,6 +876,8 @@ export async function invokeOperation<O extends AnyOperation>(
   const changeRows: { o: string; r: string; a: string; d: string }[] = [];
   for (const change of changes) {
     const diff = change.diff ?? diffRecords(change.before, change.after);
+    const assigned = change.assignment ? diff[change.assignment.field] : undefined;
+    if (assigned && change.assignment) assigned.assignedBy = change.assignment.rule;
     const timeline = timelineActivity(op.name, change, diff);
     if (timeline) handlerCtx.postActivity(timeline);
     changeRows.push({ o: change.object, r: change.id, a: change.action, d: JSON.stringify(diff) });
@@ -913,6 +946,11 @@ export async function invokeOperation<O extends AnyOperation>(
     try {
       await ctx.db.batch(statements);
     } catch (error) {
+      // A round-robin assignment state moved under this call (ADR 0246): nothing was written,
+      // so the call runs again from the start with fresh state.
+      if (isAssignmentConflict(error) && attempt < ASSIGNMENT_RETRIES) {
+        throw new AssignmentRetry();
+      }
       return fail(error, decision);
     }
   }

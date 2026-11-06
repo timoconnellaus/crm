@@ -5,6 +5,7 @@ import {
   BotIcon,
   Building2Icon,
   CheckSquareIcon,
+  CopyIcon,
   HomeIcon,
   InboxIcon,
   LayoutDashboardIcon,
@@ -18,6 +19,7 @@ import {
   ShieldCheckIcon,
   SparklesIcon,
   Trash2Icon,
+  UserCheckIcon,
   UserCogIcon,
   UserPlusIcon,
   UsersIcon,
@@ -37,6 +39,7 @@ export interface NavItem {
     | "/activity"
     | "/approvals"
     | "/suggested-contacts"
+    | "/duplicates"
     | "/trash"
     | "/settings"
     | "/settings/approval-policy"
@@ -44,9 +47,11 @@ export interface NavItem {
     | "/settings/audit"
     | "/settings/connected-apps"
     | "/settings/extensions"
+    | "/settings/assignment-rules"
     | "/settings/automations"
     | "/settings/integrations"
-    | "/settings/ai";
+    | "/settings/ai"
+    | "/settings/duplicates";
   label: string;
   icon: LucideIcon;
   /** Extra words the palette matches on. */
@@ -88,6 +93,12 @@ export const MAIN_NAV: NavItem[] = [
     label: "Suggested contacts",
     icon: UserPlusIcon,
     keywords: ["suggestions", "email", "senders", "job changes", "inbox", "add contacts"],
+  },
+  {
+    to: "/duplicates",
+    label: "Duplicates",
+    icon: CopyIcon,
+    keywords: ["merge", "dedupe", "same name", "possible duplicates", "clean up"],
   },
   { to: "/activity", label: "Activity", icon: ActivityIcon, keywords: ["timeline", "notes"] },
   { to: "/trash", label: "Trash", icon: Trash2Icon, keywords: ["deleted", "restore"] },
@@ -149,6 +160,12 @@ export const SETTINGS_NAV: NavItem[] = [
     adminOnly: true,
   },
   {
+    to: "/settings/assignment-rules",
+    label: "Assignment rules",
+    icon: UserCheckIcon,
+    keywords: ["owner", "round-robin", "territory", "fallback", "leads", "settings"],
+  },
+  {
     to: "/settings/automations",
     label: "Automation settings",
     icon: OctagonXIcon,
@@ -159,6 +176,13 @@ export const SETTINGS_NAV: NavItem[] = [
     label: "AI settings",
     icon: SparklesIcon,
     keywords: ["models", "model roles", "providers", "api keys", "usage", "embeddings"],
+    adminOnly: true,
+  },
+  {
+    to: "/settings/duplicates",
+    label: "Duplicate settings",
+    icon: CopyIcon,
+    keywords: ["merge", "dedupe", "scan", "phone", "settings"],
     adminOnly: true,
   },
 ];

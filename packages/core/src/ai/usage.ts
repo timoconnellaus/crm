@@ -64,6 +64,80 @@ export async function recordAiUsage(
     .execute();
 }
 
+/** Speech a call used (ADR 0349's amendment). Only counts. */
+export interface VoiceUsage {
+  userId: string;
+  provider: ProviderId | string;
+  /** Seconds of audio sent to speech-to-text (the `transcribe` role). */
+  audioSeconds: number;
+  /** Characters sent to text-to-speech (the `speak` role). */
+  characters: number;
+}
+
+/** Adds speech usage to today's rows: the sockets do not pass through AI Gateway. */
+export async function recordVoiceUsage(
+  db: Kysely<CoreDatabase>,
+  usage: VoiceUsage,
+  now: Date = new Date(),
+): Promise<void> {
+  const day = now.toISOString().slice(0, 10);
+  const rows = [
+    { role: "transcribe", audio_seconds: Math.max(0, usage.audioSeconds) || 0, characters: 0 },
+    { role: "speak", audio_seconds: 0, characters: Math.max(0, Math.round(usage.characters)) || 0 },
+  ].filter((row) => row.audio_seconds > 0 || row.characters > 0);
+  for (const row of rows) {
+    await db
+      .insertInto("core_voice_usage")
+      .values({ ...row, day, user_id: usage.userId, provider: usage.provider, requests: 1 })
+      .onConflict((oc) =>
+        oc.columns(["day", "user_id", "role", "provider"]).doUpdateSet((eb) => ({
+          requests: eb("core_voice_usage.requests", "+", 1),
+          audio_seconds: eb("core_voice_usage.audio_seconds", "+", row.audio_seconds),
+          characters: eb("core_voice_usage.characters", "+", row.characters),
+        })),
+      )
+      .execute();
+  }
+}
+
+export interface VoiceUsageSummary {
+  role: string;
+  provider: string;
+  requests: number;
+  audioSeconds: number;
+  characters: number;
+}
+
+/** Speech usage over the last `days` days (today included), per role and provider. */
+export async function voiceUsage(
+  db: Kysely<CoreDatabase>,
+  days: number,
+  now: Date = new Date(),
+): Promise<VoiceUsageSummary[]> {
+  const since = new Date(now.getTime() - (days - 1) * 86_400_000).toISOString().slice(0, 10);
+  const rows = await db
+    .selectFrom("core_voice_usage")
+    .selectAll()
+    .where("day", ">=", since)
+    .execute();
+  const totals = new Map<string, VoiceUsageSummary>();
+  for (const row of rows) {
+    const key = `${row.role}:${row.provider}`;
+    const total = totals.get(key) ?? {
+      role: row.role,
+      provider: row.provider,
+      requests: 0,
+      audioSeconds: 0,
+      characters: 0,
+    };
+    total.requests += row.requests;
+    total.audioSeconds += row.audio_seconds;
+    total.characters += row.characters;
+    totals.set(key, total);
+  }
+  return [...totals.values()];
+}
+
 export interface ProviderUsage {
   provider: ProviderId | string;
   label: string;

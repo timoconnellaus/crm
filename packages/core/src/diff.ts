@@ -1,6 +1,7 @@
 // Field-level before/after diffs for the audit log (ADR 0017).
 
-export type FieldDiff = Record<string, { before: unknown; after: unknown }>;
+/** `assignedBy`: the assignment rule that set this owner field (ADR 0246). */
+export type FieldDiff = Record<string, { before: unknown; after: unknown; assignedBy?: string }>;
 
 /** JSON with object keys sorted, so equal values compare equal regardless of key order. */
 function stable(value: unknown): string {

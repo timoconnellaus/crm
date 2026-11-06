@@ -20,6 +20,7 @@ import {
   reviewIndependence,
   THINKING_LEVELS,
 } from "../ai/roles.ts";
+import { voiceUsage } from "../ai/usage.ts";
 import { ConfigError, OperationError, ValidationError } from "../errors.ts";
 import { defineOperation } from "../operation.ts";
 import { AI_SETTINGS, loadAiSettings } from "../settings.ts";
@@ -586,6 +587,18 @@ export const aiUsage = defineOperation({
     sampled: z.number(),
     fetchedAt: z.string(),
     source: z.enum(["gateway", "workspace"]).optional(),
+    /** Speech, counted by us: its sockets do not go through AI Gateway (ADR 0349). */
+    speech: z
+      .array(
+        z.object({
+          role: z.string(),
+          provider: z.string(),
+          requests: z.number(),
+          audioSeconds: z.number(),
+          characters: z.number(),
+        }),
+      )
+      .optional(),
     providers: z
       .array(
         z.object({
@@ -604,6 +617,7 @@ export const aiUsage = defineOperation({
   actors: ["human"],
   mcp: { expose: false },
   async handler(input, ctx) {
+    const speech = await voiceUsage(ctx.db, input.days);
     if (!ctx.aiAdmin) {
       return {
         available: false,
@@ -613,10 +627,11 @@ export const aiUsage = defineOperation({
         truncated: false,
         sampled: 0,
         fetchedAt: ctx.now,
+        speech,
       };
     }
     const report = await ctx.aiAdmin.usage(input.days);
-    return { ...report, reason: report.reason ?? null };
+    return { ...report, reason: report.reason ?? null, speech };
   },
 });
 

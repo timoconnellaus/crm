@@ -28,7 +28,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 360,
+  "coreSchemaVersion": 362,
   "extensionContract": {
     "supported": [
       1
@@ -334,6 +334,14 @@
       "sha256": "121016373844f8cc2c4e816ec8ff9b573bd3d8ec74aaaac0419fa96a008710c3"
     },
     {
+      "name": "0310_assignment_rules.sql",
+      "sha256": "81e1090afbda0ad96c8f9635f0fd01f86401420bc061de881edfc32ae68ae09a"
+    },
+    {
+      "name": "0320_duplicates.sql",
+      "sha256": "3a7c4d2f9ee3dbcdc489091e1db2c7a6f76dc46b2b462c4fedf0ca90afe206cf"
+    },
+    {
       "name": "0330_erase_completeness.sql",
       "sha256": "15ccaf1f0ddac644c2eb9d46d07f923f74b374a5d574c67be42d8b80571dce9f"
     },
@@ -360,6 +368,14 @@
     {
       "name": "0360_ai_cache_estimate.sql",
       "sha256": "13e72cf842cbb98aee1f2de16241b73094777578b2062486b8c2f188486d45dc"
+    },
+    {
+      "name": "0361_voice_preferences.sql",
+      "sha256": "bc7af6698221ebe56d2a376cc8afa0ce71fcfc8e29edf8476a8ecb814267e8fc"
+    },
+    {
+      "name": "0362_voice_usage.sql",
+      "sha256": "bbfc4c830d9052c91eca2b5dcddc829555de6c20e9328ddf33268af29c2a50c8"
     }
   ],
   "product": "relationship-os",

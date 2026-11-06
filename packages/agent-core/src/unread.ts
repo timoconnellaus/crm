@@ -2,7 +2,7 @@
 // seen. The thread remembers the last seq the person saw; everything the assistant wrote after it
 // is unread. A reply counts once however many messages (tool steps) it took. Sending a message
 // means the person has seen everything before it.
-import { messageText, type ThreadMessage } from "./thread.ts";
+import { readableText, type ThreadMessage } from "./thread.ts";
 
 export interface UnreadState {
   /** The newest seq the person has seen. */
@@ -14,8 +14,9 @@ export function unreadCount(messages: readonly ThreadMessage[], lastSeenSeq: num
   const turns = new Set<number>();
   for (const m of messages) {
     if (m.seq <= lastSeenSeq || m.deletedAt) continue;
-    if (m.role !== "assistant" && m.role !== "notice") continue;
-    if (m.role === "assistant" && !messageText(m)) continue;
+    const card = m.role === "tool" && m.parts.some((p) => p.type === "a2ui");
+    if (m.role !== "assistant" && m.role !== "notice" && !card) continue;
+    if (m.role === "assistant" && !readableText(m)) continue;
     turns.add(m.turn);
   }
   return turns.size;

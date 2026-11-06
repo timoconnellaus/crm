@@ -28,7 +28,9 @@ export function useObjectInfo(name: string): {
 /** Extension objects (`<extension>.<object>`), for navigation. */
 export function useExtensionObjects(): ObjectInfo[] {
   const query = useSchemaObjects();
-  return (query.data?.objects ?? []).filter((o) => o.extension && o.name.includes("."));
+  return (query.data?.objects ?? [])
+    .filter((o) => o.extension && o.name.includes("."))
+    .sort((a, b) => a.navigationOrder - b.navigationOrder);
 }
 
 /**

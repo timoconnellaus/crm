@@ -1,5 +1,6 @@
 // "New person" dialog (`c` on People, or from the command palette). Creates via person.create
-// and opens the new record.
+// and opens the new record. As fields are filled it shows possible duplicates (duplicate.check);
+// nothing blocks but a taken email, so the button then reads "Create anyway".
 import { Button } from "@relationship-os/ui/components/button";
 import {
   Dialog,
@@ -15,6 +16,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { errorMessage, useOpMutation } from "#/lib/query";
+import { DuplicateWarnings, useDuplicateCheck } from "../duplicates/duplicate-warnings.tsx";
 
 export interface CreatePersonDialogProps {
   open: boolean;
@@ -31,6 +33,31 @@ export function CreatePersonDialog({
   const navigate = useNavigate();
   const create = useOpMutation("person.create");
   const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ givenName: "", familyName: "", email: "", phone: "" });
+  const check = useDuplicateCheck(
+    {
+      object: "person",
+      values: {
+        givenName: draft.givenName,
+        familyName: draft.familyName,
+        emails: draft.email.includes("@") ? [draft.email.trim().toLowerCase()] : [],
+        phones: draft.phone.trim() ? [draft.phone.trim()] : [],
+      },
+    },
+    open,
+  );
+  const warned = check.warnings.length > 0;
+
+  function onFormChange(event: FormEvent<HTMLFormElement>) {
+    const form = new FormData(event.currentTarget);
+    const text = (name: string) => String(form.get(name) ?? "");
+    setDraft({
+      givenName: text("givenName"),
+      familyName: text("familyName"),
+      email: text("email"),
+      phone: text("phone"),
+    });
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,12 +85,20 @@ export function CreatePersonDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) setError(null);
+        if (!next) {
+          setError(null);
+          setDraft({ givenName: "", familyName: "", email: "", phone: "" });
+        }
         onOpenChange(next);
       }}
     >
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={onSubmit} className="grid gap-4" aria-label="New person">
+        <form
+          onSubmit={onSubmit}
+          onChange={onFormChange}
+          className="grid gap-4"
+          aria-label="New person"
+        >
           <DialogHeader>
             <DialogTitle>New person</DialogTitle>
             <DialogDescription>A name or an email is enough to start.</DialogDescription>
@@ -86,6 +121,7 @@ export function CreatePersonDialog({
             <Label htmlFor="new-phone">Phone</Label>
             <Input id="new-phone" name="phone" type="tel" maxLength={50} />
           </div>
+          <DuplicateWarnings object="person" check={check} onOpen={() => onOpenChange(false)} />
           {error && (
             <p className="text-sm text-destructive" role="alert">
               {error}
@@ -96,7 +132,7 @@ export function CreatePersonDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? "Creating…" : "Create person"}
+              {create.isPending ? "Creating…" : warned ? "Create anyway" : "Create person"}
             </Button>
           </DialogFooter>
         </form>

@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
 import { Route as AppApprovalsRouteImport } from './routes/_app/approvals'
 import { Route as AppAssistantRouteImport } from './routes/_app/assistant'
+import { Route as AppDuplicatesRouteImport } from './routes/_app/duplicates'
 import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppNotificationsRouteImport } from './routes/_app/notifications'
 import { Route as AppSetupRouteImport } from './routes/_app/setup'
@@ -25,6 +26,7 @@ import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ConnectHandoffRouteImport } from './routes/connect.handoff'
 import { Route as GatekeeperSplatRouteImport } from './routes/gatekeeper/$'
+import { Route as AppAssistantCardsRouteImport } from './routes/_app/assistant_.cards'
 import { Route as AppAutomationsIndexRouteImport } from './routes/_app/automations/index'
 import { Route as AppAutomationsIdRouteImport } from './routes/_app/automations/$id'
 import { Route as AppDashboardsIndexRouteImport } from './routes/_app/dashboards/index'
@@ -37,10 +39,12 @@ import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/ind
 import { Route as AppSettingsAdjudicatorRouteImport } from './routes/_app/settings/adjudicator'
 import { Route as AppSettingsAiRouteImport } from './routes/_app/settings/ai'
 import { Route as AppSettingsApprovalPolicyRouteImport } from './routes/_app/settings/approval-policy'
+import { Route as AppSettingsAssignmentRulesRouteImport } from './routes/_app/settings/assignment-rules'
 import { Route as AppSettingsAssistantMemoryRouteImport } from './routes/_app/settings/assistant-memory'
 import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
 import { Route as AppSettingsAutomationsRouteImport } from './routes/_app/settings/automations'
 import { Route as AppSettingsConnectedAppsRouteImport } from './routes/_app/settings/connected-apps'
+import { Route as AppSettingsDuplicatesRouteImport } from './routes/_app/settings/duplicates'
 import { Route as AppSettingsExtensionsRouteImport } from './routes/_app/settings/extensions'
 import { Route as AppSettingsGeneralRouteImport } from './routes/_app/settings/general'
 import { Route as AppSettingsIntegrationsRouteImport } from './routes/_app/settings/integrations'
@@ -52,6 +56,7 @@ import { Route as AppSettingsStorageRouteImport } from './routes/_app/settings/s
 import { Route as AppSettingsSupportAccessRouteImport } from './routes/_app/settings/support-access'
 import { Route as AppSettingsUpdatesRouteImport } from './routes/_app/settings/updates'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
+import { Route as AppSettingsVoiceRouteImport } from './routes/_app/settings/voice'
 import { Route as ApiAssistantThreadRouteImport } from './routes/api/assistant/thread'
 import { Route as ApiAssistantTurnRouteImport } from './routes/api/assistant/turn'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -87,6 +92,11 @@ const AppApprovalsRoute = AppApprovalsRouteImport.update({
 const AppAssistantRoute = AppAssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDuplicatesRoute = AppDuplicatesRouteImport.update({
+  id: '/duplicates',
+  path: '/duplicates',
   getParentRoute: () => AppRoute,
 } as any)
 const AppImportRoute = AppImportRouteImport.update({
@@ -138,6 +148,11 @@ const GatekeeperSplatRoute = GatekeeperSplatRouteImport.update({
   id: '/gatekeeper/$',
   path: '/gatekeeper/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppAssistantCardsRoute = AppAssistantCardsRouteImport.update({
+  id: '/assistant_/cards',
+  path: '/assistant/cards',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppAutomationsIndexRoute = AppAutomationsIndexRouteImport.update({
   id: '/automations/',
@@ -200,6 +215,12 @@ const AppSettingsApprovalPolicyRoute =
     path: '/settings/approval-policy',
     getParentRoute: () => AppRoute,
   } as any)
+const AppSettingsAssignmentRulesRoute =
+  AppSettingsAssignmentRulesRouteImport.update({
+    id: '/settings/assignment-rules',
+    path: '/settings/assignment-rules',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSettingsAssistantMemoryRoute =
   AppSettingsAssistantMemoryRouteImport.update({
     id: '/settings/assistant-memory',
@@ -222,6 +243,11 @@ const AppSettingsConnectedAppsRoute =
     path: '/settings/connected-apps',
     getParentRoute: () => AppRoute,
   } as any)
+const AppSettingsDuplicatesRoute = AppSettingsDuplicatesRouteImport.update({
+  id: '/settings/duplicates',
+  path: '/settings/duplicates',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsExtensionsRoute = AppSettingsExtensionsRouteImport.update({
   id: '/settings/extensions',
   path: '/settings/extensions',
@@ -281,6 +307,11 @@ const AppSettingsUsersRoute = AppSettingsUsersRouteImport.update({
   path: '/settings/users',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsVoiceRoute = AppSettingsVoiceRouteImport.update({
+  id: '/settings/voice',
+  path: '/settings/voice',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAssistantThreadRoute = ApiAssistantThreadRouteImport.update({
   id: '/api/assistant/thread',
   path: '/api/assistant/thread',
@@ -324,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
   '/assistant': typeof AppAssistantRoute
+  '/duplicates': typeof AppDuplicatesRoute
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
   '/setup': typeof AppSetupRoute
@@ -334,6 +366,7 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/connect/handoff': typeof ConnectHandoffRoute
   '/gatekeeper/$': typeof GatekeeperSplatRoute
+  '/assistant/cards': typeof AppAssistantCardsRoute
   '/automations/$id': typeof AppAutomationsIdRoute
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
@@ -341,10 +374,12 @@ export interface FileRoutesByFullPath {
   '/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/settings/ai': typeof AppSettingsAiRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/settings/assignment-rules': typeof AppSettingsAssignmentRulesRoute
   '/settings/assistant-memory': typeof AppSettingsAssistantMemoryRoute
   '/settings/audit': typeof AppSettingsAuditRoute
   '/settings/automations': typeof AppSettingsAutomationsRoute
   '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
+  '/settings/duplicates': typeof AppSettingsDuplicatesRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/integrations': typeof AppSettingsIntegrationsRoute
@@ -356,6 +391,7 @@ export interface FileRoutesByFullPath {
   '/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
+  '/settings/voice': typeof AppSettingsVoiceRoute
   '/api/assistant/thread': typeof ApiAssistantThreadRouteWithChildren
   '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -374,6 +410,7 @@ export interface FileRoutesByTo {
   '/activity': typeof AppActivityRoute
   '/approvals': typeof AppApprovalsRoute
   '/assistant': typeof AppAssistantRoute
+  '/duplicates': typeof AppDuplicatesRoute
   '/import': typeof AppImportRoute
   '/notifications': typeof AppNotificationsRoute
   '/setup': typeof AppSetupRoute
@@ -385,6 +422,7 @@ export interface FileRoutesByTo {
   '/connect/handoff': typeof ConnectHandoffRoute
   '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/': typeof AppIndexRoute
+  '/assistant/cards': typeof AppAssistantCardsRoute
   '/automations/$id': typeof AppAutomationsIdRoute
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
@@ -392,10 +430,12 @@ export interface FileRoutesByTo {
   '/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/settings/ai': typeof AppSettingsAiRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/settings/assignment-rules': typeof AppSettingsAssignmentRulesRoute
   '/settings/assistant-memory': typeof AppSettingsAssistantMemoryRoute
   '/settings/audit': typeof AppSettingsAuditRoute
   '/settings/automations': typeof AppSettingsAutomationsRoute
   '/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
+  '/settings/duplicates': typeof AppSettingsDuplicatesRoute
   '/settings/extensions': typeof AppSettingsExtensionsRoute
   '/settings/general': typeof AppSettingsGeneralRoute
   '/settings/integrations': typeof AppSettingsIntegrationsRoute
@@ -407,6 +447,7 @@ export interface FileRoutesByTo {
   '/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
+  '/settings/voice': typeof AppSettingsVoiceRoute
   '/api/assistant/thread': typeof ApiAssistantThreadRouteWithChildren
   '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -427,6 +468,7 @@ export interface FileRoutesById {
   '/_app/activity': typeof AppActivityRoute
   '/_app/approvals': typeof AppApprovalsRoute
   '/_app/assistant': typeof AppAssistantRoute
+  '/_app/duplicates': typeof AppDuplicatesRoute
   '/_app/import': typeof AppImportRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/setup': typeof AppSetupRoute
@@ -438,6 +480,7 @@ export interface FileRoutesById {
   '/connect/handoff': typeof ConnectHandoffRoute
   '/gatekeeper/$': typeof GatekeeperSplatRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/assistant_/cards': typeof AppAssistantCardsRoute
   '/_app/automations/$id': typeof AppAutomationsIdRoute
   '/_app/dashboards/$id': typeof AppDashboardsIdRoute
   '/_app/organisations/$id': typeof AppOrganisationsIdRoute
@@ -445,10 +488,12 @@ export interface FileRoutesById {
   '/_app/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/_app/settings/ai': typeof AppSettingsAiRoute
   '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/_app/settings/assignment-rules': typeof AppSettingsAssignmentRulesRoute
   '/_app/settings/assistant-memory': typeof AppSettingsAssistantMemoryRoute
   '/_app/settings/audit': typeof AppSettingsAuditRoute
   '/_app/settings/automations': typeof AppSettingsAutomationsRoute
   '/_app/settings/connected-apps': typeof AppSettingsConnectedAppsRoute
+  '/_app/settings/duplicates': typeof AppSettingsDuplicatesRoute
   '/_app/settings/extensions': typeof AppSettingsExtensionsRoute
   '/_app/settings/general': typeof AppSettingsGeneralRoute
   '/_app/settings/integrations': typeof AppSettingsIntegrationsRoute
@@ -460,6 +505,7 @@ export interface FileRoutesById {
   '/_app/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/_app/settings/updates': typeof AppSettingsUpdatesRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
+  '/_app/settings/voice': typeof AppSettingsVoiceRoute
   '/api/assistant/thread': typeof ApiAssistantThreadRouteWithChildren
   '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -481,6 +527,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/approvals'
     | '/assistant'
+    | '/duplicates'
     | '/import'
     | '/notifications'
     | '/setup'
@@ -491,6 +538,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/connect/handoff'
     | '/gatekeeper/$'
+    | '/assistant/cards'
     | '/automations/$id'
     | '/dashboards/$id'
     | '/organisations/$id'
@@ -498,10 +546,12 @@ export interface FileRouteTypes {
     | '/settings/adjudicator'
     | '/settings/ai'
     | '/settings/approval-policy'
+    | '/settings/assignment-rules'
     | '/settings/assistant-memory'
     | '/settings/audit'
     | '/settings/automations'
     | '/settings/connected-apps'
+    | '/settings/duplicates'
     | '/settings/extensions'
     | '/settings/general'
     | '/settings/integrations'
@@ -513,6 +563,7 @@ export interface FileRouteTypes {
     | '/settings/support-access'
     | '/settings/updates'
     | '/settings/users'
+    | '/settings/voice'
     | '/api/assistant/thread'
     | '/api/assistant/turn'
     | '/api/auth/$'
@@ -531,6 +582,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/approvals'
     | '/assistant'
+    | '/duplicates'
     | '/import'
     | '/notifications'
     | '/setup'
@@ -542,6 +594,7 @@ export interface FileRouteTypes {
     | '/connect/handoff'
     | '/gatekeeper/$'
     | '/'
+    | '/assistant/cards'
     | '/automations/$id'
     | '/dashboards/$id'
     | '/organisations/$id'
@@ -549,10 +602,12 @@ export interface FileRouteTypes {
     | '/settings/adjudicator'
     | '/settings/ai'
     | '/settings/approval-policy'
+    | '/settings/assignment-rules'
     | '/settings/assistant-memory'
     | '/settings/audit'
     | '/settings/automations'
     | '/settings/connected-apps'
+    | '/settings/duplicates'
     | '/settings/extensions'
     | '/settings/general'
     | '/settings/integrations'
@@ -564,6 +619,7 @@ export interface FileRouteTypes {
     | '/settings/support-access'
     | '/settings/updates'
     | '/settings/users'
+    | '/settings/voice'
     | '/api/assistant/thread'
     | '/api/assistant/turn'
     | '/api/auth/$'
@@ -583,6 +639,7 @@ export interface FileRouteTypes {
     | '/_app/activity'
     | '/_app/approvals'
     | '/_app/assistant'
+    | '/_app/duplicates'
     | '/_app/import'
     | '/_app/notifications'
     | '/_app/setup'
@@ -594,6 +651,7 @@ export interface FileRouteTypes {
     | '/connect/handoff'
     | '/gatekeeper/$'
     | '/_app/'
+    | '/_app/assistant_/cards'
     | '/_app/automations/$id'
     | '/_app/dashboards/$id'
     | '/_app/organisations/$id'
@@ -601,10 +659,12 @@ export interface FileRouteTypes {
     | '/_app/settings/adjudicator'
     | '/_app/settings/ai'
     | '/_app/settings/approval-policy'
+    | '/_app/settings/assignment-rules'
     | '/_app/settings/assistant-memory'
     | '/_app/settings/audit'
     | '/_app/settings/automations'
     | '/_app/settings/connected-apps'
+    | '/_app/settings/duplicates'
     | '/_app/settings/extensions'
     | '/_app/settings/general'
     | '/_app/settings/integrations'
@@ -616,6 +676,7 @@ export interface FileRouteTypes {
     | '/_app/settings/support-access'
     | '/_app/settings/updates'
     | '/_app/settings/users'
+    | '/_app/settings/voice'
     | '/api/assistant/thread'
     | '/api/assistant/turn'
     | '/api/auth/$'
@@ -683,6 +744,13 @@ declare module '@tanstack/react-router' {
       path: '/assistant'
       fullPath: '/assistant'
       preLoaderRoute: typeof AppAssistantRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/duplicates': {
+      id: '/_app/duplicates'
+      path: '/duplicates'
+      fullPath: '/duplicates'
+      preLoaderRoute: typeof AppDuplicatesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/import': {
@@ -754,6 +822,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/gatekeeper/$'
       preLoaderRoute: typeof GatekeeperSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/assistant_/cards': {
+      id: '/_app/assistant_/cards'
+      path: '/assistant/cards'
+      fullPath: '/assistant/cards'
+      preLoaderRoute: typeof AppAssistantCardsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/automations/': {
       id: '/_app/automations/'
@@ -839,6 +914,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsApprovalPolicyRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/assignment-rules': {
+      id: '/_app/settings/assignment-rules'
+      path: '/settings/assignment-rules'
+      fullPath: '/settings/assignment-rules'
+      preLoaderRoute: typeof AppSettingsAssignmentRulesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/assistant-memory': {
       id: '/_app/settings/assistant-memory'
       path: '/settings/assistant-memory'
@@ -865,6 +947,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/connected-apps'
       fullPath: '/settings/connected-apps'
       preLoaderRoute: typeof AppSettingsConnectedAppsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/duplicates': {
+      id: '/_app/settings/duplicates'
+      path: '/settings/duplicates'
+      fullPath: '/settings/duplicates'
+      preLoaderRoute: typeof AppSettingsDuplicatesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/extensions': {
@@ -944,6 +1033,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsUsersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/voice': {
+      id: '/_app/settings/voice'
+      path: '/settings/voice'
+      fullPath: '/settings/voice'
+      preLoaderRoute: typeof AppSettingsVoiceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/assistant/thread': {
       id: '/api/assistant/thread'
       path: '/api/assistant/thread'
@@ -1000,6 +1096,7 @@ interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppApprovalsRoute: typeof AppApprovalsRoute
   AppAssistantRoute: typeof AppAssistantRoute
+  AppDuplicatesRoute: typeof AppDuplicatesRoute
   AppImportRoute: typeof AppImportRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppSetupRoute: typeof AppSetupRoute
@@ -1008,6 +1105,7 @@ interface AppRouteChildren {
   AppTasksRoute: typeof AppTasksRoute
   AppTrashRoute: typeof AppTrashRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAssistantCardsRoute: typeof AppAssistantCardsRoute
   AppAutomationsIdRoute: typeof AppAutomationsIdRoute
   AppDashboardsIdRoute: typeof AppDashboardsIdRoute
   AppOrganisationsIdRoute: typeof AppOrganisationsIdRoute
@@ -1015,10 +1113,12 @@ interface AppRouteChildren {
   AppSettingsAdjudicatorRoute: typeof AppSettingsAdjudicatorRoute
   AppSettingsAiRoute: typeof AppSettingsAiRoute
   AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
+  AppSettingsAssignmentRulesRoute: typeof AppSettingsAssignmentRulesRoute
   AppSettingsAssistantMemoryRoute: typeof AppSettingsAssistantMemoryRoute
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
   AppSettingsAutomationsRoute: typeof AppSettingsAutomationsRoute
   AppSettingsConnectedAppsRoute: typeof AppSettingsConnectedAppsRoute
+  AppSettingsDuplicatesRoute: typeof AppSettingsDuplicatesRoute
   AppSettingsExtensionsRoute: typeof AppSettingsExtensionsRoute
   AppSettingsGeneralRoute: typeof AppSettingsGeneralRoute
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
@@ -1030,6 +1130,7 @@ interface AppRouteChildren {
   AppSettingsSupportAccessRoute: typeof AppSettingsSupportAccessRoute
   AppSettingsUpdatesRoute: typeof AppSettingsUpdatesRoute
   AppSettingsUsersRoute: typeof AppSettingsUsersRoute
+  AppSettingsVoiceRoute: typeof AppSettingsVoiceRoute
   AppAutomationsIndexRoute: typeof AppAutomationsIndexRoute
   AppDashboardsIndexRoute: typeof AppDashboardsIndexRoute
   AppOrganisationsIndexRoute: typeof AppOrganisationsIndexRoute
@@ -1043,6 +1144,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppApprovalsRoute: AppApprovalsRoute,
   AppAssistantRoute: AppAssistantRoute,
+  AppDuplicatesRoute: AppDuplicatesRoute,
   AppImportRoute: AppImportRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppSetupRoute: AppSetupRoute,
@@ -1051,6 +1153,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTasksRoute: AppTasksRoute,
   AppTrashRoute: AppTrashRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAssistantCardsRoute: AppAssistantCardsRoute,
   AppAutomationsIdRoute: AppAutomationsIdRoute,
   AppDashboardsIdRoute: AppDashboardsIdRoute,
   AppOrganisationsIdRoute: AppOrganisationsIdRoute,
@@ -1058,10 +1161,12 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsAdjudicatorRoute: AppSettingsAdjudicatorRoute,
   AppSettingsAiRoute: AppSettingsAiRoute,
   AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
+  AppSettingsAssignmentRulesRoute: AppSettingsAssignmentRulesRoute,
   AppSettingsAssistantMemoryRoute: AppSettingsAssistantMemoryRoute,
   AppSettingsAuditRoute: AppSettingsAuditRoute,
   AppSettingsAutomationsRoute: AppSettingsAutomationsRoute,
   AppSettingsConnectedAppsRoute: AppSettingsConnectedAppsRoute,
+  AppSettingsDuplicatesRoute: AppSettingsDuplicatesRoute,
   AppSettingsExtensionsRoute: AppSettingsExtensionsRoute,
   AppSettingsGeneralRoute: AppSettingsGeneralRoute,
   AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
@@ -1073,6 +1178,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsSupportAccessRoute: AppSettingsSupportAccessRoute,
   AppSettingsUpdatesRoute: AppSettingsUpdatesRoute,
   AppSettingsUsersRoute: AppSettingsUsersRoute,
+  AppSettingsVoiceRoute: AppSettingsVoiceRoute,
   AppAutomationsIndexRoute: AppAutomationsIndexRoute,
   AppDashboardsIndexRoute: AppDashboardsIndexRoute,
   AppOrganisationsIndexRoute: AppOrganisationsIndexRoute,

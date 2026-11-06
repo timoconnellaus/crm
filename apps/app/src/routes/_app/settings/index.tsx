@@ -6,18 +6,21 @@ import {
   BookmarkIcon,
   ChevronRightIcon,
   CoinsIcon,
+  CopyIcon,
   CreditCardIcon,
   DatabaseIcon,
   DownloadCloudIcon,
   GavelIcon,
   LifeBuoyIcon,
   ListOrderedIcon,
+  MicIcon,
   PlugIcon,
   PlugZapIcon,
   PuzzleIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  UserCheckIcon,
   UsersIcon,
   WorkflowIcon,
 } from "lucide-react";
@@ -41,6 +44,7 @@ function Section({
     | "/settings/assistant-memory"
     | "/settings/adjudicator"
     | "/settings/users"
+    | "/settings/assignment-rules"
     | "/settings/audit"
     | "/settings/connected-apps"
     | "/settings/extensions"
@@ -49,8 +53,10 @@ function Section({
     | "/settings/storage"
     | "/settings/updates"
     | "/settings/ai"
+    | "/settings/voice"
     | "/settings/general"
     | "/settings/automations"
+    | "/settings/duplicates"
     | "/settings/plan"
     | "/settings/support-access";
 }) {
@@ -128,6 +134,12 @@ function SettingsPage() {
             to="/settings/general"
           />
           <Section
+            icon={<MicIcon className="size-5" />}
+            title="Voice"
+            description="How the assistant sounds and how you talk to it."
+            to="/settings/voice"
+          />
+          <Section
             icon={<ShieldCheckIcon className="size-5" />}
             title="Approval policy"
             description={
@@ -190,11 +202,25 @@ function SettingsPage() {
             to="/settings/extensions"
           />
           <Section
+            icon={<UserCheckIcon className="size-5" />}
+            title="Assignment rules"
+            description="Who owns new people, organisations, leads and deals: round-robin or by field values, with a fallback owner."
+            to="/settings/assignment-rules"
+          />
+          <Section
             icon={<WorkflowIcon className="size-5" />}
             title="Automations"
             description="The kill switch, the schedule timezone and the debounce window."
             to="/settings/automations"
           />
+          {isAdmin && (
+            <Section
+              icon={<CopyIcon className="size-5" />}
+              title="Duplicates"
+              description="Scan for duplicates now, and when a shared phone number stops counting."
+              to="/settings/duplicates"
+            />
+          )}
           {isAdmin && (
             <Section
               icon={<ScrollTextIcon className="size-5" />}

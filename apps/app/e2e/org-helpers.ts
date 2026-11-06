@@ -18,7 +18,8 @@ export async function createOrganisation(
   await dialog.getByLabel("Name").fill(org.name);
   if (org.domains) await dialog.getByLabel("Domains").fill(org.domains);
   if (org.industry) await dialog.getByLabel("Industry").fill(org.industry);
-  await dialog.getByRole("button", { name: "Create organisation" }).click();
+  // "Create anyway" when the name matches one already there (a duplicate warning).
+  await dialog.getByRole("button", { name: /^Create (organisation|anyway)$/ }).click();
   await expect(page).toHaveURL(/\/organisations\/org_/);
   // Wait out the closing animation too (not only data-state=closed): pressing `c` while the old
   // dialog is still animating out reopens it with the previous values.

@@ -84,3 +84,62 @@ The options looked at while writing the spec:
   no control over where audio goes.
 - **A second provider for each side now.** Out of scope; the provider interfaces in `agent-voice`
   leave room for it.
+
+## Amendment (2026-11-06, W9 as built)
+
+**The gateway check (decision 5): the sockets go direct, with usage logged by us.**
+- AssemblyAI is not among AI Gateway's [24 listed providers](https://developers.cloudflare.com/ai-gateway/usage/providers/),
+  and the [Realtime WebSockets API](https://developers.cloudflare.com/ai-gateway/usage/websockets-api/realtime-api/)
+  names only OpenAI, Google AI Studio, Cartesia, ElevenLabs, Fal AI and Deepgram (Workers AI).
+- [Custom providers](https://developers.cloudflare.com/ai-gateway/configuration/custom-providers/)
+  are documented for HTTPS only: `base_url` must be HTTPS and the page describes `POST` requests.
+  It says nothing about WebSockets.
+- The non-realtime WebSocket API wraps JSON request and response calls, which is not what a
+  stream of binary audio with server turn events needs, and the Universal Endpoint it belongs to is
+  deprecated.
+- Tested: a WebSocket upgrade to `gateway.ai.cloudflare.com` with a dummy account for `openai`,
+  `assemblyai` and `custom-foo` answers 401 (code 2009) for all three, so authentication comes
+  before provider routing and an unauthenticated probe cannot settle it. No gateway account or
+  token was available to the build, so **an authenticated test of a `custom-` provider over `wss:`
+  was not run.** The decision rests on the documentation. Both providers take a `host` option, so
+  moving to the gateway later, if it gains support, is a small change.
+- Direct calls from workerd to `wss://streaming.assemblyai.com/v3/ws` and
+  `wss://tts.us.assemblyai.com/v1/ws` were tested with the real key (`apps/app/test/voice-live.test.ts`,
+  opt-in): speech with word timings, recognition of that speech, and `Cancel`.
+
+So this is the one exception to "all AI calls through AI Gateway". The key is the Workers secret
+`AI_KEY_ASSEMBLYAI`, sent in an `Authorization` header, never in a URL. Migration 0362 adds
+`core_voice_usage`: seconds of audio in and characters out, per day, person, role and provider.
+`core_ai_usage` has no person and counts tokens, so speech has its own table beside it, and
+`ai.usage` returns both.
+
+**Other changes from the decisions above:**
+- **`withVoice` only, not `withVoiceInput`** (decision 1). Both claim the voice protocol, so they
+  cannot sit on one class. Dictation is a `withVoice` call whose utterances `afterTranscribe` sends
+  back to the browser instead of starting a turn. `agents` stays pinned at 0.33.0; no upgrade was
+  needed.
+- **A call has its own socket** to the same object and path (`/api/assistant/socket?call=talk` or
+  `?call=dictation`). The thread's socket stays as it was and thread frames are not sent to voice
+  sockets. One device talks at a time: a new call ends the old one, because the SDK's `tts` is one
+  per object.
+- **Barge-in** (decision 7) fires on a turn's first word from AssemblyAI's `Turn` messages, not on
+  its voice-activity `SpeechStarted`, and the SDK's loudness check is turned off. The browser stops
+  playback itself on that word, because the SDK sends no interrupt once the server has sent all its
+  audio, which is usually long before playback ends.
+- **Played milliseconds**: `VoiceClient` cannot report them, so `agent-voice`'s client listens on
+  the transport and keeps a clock with the same scheduling (`PlayoutClock`). If the socket drops
+  before a report, the server assumes it played from the first audio until then.
+- **What the model sees** (decision 7): `heardReply` in `agent-core` cuts a read-out reply where it
+  stopped. In a short-version reply only the `<say>` block is cut, because the answer after it was
+  on the person's screen.
+- **Spoken version** (decision 8): the model writes it in a `<say>` block at the start of its reply,
+  asked for in the tail so the cached prefix does not change. Saying "read me everything" makes it
+  put the whole answer in the block; "Read everything out" in Settings → Voice is the lasting form.
+- **Model**: the `transcribe` role's `universal-streaming` maps to AssemblyAI's
+  `universal-streaming-english`, so voice is English only for now.
+- **Voice list**: AssemblyAI has no listing API, so `agent-voice` carries a short list. The mockup's
+  names were placeholders.
+- **`voice.preview`** is a fourth operation, for the picker's Preview button.
+- **A spoken approval** is a spoken turn like any other today. Checking a spoken yes needs
+  `approval.decide` and `approval.intent` from W5.
+

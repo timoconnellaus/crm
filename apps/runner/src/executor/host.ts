@@ -13,6 +13,7 @@ import { RpcTarget } from "cloudflare:workers";
 import {
   type ActingUser,
   type CodeCaller,
+  coreOperations,
   type EventSink,
   invokeByName,
   PendingApprovalError,
@@ -43,6 +44,14 @@ export interface CodeRun {
   caller: CodeCaller;
   pending: unknown[];
   calls: number;
+  /** A saved A2UI producer (ADR 0346): only read operations answer. */
+  readOnly?: boolean;
+}
+
+/** May a saved producer call this operation? Reads only, and never another producer. */
+function readableByProducer(operation: string): boolean {
+  if (operation.startsWith("a2ui.")) return false;
+  return coreOperations.find((op) => op.name === operation)?.risk === "read";
 }
 
 export interface RunLog {
@@ -288,6 +297,11 @@ export class RunHost extends RpcTarget {
           code: "forbidden",
           message: `${operation} cannot be called from a Code Mode script; call it as a tool`,
         },
+      };
+    } else if (code.readOnly && !readableByProducer(operation)) {
+      reply = {
+        ok: false,
+        error: { code: "forbidden", message: `A saved card can only read; it called ${operation}` },
       };
     } else {
       const { caller } = code;

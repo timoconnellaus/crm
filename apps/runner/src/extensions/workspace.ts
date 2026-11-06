@@ -220,7 +220,7 @@ export class ExtensionWorkspace extends DurableObject<Env> {
   }
 
   async shipped(): Promise<ShippedExtension[]> {
-    return SHIPPED_EXTENSIONS.map(({ id, version }) => ({ id, version }));
+    return SHIPPED_EXTENSIONS.map(({ files: _files, ...meta }) => meta);
   }
 
   /**

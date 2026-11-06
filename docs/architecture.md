@@ -110,11 +110,19 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
   people, organisations, activities and tasks after 30 days through the operations pipeline
   (`trash.purge`), and admin erase redacts the append-only audit log through a sanctioned path
   ([ADR 0019](adr/0019-audit-redaction-for-erasure.md)).
+- **Duplicates** ([ADR 0247](adr/0247-duplicate-rules-and-scan.md)): plain rules in code with a
+  stated reason, no score. Every write that sets a name writes `name_key`, so `duplicate.check` at
+  creation and the scan are indexed lookups. ros-runner's minute cron runs a bounded
+  `duplicate.scan`: the one-off name-key backfill, a full scan in progress, the nightly incremental
+  scan (records changed since a cursor) and the scan after an import. Pairs live in
+  `core_duplicate_pair`; dismissals are kept. `duplicate.mergeMany` calls `person.merge` or
+  `organisation.merge` once per duplicate, and merge re-points extension relation fields
+  generically.
 - **Erase reaches every store** ([ADR 0320](adr/0320-erase-reaches-every-store.md)): besides the
   record and the audit log, an erase scrubs or deletes shared activities, pending actions, AI
   summaries and vectors, assistant threads, sync's suggestions and signatures, extension
   data (generically, through relation metadata), automation run history, notifications,
-  integration events and the outbox, and the R2 bodies of synced email (through
+  integration events and the outbox, duplicate pairs, and the R2 bodies of synced email (through
   `core_blob_deletion`, drained after the commit and by the 10-minute cron). Erased people's
   addresses go on the **erased-address list** (`core_erased_address`, SHA-256 hashes only), which
   `sync.ingest` checks so they are not collected again. Each erase writes an **erase log** entry
@@ -152,7 +160,9 @@ Typed access to core tables uses Kysely ([ADR 0014](adr/0014-kysely-for-core-sch
 An **extension** is code against one contract (`packages/sdk`): `defineObject`, `defineView` /
 `defineDashboard`, `defineAutomation`, `defineTool` ([ADR 0005](adr/0005-extensions.md)).
 
-- **Shipped extensions** live in `extensions/` and ship with releases. Deals/Pipelines is the first.
+- **Shipped extensions** live in `extensions/` and ship with releases. Deals/Pipelines is the first;
+  Leads is the second business extension and depends on it. `lifecycle` is shipped but opt-in
+  (`relationshipOs.optional` in its `package.json`): an admin installs it from Settings → Extensions.
 - **Runtime extensions** are written by Claude in-app or via MCP. They are stored in an
   `@cloudflare/computer` Workspace (a Durable Object filesystem with git), approved as a diff, and
   rolled back by reverting ([ADR 0006](adr/0006-dynamic-runtime-cloudflare-computer.md)).
@@ -191,6 +201,16 @@ How stage 3a built it ([ADR 0040](adr/0040-extension-runtime-build.md)):
     reinstalls an earlier commit.
 - **Shipped extensions** (`extensions/<id>/`; Deals is the first) are bundled as source at build time
   and installed through the same `extension.install` path at boot.
+- **Leads** ([ADR 0246](adr/0246-leads-as-an-extension-and-assignment-rules-in-core.md)) is built on
+  the public contract like Deals. A relation to `deals.deal` refuses the install where Deals is
+  missing. Conversion is a tool making several CRM calls, written to be run again. The contract
+  keys it added are general: `owner`, `navigationOrder`, `requireOneOf`, `titleDefault`, field
+  `default`, `defaultSetting` and `editableOptions`, tool `recordAction`, automation `enabled`.
+- **Assignment rules** (`packages/core/src/assignment`, ADR 0246) are core, because they apply to
+  people and organisations too and must set the owner in the create's own insert. Every create path
+  calls `assignOwner` in its handler. A round-robin rule's state is read there and advanced in the
+  same batch by a guarded write; if another create moved it, the batch fails and the pipeline runs
+  the call again, so rotation is exact.
 - **Stage behaviour** ([ADR 0100](adr/0100-stage-behaviour-and-object-contract-additions.md)):
   an object's declarative `stages` key is enforced by the host inside `record.create`,
   `record.update` and `import.records.commit` (`packages/core/src/records/stages.ts`): stage rules
@@ -450,9 +470,10 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   uncached input, cache writes, cached reads and output, and a published cache lifetime where
   known, for the compaction planner ([ADR 0341](adr/0341-compaction-cost-model-and-cache-lifetime-learner.md)).
   `transcribe` (AssemblyAI streaming) and `speak` (AssemblyAI-TTS-1) share one key,
-  `AI_KEY_ASSEMBLYAI` (a Workers secret for now; voice is off until it is set); they go through AI
-  Gateway if it can proxy their streaming sockets, otherwise directly with usage logged by us
-  ([ADR 0349](adr/0349-voice-on-agents-voice.md)). `dictation.cleanup` runs with thinking off.
+  `AI_KEY_ASSEMBLYAI` (a Workers secret; voice is off until it is set). AI Gateway cannot carry
+  their streaming sockets, so they are the one direct call, with usage logged by us in
+  `core_voice_usage` ([ADR 0349](adr/0349-voice-on-agents-voice.md)). `dictation.cleanup` runs with
+  thinking off.
   Within a config layer, `assistant.subagent` and `dictation.cleanup` follow `assistant.core` unless
   set themselves, and `AI_MODEL_ROLES` still reads `assistant` as `assistant.core` with a
   deprecation warning (migration 0351 rewrote stored admin settings).
@@ -507,7 +528,7 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
    │     └─ approvals (tap · typed · spoken, Jev-checked) ─ change sets ─ adjudicator
    ├─ compaction planner (pure cost model, alarm before cache expiry)
    ├─ memory writer (inline, Jev-gated) ──► D1 core_memory
-   ├─ voice (agent-voice: withVoice / withVoiceInput) ─ AssemblyAI STT + TTS
+   ├─ voice (agent-voice: withVoice, own socket per call) ─ AssemblyAI STT + TTS, direct
    └─ spawns ──► AgentJob DO  name job:<jobId>   (assistant.subagent; brief, grant, budget)
                     └─ stages change sets; reports progress to the parent; never chats
  ros-runner: AutomationWorkflow ─ personal routine ─ gates (plain, Jev) ─ step "message me" ─► AssistantAgent
@@ -544,7 +565,9 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   spoken, with a Jev intent check and a second step for high risk (ADR 0345). Rich messages are
   **A2UI** from a versioned catalogue (ADR 0346); **plugins** install as copies (ADR 0347);
   **connected assistants** in the same workspace exchange Jev-checked messages under a contract
-  (ADR 0348); **voice** runs on `agents/voice` (ADR 0349). The general machinery lives in
+  (ADR 0348); **voice** runs on `agents/voice` (ADR 0349): a spoken message is a normal turn in the
+  thread (`via: voice`), the browser reports played milliseconds and the thread stores what was
+  heard (`playout`), and the model is shown only that. The general machinery lives in
   MIT-licensed `packages/agent-*`, which never import CRM code; the CRM binding is in
   `packages/core/src/assistant/` and `apps/app/src/server/assistant/` (ADR 0350).
 
@@ -577,6 +600,15 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   read-only and the admin rails (`ai.cacheSettings`, `ai.updateCacheRails`).
   In the app (ADR 0030 amendment) the panel is docked on the right of the shell on tablets and
   desktops, beside the page, and stays mounted across page changes; on phones it is a sheet.
+- **Cards** ([ADR 0346](adr/0346-a2ui-catalogue-and-saved-producers.md)): rich messages are A2UI from
+  the versioned catalogue in `agent-a2ui`, drawn by the app's component map
+  (`apps/app/src/components/assistant/cards/`, charts through the dashboard widget renderers). A
+  card is an `a2ui` message part stored with its text fallback, which is all the model reads. The
+  model sends one with `show_card` (`a2ui.show`); a saved producer makes one with `a2ui.produce` and
+  no model, on a stable `LOADER.get` worker that can only read, as the viewer. Invalid cards show
+  their fallback. A button on a host card calls its operation as the viewer; a button on a model's or
+  producer's card calls `a2ui.act`, which runs it as actor `assistant` so the gate applies. The
+  approval card (`cards/approval.tsx`) asks a second tap for high-risk items (ADR 0345).
 
 - **The judge** ([ADR 0230](adr/0230-jev-as-the-typed-judge.md),
   [ADR 0232](adr/0232-judge-defaults-and-user-decisions.md), [`docs/jev.md`](jev.md); stage 11,
@@ -733,7 +765,8 @@ packages/
                        ros-runner as GATEKEEPER_<NAME> per deployment (docs/integrations.md)
 extensions/
   deals/               (stage 4) Deals: pipelines, stages, deals, participants (ADR 0026, 0100)
-  deals/               (stage 4) first real shipped extension
+  leads/               (stage 15) Leads: inbox, conversion to deals (ADR 0246)
+  lifecycle/           (stage 15) opt-in lifecycle stage on people (ADR 0246)
 docs/
   architecture.md      this file
   roadmap.md           stage order and status

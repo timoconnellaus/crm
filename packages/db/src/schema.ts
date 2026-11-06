@@ -129,6 +129,11 @@ export interface CorePersonTable extends RecordColumns {
   description: Defaulted<string | null>;
   created_by: Defaulted<string | null>;
   merged_into_id: Defaulted<string | null>;
+  /**
+   * Normalised display name for duplicate rules (stage 16, ADR 0247). Required on insert, so every
+   * writer sets it; null for a name that has nothing to compare (an email standing in for one).
+   */
+  name_key: ColumnType<string | null, string | null, string | null>;
 }
 
 export interface CorePersonEmailsTable {
@@ -164,6 +169,24 @@ export interface CoreOrganisationTable extends RecordColumns {
   description: Defaulted<string | null>;
   created_by: Defaulted<string | null>;
   merged_into_id: Defaulted<string | null>;
+  /** Normalised name for duplicate rules (stage 16, ADR 0247). Required on insert. */
+  name_key: ColumnType<string | null, string | null, string | null>;
+}
+
+/** A likely duplicate pair found by the scan (stage 16, ADR 0247). a_id < b_id. */
+export interface CoreDuplicatePairTable {
+  object: "person" | "organisation";
+  a_id: string;
+  b_id: string;
+  /** JSON array of rule ids. */
+  rules: JsonText;
+  /** JSON object: what each rule matched (organisation, domain, number). */
+  details: Defaulted<JsonText>;
+  status: Defaulted<"open" | "dismissed" | "merged">;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  decided_at: Defaulted<Timestamp | null>;
+  decided_by: Defaulted<string | null>;
 }
 
 export interface CoreOrganisationDomainsTable {
@@ -737,6 +760,49 @@ export interface CoreErasedAddressTable {
   erased_by: string | null;
 }
 
+/** Migration 0310 (ADR 0246): an assignment rule, ordered per object. */
+export interface CoreAssignmentRuleTable {
+  id: string;
+  object_type: string;
+  name: string;
+  position: number;
+  enabled: number;
+  /** JSON array of { field, op, value?, via? }. */
+  conditions: string;
+  method: "roundRobin" | "user";
+  /** JSON array of user ids. */
+  user_ids: string;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+}
+
+/** Migration 0310: a round-robin rule's rotation index (CHECK next_index >= 0 guards it). */
+export interface CoreAssignmentStateTable {
+  rule_id: string;
+  next_index: number;
+  updated_at: string | null;
+}
+
+/** Migration 0310: the owner used when no rule matches, per object. */
+export interface CoreAssignmentFallbackTable {
+  object_type: string;
+  user_id: string | null;
+  updated_at: string;
+  updated_by: string;
+}
+
+/** Migration 0310: admin-edited options of an extension select field (`editableOptions`). */
+export interface CoreFieldOptionsTable {
+  object_type: string;
+  field: string;
+  /** JSON array of { value, label, color? }. */
+  options: string;
+  updated_at: string;
+  updated_by: string;
+}
+
 /** Migration 0330 (ADR 0320): R2 objects to delete after a commit, drained with retries. */
 export interface CoreBlobDeletionTable {
   key: string;
@@ -1232,6 +1298,37 @@ export interface CoreSupportGrantsTable {
  * Migration 0260 (ADR 0213 amendment): model usage counted in a hosted workspace, per day, role
  * and provider. `billed` is 1 for Platform AI, 0 for the customer's own key.
  */
+/** Voice settings per person (ADR 0349). */
+export interface CoreVoicePrefsTable {
+  user_id: string;
+  voice_id: string;
+  speed: number;
+  default_mode: string;
+  read_out: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A device someone has used voice on; `mode` is set once it differs from their default. */
+export interface CoreVoiceDeviceTable {
+  user_id: string;
+  device_id: string;
+  label: string;
+  mode: string | null;
+  last_seen_at: string;
+}
+
+/** Speech usage per day, person, role and provider (ADR 0349's amendment). */
+export interface CoreVoiceUsageTable {
+  day: string;
+  user_id: string;
+  role: string;
+  provider: string;
+  requests: number;
+  audio_seconds: number;
+  characters: number;
+}
+
 export interface CoreAiUsageTable {
   day: string;
   role: string;
@@ -1317,6 +1414,9 @@ export interface CoreDatabase {
   core_ai_compaction_decision: CoreAiCompactionDecisionTable;
   core_ai_cache_estimate: CoreAiCacheEstimateTable;
   core_ai_cache_estimate_history: CoreAiCacheEstimateHistoryTable;
+  core_voice_prefs: CoreVoicePrefsTable;
+  core_voice_device: CoreVoiceDeviceTable;
+  core_voice_usage: CoreVoiceUsageTable;
   core_judge_usage: CoreJudgeUsageTable;
   core_entitlements: CoreEntitlementsTable;
   core_support_grants: CoreSupportGrantsTable;
@@ -1341,6 +1441,7 @@ export interface CoreDatabase {
   core_person_emails: CorePersonEmailsTable;
   core_person_phones: CorePersonPhonesTable;
   core_organisation: CoreOrganisationTable;
+  core_duplicate_pair: CoreDuplicatePairTable;
   core_organisation_domains: CoreOrganisationDomainsTable;
   core_organisation_addresses: CoreOrganisationAddressesTable;
   core_affiliation: CoreAffiliationTable;
@@ -1400,6 +1501,10 @@ export interface CoreDatabase {
   core_memory_settings: CoreMemorySettingsTable;
   core_erased_address: CoreErasedAddressTable;
   core_blob_deletion: CoreBlobDeletionTable;
+  core_assignment_rule: CoreAssignmentRuleTable;
+  core_assignment_state: CoreAssignmentStateTable;
+  core_assignment_fallback: CoreAssignmentFallbackTable;
+  core_field_options: CoreFieldOptionsTable;
   crm_stage_history: CrmStageHistoryView;
   crm_users: CrmUsersView;
   crm_people: CrmPeopleView;

@@ -17,6 +17,7 @@ import type { GateFloor } from "./gate.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
 import type { Judge } from "./judge/types.ts";
 import type { ModelRunner } from "./models.ts";
+import type { VoiceRuntime } from "./operations/voice.ts";
 import {
   ACTORS,
   type ActingUser,
@@ -51,6 +52,11 @@ export interface RecordChange {
     links?: RecordRef[];
     labels?: Record<string, { before: string | null; after: string | null }>;
   };
+  /**
+   * The owner was set by an assignment rule (ADR 0246): the owner field's diff entry records the
+   * rule's name as `assignedBy`.
+   */
+  assignment?: { field: string; rule: string } | undefined;
 }
 
 /** A link from an activity or task to a record. */
@@ -175,6 +181,8 @@ export interface HandlerContext {
   readonly automationHost?: AutomationHost;
   /** The assistant threads (Durable Objects): thread.* operations and erase reach them (ADR 0340). */
   readonly assistantThreads?: AssistantThreadStore;
+  /** Speech providers for voice.* operations (ADR 0349). Absent: voice is off. */
+  readonly voice?: VoiceRuntime;
 }
 
 /** The person's message a chat turn answers. */

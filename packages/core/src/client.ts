@@ -2,6 +2,8 @@
 // approval-policy presets. It never pulls in operation handlers or the database package, so the
 // UI bundle stays small and cannot reach D1. Import it as `@relationship-os/core/client`.
 // The in-app assistant's stream events and transcript (ADR 0200).
+
+export * from "./approvals/high-risk.ts";
 export * from "./assistant/context.ts";
 export * from "./assistant/events.ts";
 export { COMMON_CURRENCIES } from "./currencies.ts";

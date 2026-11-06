@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { PLAYOUTS } from "../src/index.ts";
+import { callKindOf } from "../src/index.ts";
 
 describe("agent-voice", () => {
-  it("is a placeholder until voice lands (stage 17, W9)", () => {
-    expect(PLAYOUTS).toEqual(["spoken", "partly_spoken", "unspoken"]);
+  it("reads a voice socket's purpose from its URL", () => {
+    expect(callKindOf("https://a.test/s?call=talk")).toBe("talk");
+    expect(callKindOf("https://a.test/s?call=dictation")).toBe("dictation");
+    expect(callKindOf("https://a.test/s")).toBeNull();
   });
 });

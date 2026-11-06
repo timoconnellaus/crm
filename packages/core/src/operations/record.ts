@@ -9,6 +9,7 @@ import type { CoreDatabase } from "@relationship-os/db";
 import type { FieldManifest } from "@relationship-os/sdk";
 import { CompiledQuery, type Kysely, type SelectQueryBuilder, sql } from "kysely";
 import { z } from "zod";
+import { assignOwner, recordAssignment } from "../assignment/index.ts";
 import { NotFoundError, ValidationError } from "../errors.ts";
 import { fieldStorage, objectTableOf } from "../extensions/schema.ts";
 import { FIELD_TYPE_REGISTRY, formulaFromStorage } from "../fields/field-types.ts";
@@ -150,7 +151,13 @@ async function prepareValues(
         { field: name },
       );
     }
-    if (field.readOnly) {
+    // Read-only fields are maintained by the host, or by the declaring extension's own code
+    // (a tool or automation of that extension, ADR 0246): Leads sets a lead's deal on conversion.
+    const ownCode =
+      field.fieldType !== "formula" &&
+      field.extension !== undefined &&
+      ctx.extension?.id === field.extension;
+    if (field.readOnly && !ownCode) {
       throw new ValidationError(
         field.fieldType === "formula"
           ? `${object.name}.${name} is computed and cannot be set`
@@ -369,9 +376,23 @@ export async function createRecord(
   ctx: HandlerContext,
   object: ObjectDefinition,
   values: Record<string, unknown>,
-  options: { cache?: StageCache; checkReferences?: boolean } = {},
+  options: { cache?: StageCache; checkReferences?: boolean; assignmentTimeline?: boolean } = {},
 ): Promise<string> {
-  let prepared = await prepareValues(ctx, object, values, "create", options);
+  const withDefaults = await applyDefaults(ctx, object, values);
+  let prepared = await prepareValues(ctx, object, withDefaults, "create", options);
+  assertOneOf(object, valuesOf(prepared));
+  // No owner given: assignment rules choose one, in this same insert (ADR 0246).
+  const ownerField = object.ownerField;
+  const assignment =
+    ownerField && (withDefaults[ownerField] === undefined || withDefaults[ownerField] === null)
+      ? await assignOwner(ctx, object, { get: (field) => valuesOf(prepared)[field] ?? null })
+      : null;
+  if (ownerField && assignment?.ownerId) {
+    prepared = [
+      ...prepared.filter((p) => p.field.name !== ownerField),
+      ...hostValues(object, { [ownerField]: assignment.ownerId }),
+    ];
+  }
   assertChoiceRequirements(object, prepared, valuesOf(prepared));
   const table = objectTableOf(object.name) as string;
   const id = newId("record");
@@ -396,8 +417,88 @@ export async function createRecord(
   );
   const title = prepared.find((p) => p.field.name === object.titleField)?.value;
   ctx.write(...searchDoc(object.name, id, title == null ? null : String(title)));
-  ctx.recordChange({ object: object.name, id, action: "create", after: valuesOf(prepared) });
+  const assigned = assignment
+    ? recordAssignment(ctx, object, id, assignment, {
+        timeline: options.assignmentTimeline !== false,
+      })
+    : undefined;
+  ctx.recordChange({
+    object: object.name,
+    id,
+    action: "create",
+    after: valuesOf(prepared),
+    assignment: assigned,
+  });
   return id;
+}
+
+/**
+ * Field defaults (ADR 0246) for a new record of an extension object: the declared `default`, or
+ * the extension setting named by `defaultSetting` when it has a value. Given values win.
+ */
+async function applyDefaults(
+  ctx: HandlerContext,
+  object: ObjectDefinition,
+  values: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const named = await withDefaultTitle(ctx, object, values);
+  const fields = object.fields.filter(
+    (f) =>
+      f.extension === object.extension &&
+      (f.options?.default !== undefined || f.options?.defaultSetting) &&
+      (named[f.name] === undefined || named[f.name] === null),
+  );
+  if (!fields.length || !object.extension) return named;
+  let settings: Record<string, unknown> = {};
+  if (fields.some((f) => f.options?.defaultSetting)) {
+    const row = await ctx.db
+      .selectFrom("core_extension_settings")
+      .select("value")
+      .where("extension_id", "=", object.extension)
+      .executeTakeFirst();
+    settings = row ? (JSON.parse(row.value) as Record<string, unknown>) : {};
+  }
+  const out = { ...named };
+  for (const field of fields) {
+    const setting = field.options?.defaultSetting ? settings[field.options.defaultSetting] : null;
+    const value = setting ?? field.options?.default;
+    if (value !== undefined && value !== null) out[field.name] = value;
+  }
+  return out;
+}
+
+/** `titleDefault` (ADR 0246): a record left untitled is named after its first filled relation. */
+async function withDefaultTitle(
+  ctx: HandlerContext,
+  object: ObjectDefinition,
+  values: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { titleDefault, titleField } = object;
+  if (!titleDefault || !titleField) return values;
+  const given = values[titleField];
+  if (given !== undefined && given !== null && given !== "") return values;
+  for (const name of titleDefault.from) {
+    const to = object.fields.find((f) => f.name === name)?.options?.to;
+    const title = await titleOf(ctx, to, values[name]);
+    if (title) return { ...values, [titleField]: `${title}${titleDefault.suffix ?? ""}` };
+  }
+  return values;
+}
+
+/** `requireOneOf` (ADR 0246): each group needs a value in at least one of its fields. */
+function assertOneOf(object: ObjectDefinition, values: Record<string, unknown>): void {
+  for (const group of object.requireOneOf ?? []) {
+    const filled = group.some((name) => {
+      const value = values[name];
+      return value !== null && value !== undefined && value !== "";
+    });
+    if (filled) continue;
+    const labels = group.map((name) => object.fields.find((f) => f.name === name)?.label ?? name);
+    throw new ValidationError(
+      `${object.label} needs ${labels.slice(0, -1).join(", ")} or ${labels.at(-1)}`,
+      { field: group[0], fields: [...group], reason: "require_one_of" },
+    );
+  }
 }
 
 /** Titles of records by id (relation targets), for timeline labels. */
@@ -498,6 +599,10 @@ export const recordUpdate = defineOperation({
     let prepared = await prepareValues(ctx, object, input.values, "update");
     if (!prepared.length) return before;
     assertChoiceRequirements(object, prepared, {
+      ...before.values,
+      ...Object.fromEntries(prepared.map((p) => [p.field.name, p.value])),
+    });
+    assertOneOf(object, {
       ...before.values,
       ...Object.fromEntries(prepared.map((p) => [p.field.name, p.value])),
     });
@@ -695,6 +800,12 @@ export const objectInfoSchema = z.object({
   /** The stage behaviour, when it has one (ADR 0100). */
   stages: z.record(z.string(), z.unknown()).nullable(),
   timelineLinks: z.array(z.string()),
+  /** The owner field assignment rules set (ADR 0246), when the object has one. */
+  ownerField: z.string().nullable(),
+  /** Sidebar order among extension objects (lower first). */
+  navigationOrder: z.number(),
+  /** The relations an untitled record is named after (ADR 0246), when it has any. */
+  titleDefaultFrom: z.array(z.string()),
 });
 export type ObjectInfo = z.infer<typeof objectInfoSchema>;
 
@@ -711,6 +822,9 @@ export function objectInfo(object: ObjectDefinition): ObjectInfo {
     navigation: object.navigation ?? "main",
     stages: object.stages ? { ...object.stages } : null,
     timelineLinks: [...(object.timelineLinks ?? [])],
+    ownerField: object.ownerField ?? null,
+    navigationOrder: object.navigationOrder ?? 100,
+    titleDefaultFrom: [...(object.titleDefault?.from ?? [])],
     fields: object.fields.map((f) => ({
       name: f.name,
       label: f.label,

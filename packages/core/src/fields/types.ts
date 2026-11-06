@@ -62,7 +62,15 @@ export interface ExtensionFieldOptions {
     color?: string;
     /** Fields a record must have a value in to hold this choice (ADR 0058). */
     requires?: string[];
+    /** With editableOptions: admins cannot remove it. */
+    fixed?: boolean;
   }[];
+  /** Admins can edit the choices (ADR 0246); `choices` then holds the edited list. */
+  editableOptions?: boolean;
+  /** The value a new record gets when none is given (own fields of extension objects). */
+  default?: string | number | boolean;
+  /** The extension setting that holds the default, when admins choose it. */
+  defaultSetting?: string;
   to?: string;
   many?: boolean;
   currency?: string;
@@ -93,6 +101,17 @@ export interface ObjectDefinition {
   timelineLinks?: readonly string[];
   /** Extension objects: the stage behaviour (ADR 0100), with registry (local) field names. */
   stages?: StagesDefinition;
+  /**
+   * The user field that holds the record's owner (ADR 0246): `ownerId` on people and
+   * organisations, the declared `owner` of an extension object. Assignment rules set it.
+   */
+  ownerField?: string;
+  /** Extension objects: sidebar position among extension objects (lower first). */
+  navigationOrder?: number;
+  /** Extension objects: groups of fields of which a record must have at least one. */
+  requireOneOf?: readonly (readonly string[])[];
+  /** Extension objects: how a record created without a title is named (ADR 0246). */
+  titleDefault?: { from: readonly string[]; suffix?: string | undefined };
 }
 
 /** A stage behaviour as the host enforces it (the SDK's StagesSpec, validated). */

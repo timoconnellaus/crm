@@ -118,7 +118,7 @@ async function recordFacts(
   const fields = def.fields.filter((f) => f.column && !SKIP_FIELDS.has(f.name) && f.type !== "id");
   const row = (
     await sql<Record<string, unknown>>`
-      SELECT ${sql.join(fields.map((f) => sql`${sql.ref(f.column as string)} AS ${sql.ref(`f_${f.name}`)}`))}
+      SELECT ${sql.join(fields.map((f) => sql`${sql.ref(f.column as string)} AS ${sql.id(`f_${f.name}`)}`))}
       FROM ${sql.table(def.source)} WHERE id = ${id}`.execute(db)
   ).rows[0];
   if (!row) return null;

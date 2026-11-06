@@ -217,6 +217,7 @@ function AiSettings() {
       <JudgeSection />
       <CacheSection />
       <UsageCard />
+      <SpeechUsageCard />
       <SemanticSearchCard search={data.semanticSearch} />
     </div>
   );
@@ -1227,6 +1228,26 @@ function OwnGatewayCard({ settings }: { settings: Settings }) {
 }
 
 // --- Usage and semantic search -----------------------------------------------------------------
+
+/** Voice's usage: counted by us, because its sockets do not go through AI Gateway (ADR 0349). */
+function SpeechUsageCard() {
+  const usage = useOp("ai.usage", { days: 7 }, { staleTime: 5 * 60_000 });
+  const speech = usage.data?.speech ?? [];
+  if (!speech.length) return null;
+  const minutes = speech.reduce((n, row) => n + row.audioSeconds, 0) / 60;
+  const characters = speech.reduce((n, row) => n + row.characters, 0);
+  return (
+    <Card data-testid="ai-speech-usage">
+      <CardHeader>
+        <CardTitle>Speech usage</CardTitle>
+        <CardDescription>
+          Last 7 days: {minutes.toFixed(1)} minutes of audio transcribed and{" "}
+          {characters.toLocaleString()} characters spoken.
+        </CardDescription>
+      </CardHeader>
+    </Card>
+  );
+}
 
 function UsageCard() {
   const usage = useOp("ai.usage", { days: 7 }, { staleTime: 5 * 60_000 });

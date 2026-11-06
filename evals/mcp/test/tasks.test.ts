@@ -38,6 +38,7 @@ describe("tasks", () => {
   it("snapshots the curated MCP tool names", () => {
     expect([...curatedTools].sort()).toMatchInlineSnapshot(`
       [
+        "a2ui_produce",
         "activity_listForRecord",
         "activity_log",
         "approval_status",
@@ -66,6 +67,7 @@ describe("tasks", () => {
         "person_update",
         "query_sql",
         "search_global",
+        "show_card",
         "suggestedContact_list",
         "task_complete",
         "task_create",

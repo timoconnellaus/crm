@@ -15,6 +15,7 @@ import {
 import { EarlierButton } from "#/components/assistant/assistant-panel";
 import { useAssistant } from "#/components/assistant/assistant-provider";
 import { useThread, useThreadVisible } from "#/components/assistant/thread-provider";
+import { VoiceStartButton } from "#/components/assistant/voice";
 import { errorMessage } from "#/lib/query";
 
 export const Route = createFileRoute("/_app/assistant")({
@@ -60,9 +61,12 @@ function AssistantPage() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0 border-b px-4 py-3 md:px-8">
         <div className="mx-auto max-w-3xl space-y-3">
-          <h1 className="text-lg font-semibold" data-page-title tabIndex={-1}>
-            {name}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="flex-1 text-lg font-semibold" data-page-title tabIndex={-1}>
+              {name}
+            </h1>
+            <VoiceStartButton />
+          </div>
           <ThreadSearch
             query={query}
             onQueryChange={setQuery}

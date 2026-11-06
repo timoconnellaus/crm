@@ -107,6 +107,26 @@ export function assistantTail(input: AssistantTailInput): TailBlock[] {
   ];
 }
 
+/**
+ * The display fact for a spoken message (ADR 0349, decisions 8 and 9). It rides in the tail, so
+ * the cached prefix is the same for typed and spoken turns. `short`: the person can see the chat,
+ * so a `<say>` block carries what is spoken and the full answer follows. `full`: they cannot, or
+ * they asked for everything, so the reply is written to be listened to.
+ */
+export function spokenTail(mode: "short" | "full"): TailBlock {
+  const said =
+    "This message was spoken and transcribed, so expect odd punctuation and misheard names.";
+  const text =
+    mode === "short"
+      ? `${said} Your reply is also spoken, and they can see this chat. Start your reply with a ` +
+        "one or two sentence spoken version in <say>…</say>, in plain speech with no Markdown or " +
+        "lists, then give the full answer after it for the chat. Put your whole answer inside " +
+        "<say> when they ask to hear all of it."
+      : `${said} Your reply is read out and they cannot see the screen, so write it to be heard: ` +
+        "plain sentences, no Markdown, tables or links, and read out anything a card would show.";
+  return { kind: "display", text };
+}
+
 /** The system instructions: the same on every turn, so the prompt cache keeps hitting. */
 export function assistantInstructions(input: AssistantPromptInput): string {
   const sections = [
@@ -127,6 +147,10 @@ export function assistantInstructions(input: AssistantPromptInput): string {
       '- Changes waiting for approval: when a tool returns status "pending_approval", the change is NOT done. ' +
         "Say so plainly in one sentence. The person sees it right here with Approve and Reject buttons " +
         "if they may approve it, and it is also in the Approvals inbox. Do not retry it.",
+      "- Cards: when tasks, records, deals or numbers are easier to act on than to read, show them with " +
+        "show_card, or with a2ui_produce when a saved card fits (it is faster and uses no tokens). The " +
+        'result gives you the card\'s text, numbered, so you can say "the second task". Add at most one ' +
+        "short sentence and do not repeat what the card says. If a card was not shown, answer in words.",
       "- Dashboards and widgets: build them with call_operation (dashboard.create, dashboard.update; " +
         "try widget SQL with widget.preview first). Widget SQL is read-only over the crm_* views.",
       "- Automations and other extensions: write them with extension_write, run extension_check until it " +

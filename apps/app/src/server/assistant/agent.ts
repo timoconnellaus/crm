@@ -17,9 +17,12 @@
 //
 // Memory (ADR 0342) lives in D1 and is read live each turn (core's `memoryForTurn`); the object
 // keeps only when the memory block was last folded, which compaction moves on.
+import type { A2uiPart } from "@relationship-os/agent-a2ui";
 import {
   assembleContext,
+  attachCards,
   prefixHash as hashPrefix,
+  type MessageVia,
   messagesFromResponse,
   messageText,
   runTurn,
@@ -30,11 +33,24 @@ import {
   unreadCount,
 } from "@relationship-os/agent-core";
 import {
+  type CallKind,
+  callKindOf,
+  type Playout,
+  type SpeechMode,
+  type SpeechUsage,
+  type SpokenTurn,
+  splitSpoken,
+  type VoiceCallPlan,
+  type VoiceFacts,
+  type VoiceHost,
+  withAssistantVoice,
+} from "@relationship-os/agent-voice";
+import {
   type ActingUser,
   type AssistantContext,
   type AssistantEvent,
   type AssistantEventInput,
-  type AssistantPending,
+  type AssistantResultExtras,
   type AssistantThreadState,
   type AssistantThreadStore,
   type AssistantTool,
@@ -67,12 +83,14 @@ import {
   scrubPattern,
   scrubText,
   scrubValue,
+  spokenTail,
   type ThreadClientFrame,
   type ThreadMemoryState,
   type ThreadSearchHit,
   type ThreadServerFrame,
   type TranscriptItem,
   transcriptFromThread,
+  withCardText,
   withSavedLines,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
@@ -94,6 +112,7 @@ import {
   ThreadCompaction,
 } from "./compaction.ts";
 import { type AssistantMcp, connectAssistantMcp } from "./mcp-client.ts";
+import { recordSpeechUsage, voiceCallPlan } from "./voice.ts";
 
 export interface AssistantEnv extends OperationsEnv {
   /** Assistant changes count against the same per-minute write budget as MCP (ADR 0091). */
@@ -112,6 +131,10 @@ export interface TurnRequest {
   userId: string;
   text: string;
   context?: AssistantContext | undefined;
+  /** How the message came: typed unless it says otherwise. */
+  via?: MessageVia | undefined;
+  /** A spoken turn: how the reply will be spoken (ADR 0349). */
+  spoken?: SpeechMode | undefined;
 }
 
 /** RPC-friendly: a refusal comes back as a value (error classes do not survive RPC). */
@@ -140,6 +163,8 @@ interface RunningTurn {
 interface SocketState {
   userId: string;
   visible: boolean;
+  /** A voice socket (ADR 0349): it carries a call, not the thread. */
+  call?: CallKind | undefined;
 }
 
 /** Messages shown per window of the thread ("Show earlier messages" loads the next). */
@@ -161,7 +186,7 @@ function int(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-export class AssistantAgent extends Agent<Cloudflare.Env> {
+export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) implements VoiceHost {
   static override options = { sendIdentityOnConnect: false };
 
   #store: SqliteMessageStore | null = null;
@@ -448,6 +473,13 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     const store = this.#messages;
     this.ctx.storage.transactionSync(() => {
       for (const message of store.list({ includeDeleted: false })) {
+        // The words a person did not hear are kept with the message, outside its parts.
+        if (message.playout?.state === "partly_spoken") {
+          const unsaid = scrubText(message.playout.unsaid, pattern);
+          if (unsaid !== message.playout.unsaid) {
+            store.setPlayout(message.seq, { state: "partly_spoken", unsaid });
+          }
+        }
         const parts = scrubParts(message.parts, pattern);
         if (parts === message.parts) continue;
         changed += 1;
@@ -490,13 +522,15 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
       connection.close(4004, "No such thread");
       return;
     }
-    connection.setState({ userId, visible: false });
-    this.#send(connection, { type: "state", state: this.#state(), mode: "replace" });
+    const call = callKindOf(context.request.url) ?? undefined;
+    connection.setState({ userId, visible: false, call });
+    if (!call) this.#send(connection, { type: "state", state: this.#state(), mode: "replace" });
   }
 
   override async onMessage(connection: Connection<SocketState>, message: WSMessage) {
     const state = connection.state;
     if (!state?.userId || typeof message !== "string") return;
+    if (this.handleVoiceFrame(connection, message)) return;
     let frame: ThreadClientFrame;
     try {
       frame = JSON.parse(message) as ThreadClientFrame;
@@ -513,6 +547,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
             userId: state.userId,
             text,
             ...(context?.success ? { context: context.data } : {}),
+            ...(frame.dictated === true ? { via: "dictation" as const } : {}),
           });
         } catch (error) {
           this.#send(connection, {
@@ -551,8 +586,12 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     }
   }
 
+  /** To every thread socket; voice sockets carry a call, not the thread. */
   #broadcast(frame: ThreadServerFrame) {
-    this.broadcast(JSON.stringify(frame));
+    const voice = [...this.getConnections<SocketState>()]
+      .filter((c) => c.state?.call)
+      .map((c) => c.id);
+    this.broadcast(JSON.stringify(frame), voice);
   }
 
   /** Is the chat on screen on any of the person's devices? */
@@ -616,7 +655,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
       {
         turn,
         role: "user",
-        via: "text",
+        via: request.via ?? "text",
         parts: [{ type: "text", text: request.text }],
         createdAt: now,
       },
@@ -637,7 +676,13 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
       done: Promise.resolve(),
     };
     this.#running = running;
-    this.#emit({ type: "turn-start", turn, text: request.text, at: now });
+    this.#emit({
+      type: "turn-start",
+      turn,
+      text: request.text,
+      at: now,
+      ...(request.via ? { via: request.via } : {}),
+    });
     running.done = this.#runTurn(request, running)
       .finally(() => {
         if (this.#running === running) this.#running = null;
@@ -645,6 +690,52 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
       .then(() => this.#compaction.afterTurn());
     this.ctx.waitUntil(running.done);
     return running;
+  }
+
+  /**
+   * Posts a card outside a turn (ADR 0346): a saved producer run by a routine or an app button.
+   * It waits for a running turn, is stored with its text fallback, and is indexed for erase.
+   */
+  async postCard(userId: string, part: A2uiPart): Promise<{ seq: number }> {
+    this.#assertOwner(userId);
+    await this.#running?.done;
+    const store = this.#messages;
+    const turn =
+      Math.max(
+        store.lastTurn(),
+        Number(
+          this.ctx.storage.sql
+            .exec<{ turn: number | null }>("SELECT MAX(turn) AS turn FROM thread_turns")
+            .toArray()[0]?.turn ?? 0,
+        ),
+      ) + 1;
+    const now = new Date().toISOString();
+    const [message] = store.append([
+      { turn, role: "assistant", via: "routine", parts: [part], createdAt: now },
+    ]);
+    this.ctx.storage.sql.exec(
+      "INSERT INTO thread_turns (turn, status, started_at, finished_at) VALUES (?, 'done', ?, ?)",
+      turn,
+      now,
+      now,
+    );
+    if (this.#anyoneWatching()) this.#setMeta("last_seen_seq", String(store.lastSeq()));
+    const unread = this.#unread();
+    const user = await this.#actingUser(userId);
+    const db = createCrmDb(this.#env.DB);
+    await invokeByName(
+      "thread.finishTurn",
+      {
+        id: await this.#threadId(user),
+        preview: part.fallback,
+        unread,
+        refs: await conversationRefs([part]),
+      },
+      { actor: "human", user, origin: { surface: "ui" }, db },
+    );
+    this.#broadcast({ type: "appended" });
+    this.#broadcast({ type: "unread", unread, lastSeenSeq: this.#lastSeen() });
+    return { seq: message?.seq ?? store.lastSeq() };
   }
 
   #emit(input: AssistantEventInput) {
@@ -690,6 +781,63 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     });
   }
 
+  // -------------------------------------------------------------------------------------------
+  // Voice (ADR 0349): the hooks `withAssistantVoice` calls. A spoken message is a turn like any
+  // other, in this thread, through the same tools and approvals.
+
+  voiceCallKind(connection: Connection<SocketState>): CallKind | null {
+    return connection.state?.call ?? null;
+  }
+
+  async planVoiceCall(connection: Connection<SocketState>): Promise<VoiceCallPlan | null> {
+    const userId = connection.state?.userId;
+    if (!userId) return null;
+    return voiceCallPlan(this.#env, await this.#actingUser(userId));
+  }
+
+  async startSpokenTurn(
+    connection: Connection<SocketState>,
+    text: string,
+    facts: VoiceFacts,
+    mode: SpeechMode,
+  ): Promise<SpokenTurn> {
+    // Speaking over a reply that is still being written ends it.
+    const previous = this.#running;
+    if (previous) {
+      previous.abort.abort();
+      await previous.done;
+    }
+    const context = assistantContextSchema.safeParse(facts.context);
+    const running = this.#startTurn({
+      userId: connection.state?.userId ?? "",
+      text: text.slice(0, 20_000),
+      via: "voice",
+      spoken: mode,
+      ...(context.success ? { context: context.data } : {}),
+    });
+    return { turn: running.turn, text: replyText(running) };
+  }
+
+  stopSpokenTurn(turn: number) {
+    if (this.#running?.turn === turn) this.#running.abort.abort();
+  }
+
+  async recordPlayout(turn: number, playout: Playout) {
+    // The reply is stored when its turn ends, which may be just after it was cut off.
+    if (this.#running?.turn === turn) await this.#running.done;
+    const reply = this.#messages
+      .turn(turn)
+      .findLast((m) => m.role === "assistant" && messageText(m).trim());
+    if (!reply) return;
+    this.#messages.setPlayout(reply.seq, playout);
+    this.#broadcast({ type: "playout", turn, playout });
+  }
+
+  async recordVoiceUsage(connection: Connection<SocketState>, usage: SpeechUsage) {
+    const userId = connection.state?.userId;
+    if (userId) await recordSpeechUsage(this.#env, userId, usage);
+  }
+
   async #actingUser(userId: string): Promise<ActingUser> {
     const db = createCrmDb(this.#env.DB);
     const row = await db.query
@@ -728,6 +876,9 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
         throw new ThreadError(403, "The assistant cannot delete messages");
       },
       markSeen: async () => ({ unread: this.#unread(), lastSeenSeq: this.#lastSeen() }),
+      postCard: async () => {
+        throw new ThreadError(403, "A turn's cards come from its tool results");
+      },
       scrub: async (_userId, scrub) => {
         await this.scrub(scrub);
       },
@@ -917,6 +1068,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
         });
         tail.push(...memory.tail);
         this.#setMeta("memory", JSON.stringify(memory.state));
+        if (request.spoken) tail.push(spokenTail(request.spoken));
         const assembled = await assembleContext({
           prefix: {
             instructions: this.#instructions(settings, user, mcp),
@@ -928,19 +1080,21 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
           tail,
           text: request.text,
           turn: running.turn,
-          via: "text",
+          via: request.via ?? "text",
         });
         prefixHash = assembled.prefixHash;
         prefixChars = assembled.system.length + JSON.stringify(assembled.tools).length;
         // The user message is kept exactly as it is sent, tail and all, so history replays byte
         // for byte on the next turn.
         store.replace(running.userSeq, assembled.userMessage.parts);
-        const result = await runTurn<{ pending: AssistantPending }>({
+        const cards = new Map<string, A2uiPart>();
+        const result = await runTurn<AssistantResultExtras>({
           models: chatModels,
           system: assembled.system,
           messages: assembled.messages,
-          tools: mcp.tools,
+          tools: withCardText(mcp.tools),
           emit: (event) => {
+            if (event.type === "tool-result" && event.card) cards.set(event.id, event.card);
             this.#emit(event as AssistantEventInput);
             const save = event.type === "tool-result" ? memorySaveOf(event.output) : undefined;
             if (save) {
@@ -951,7 +1105,11 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
           describeResult: describeAssistantResult,
           signal: running.abort.signal,
         });
-        newMessages = messagesFromResponse(running.turn, "text", result.response);
+        newMessages = messagesFromResponse(running.turn, request.via ?? "text", result.response);
+        if (request.spoken && result.status === "stopped") {
+          newMessages = withCutOffText(newMessages, running);
+        }
+        newMessages = attachCards(newMessages, cards);
         steps = result.steps;
         planModel = this.#planModel(
           chatModels.find((m) => m.modelId === result.model) ?? chatModels[0],
@@ -959,7 +1117,7 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
         status = result.status;
         error = result.error ?? null;
         model = result.model ?? null;
-        preview = result.text || null;
+        preview = result.text ? splitSpoken(result.text).shown || result.text : null;
       } finally {
         await mcp.close();
       }
@@ -1039,6 +1197,49 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     this.#emit({ type: "turn-end", status, at: new Date().toISOString() });
     this.#broadcast({ type: "unread", unread, lastSeenSeq: this.#lastSeen() });
   }
+}
+
+/** A running turn's reply text, as it streams. Ends when the turn does. */
+async function* replyText(running: RunningTurn): AsyncGenerator<string> {
+  const events = [...running.events];
+  let wake: (() => void) | null = null;
+  const listener = (event: AssistantEvent) => {
+    events.push(event);
+    wake?.();
+  };
+  running.listeners.add(listener);
+  try {
+    for (;;) {
+      const event = events.shift();
+      if (!event) {
+        await new Promise<void>((resolve) => {
+          wake = resolve;
+        });
+        continue;
+      }
+      if (event.type === "text") yield event.delta;
+      if (event.type === "turn-end") return;
+    }
+  } finally {
+    running.listeners.delete(listener);
+  }
+}
+
+/**
+ * A reply cut off mid-stream leaves no response messages, but the person heard the start of it and
+ * the chat showed it: keep the text that streamed, so what was heard can be recorded against it.
+ */
+function withCutOffText(
+  messages: Omit<ThreadMessage, "seq" | "createdAt">[],
+  running: RunningTurn,
+): Omit<ThreadMessage, "seq" | "createdAt">[] {
+  if (messages.some((m) => m.role === "assistant" && messageText(m).trim())) return messages;
+  const text = running.events.map((e) => (e.type === "text" ? e.delta : "")).join("");
+  if (!text.trim()) return messages;
+  return [
+    ...messages,
+    { turn: running.turn, role: "assistant", via: "voice", parts: [{ type: "text", text }] },
+  ];
 }
 
 /** The person's words of a stored message (for previews and tests). */

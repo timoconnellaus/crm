@@ -29,9 +29,15 @@ importers:
       '@modelcontextprotocol/server':
         specifier: 2.4.0
         version: 2.4.0
+      '@relationship-os/agent-a2ui':
+        specifier: workspace:*
+        version: link:../../packages/agent-a2ui
       '@relationship-os/agent-core':
         specifier: workspace:*
         version: link:../../packages/agent-core
+      '@relationship-os/agent-voice':
+        specifier: workspace:*
+        version: link:../../packages/agent-voice
       '@relationship-os/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -234,6 +240,9 @@ importers:
       '@cloudflare/vitest-plugin':
         specifier: 1.5.1
         version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)))
+      '@relationship-os/agent-a2ui':
+        specifier: workspace:*
+        version: link:../../packages/agent-a2ui
       '@relationship-os/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -422,6 +431,53 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  extensions/leads:
+    dependencies:
+      '@relationship-os/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+    devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 1.5.1
+        version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)))
+      '@cloudflare/workers-types':
+        specifier: 5.20261104.1
+        version: 5.20261104.1
+      '@relationship-os/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@relationship-os/extension-deals':
+        specifier: workspace:*
+        version: link:../deals
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  extensions/lifecycle:
+    dependencies:
+      '@relationship-os/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+    devDependencies:
+      '@cloudflare/vitest-plugin':
+        specifier: 1.5.1
+        version: 1.5.1(@cloudflare/workers-types@5.20261104.1)(@types/node@24.19.2)(vitest@5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)))
+      '@cloudflare/workers-types':
+        specifier: 5.20261104.1
+        version: 5.20261104.1
+      '@relationship-os/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 5.1.0
+        version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@24.19.2)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
   packages/agent-a2ui:
     dependencies:
       zod:
@@ -437,6 +493,18 @@ importers:
       '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: 19.3.1
+        version: 19.3.1
+      react-dom:
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.1)
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -446,6 +514,9 @@ importers:
 
   packages/agent-core:
     dependencies:
+      '@relationship-os/agent-a2ui':
+        specifier: workspace:*
+        version: link:../agent-a2ui
       ai:
         specifier: 7.0.145
         version: 7.0.145(zod@4.6.7)
@@ -496,6 +567,12 @@ importers:
 
   packages/agent-voice:
     dependencies:
+      agents:
+        specifier: 0.33.0
+        version: 0.33.0(@ai-sdk/provider@4.0.30)(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@modelcontextprotocol/client@2.4.0)(@modelcontextprotocol/server@2.4.0)(ai@7.0.145(zod@4.6.7))(react@19.3.1)(rolldown@1.2.16)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(zod@4.6.7)
+      react:
+        specifier: '*'
+        version: 19.3.1
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -509,6 +586,9 @@ importers:
       '@relationship-os/config':
         specifier: workspace:*
         version: link:../config
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -564,6 +644,9 @@ importers:
       '@ai-sdk/provider':
         specifier: 4.0.30
         version: 4.0.30
+      '@relationship-os/agent-a2ui':
+        specifier: workspace:*
+        version: link:../agent-a2ui
       '@relationship-os/agent-core':
         specifier: workspace:*
         version: link:../agent-core
@@ -601,6 +684,12 @@ importers:
       '@relationship-os/extension-deals':
         specifier: workspace:*
         version: link:../../extensions/deals
+      '@relationship-os/extension-leads':
+        specifier: workspace:*
+        version: link:../../extensions/leads
+      '@relationship-os/extension-lifecycle':
+        specifier: workspace:*
+        version: link:../../extensions/lifecycle
       typescript:
         specifier: 6.0.3
         version: 6.0.3

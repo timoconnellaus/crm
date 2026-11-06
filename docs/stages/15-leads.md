@@ -183,3 +183,11 @@ Migrations 0310–0319 (assignment rules only; block J in `docs/parallel-work.md
 - **Lead statuses and sources are admin-editable,** with sensible defaults. This changes the spec's proposal: select options are manifest-defined today, so the build adds admin-editable options for these two fields (a small, general contract addition for extension select fields, recorded in ADR 0246).
 - **Assignment rules run on create only,** plus a manual "Reassign" action. Not on update.
 - **Converting a lead sets the person's lifecycle stage** (to "opportunity") when the optional `lifecycle` extension is installed. This also changes the proposal: it is part of the conversion, not a separate automation.
+
+## Amendment (2026-11-06, as built)
+Built as specified, with the deviations recorded in the amendment to
+[ADR 0246](../adr/0246-leads-as-an-extension-and-assignment-rules-in-core.md): round-robin uses a
+guarded state write and a retry rather than a subquery in the insert, and the contract gained a few
+general keys. Criterion 9 waits for stage 14: Leads already declares `owner: "owner"`. Stage 12's
+importer is not on `main` yet: importing through `createRecord` assigns with no change, and it must
+keep passing rows without an owner through that path.

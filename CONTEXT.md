@@ -93,9 +93,28 @@ are replaced by a `summary` (records touched by action, sizes); who decided what
 
 **Merge**
 Folding a duplicate record into a **survivor**: chosen field values, combined emails/phones/domains
-and tags, and the duplicate's affiliations, activity and task links moved over. The merged-away
+and tags, the duplicate's affiliations, activity and task links moved over, and every extension
+relation field that pointed at the duplicate re-pointed at the survivor (ADR 0247). The merged-away
 record goes to Trash with a `merged_into_id` pointer and can be restored.
 _Avoid_: dedupe (that is finding duplicates), combine
+
+**Duplicate rule**
+A plain rule in code that says two records may be the same, with a reason sentence ("Same name and
+same organisation: Acme"). People: same email (creation and import only), same name and
+organisation, same name and email domain, same phone number, same name only. Organisations: same
+domain, same name. There is no score; a pair can match several rules and all are shown (ADR 0247).
+_Avoid_: match score, similarity, confidence
+
+**Name key**
+A person's or organisation's name normalised by fixed code (`name_key`): lower case, diacritics
+gone, "Family, Given" reordered, middle initials and legal forms dropped. Every write that sets a
+name writes it, so duplicate rules are indexed lookups. Two records with equal keys have the same
+name for every duplicate rule.
+
+**Duplicate pair**
+Two records the scan found by at least one duplicate rule (`core_duplicate_pair`), `open`,
+`dismissed` ("Not duplicates", never suggested again) or `merged`. Pairs that share a record show
+as one group on the Duplicates page, with a proposed survivor: more activities, then the older.
 
 **Erase**
 An admin-only hard delete for GDPR requests (`person.erase`, `organisation.erase`). Unlike a purge
@@ -288,6 +307,36 @@ A potential sale (`deals.deal`, from the shipped Deals extension) moving through
 in the base currency, stage, probability, owner, organisation, expected close, and a won/lost date
 set automatically. **Deal participants** are the people on it, each with a role.
 _Avoid_: opportunity
+
+**Lead**
+Inbound interest (`leads.lead`, from the shipped Leads extension, which requires Deals): a
+lightweight item linked to a real person, a real organisation or both, with a lead status, a source
+and an owner. A lead never holds copies of the person's or organisation's details.
+_Avoid_: prospect, a "lead" person record
+
+**Lead status**
+Where a lead is: new, contacted, qualified, unqualified (with a reason) or converted. Admins can
+add, rename and reorder statuses and sources under Settings → Extensions. Converted is set only by
+conversion.
+
+**Conversion**
+Turning a lead into a deal with `leads.convert`: a deal on the lead's organisation and owner, with
+the lead's person as a participant and each record linked to the other. Nothing is copied. Safe to
+run again after a failure; a converted lead cannot be converted again.
+
+**Lifecycle stage**
+Where a person is in their relationship with you (subscriber, lead, marketing qualified, sales
+qualified, opportunity, customer, evangelist, other), from the opt-in shipped `lifecycle` extension.
+Conversion moves a person to opportunity; nothing else moves it automatically.
+
+**Assignment rule**
+A core rule per object with an owner field (person, organisation, leads, deals): ordered conditions
+on the record or a record it links to, and a method (round-robin among chosen users, or one user).
+The first enabled rule that matches owns a record created without an owner. Rules run on create and
+when someone chooses Assign by rules, never on update.
+
+**Fallback owner**
+The owner an object's records get when no assignment rule matches. "No owner" is allowed.
 
 **Pipeline**
 An ordered set of stages deals move through ("New business", "Renewals"). Pipelines and their
@@ -492,6 +541,17 @@ prompt cache keeps hitting; its hash is recorded per turn. The tail is what chan
 (pending memory lines, page context, display facts, the time), sent as a `<context>` block at the
 start of the new user message and kept with that message afterwards. The person never sees it.
 
+**Playout**
+What the person actually heard of a spoken reply: `spoken`, `partly_spoken` (with the words
+`unsaid`) or `unspoken`, worked out from the milliseconds the browser played. The model is shown
+only what was heard (ADR 0349).
+
+**Dictation**
+The mic in the chat box: words stream into the box, a cleanup pass tidies them, and the message
+is sent as if typed. Not **voice chat**, where the assistant talks back and messages show in
+italics with a mic (ADR 0349).
+_Avoid_: voice input
+
 **Thread compaction**
 Folding a thread's older messages into a short "where we left off" note, keeping the last ~10
 exchanges, when a cost model says it is cheaper, between 24k tokens and 80% of the model's window
@@ -534,8 +594,10 @@ _Avoid_: permission (that is a role's), scope
 
 **A2UI producer**
 A saved Code Mode script, usually shipped in a plugin, that queries the CRM and returns an A2UI card
-from the versioned catalogue with no model call, run on a stable loader id (ADR 0346). An A2UI card
-is a rich message from that catalogue, stored with a text fallback.
+from the versioned catalogue with no model call, run on a stable loader id (ADR 0346). It reads as
+the viewer and can change nothing. An A2UI card is a rich message from that catalogue, stored with
+a text fallback. A button on a card the model or a producer wrote runs as the assistant, so the
+approval policy applies.
 _Avoid_: widget (that is on a dashboard), template
 
 **Plugin**

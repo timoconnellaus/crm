@@ -420,8 +420,9 @@ describe("shipped extensions: extend, don't modify; eject", () => {
     await call(admin, "extension.approve", { actionId: proposed.actionId });
     expect(await extensionRow("deals")).toMatchObject({ source: "runtime", version: "9.9.9" });
     // New releases leave it alone.
-    expect(await installShippedExtensions({ db, host })).toEqual([
-      { id: "deals", outcome: "ejected" },
-    ]);
+    expect(await installShippedExtensions({ db, host })).toContainEqual({
+      id: "deals",
+      outcome: "ejected",
+    });
   });
 });

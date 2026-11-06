@@ -272,6 +272,8 @@ function describeResult(text: string): string {
     if (o.error && typeof o.error === "object") {
       return `That didn't work: ${String((o.error as Record<string, unknown>).message ?? "error")}`;
     }
+    if (o.status === "shown") return "Here it is.";
+    if (o.status === "not_shown") return "I could not show that as a card.";
     if (Array.isArray(o.widgets)) return "Done: the dashboard is ready.";
     const name = o.displayName ?? o.name ?? o.title;
     if (typeof name === "string") return `Here is what I found about ${name}.`;
@@ -346,6 +348,58 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
     const [object, ...ids] = selection.split(/\s+/);
     return withReasoning({
       content: `You selected ${ids.length} ${object} record${ids.length === 1 ? "" : "s"}: ${ids.join(", ")}.`,
+    });
+  }
+  if (/\bshow (?:me )?my overdue tasks\b/i.test(text)) {
+    return withReasoning({
+      toolCalls: [{ name: "a2ui_produce", arguments: { producer: "tasks.overdueCard" } }],
+    });
+  }
+  if (/\bshow (?:me )?(?:my )?stale deals\b/i.test(text)) {
+    return withReasoning({
+      toolCalls: [{ name: "a2ui_produce", arguments: { producer: "pipeline.staleDealsCard" } }],
+    });
+  }
+  const overdue = /\b(?:create|add) an overdue task called\s+(.+)$/i.exec(text);
+  if (overdue?.[1]) {
+    return withReasoning({
+      toolCalls: [
+        {
+          name: "task_create",
+          arguments: {
+            title: overdue[1].replace(/[.!?]+$/, "").slice(0, 200),
+            dueAt: "2020-01-06",
+            reason,
+          },
+        },
+      ],
+    });
+  }
+  const card = /\bshow (?:me )?a (broken )?card about (.+)$/i.exec(text);
+  if (card?.[2]) {
+    const subject = card[2].replace(/[.!?]+$/, "").slice(0, 100);
+    return withReasoning({
+      toolCalls: [
+        {
+          name: "show_card",
+          arguments: {
+            text: `Plain words about ${subject}.`,
+            card: {
+              a2ui: 1,
+              root: card[1]
+                ? { type: "marquee", text: subject }
+                : {
+                    type: "card",
+                    title: subject,
+                    children: [{ type: "text", text: `A card about ${subject}.` }],
+                    actions: [
+                      { kind: "reply", label: "Tell me more", text: `More about ${subject}` },
+                    ],
+                  },
+            },
+          },
+        },
+      ],
     });
   }
   const conditional =
@@ -436,9 +490,11 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
     const [object, id] = record.split(/\s+/);
     if (object && id) return withReasoning({ toolCalls: [readTool(object, id, body)] });
   }
+  // A spoken turn on a visible screen asks for a short spoken version first (ADR 0349).
+  const say = /<say>…<\/say>/.test(page) ? "<say>Here is the short version.</say>\n" : "";
   return withReasoning({
     content:
-      `I'm ${name}. I can look up and change records, build dashboards and widgets, and write ` +
+      `${say}I'm ${name}. I can look up and change records, build dashboards and widgets, and write ` +
       'extensions and automations for approval. Try "Create a task to call Ada tomorrow".',
   });
 }
