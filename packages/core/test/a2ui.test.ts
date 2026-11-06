@@ -178,26 +178,28 @@ describe("high-risk approvals", () => {
   });
 
   it("asks a second step of destructive changes", () => {
-    expect(secondStep({ risk: "destructive", title: "Delete person" })).toEqual({
+    expect(secondStep({ risk: "destructive", title: "Delete person" }, 25)).toEqual({
       label: "Delete person",
       confirmLabel: "Confirm: delete person",
+      phrase: "I approve deleting person",
     });
   });
 
   it("asks it of email above the threshold, with the plain words of ADR 0345", () => {
-    expect(secondStep(email("240"))).toEqual({
+    expect(secondStep(email("240"), 25)).toEqual({
       label: "Send 240 emails",
       confirmLabel: "Confirm: send 240 emails",
+      phrase: "I approve sending 240 emails",
     });
-    expect(secondStep(email("25"))).toBeNull();
-    expect(secondStep(email("26"))?.label).toBe("Send 26 emails");
+    expect(secondStep(email("25"), 25)).toBeNull();
+    expect(secondStep(email("26"), 25)?.label).toBe("Send 26 emails");
     expect(secondStep(email("26"), 30)).toBeNull();
   });
 
   it("does not ask it of ordinary changes", () => {
-    expect(secondStep({ risk: "write", title: "Update person" })).toBeNull();
-    expect(secondStep({ risk: "bulk-write", title: "Update 40 people" })).toBeNull();
-    expect(secondStep({ risk: "outbound", title: "Send", outbound: null })).toBeNull();
+    expect(secondStep({ risk: "write", title: "Update person" }, 25)).toBeNull();
+    expect(secondStep({ risk: "bulk-write", title: "Update 40 people" }, 25)).toBeNull();
+    expect(secondStep({ risk: "outbound", title: "Send", outbound: null }, 25)).toBeNull();
   });
 
   it("counts recipients from a list across To, Cc and Bcc", () => {
@@ -213,14 +215,52 @@ describe("high-risk approvals", () => {
     expect(recipientCount({ fields: [{ label: "Recipients", value: "1,240" }] })).toBe(1240);
   });
 
+  it("counts a person once, a quoted name as one, and a list the gatekeeper cut as more", () => {
+    expect(
+      recipientCount({
+        fields: [
+          { label: "To", value: '"Smith, Ivy" <ivy@x.example>\nA@x.example' },
+          { label: "Bcc", value: "a@x.example" },
+        ],
+      }),
+    ).toBe(2);
+    expect(recipientCount({ fields: [{ label: "To", value: '"Smith, Ivy" <i@x.example>' }] })).toBe(
+      1,
+    );
+    const cut = {
+      risk: "outbound",
+      title: "Send",
+      outbound: { fields: [{ label: "To", value: "a@x.example", truncated: true }] },
+    };
+    expect(secondStep(cut, 25)?.label).toBe("Send 1+ emails");
+  });
+
+  it("names the audience in the phrase", () => {
+    const step = secondStep(
+      {
+        risk: "outbound",
+        title: "Send",
+        outbound: {
+          fields: [
+            { label: "Recipients", value: "240" },
+            { label: "Audience", value: "Q3 leads" },
+          ],
+        },
+      },
+      25,
+    );
+    expect(step?.phrase).toBe("I approve sending 240 emails to Q3 leads");
+  });
+
   it("names one high-risk action, and counts several", () => {
     const write = { risk: "write", title: "Update person" };
     const remove = { risk: "destructive", title: "Delete person" };
-    expect(secondStepFor([write])).toBeNull();
-    expect(secondStepFor([remove])?.label).toBe("Delete person");
-    expect(secondStepFor([remove, write])).toEqual({
+    expect(secondStepFor([write], 25)).toBeNull();
+    expect(secondStepFor([remove], 25)?.label).toBe("Delete person");
+    expect(secondStepFor([remove, write], 25)).toEqual({
       label: "Approve 2 changes",
       confirmLabel: "Confirm: approve 2 changes",
+      phrase: "I approve all 2 changes",
     });
   });
 });

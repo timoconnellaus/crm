@@ -23,6 +23,8 @@ import {
   simulatedTitle,
 } from "./approvals/simulation.ts";
 import { isAssignmentConflict } from "./assignment/index.ts";
+import type { AgentJobHost } from "./assistant/agent-jobs.ts";
+import { type GrantGuard, outsideSession } from "./assistant/grants.ts";
 import type { AssistantThreadStore } from "./assistant/threads.ts";
 import { eventOriginOf, isBulkOperation, recordEventMessages } from "./automations/events.ts";
 import {
@@ -143,6 +145,14 @@ export interface InvocationContext {
   assistantThreads?: AssistantThreadStore;
   /** Speech providers (ADR 0349). Absent: voice is off. */
   voice?: VoiceRuntime;
+  /** The agents' Durable Objects (ADR 0344). Nested invocations inherit it. */
+  agentJobs?: AgentJobHost;
+  /**
+   * Set on an agent's calls (ADR 0344): what its grant allows, checked on every call. Passed by the
+   * AgentJob object, never by a model. Not inherited when nested, which is why operations that run
+   * others can never be granted (grants.ts).
+   */
+  grantGuard?: GrantGuard | undefined;
   /**
    * Test mode (ADR 0133): the call is simulated against this in-memory overlay. The gate is
    * evaluated and recorded, writes are dry-run, nothing is written and no events are sent.
@@ -569,7 +579,7 @@ async function invokeOnce<O extends AnyOperation>(
     (Array.isArray(op.alwaysReview) && op.alwaysReview.includes(ctx.actor));
   if (forced && decision === "auto" && !ctx.approval) decision = "review";
   // What routed it to review (ADR 0204): the adjudicator never approves floor or forced reviews.
-  const reviewSource: ReviewSource = forced
+  let reviewSource: ReviewSource = forced
     ? "always"
     : gate.floorDecision === "review"
       ? "floor"
@@ -679,8 +689,10 @@ async function invokeOnce<O extends AnyOperation>(
     ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
     ...(ctx.assistantThreads ? { assistantThreads: ctx.assistantThreads } : {}),
     ...(ctx.voice ? { voice: ctx.voice } : {}),
+    ...(ctx.agentJobs ? { agentJobs: ctx.agentJobs } : {}),
     pipeline: {
       crm: ctx.db,
+      resolve: (name) => ctx.resolveOperation?.(name),
       invoke: (name, nestedInput, nested) => {
         const target = ctx.resolveOperation?.(name);
         if (!target) throw new UnknownOperationError(name);
@@ -712,6 +724,7 @@ async function invokeOnce<O extends AnyOperation>(
           ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
           ...(ctx.assistantThreads ? { assistantThreads: ctx.assistantThreads } : {}),
           ...(ctx.voice ? { voice: ctx.voice } : {}),
+          ...(ctx.agentJobs ? { agentJobs: ctx.agentJobs } : {}),
           ...(ctx.simulate ? { simulate: ctx.simulate } : {}),
         });
       },
@@ -723,6 +736,45 @@ async function invokeOnce<O extends AnyOperation>(
     if (audited) await auditAlone({ ...base, gate: gateDecision, outcome: "error", error: typed });
     throw typed;
   };
+
+  // An agent's grant (ADR 0344). It can only tighten: `auto` stays what the gate said. The handler
+  // is dry-run first, because whether a write fills a field or changes a value decides where it
+  // goes; a write that changes nothing has nothing to route.
+  const guard = ctx.approval || ctx.simulate ? undefined : ctx.grantGuard;
+  let origin = ctx.origin;
+  let guardRouted = false;
+  if (guard && (op.risk === "read" || op.bookkeeping)) {
+    // Neither can wait for review: bookkeeping is never queued, so it needs the grant as a read does.
+    if (!guard.allowsRead(op)) {
+      const error = new ForbiddenError(
+        `${op.name} is not part of this agent's grant. Carry on without it, or say what you need in your report.`,
+        { operation: op.name },
+      );
+      await auditAlone({ ...base, gate: decision, outcome: "forbidden", error });
+      throw error;
+    }
+  } else if (guard) {
+    let planned: RecordChange[] = [];
+    if (op.risk !== "outbound" && !op.name.startsWith("x.") && guard.needsChanges(op)) {
+      try {
+        const overlay = await loadSessionOverlay(ctx.db.query, ctx.origin.sessionId, now);
+        planned = await dryRunChanges(op, input, handlerCtx, overlay);
+      } catch (error) {
+        return fail(error, decision);
+      }
+    }
+    const route = await guard.route(op, planned, now, ctx.db.query);
+    if (route === "auto") {
+      guardRouted = true;
+    } else {
+      // A person looks at it: never the adjudicator.
+      decision = "review";
+      reviewSource = "always";
+      if (route === "outside") {
+        origin = { ...ctx.origin, sessionId: outsideSession(guard.jobId, newId("changeSet")) };
+      }
+    }
+  }
 
   if (ctx.simulate && op.risk !== "read") {
     return simulateWrite(op, rawInput, input, ctx, handlerCtx, {
@@ -737,7 +789,7 @@ async function invokeOnce<O extends AnyOperation>(
     let queued: Awaited<ReturnType<typeof prepareQueuedAction>>;
     let notices: Compilable[] = [];
     try {
-      const overlay = await loadSessionOverlay(ctx.db.query, ctx.origin.sessionId, now);
+      const overlay = await loadSessionOverlay(ctx.db.query, origin.sessionId, now);
       queued = await prepareQueuedAction({
         op,
         rawInput,
@@ -745,7 +797,7 @@ async function invokeOnce<O extends AnyOperation>(
         db: ctx.db,
         actor: ctx.actor,
         user: ctx.user,
-        origin: ctx.origin,
+        origin,
         grantedPermissions: ctx.grantedPermissions,
         reason: ctx.reason,
         bulkSize,
@@ -955,6 +1007,8 @@ async function invokeOnce<O extends AnyOperation>(
     }
   }
 
+  if (guardRouted) guard?.applied(changes);
+
   if (statements.length && ctx.onCommitted) {
     try {
       ctx.onCommitted({
@@ -980,6 +1034,26 @@ async function invokeOnce<O extends AnyOperation>(
     output = checked.data;
   }
   return output as OperationOutput<O>;
+}
+
+/** What a handler would change, with its writes discarded (the approval queue's dry run). */
+async function dryRunChanges(
+  op: AnyOperation,
+  input: unknown,
+  handlerCtx: HandlerContext,
+  overlay: Awaited<ReturnType<typeof loadSessionOverlay>>,
+): Promise<RecordChange[]> {
+  const changes: RecordChange[] = [];
+  await op.handler(input, {
+    ...handlerCtx,
+    write: () => {},
+    recordChange: (change) => {
+      changes.push(change);
+    },
+    postActivity: () => newId("activity"),
+    simulation: overlay,
+  });
+  return changes;
 }
 
 /** One line on why the gate decided what it did, for test-mode reports. */

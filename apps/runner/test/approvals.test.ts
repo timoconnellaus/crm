@@ -61,6 +61,7 @@ describe("extension calls and the approval queue", () => {
 
     const decision = await call<{ results: { status: string }[] }>(admin, "approval.approve", {
       actionIds: [result.queued],
+      confirm: "Confirm: delete Doomed",
     });
     expect(decision.results.map((r) => r.status)).toEqual(["applied"]);
     await expect(

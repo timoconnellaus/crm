@@ -32,7 +32,7 @@ test("every catalogue component draws inside the width, with nothing falling bac
   const gallery = page.getByTestId("a2ui-gallery");
   await expect(gallery).toBeVisible();
   const samples = page.getByTestId("a2ui-sample");
-  await expect(samples).toHaveCount(54);
+  await expect(samples).toHaveCount(57);
   await expect(page.getByTestId("a2ui-fallback")).toHaveCount(0);
   const overflowing = await samples.evaluateAll(
     (nodes, limit) =>

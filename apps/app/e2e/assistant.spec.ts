@@ -70,8 +70,9 @@ test("approves a pending change inline", async ({ page }) => {
   await expect(pending).toHaveAttribute("data-status", "pending");
   await expect(panel.getByTestId("assistant-reply").last()).toContainText("waiting for approval");
   // Destructive, so high risk: a deliberate second step (ADR 0345).
-  await pending.getByRole("button", { name: "Delete person", exact: true }).click();
-  await pending.getByRole("button", { name: "Confirm: delete person" }).click();
+  // The server's step names the record, and refuses an approval without its second press.
+  await pending.getByRole("button", { name: `Delete Temp Person${token}`, exact: true }).click();
+  await pending.getByRole("button", { name: `Confirm: delete Temp Person${token}` }).click();
   await expect(pending).toHaveAttribute("data-status", "applied");
   await page.keyboard.press("Escape");
   await page.reload();

@@ -70,7 +70,16 @@ export const fakeStandIn: {
   holdSummary: Promise<void> | null;
   /** When set, every request the assistant model gets is kept here. */
   requests: ChatRequestBody[] | null;
-} = { pricing: null, contextTokens: 0, cacheHits: true, holdSummary: null, requests: null };
+  /** While set, an agent's model calls wait for this. */
+  holdAgent: Promise<void> | null;
+} = {
+  pricing: null,
+  contextTokens: 0,
+  cacheHits: true,
+  holdSummary: null,
+  requests: null,
+  holdAgent: null,
+};
 
 function tokensOf(value: unknown): number {
   return Math.ceil((JSON.stringify(value ?? null) ?? "").length / 4);
@@ -88,6 +97,11 @@ function estimatedUsage(body: ChatRequestBody, reply: ScriptedReply): FakeUsage 
       ? Math.max(0, prompt - tokensOf(body.messages?.at(-1)))
       : 0,
   };
+}
+
+/** Is this request an agent's (ADR 0344)? The scripted model then works through its records. */
+function isAgentCall(body: ChatRequestBody): boolean {
+  return systemText(body).startsWith("You are an agent of ");
 }
 
 function isSummaryCall(body: ChatRequestBody): boolean {
@@ -250,6 +264,86 @@ function readTool(object: string, id: string, body: ChatRequestBody): ScriptedTo
   return { name: "call_operation", arguments: { name: "record.get", input: { object, id } } };
 }
 
+function toolNames(body: ChatRequestBody): string[] {
+  return (body.messages ?? []).flatMap((m) =>
+    (m.tool_calls ?? []).map((c) => {
+      const call = c as { function?: { name?: string; arguments?: string } };
+      return `${call.function?.name ?? ""} ${call.function?.arguments ?? ""}`;
+    }),
+  );
+}
+
+/**
+ * The scripted agent: for each organisation in its brief, read it, then write the website: filling
+ * it when it is empty, changing it when it is not (which is staged for review), and report
+ * progress. "Delete tsk_…" in the brief asks for something outside the grant, once.
+ */
+function scriptedAgent(body: ChatRequestBody): ScriptedReply {
+  const messages = body.messages ?? [];
+  const brief = textOf(messages.find((m) => m.role === "user")?.content);
+  const ids = [...brief.matchAll(/^- organisation (org_\S+)$/gm)].map((m) => m[1] as string);
+  const calls = toolNames(body);
+  const called = (tool: string, id: string) =>
+    calls.some((c) => c.startsWith(`${tool} `) && c.includes(id));
+  for (const [index, id] of ids.entries()) {
+    if (!called("organisation_get", id)) {
+      return { toolCalls: [{ name: "organisation_get", arguments: { id } }] };
+    }
+    if (!called("organisation_update", id)) {
+      // What it just read: a website already there gets a new value, which waits for review.
+      const found = /"website":"http/.test(textOf(messages.at(-1)?.content)) ? "moved" : "found";
+      return {
+        toolCalls: [
+          {
+            name: "organisation_update",
+            arguments: {
+              id,
+              website: `https://${found}-${id.slice(-6).toLowerCase()}.example.com`,
+              reason: "From the company's own site",
+            },
+          },
+        ],
+      };
+    }
+    if (!called("agent_progress", id)) {
+      return {
+        toolCalls: [
+          {
+            name: "agent_progress",
+            arguments: { done: index + 1, total: ids.length, now: id },
+          },
+        ],
+      };
+    }
+  }
+  const outside = /\bdelete (tsk_\w+)/.exec(brief)?.[1];
+  if (outside && !calls.some((c) => c.includes("task.delete"))) {
+    return {
+      toolCalls: [
+        {
+          name: "call_operation",
+          arguments: {
+            name: "task.delete",
+            input: { id: outside },
+            reason: "Outside the grant, on purpose",
+          },
+        },
+      ],
+    };
+  }
+  return { content: `Researched ${ids.length} organisations. Anything else needs you.` };
+}
+
+/** The latest change waiting for this person, from the chat: what a "yes" is about. */
+function latestPending(body: ChatRequestBody): string[] {
+  for (const message of [...(body.messages ?? [])].reverse()) {
+    if (message.role !== "tool") continue;
+    const ids = [...textOf(message.content).matchAll(/"actionId":"(pac_[^"]+)"/g)];
+    if (ids.length) return [ids[0]?.[1] as string];
+  }
+  return [];
+}
+
 function describeResult(text: string): string {
   let value: unknown = text;
   try {
@@ -259,6 +353,9 @@ function describeResult(text: string): string {
   }
   if (value && typeof value === "object") {
     const o = value as Record<string, unknown>;
+    if (o.status === "decided") return "Done.";
+    if (o.status === "asked" && typeof o.message === "string") return o.message;
+    if (o.status === "refused" && typeof o.message === "string") return o.message;
     if (o.status === "pending_approval") {
       return `That change is waiting for approval (${String(o.operation ?? "")}). You can approve or reject it here, or in the Approvals inbox.`;
     }
@@ -330,6 +427,7 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
     const firstWords = opening.split(/\s+/).slice(0, 2).join(" ");
     return withReasoning({ content: `We were talking about: ${firstWords}` });
   }
+  if (isAgentCall(body)) return withReasoning(scriptedAgent(body));
   if (last?.role === "tool") {
     const note = noteForRefusedFact(messages, textOf(last.content));
     if (note) return withReasoning({ toolCalls: [note] });
@@ -343,6 +441,41 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
   const record = lineValue(page, "Current record");
   const selection = lineValue(page, "Selected records");
   const reason = `Asked in the assistant: ${text.slice(0, 120)}`;
+  // A spoken or typed answer about something waiting (ADR 0345).
+  if (
+    hasTool(body, "decide_approval") &&
+    /^(yes|yeah|yep|ok|maybe|i approve|reject|no)\b/i.test(text)
+  ) {
+    const actionIds = latestPending(body);
+    if (actionIds.length) {
+      return withReasoning({
+        toolCalls: [
+          {
+            name: "decide_approval",
+            arguments: { actionIds, decision: /^(reject|no)\b/i.test(text) ? "reject" : "approve" },
+          },
+        ],
+      });
+    }
+  }
+  // Longer work goes to an agent (ADR 0344).
+  const research = /\bresearch\b.*\b(accounts|organisations)\b/i.test(text);
+  if (research && hasTool(body, "start_agent")) {
+    const ids = [...`${selection ?? ""} ${text}`.matchAll(/\borg_\w+/g)].map((m) => m[0]);
+    return withReasoning({
+      toolCalls: [
+        {
+          name: "start_agent",
+          arguments: {
+            title: "Account research",
+            brief: `${text}\n\nFind each organisation's website and fill it in if it is empty.`,
+            profile: "researcher",
+            records: ids.map((id) => ({ object: "organisation", id })),
+          },
+        },
+      ],
+    });
+  }
 
   if (selection && /\b(selected|these|them)\b/i.test(text)) {
     const [object, ...ids] = selection.split(/\s+/);
@@ -545,6 +678,7 @@ export function fakeAssistantModel(options: FakeChatServerOptions = {}): Languag
     async beforeReply(body) {
       fakeStandIn.requests?.push(body);
       if (isSummaryCall(body)) await fakeStandIn.holdSummary;
+      if (isAgentCall(body)) await fakeStandIn.holdAgent;
     },
     ...options,
   });

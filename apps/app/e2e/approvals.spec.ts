@@ -57,7 +57,9 @@ test("approving a whole change set applies it and lowers the count", async ({ pa
   await expect(remove).toContainText(seeded.people[0]?.name ?? "");
   await expectNoHorizontalScroll(page);
 
-  await set.getByRole("button", { name: "Approve 2" }).click();
+  // A delete is high risk: the button takes two presses (ADR 0345).
+  await set.getByRole("button", { name: "Approve 2 changes" }).click();
+  await set.getByRole("button", { name: "Confirm: approve 2 changes" }).click();
   await expect(set.getByTestId("decision-result")).toHaveText("Applied 2 changes.");
   await expect(tag.getByTestId("status-badge")).toHaveText("Applied");
   await expect(remove.getByTestId("status-badge")).toHaveText("Applied");
@@ -111,7 +113,8 @@ test("approving a single change, and refusing it out of order", async ({ page, b
   const set = changeSet(page, seeded);
   // The delete alone: it depends on the pending tag action, so it is refused.
   await item(set, TAG).getByRole("checkbox").uncheck();
-  await set.getByRole("button", { name: "Approve" }).click();
+  await set.getByTestId("approval-two-step").click();
+  await set.getByTestId("approval-two-step-confirm").click();
   await expect(set.getByTestId("decision-error")).toContainText("Approve it first");
   await expect(item(set, DELETE).getByTestId("status-badge")).toHaveCount(0);
 

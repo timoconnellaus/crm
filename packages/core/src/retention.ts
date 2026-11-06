@@ -7,6 +7,7 @@
 // - purgeRunHistory: extension and automation runs after 30 days, failed ones after 90;
 // - compactPendingActions: decided or expired pending actions (and their extension proposals)
 //   after 30 days keep a summary;
+// - purgeAgentJobs: finished agents after 180 days, with their refs;
 // - measureStorage: the storage gauge's cached size and row counts.
 //
 // Every delete and update here works in index-ordered chunks (EXPLAIN QUERY PLAN and rows-read
@@ -34,6 +35,9 @@ export const auditRetentionSchema = z.object({
 export const RUN_RETENTION_DAYS = { ok: 30, failed: 90 } as const;
 /** Decided or expired pending actions keep full detail this long, then only a summary. */
 export const PENDING_COMPACT_DAYS = 30;
+
+/** A finished agent's row, with its brief and report, is kept this long (ADR 0344). */
+export const AGENT_JOB_RETENTION_DAYS = 180;
 
 const DAY_MS = 86_400_000;
 
@@ -254,6 +258,40 @@ export async function purgeAutomationRuns(
   const hour = daysBefore(now, COUNTER_RETENTION_DAYS).slice(0, 13);
   await db.deleteFrom("core_automation_counters").where("hour", "<", hour).execute();
   return { deleted, more };
+}
+
+const AGENT_JOB_CHUNK = 200;
+const AGENT_JOB_MAX_CHUNKS = 20;
+
+/**
+ * Deletes finished agents past their retention, oldest first, through core_agent_job_state_idx. A
+ * job still running, paused or queued is never touched, however old. Refs go with them.
+ */
+export async function purgeAgentJobs(
+  db: Kysely<CoreDatabase>,
+  now: string,
+  options: { chunk?: number; maxChunks?: number } = {},
+): Promise<{ deleted: number }> {
+  const cutoff = daysBefore(now, AGENT_JOB_RETENTION_DAYS);
+  const chunk = options.chunk ?? AGENT_JOB_CHUNK;
+  let deleted = 0;
+  for (let round = 0; round < (options.maxChunks ?? AGENT_JOB_MAX_CHUNKS); round += 1) {
+    const rows = await db
+      .selectFrom("core_agent_job")
+      .select("id")
+      .where("state", "in", ["done", "stopped", "failed", "cancelled", "refused"])
+      .where("created_at", "<", cutoff)
+      .orderBy("created_at")
+      .limit(chunk)
+      .execute();
+    if (!rows.length) break;
+    const ids = jsonList(rows.map((r) => r.id));
+    await db.deleteFrom("core_agent_job_refs").where("job_id", "in", ids).execute();
+    await db.deleteFrom("core_agent_job").where("id", "in", ids).execute();
+    deleted += rows.length;
+    if (rows.length < chunk) break;
+  }
+  return { deleted };
 }
 
 /** The key compaction orders and filters by (matches core_pending_action_compact_idx). */

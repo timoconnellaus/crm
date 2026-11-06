@@ -28,7 +28,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 365,
+  "coreSchemaVersion": 371,
   "extensionContract": {
     "supported": [
       1
@@ -380,6 +380,14 @@
     {
       "name": "0365_routines.sql",
       "sha256": "47d96d2feece89f776aa2b0b1ab4cb54b7f4dd1340fddcef3a000a8b84fffad8"
+    },
+    {
+      "name": "0370_approval_execution.sql",
+      "sha256": "124c855214ce4e5a56c5e7d7db76d61377efc23e88199cc5c3b633e63bd00cbd"
+    },
+    {
+      "name": "0371_agent_jobs.sql",
+      "sha256": "31f5db3585c3e32bfcba2eab6311855055cce1f7fcb168985cecea04209d4109"
     }
   ],
   "product": "relationship-os",
@@ -394,6 +402,15 @@
       "usedBy": [
         "ros-app",
         "ros-runner"
+      ]
+    },
+    {
+      "implicit": true,
+      "name": "ros-app:AgentJob",
+      "optional": false,
+      "type": "durable_object",
+      "usedBy": [
+        "ros-app"
       ]
     },
     {
@@ -603,6 +620,11 @@
         {
           "class_name": "AssistantAgent",
           "name": "ASSISTANT",
+          "type": "durable_object_namespace"
+        },
+        {
+          "class_name": "AgentJob",
+          "name": "AGENT_JOB",
           "type": "durable_object_namespace"
         },
         {
@@ -840,6 +862,12 @@
             "AssistantAgent"
           ],
           "tag": "v2"
+        },
+        {
+          "new_sqlite_classes": [
+            "AgentJob"
+          ],
+          "tag": "v3"
         }
       ],
       "mainModule": "index.js",
@@ -926,7 +954,7 @@
           "source": "installer"
         }
       ],
-      "sha256": "fb3a31b5bb9ac2b29ba7e8b8003a3801ecd0996ed5f58bd7b605145ada8c8588"
+      "sha256": "4d2aac6a5c87349806c9d9c19a796b65f9e5386320605f2530598a1fa6dc3a68"
     },
     {
       "bindings": [

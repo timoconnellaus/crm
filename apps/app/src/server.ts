@@ -11,8 +11,11 @@ import { runEmbeddingCron } from "./server/ai.ts";
 
 // Each person's assistant thread (ADR 0340), bound as ASSISTANT in wrangler.jsonc.
 export { AssistantAgent } from "./server/assistant/agent.ts";
+// One object per agent (ADR 0344), bound as AGENT_JOB.
+export { AgentJob } from "./server/assistant/job.ts";
 
 import { type AssistantHttpEnv, handleSocket, SOCKET_PATH } from "./server/assistant/http.ts";
+import { runAgentJobCron } from "./server/assistant/job-cron.ts";
 import { handleRoutineDeliveries } from "./server/assistant/routines.ts";
 import { authorize } from "./server/identity.ts";
 import { createAppHandler } from "./server/mcp/handler.ts";
@@ -55,6 +58,7 @@ export default {
       ctx.waitUntil(runEmbeddingCron(env));
       ctx.waitUntil(runAdjudicatorCron(env));
       ctx.waitUntil(runBlobDeletionCron(env));
+      ctx.waitUntil(runAgentJobCron(env));
       return;
     }
     ctx.waitUntil(runScheduledMaintenance(env));

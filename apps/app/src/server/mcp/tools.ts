@@ -304,7 +304,10 @@ export function createCrmMcpServer(caller: McpCaller, version: string): McpServe
     { instructions: SERVER_INSTRUCTIONS },
   );
 
-  for (const op of coreMcpOperations().filter((o) => o.mcp?.curated)) {
+  // A tool the caller's actor can never call is not listed: an external client sees no agent tools.
+  const listed = (o: AnyOperation) =>
+    o.mcp?.curated && (!o.actors || o.actors.includes(caller.context.actor));
+  for (const op of coreMcpOperations().filter(listed)) {
     const reviewable = requiresReason(op);
     server.registerTool(
       curatedToolName(op),

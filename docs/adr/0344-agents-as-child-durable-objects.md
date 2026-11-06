@@ -64,3 +64,19 @@ these **agents**; in code they are **jobs**, and CRM tasks keep the name "tasks"
   lead to approval fatigue, and background work stalls until the person looks.
 - **Give agents the whole thread.** Rejected: cost, context pollution, and it leaks unrelated
   conversation into the work.
+
+## Amendment, 2026-11-07 (stage 17 W5 as built)
+- **Actor.** An agent calls operations as actor `assistant`, with origin `{ sessionId: "job:<id>", jobId }`. A new actor would have meant a new column in every policy preset; the grant is what narrows it. Its grant is enforced in the pipeline by a guard (`assistant/grants.ts`) that only the AgentJob object sets, and it can only tighten the gate: under the cautious preset an agent's empty-field fills are staged too, because nothing here loosens policy.
+- **Routing.** A write is dry-run first, and the changes it would make decide where it goes: `auto`, `stage` (the job's change set) or `outside` (a change set of its own, so its own card). Staged items are `review_source = always`: a person sees them, never the adjudicator. An agent's outbound action always waits, whatever the preset. A read, or a bookkeeping operation, outside the grant is refused, because neither can wait for review.
+- **The target applies to writes.** Reads are limited by the operation list, not the target set: a researcher needs to look at related records and search. Stage 14's visibility will apply to them as to anyone.
+- **What no grant can hold**: `agent.*`, memory, approvals, Code Mode, cards and anything else that runs other operations (nested calls do not carry the guard), settings, users and extensions. `integration.call`, `integration.types` and `connection.list` can be granted, so web search works.
+- **Work runs in slices** of at most eight model steps on the object's alarm, with the budgets checked after every step and the messages in the object's SQLite. A job's history has older tool results shortened, not compacted.
+- **Finished means two things.** The object deletes its storage when nothing waits for review. While changes wait, it deletes the messages and keeps a small row and the reminder alarm (`reminderHours` in `agent.settings`, default 24); the alarm deletes the rest once they are decided or expired. Pending items are counted in the digest's existing approvals line.
+- **Limits** are taken in one `UPDATE` (`takeNextSlot`), so they hold under concurrent starts. A paused job gives up its slot, and "Allow $X more" puts it back in line in its old place. The 10-minute cron starts what is queued and nudges a running job gone quiet: it is also how a routine's job starts, because ros-runner cannot reach the objects.
+- **Past the step or time budget** a job ends as `stopped`, with its report. Only the spend limit pauses it.
+- **Spend** is counted from the model registry's prices. A model with no price counts as free, so only the step and time limits hold it.
+- **Judge passes, no card.** The mockup shows the grant card before every start. The spec shows it only with the judge off, and the spec wins: a grant the judge accepts starts at once. "Start, but ask me for every change" is on the card, and stages every write.
+- **One resubmission** is keyed by the brief: the same brief refused once comes back only with a justification, and is then refused for good.
+- **Routines.** A routine's step starts an agent through `registerRoutineAgentStarter`, filled in ros-app (`assistant/routine-agents.ts`), as actor `automation`. Its brief names no records, so its target is empty and nothing applies without review; the default profile is the read-only analyst.
+- **`agent.report`** is refused unless the call comes from the job's own object (`origin` surface `system` with its `jobId`, set by the object, never by a request), so a person cannot rewrite their job's counters or state.
+- **Retention.** Finished rows go after 180 days, with their refs (`purgeAgentJobs`, daily cron). Live jobs stay however old.

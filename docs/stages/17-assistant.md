@@ -320,6 +320,14 @@ never forces. Single lookups stay direct tool calls.
   judges the phrase match, tolerating transcription variants ("Q 3", "quarter 3").
 - Approval executes idempotently with the change set's execution id.
 
+> Amended 2026-11-07 (W5 as built): agents act as actor `assistant` under a guard in the pipeline;
+> `approval.decide` is a new operation beside `approval.approve` and `approval.reject`; the server
+> enforces the second step with an echo of the button's words; the execution id is per action, so
+> one row of a change set can be approved; a grant the judge accepts starts with no card; a job past
+> its step or time budget ends as stopped. New operations: `agent.confirmGrant`, `agent.progress`,
+> `agent.report`, `agent.settings`, `agent.updateSettings`, `approval.settings`,
+> `approval.updateSettings`. Details and reasons: the amendments of ADR 0344 and ADR 0345.
+
 ### W6. A2UI (ADR 0346)
 
 - The catalogue in [`assets/17/a2ui-catalogue.md`](assets/17/a2ui-catalogue.md) is built in full

@@ -564,8 +564,16 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   (`core_automations` with `scope = 'personal'`, plus `core_routine`) that message the thread. Their
   Workflow runs plain then Jev gates and queues ids on `ros-routine-delivery`, which ros-app consumes
   to post the message, since ros-runner cannot bind back to ros-app (ADR 0343). Longer work runs as **agents**, child `AgentJob` objects
-  that stage changes for review and never block (ADR 0344). Approvals can be tapped, typed or
-  spoken, with a Jev intent check and a second step for high risk (ADR 0345). Rich messages are
+  (`job:<id>`, `apps/app/src/server/assistant/job.ts`) that stage changes for review and never block
+  (ADR 0344). `agent.start` checks a **grant** in code against what its starter may do, the judge's
+  `grant.leastPrivilege` checks it against the brief (off: the person confirms it first), and a job
+  queues behind the limits in `core_agent_job`. It works in slices on its alarm, as actor `assistant`
+  with session `job:<id>`, and a guard in the pipeline routes every write: an empty field, a note or
+  a task applies at once, anything else goes into the job's change set, and something outside the
+  grant comes back as its own card. Its report joins the thread, and it deletes its storage, keeping
+  only a reminder alarm while changes wait. Approvals can be tapped, typed or spoken
+  (`approval.decide`), with a Jev intent check on the person's own words and a second step for high
+  risk that the server enforces, the two-step button or the exact phrase (ADR 0345). Rich messages are
   **A2UI** from a versioned catalogue (ADR 0346); **plugins** install as copies (ADR 0347);
   **connected assistants** in the same workspace exchange Jev-checked messages under a contract
   (ADR 0348); **voice** runs on `agents/voice` (ADR 0349): a spoken message is a normal turn in the
@@ -624,7 +632,8 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   person asked (advice), the adjudicator's Jev reviewer (fails closed), each summary statement
   against its facts, model-written outbound messages (fails closed), job changes from signatures
   and the shape of a described widget. Without a key the judge is off and nothing changes.
-  Each placement is on or off by layers: shipped default (on unless it sends record content),
+  Each placement is on or off by layers: shipped default (on unless it sends record content;
+  `approval.intent` is the exception, on when self-hosted and forced off on hosted),
   the `JUDGE_PLACEMENTS` deploy var, then human admins (`judge.update`). Built so far:
   `authoring.intent` asks five Choices per added or changed automation in `extension.check`
   (given a request) and `extension.propose`, adds `intent/*` warnings, stores the verdicts on
