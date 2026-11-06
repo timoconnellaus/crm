@@ -24,6 +24,42 @@ for (const app of ["apps/app", "apps/runner"]) {
   console.log(`created ${app}/.dev.vars`);
 }
 
+// In a git worktree, copy provider keys (AI_KEY_*) from the main checkout's apps/app/.dev.vars
+// when this worktree's file lacks them, so keys set once (for example voice: AssemblyAI,
+// ElevenLabs) work in every worktree. Values are never printed.
+const mainCheckout = (() => {
+  try {
+    const common = execFileSync(
+      "git",
+      ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+      {
+        cwd: root,
+        encoding: "utf8",
+      },
+    ).trim();
+    const main = dirname(common);
+    return main === root ? null : main;
+  } catch {
+    return null;
+  }
+})();
+const appVarsTarget = join(root, "apps/app/.dev.vars");
+const mainAppVars = mainCheckout ? join(mainCheckout, "apps/app/.dev.vars") : null;
+if (mainAppVars && existsSync(mainAppVars) && existsSync(appVarsTarget)) {
+  const current = readFileSync(appVarsTarget, "utf8");
+  const missing = readFileSync(mainAppVars, "utf8")
+    .split("\n")
+    .filter((line) => /^AI_KEY_[A-Z0-9_]+=.+/.test(line))
+    .filter((line) => !new RegExp(`^${line.split("=")[0]}=`, "m").test(current));
+  if (missing.length > 0) {
+    writeFileSync(
+      appVarsTarget,
+      `${current.trimEnd()}\n\n# Copied from the main checkout by scripts/dev-setup.mjs.\n${missing.join("\n")}\n`,
+    );
+    console.log(`copied ${missing.map((l) => l.split("=")[0]).join(", ")} from the main checkout`);
+  }
+}
+
 // Stage 6a: an existing runner .dev.vars from before stage 6 still gets the fake provider, which
 // local development and the e2e suite connect to.
 const runnerVars = join(root, "apps/runner/.dev.vars");
