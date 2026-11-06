@@ -32,6 +32,9 @@ importers:
       '@relationship-os/agent-core':
         specifier: workspace:*
         version: link:../../packages/agent-core
+      '@relationship-os/agent-voice':
+        specifier: workspace:*
+        version: link:../../packages/agent-voice
       '@relationship-os/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -496,6 +499,12 @@ importers:
 
   packages/agent-voice:
     dependencies:
+      agents:
+        specifier: 0.33.0
+        version: 0.33.0(@ai-sdk/provider@4.0.30)(@babel/core@7.29.7)(@babel/runtime@7.29.10)(@modelcontextprotocol/client@2.4.0)(@modelcontextprotocol/server@2.4.0)(ai@7.0.145(zod@4.6.7))(react@19.3.1)(rolldown@1.2.16)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(zod@4.6.7)
+      react:
+        specifier: '*'
+        version: 19.3.1
       zod:
         specifier: 4.6.7
         version: 4.6.7

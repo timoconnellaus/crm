@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { readD1Migrations } from "@cloudflare/vitest-plugin";
 import { defineWorkersTestConfig } from "@relationship-os/config/vitest";
@@ -5,6 +6,16 @@ import { mergeConfig } from "vitest/config";
 import { configuratorSpecs } from "./src/components/integrations/configurator/vite-plugin.ts";
 
 const migrationsDir = fileURLToPath(new URL("../../packages/db/migrations", import.meta.url));
+
+/**
+ * ASSEMBLYAI_LIVE=1 only (test/voice-live.test.ts): the key from .dev.vars, which the pool's
+ * `secrets.required` declaration would otherwise drop. CI never sets it, so it never needs a key.
+ */
+function liveVoiceBindings(): Record<string, string> {
+  if (process.env.ASSEMBLYAI_LIVE !== "1" || !existsSync(".dev.vars")) return {};
+  const line = /^AI_KEY_ASSEMBLYAI=(.+)$/m.exec(readFileSync(".dev.vars", "utf8"));
+  return line?.[1] ? { ASSEMBLYAI_LIVE: "1", AI_KEY_ASSEMBLYAI: line[1].trim() } : {};
+}
 
 // A stand-in ros-runner for the RUNNER service binding: the real one is tested in apps/runner and
 // end to end by the Playwright smoke test.
@@ -33,6 +44,7 @@ export default mergeConfig(
           // The scripted stand-ins answer every model role (the assistant's conversation object
           // reads its env from here; tests that need "no AI" pass their own env).
           AI_FAKE_MODEL: "true",
+          ...liveVoiceBindings(),
         },
         serviceBindings: { RUNNER: "ros-runner" },
         // The fake Cloudflare account's D1 database in the self-updater tests.
