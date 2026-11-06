@@ -51,6 +51,10 @@ export const ID_PREFIXES = {
   adjudication: "adj",
   /** Assignment rules (ADR 0246). */
   assignmentRule: "asr",
+  /** An agent (ADR 0344). */
+  agentJob: "job",
+  /** One approval's claim on the actions it applies (ADR 0345). */
+  execution: "exe",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

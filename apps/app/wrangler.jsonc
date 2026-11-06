@@ -50,11 +50,18 @@
   // The in-app assistant (ADR 0340): one AssistantAgent Durable Object per user (`user:<id>`),
   // on the Agents SDK, with SQLite storage for the thread and hibernatable WebSockets.
   "durable_objects": {
-    "bindings": [{ "name": "ASSISTANT", "class_name": "AssistantAgent" }]
+    "bindings": [
+      { "name": "ASSISTANT", "class_name": "AssistantAgent" },
+      // One object per agent (ADR 0344), named `job:<id>`: it deletes its storage when done.
+      { "name": "AGENT_JOB", "class_name": "AgentJob" }
+    ]
   },
-  // Tagged with the last of the history it replaced (ADR 0352): a new account never had the
-  // per-conversation class of ADR 0200 that v1 created and v2 deleted.
-  "migrations": [{ "tag": "v2", "new_sqlite_classes": ["AssistantAgent"] }],
+  // The first step is tagged with the last of the history it replaced (ADR 0352): a new account
+  // never had the per-conversation class of ADR 0200 that v1 created and v2 deleted.
+  "migrations": [
+    { "tag": "v2", "new_sqlite_classes": ["AssistantAgent"] },
+    { "tag": "v3", "new_sqlite_classes": ["AgentJob"] }
+  ],
   // Workers Rate Limiting (ADR 0056, docs/deploying.md). Limits are per Cloudflare location and
   // approximate; change them here and redeploy. namespace_id must be an integer unique within
   // the account: change these if another Worker in your account already uses them.

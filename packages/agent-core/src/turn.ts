@@ -71,6 +71,10 @@ export interface TurnInput<X extends object = Record<never, never>> {
    */
   toolChoice?: "none";
   signal?: AbortSignal;
+  /** After each model request, with what it used. An agent keeps its budgets with this. */
+  onStep?: (step: StepUsage) => void;
+  /** Checked after each step: true ends the turn there (the tool calls it made have run). */
+  stopAfterStep?: () => boolean;
 }
 
 /**
@@ -197,7 +201,10 @@ async function attemptTurn<X extends object>(
     instructions: input.system,
     messages: [...input.messages],
     tools: toolSet(input, attempt),
-    stopWhen: stepCountIs(input.maxSteps ?? DEFAULT_MAX_STEPS),
+    stopWhen: [
+      stepCountIs(input.maxSteps ?? DEFAULT_MAX_STEPS),
+      () => input.stopAfterStep?.() ?? false,
+    ],
     ...(model.params.maxTokens !== undefined ? { maxOutputTokens: model.params.maxTokens } : {}),
     ...(model.params.temperature !== undefined ? { temperature: model.params.temperature } : {}),
     maxRetries: 1,
@@ -238,14 +245,16 @@ async function attemptTurn<X extends object>(
         if (text && !text.endsWith("\n")) text += "\n\n";
         thinking = false;
         const usage = part.usage;
-        steps.push({
+        const step: StepUsage = {
           provider: model.provider,
           modelId: model.modelId,
           startedAt: stepStartedAt,
           promptTokens: usage.inputTokens ?? null,
           cachedTokens: rawCached ?? usage.inputTokenDetails?.cacheReadTokens ?? null,
           outputTokens: usage.outputTokens ?? null,
-        });
+        };
+        steps.push(step);
+        input.onStep?.(step);
         break;
       }
       case "error":

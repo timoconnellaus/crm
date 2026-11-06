@@ -3,6 +3,7 @@
 // UI bundle stays small and cannot reach D1. Import it as `@relationship-os/core/client`.
 // The in-app assistant's stream events and transcript (ADR 0200).
 
+export * from "./approvals/describe.ts";
 export * from "./approvals/high-risk.ts";
 export * from "./assistant/context.ts";
 export * from "./assistant/events.ts";

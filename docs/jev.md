@@ -169,6 +169,20 @@ Proposed by later stages, after stage 11:
   closed: no answer means no message. New checks are refused while it is off.
 - **`memory.condition`** (stage 17, ADR 0342, built): does a conditional line's filter, written out
   in words by code, pick out the records the person described. Fails closed to the read-back alone.
+- **`approval.intent`** (stage 17, [ADR 0345](adr/0345-approvals-by-tap-typing-or-voice.md), built):
+  two Choices, asked separately. Do a person's typed or spoken words clearly approve this one item,
+  given what the assistant just said and what else is pending; and, for high risk, are the words
+  the exact phrase, allowing for transcription ("Q 3", "quarter 3"). Sends item titles and the
+  assistant's reply, which is record content, yet it is on by default: without it typed and spoken
+  approvals do not work. Hosted deployments force it off. Fails closed: approve by tapping, and
+  high risk uses the two-step button.
+- **`grant.leastPrivilege`** (stage 17, [ADR 0344](adr/0344-agents-as-child-durable-objects.md),
+  built): is an agent's grant (operations, target, caps, expiry) no wider than its brief needs,
+  with the starter's reason on its one resubmission. No record content. Fails closed: the person
+  confirms the grant before the agent starts.
+- **`orchestrator.suggest`** (stage 17, ADR 0344, built): does the person's request look like longer
+  work, from their words and how many records are selected. One hint to the front agent, which
+  decides. Nothing is stored, so its spend is not counted. Fails open: no hint.
 
 Proposed by the brief and **dropped or deferred**, with why:
 
@@ -176,6 +190,8 @@ Proposed by the brief and **dropped or deferred**, with why:
   applied by `approval.approve`, which is human-only (`actors: ["human"]`), from a button. No
   model decides what the person agreed to, so there is nothing for Jev to read. What remains is an
   eval question (did the assistant queue something the person declined?), which is placement 7.
+  (Reversed by stage 17: people can now type or say an approval, so `approval.intent` reads the
+  words. See [ADR 0345](adr/0345-approvals-by-tap-typing-or-voice.md).)
 - **Routing inbound or synced email to a person, organisation or deal.** People and organisations
   are matched exactly by address and domain, so code decides (rule 1). Sync does not link
   activities to deals today. Linking a thread to one of an organisation's open deals, with code
@@ -557,6 +573,26 @@ Stage 17's memory placements (6 November 2026, jev-1.14.0, three runs a case, no
 | `memory.condition/as_said` (P(as_said), 27 cases) | 0.55 | 0.42 → 0.70 | "the bigger ones" with a number (0.42, below); the mockup's condition (0.70, above) |
 | `routine.gate/meets` (P(meets), 34 cases) | 0.6 | 0.50 → 0.70 | a question against "ready to buy" (0.50, below); a large deal's fields against "a big deal" (0.70, above) |
 
+Stage 17's agent and approval placements (7 November 2026, jev-1.14.0, three runs a case, none
+wrong, and every question separates; report `evals/judge/reports/2026-11-06T19-52-54-738Z.md`):
+
+| Question | Threshold | Gap | Close calls |
+| --- | --- | --- | --- |
+| `approval.intent/approves_this` (P(approves_this), 37 cases) | 0.7 | 0.39 → 0.90 | none |
+| `approval.intent/same_phrase` (P(same_phrase), 29 cases) | 0.8 | 0.05 → 0.95 | "twelve hundred" for 1,200 (0.95, above) |
+| `grant.leastPrivilege/fits` (P(fits), 27 cases) | 0.6 | 0.20 → 0.78 | none |
+| `orchestrator.suggest/long_work` (P(long_work), 32 cases) | 0.4 | 0.20 → 0.51 | "find the CEO of every organisation tagged Prospect" (0.51, above) |
+
+A run can pass and still not separate, because a close call counts as neither right nor wrong:
+the second run here did, with "she said yes go ahead, what do you think" at 0.79 over a threshold
+of 0.7. So check the gap, not only the wrong count. What moved before the recorded run: a report
+of someone else's yes read as a yes (0.96) until the criteria said it is not agreement; a yes to
+another question in the reply sat at 0.67 until a plain yes had to answer whether to do the item;
+"all of the person's email" read as a fit (0.66) until the criteria named it; and a target smaller
+than the brief read as too wide until the criteria said smaller fits. The phrase question needed
+no change: a wrong digit, a wrong thousands place or a wrong audience sat at 0.05 or under from the
+first run.
+
 Two things moved before the recorded run. The state first described a personal line as "a
 preference or fact about the person", which told the judge the answer: customer facts sat at 0.5.
 It now says only "something to remember". And a filter on the wrong kind of record read as a match
@@ -599,6 +635,9 @@ threshold moves.
 | `outbound.message` | 30 sentences, 10 recipient cases | a message waits for a person | a promise sent in the organisation's name |
 | `sync.jobChange` | 20 signature pairs | no change: today's rule | a false suggestion, which a person dismisses |
 | `widget.shape` | 24 prompts, 4 per shape plus `unclear` | one extra retry | a wrong chart, as today |
+| `approval.intent` | 40 over its two questions | the person is asked which item, or taps | an action the person did not agree to; for the phrase, the wrong number of emails sent |
+| `grant.leastPrivilege` | 25 grants | one resubmission, or the person confirms | a confused or injected agent reaches further than its job |
+| `orchestrator.suggest` | 25 requests | a hint the model ignores | no hint: the model decides alone |
 
 ## Testing, recording and replay
 
@@ -673,6 +712,9 @@ model call.
 | `outbound.message` | The message, the person's request, and facts about the records it names | As `summary.statements` |
 | `sync.jobChange` | The new signature block with phone, email and web lines removed, what the last one said (title and company, as parsed), and the person's name, organisation and title; only from mailboxes that share full content | As `summary.statements` |
 | `widget.shape` | The person's prompt | On |
+| `approval.intent` | The person's words, the assistant's last reply, and the titles of what is waiting (record content); for high risk, the words and the exact phrase | On, because typed and spoken approvals need it; forced off on a hosted deployment |
+| `grant.leastPrivilege` | The agent's brief and profile, its operations, target and caps in words, its expiry, and the starter's reason | On |
+| `orchestrator.suggest` | The person's words this turn and how many records are selected | On |
 | Graders and calibration | Hand-written fixtures only | Not in a deployment |
 
 - **Never sent:** private activities, metadata-only synced mail bodies, restricted reads

@@ -117,11 +117,11 @@ export type RoutineAgentStarter = (input: {
   userId: string;
   brief: string;
   profile?: string | undefined;
-}) => Promise<{ text: string }>;
+}) => Promise<{ text: string; cards?: A2uiPart[] }>;
 
 let agentStarter: RoutineAgentStarter | null = null;
 
-/** The hook W5 fills, so a routine can start an agent. Until then that step is refused. */
+/** ros-app fills this, where the agents' objects are. Without it that step is refused. */
 export function registerRoutineAgentStarter(starter: RoutineAgentStarter | null): void {
   agentStarter = starter;
 }

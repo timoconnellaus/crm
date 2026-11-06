@@ -56,9 +56,20 @@ test("from a read-back to a delivered message, and back out", async ({ page }) =
 
   const chat = await openPanel(page);
   const dot = chat.getByTestId("routine-why-dot").last();
-  await dot.evaluate((el) => el.scrollIntoView());
-  await expect(dot).toBeInViewport();
-  await dot.click({ force: true });
+  // As a person does it. A phone has no hover, so the dot is simply there, and a tap opens the panel.
+  // Cards above it load as the chat opens and move it, so it is pressed only once it holds still,
+  // never forced: a forced press lands on whatever has moved under that spot.
+  await expect(async () => {
+    await dot.scrollIntoViewIfNeeded();
+    if (isPhone(page)) {
+      await expect(dot).toHaveCSS("opacity", "1");
+      await dot.tap({ timeout: 5_000 });
+    } else {
+      await dot.hover({ timeout: 5_000 });
+      await dot.click({ timeout: 5_000 });
+    }
+    await expect(dot).toHaveAttribute("aria-expanded", "true", { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
   const why = chat.getByTestId("routine-why").last();
   await expect(why).toContainText("You asked");
   await expect(why).toContainText("Tell me when a person is created");

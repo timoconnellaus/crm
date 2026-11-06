@@ -3,6 +3,7 @@
 // checkboxes, each showing the operation, risk, the agent's reason and a readable diff. Deciding
 // shows what happened: dependent actions rejected with it, failures and skips with reasons.
 import type { CoreOutput } from "@relationship-os/core";
+import { combinedStep } from "@relationship-os/core/client";
 import { Button } from "@relationship-os/ui/components/button";
 import { Checkbox } from "@relationship-os/ui/components/checkbox";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
@@ -14,6 +15,7 @@ import { toast } from "sonner";
 import { formatDateTime, formatRelative } from "#/lib/format";
 import { errorMessage, useOp } from "#/lib/query";
 import { ChangeSetExplanation } from "../ai/summary.tsx";
+import { TwoStepButton } from "../assistant/cards/parts.tsx";
 import { ChangePreview, RiskBadge, StatusBadge } from "./change-preview.tsx";
 import { actionTitle, groupPreview, outboundTitle, summariseDecision } from "./describe.ts";
 import { ExtensionProposal } from "./extension-proposal.tsx";
@@ -144,7 +146,7 @@ function ChangeSetView({
     [actions],
   );
 
-  async function run(decision: Decision) {
+  async function run(decision: Decision, confirm?: string) {
     if (!selected.length) return;
     setBusy(decision);
     setError(null);
@@ -153,6 +155,7 @@ function ChangeSetView({
       const out = await decide(
         decision,
         requested ? { actionIds: requested } : { changeSetId: set.id },
+        confirm,
       );
       const summary = summariseDecision(
         decision,
@@ -176,6 +179,8 @@ function ChangeSetView({
   const approveLabel = n > 1 ? `Approve ${n}` : "Approve";
   const rejectLabel = all ? (n > 1 ? "Reject all" : "Reject") : `Reject ${n}`;
   const heading = setHeading(set);
+  // High risk: the server refuses one press, so the button takes two (ADR 0345).
+  const step = combinedStep(selected.map((a) => a.secondStep));
 
   return (
     <section
@@ -235,15 +240,25 @@ function ChangeSetView({
               <XIcon />
               {busy === "reject" ? "Rejecting…" : rejectLabel}
             </Button>
-            <Button
-              size="sm"
-              className="flex-1 sm:flex-none"
-              disabled={!n || busy !== null}
-              onClick={() => void run("approve")}
-            >
-              <CheckIcon />
-              {busy === "approve" ? "Applying…" : approveLabel}
-            </Button>
+            {step ? (
+              <TwoStepButton
+                label={step.label}
+                confirmLabel={step.confirmLabel}
+                onConfirm={() => void run("approve", step.confirmLabel)}
+                disabled={!n || busy !== null}
+                testId="approval-two-step"
+              />
+            ) : (
+              <Button
+                size="sm"
+                className="flex-1 sm:flex-none"
+                disabled={!n || busy !== null}
+                onClick={() => void run("approve")}
+              >
+                <CheckIcon />
+                {busy === "approve" ? "Applying…" : approveLabel}
+              </Button>
+            )}
           </div>
         )}
       </header>

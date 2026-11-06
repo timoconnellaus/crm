@@ -568,6 +568,29 @@ waits to be read back and confirmed, or for a team line's approval. Written inli
 never a fact about a customer: those go on the record as a proposed note (ADR 0342).
 _Avoid_: note (that is on a record), fact
 
+**Agent**
+Longer work the assistant hands off so the chat can carry on: an `AgentJob` Durable Object, a
+**job** in code, with a brief, records by id, the memory read at start and a **grant**. **Awaited**:
+the reply waits for it, with no card, until a time limit. **Background**: a progress card, results
+later. It stages what needs review and never asks; a person can stop it, not chat with it (ADR
+0344).
+_Avoid_: job or subagent in the UI, task (that is a CRM task), worker
+
+**Grant**
+What one agent may do: operations, a target set, count caps and an expiry, never more than its
+starter may do. Inside it an agent fills empty fields and adds notes and tasks without review;
+changing a value is **staged** in the job's change set; anything else comes back as its own card.
+_Avoid_: permission (a role's), scope (an MCP token's)
+
+**Agent profile**
+A named kind of agent (researcher, drafter, importer, analyst, or a plugin's): instructions, a
+default grant, a budget and a model role.
+
+**Second step**
+What a high-risk approval takes: the two-step button, or the exact phrase typed or said. Enforced
+by the server. High risk is a destructive action, or an email to more than
+`approvals.phraseThreshold.email` recipients (ADR 0345).
+
 **Routine**
 A personal automation (`owner_user_id`, scope `personal`) that messages the person's thread: a
 trigger, plain and Jev gates, and the step "message me in my chat". "My routines" in settings and

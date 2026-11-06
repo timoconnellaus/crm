@@ -3,9 +3,10 @@
 // what the person asked and the agent's reason shown apart. High-risk items need the two-step
 // button: "Send 240 emails", then "Confirm: send 240 emails", with Cancel.
 //
-// Typed and spoken approvals are W5's; only the tap is here.
+// The step comes from the server, which refuses an approval without it; a typed or spoken approval
+// goes through the chat (`approval.decide`), so only the tap is here.
 import type { CoreOutput } from "@relationship-os/core";
-import { secondStepFor } from "@relationship-os/core/client";
+import { combinedStep } from "@relationship-os/core/client";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
 import { Skeleton } from "@relationship-os/ui/components/skeleton";
@@ -59,7 +60,7 @@ export interface ApprovalViewProps {
   canApprove: boolean;
   busy: boolean;
   reviewHref: string;
-  onDecide(decision: Decision): void;
+  onDecide(decision: Decision, confirm?: string): void;
   /** The diff. */
   children?: ReactNode;
 }
@@ -124,7 +125,7 @@ export function ApprovalView({
             <TwoStepButton
               label={step.label}
               confirmLabel={step.confirmLabel}
-              onConfirm={() => onDecide("approve")}
+              onConfirm={() => onDecide("approve", step.confirmLabel)}
               disabled={busy}
               testId="approval-two-step"
             />
@@ -193,12 +194,11 @@ export function ApprovalCard({ changeSetId, actionIds, title, youAsked, note }: 
 
   const pending = actions.filter((a) => a.status === "pending");
   const [first] = actions;
-  const titled = actions.map((a) => ({ ...a, title: titleOf(a) }));
 
-  async function run(decision: Decision) {
+  async function run(decision: Decision, confirm?: string) {
     setBusy(true);
     try {
-      const out = await decide(decision, { actionIds: pending.map((a) => a.id) });
+      const out = await decide(decision, { actionIds: pending.map((a) => a.id) }, confirm);
       const failed = out.results.find((r) => r.status === "failed");
       if (failed) toast.error(failed.statusReason ?? "It failed");
       else toast.success(decision === "approve" ? "Approved" : "Rejected");
@@ -219,11 +219,11 @@ export function ApprovalCard({ changeSetId, actionIds, title, youAsked, note }: 
       youAsked={youAsked}
       reason={first?.reason}
       risk={first?.risk}
-      step={secondStepFor(titled.filter((a) => a.status === "pending"))}
+      step={combinedStep(pending.map((a) => a.secondStep))}
       canApprove={canApprove}
       busy={busy}
       reviewHref={`/approvals?set=${encodeURIComponent(changeSetId)}`}
-      onDecide={(decision) => void run(decision)}
+      onDecide={(decision, confirm) => void run(decision, confirm)}
     >
       {note && <p className="min-w-0 break-words">{note}</p>}
       {actions.map((action) => (

@@ -33,7 +33,7 @@ export function createInvoker<Ops extends readonly AnyOperation[]>(
     // Approvals re-run queued actions by name, synchronously; queued extension tools must
     // resolve too, so load them first.
     const extensionOps =
-      name.startsWith("approval.") || name === "extension.approve"
+      name.startsWith("approval.") || name === "extension.approve" || name === "agent.start"
         ? new Map((await loadExtensionOperations(ctx.db.query)).map((o) => [o.name, o]))
         : null;
     return invokeOperation(op, input, {

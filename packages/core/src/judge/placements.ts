@@ -8,6 +8,10 @@
 // JUDGE_PLACEMENTS deploy var, or an admin does in Settings → AI (`judge.update`). TypeSafe
 // processes in the US with zero retention only on request: ask for it before a hosted (SaaS)
 // tenant can turn a record-content placement on (docs/jev.md, "Data handling").
+//
+// Two record-content placements are on regardless: the adjudicator's, which has no switch, and
+// `approval.intent`, which sends only what the person is answering and is how typed and spoken
+// approvals work at all. It has a switch, and hosted deployments force it off (settings.ts).
 
 export type JudgeFailMode =
   /** Advice: carry on as without the judge, and say it did not check. */
@@ -34,8 +38,9 @@ export interface JudgePlacement {
   /** Sends CRM record content (not only a person's request, a manifest or a prompt). */
   sendsRecordContent: boolean;
   /**
-   * On by default when the judge has a key. False for record content. The adjudicator's placement
-   * has no switch: it follows the adjudicator's reviewer (`adjudicatorReviewer`).
+   * On by default when the judge has a key. False for record content, but for `approval.intent`
+   * (see the top of this file). The adjudicator's placement has no switch: it follows the
+   * adjudicator's reviewer (`adjudicatorReviewer`).
    */
   defaultOn: boolean;
   /** Has an admin switch in Settings → AI. */
@@ -174,6 +179,25 @@ export const JUDGE_PLACEMENTS = [
     spendCounted: true,
   }),
   place({
+    id: "approval.intent",
+    label: "Typed and spoken approvals",
+    askedWhen: "A person types or says an approval instead of tapping the card",
+    failMode: "closed",
+    onFailure:
+      "Nothing is approved from the words: the person approves by tapping, and high risk uses the two-step button",
+    timeoutMs: 4_000,
+    sends:
+      "The person's words, the assistant's last reply, and the titles of what is waiting; for high risk, the words and the exact phrase",
+    // Record content, yet on by default: without it typed and spoken approvals do not work, and it
+    // sends titles and one reply, not records. Hosted deployments still force it off in
+    // settings.ts (ADR 0232), which is what stage 17 asks for: approve by tapping there.
+    sendsRecordContent: true,
+    defaultOn: true,
+    switchable: true,
+    built: true,
+    spendCounted: true,
+  }),
+  place({
     id: "routine.gate",
     label: "A routine's checks in the person's own words",
     askedWhen: "A routine's run, before any model call; its read-back's backtest; and routine.test",
@@ -187,6 +211,35 @@ export const JUDGE_PLACEMENTS = [
     switchable: true,
     built: true,
     spendCounted: true,
+  }),
+  place({
+    id: "grant.leastPrivilege",
+    label: "An agent's access against its brief",
+    askedWhen: "An agent is started, and once more if the starter resubmits with a reason",
+    failMode: "closed",
+    onFailure: "The grant is shown to the person to confirm before the agent starts",
+    timeoutMs: 4_000,
+    sends:
+      "The agent's brief and profile, its operations, target and caps in words, its expiry, and the starter's reason on a resubmission",
+    sendsRecordContent: false,
+    defaultOn: true,
+    switchable: true,
+    built: true,
+    spendCounted: true,
+  }),
+  place({
+    id: "orchestrator.suggest",
+    label: "A hint that a request is work for an agent",
+    askedWhen: "At the start of an assistant turn",
+    failMode: "open",
+    onFailure: "No hint: the front agent decides alone",
+    timeoutMs: 1_500,
+    sends: "The person's words this turn and how many records are selected",
+    sendsRecordContent: false,
+    defaultOn: true,
+    switchable: true,
+    built: true,
+    spendCounted: false,
   }),
   place({
     id: "judge.test",

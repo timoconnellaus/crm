@@ -757,6 +757,53 @@ export interface CoreMemoryTable {
   updated_at: string;
 }
 
+export type AgentJobState =
+  | "awaiting_confirm"
+  | "refused"
+  | "queued"
+  | "running"
+  | "paused"
+  | "done"
+  | "stopped"
+  | "failed"
+  | "cancelled";
+
+/** Migration 0371 (ADR 0344): one agent (a job, in code) and what stays when it is done. */
+export interface CoreAgentJobTable {
+  id: string;
+  user_id: string;
+  starter_kind: "user" | "routine" | "plugin";
+  starter_id: string;
+  profile: string | null;
+  role: string;
+  title: string;
+  brief: string;
+  records: JsonText;
+  access: JsonText;
+  budget: JsonText;
+  mode: "awaited" | "background";
+  review_everything: Defaulted<number>;
+  state: AgentJobState;
+  judged: Defaulted<JsonText | null>;
+  justification: Defaulted<string | null>;
+  progress: Defaulted<JsonText | null>;
+  steps: Defaulted<number>;
+  spent_microusd: Defaulted<number>;
+  fields_filled: Defaulted<number>;
+  result: Defaulted<string | null>;
+  error: Defaulted<string | null>;
+  started_at: Defaulted<Timestamp | null>;
+  finished_at: Defaulted<Timestamp | null>;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+/** Migration 0371: the people, organisations and email hashes a job names. */
+export interface CoreAgentJobRefsTable {
+  job_id: string;
+  ref: string;
+}
+
 /** Migration 0352 (ADR 0342): the people, organisations and email hashes a memory line names. */
 export interface CoreMemoryRefsTable {
   memory_id: string;
@@ -973,7 +1020,15 @@ export interface CorePendingActionTable {
   review_source: Defaulted<ReviewSource | null>;
   /** Migration 0256 (ADR 0238): the judge's check of an outbound message (outbound.message). */
   outbound_check: Defaulted<string | null>;
+  /** Migration 0370 (ADR 0345): which approval claimed it, so it applies once. */
+  execution_id: Defaulted<string | null>;
+  execution_at: Defaulted<Timestamp | null>;
+  /** Migration 0370: how the person decided. */
+  decided_via: Defaulted<ApprovalVia | null>;
 }
+
+/** How a person gave an approval (ADR 0345). */
+export type ApprovalVia = "tap" | "typed" | "spoken";
 
 export interface CorePendingActionRecordsTable {
   action_id: string;
@@ -1521,6 +1576,8 @@ export interface CoreDatabase {
   core_memory: CoreMemoryTable;
   core_memory_refs: CoreMemoryRefsTable;
   core_memory_settings: CoreMemorySettingsTable;
+  core_agent_job: CoreAgentJobTable;
+  core_agent_job_refs: CoreAgentJobRefsTable;
   core_erased_address: CoreErasedAddressTable;
   core_blob_deletion: CoreBlobDeletionTable;
   core_assignment_rule: CoreAssignmentRuleTable;

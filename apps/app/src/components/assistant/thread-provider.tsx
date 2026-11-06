@@ -194,6 +194,9 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
           case "appended":
             ws.send(JSON.stringify({ type: "sync" } satisfies ThreadClientFrame));
             break;
+          case "job":
+            void invalidateOps(client, "agent.");
+            break;
           case "playout": {
             const { turn, playout } = data;
             setItems((current) =>
@@ -224,7 +227,7 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
       socket.current?.close();
       socket.current = null;
     };
-  }, [applyState, onEvent]);
+  }, [applyState, client, onEvent]);
 
   // Is the chat on screen? Views register while they show it; a hidden tab does not count.
   useEffect(() => {

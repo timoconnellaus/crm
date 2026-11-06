@@ -4,6 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   BellIcon,
   BookmarkIcon,
+  BotIcon,
   ChevronRightIcon,
   CoinsIcon,
   CopyIcon,
@@ -42,6 +43,7 @@ function Section({
   description: string;
   to?:
     | "/settings/approval-policy"
+    | "/settings/agents"
     | "/settings/assistant-memory"
     | "/settings/assistant-routines"
     | "/settings/adjudicator"
@@ -186,6 +188,16 @@ function SettingsPage() {
             title="What your assistant remembers"
             description="See, edit and pause what your assistant remembers, and the team's shared lines."
             to="/settings/assistant-memory"
+          />
+          <Section
+            icon={<BotIcon className="size-5" />}
+            title="Agents"
+            description={
+              isAdmin
+                ? "The kinds of agent your assistant can start, and the limits on them."
+                : "The kinds of agent your assistant can start."
+            }
+            to="/settings/agents"
           />
           <Section
             icon={<RepeatIcon className="size-5" />}

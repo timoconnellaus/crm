@@ -577,6 +577,22 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
     rule: "Tasks from Sam's assistant need your OK",
     actions: [operation("Accept", "settings.update")],
   },
+  agentJob: { type: "agentJob", jobId: "job_01", title: "Account research" },
+  agentGrant: {
+    type: "agentGrant",
+    jobId: "job_01",
+    title: "Account research",
+    brief: "Research the 20 organisations in Q4 target list and fill in industry and website.",
+    can: ["Fill empty fields on these 20 organisations, up to 60 changes", "Until 6:00 pm today"],
+    aside: ["Changing a value that's already filled in", "Anything else, like emails or deleting"],
+    budget: "Up to 200 steps, 30 minutes and $2.00.",
+  },
+  changeReview: {
+    type: "changeReview",
+    changeSetId: "chs_01",
+    title: "Account research",
+    text: "These replace values already on the record, so they need you.",
+  },
   agentLogEntry: {
     type: "agentLogEntry",
     direction: "sent",

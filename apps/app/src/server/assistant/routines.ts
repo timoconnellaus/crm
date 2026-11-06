@@ -102,7 +102,7 @@ async function message(
         brief: source.brief,
         profile: source.profile,
       });
-      return { text: started.text, cards: [] };
+      return { text: started.text, cards: started.cards ?? [] };
     }
   }
 }

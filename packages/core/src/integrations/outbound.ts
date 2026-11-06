@@ -6,6 +6,7 @@
 // the action itself, so nothing is re-run through the pipeline.
 import type { CrmDb } from "@relationship-os/db";
 import type { Compilable } from "kysely";
+import { OUTBOUND_OPERATION } from "../approvals/describe.ts";
 import { addDays, DEFAULT_APPROVAL_EXPIRY_DAYS, targetChangeSet } from "../approvals/queue.ts";
 import type { PendingApproval } from "../errors.ts";
 import { evaluateGate, type GateDecision, type GateFloor } from "../gate.ts";
@@ -78,8 +79,7 @@ export type OutboundDecision =
   | { decision: "review"; pending: PendingApproval }
   | { decision: "deny"; reason: string };
 
-/** The operation name outbound items and their audit rows carry. */
-export const OUTBOUND_OPERATION = "integration.outbound";
+export { OUTBOUND_OPERATION };
 
 /** What an outbound pending action stores as its `input` (and shows in the approvals inbox). */
 export interface OutboundInput {
@@ -91,7 +91,7 @@ export interface OutboundInput {
   action: number;
   title: string;
   description: string;
-  fields: { label: string; value: string; syntax?: string }[];
+  fields: { label: string; value: string; syntax?: string; truncated?: boolean }[];
   actionKind: { tag: string; label: string } | null;
   autoApprovable: boolean;
   implementsRevert: boolean;
@@ -120,6 +120,8 @@ export function outboundInput(s: OutboundSubmission): OutboundInput {
       // A list field (`To`) keeps one value per line.
       value: cap(f.value ?? (Array.isArray(f.items) ? f.items.join("\n") : ""), 50_000),
       ...(f.syntax ? { syntax: cap(f.syntax, 20) } : {}),
+      // The gatekeeper cut the list: counting what is shown would undercount (ADR 0345).
+      ...(f.truncated ? { truncated: true } : {}),
     })),
     actionKind: d.actionKind
       ? { tag: cap(d.actionKind.tag, 100), label: cap(d.actionKind.label, 200) }
@@ -234,6 +236,8 @@ export async function submitOutbound(db: CrmDb, s: OutboundSubmission): Promise<
   const provisional = findProvisionalIds([input.title, input.description, input.fields]);
   let decision = gate.decision;
   if (decision === "auto" && provisional.length) decision = "review";
+  // An agent's email or post always waits for the person, whatever the policy (ADR 0344).
+  if (decision === "auto" && s.origin.jobId) decision = "review";
 
   // outbound.message (ADR 0238): a message an AI actor wrote is read before it leaves. A finding,
   // or no answer, turns an automatic send into a review; Jev never lets one through.

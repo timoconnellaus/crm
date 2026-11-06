@@ -4,6 +4,7 @@
 export * from "./channel.ts";
 export * from "./compaction/index.ts";
 export * from "./context.ts";
+export * from "./job.ts";
 export * from "./pending.ts";
 export * from "./store.ts";
 export * from "./thread.ts";

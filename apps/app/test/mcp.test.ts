@@ -56,7 +56,10 @@ describe("tools from the registry (AC2)", () => {
     const client = await mcpClient(fetchApp, tokens.access_token);
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name);
-    const curated = coreRegistry.list().filter((op) => op.mcp?.curated);
+    const curated = coreRegistry
+      .list()
+      .filter((op) => op.mcp?.curated && (!op.actors || op.actors.includes("mcp")));
+    expect(tools.some((t) => t.name === "start_agent")).toBe(false);
     for (const op of curated) {
       const tool = tools.find((t) => t.name === (op.mcp?.toolName ?? op.name.replace(/\./g, "_")));
       expect(tool, op.name).toBeDefined();
