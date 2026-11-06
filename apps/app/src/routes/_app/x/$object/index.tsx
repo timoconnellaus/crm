@@ -24,6 +24,7 @@ import { FieldDisplay } from "#/components/fields/field-widgets";
 import { FilterBuilder } from "#/components/filter-builder/filter-builder";
 import { RecordImportDialog } from "#/components/import/record-import-dialog";
 import { PageCount, PageLayout } from "#/components/layout/page-layout";
+import { AssignByRules } from "#/components/list/assign-by-rules";
 import { exportListCsv } from "#/components/list/export-csv";
 import { ObjectViewBody, scrollFor, ViewTypeSwitcher } from "#/components/views/object-views";
 import { SavedViewsMenu } from "#/components/views/saved-views-menu";
@@ -93,7 +94,8 @@ function ObjectList({ info }: { info: ObjectInfo }) {
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  // Selection (and bulk actions) only when the object has a bulk manual automation.
+  // Selection (and bulk actions) only when the object has an owner to assign by rules, or a bulk
+  // manual automation.
   const bulkAutomations = useManualAutomations(info.name, "bulk");
   const titleField = definition.titleField ?? "id";
 
@@ -232,10 +234,15 @@ function ObjectList({ info }: { info: ObjectInfo }) {
           onSortChange={view.setSort}
           filter={view.state.filter}
           total={count.data}
-          {...(bulkAutomations.length
+          {...(bulkAutomations.length || info.ownerField
             ? {
                 bulkActions: ({ ids, clear }: { ids: string[]; clear: () => void }) => (
-                  <AutomationBulkActions object={info.name} ids={ids} onDone={clear} />
+                  <>
+                    {info.ownerField && (
+                      <AssignByRules object={info.name} ids={ids} onDone={clear} />
+                    )}
+                    <AutomationBulkActions object={info.name} ids={ids} onDone={clear} />
+                  </>
                 ),
               }
             : {})}

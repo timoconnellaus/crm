@@ -18,6 +18,7 @@ import {
   ShieldCheckIcon,
   SparklesIcon,
   Trash2Icon,
+  UserCheckIcon,
   UserCogIcon,
   UserPlusIcon,
   UsersIcon,
@@ -44,6 +45,7 @@ export interface NavItem {
     | "/settings/audit"
     | "/settings/connected-apps"
     | "/settings/extensions"
+    | "/settings/assignment-rules"
     | "/settings/automations"
     | "/settings/integrations"
     | "/settings/ai";
@@ -147,6 +149,12 @@ export const SETTINGS_NAV: NavItem[] = [
     icon: PuzzleIcon,
     keywords: ["objects", "fields", "tools", "quarantine", "rollback", "settings"],
     adminOnly: true,
+  },
+  {
+    to: "/settings/assignment-rules",
+    label: "Assignment rules",
+    icon: UserCheckIcon,
+    keywords: ["owner", "round-robin", "territory", "fallback", "leads", "settings"],
   },
   {
     to: "/settings/automations",

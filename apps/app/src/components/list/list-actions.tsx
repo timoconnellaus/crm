@@ -54,6 +54,7 @@ import { AutomationBulkActions } from "../automations/record-automations.tsx";
 import { TagInput } from "../fields.tsx";
 import { MergeDialog } from "../merge/merge-dialog.tsx";
 import type { ViewState } from "../views/view-state.ts";
+import { AssignByRules } from "./assign-by-rules.tsx";
 import { exportListCsv } from "./export-csv.ts";
 
 export type ListObject = "person" | "organisation";
@@ -140,6 +141,7 @@ export function BulkActions({ object, selected, onDone }: BulkActionsProps) {
         <BulkMerge object={object} ids={selected.map((r) => r.id)} onDone={onDone} />
       )}
       <BulkTagsAndOwner object={object} ids={selected.map((r) => r.id)} onDone={onDone} />
+      <AssignByRules object={object} ids={selected.map((r) => r.id)} onDone={onDone} />
       <AutomationBulkActions object={object} ids={selected.map((r) => r.id)} onDone={onDone} />
       <BulkDelete object={object} ids={selected.map((r) => r.id)} onDone={onDone} />
     </>

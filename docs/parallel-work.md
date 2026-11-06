@@ -18,7 +18,7 @@ commit**, by editing this table. Use the next free block. Unused numbers in a bl
 | G | 0280–0289 | 0260–0269 (free) | Stage 12, Import (migrations only) | specced |
 | H | 0290–0299 | 0270–0279 (free) | Stage 13, Email (migrations only) | specced |
 | I | 0300–0309 | 0280–0289 (free) | Stage 14, Teams and permissions (migrations only) | specced |
-| J | 0310–0319 | 0290–0299 | Stage 15, Leads: the Leads and lifecycle extensions, assignment rules (migrations 0310–0319) | in flight |
+| J | 0310–0319 | 0290–0299 (free) | Stage 15, Leads: the Leads and lifecycle extensions, assignment rules (migration 0310 used; no ADRs, ADR 0246 amended) | in flight |
 | K | 0320–0329 | 0300–0309 (free) | Stage 16, Duplicates (migrations only) | specced |
 | L | 0330–0339 | 0320–0329 | Erase completeness (every store) | in flight |
 | M | 0340–0349 | 0330–0339 | Self-hosted Workers AI over REST (no prompt logging); narrower organisation erase (ADR 0330 used; no migrations) | merged |

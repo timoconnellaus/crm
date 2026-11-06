@@ -34,7 +34,9 @@ const convert = (input: Record<string, unknown>) =>
   call<Converted>(admin, "x.leads.convert", input);
 
 async function people(prefix = "P") {
-  const person = await call<{ id: string }>(admin, "person.create", { displayName: unique(prefix) });
+  const person = await call<{ id: string }>(admin, "person.create", {
+    displayName: unique(prefix),
+  });
   const org = await call<{ id: string }>(admin, "organisation.create", { name: unique("Co") });
   return { person: person.id, organisation: org.id };
 }
@@ -248,7 +250,9 @@ describe("leads.convert", () => {
     const keys = await env.DB.prepare(`SELECT name FROM pragma_table_info('${side?.tbl}')`).all<{
       name: string;
     }>();
-    await env.DB.prepare(`INSERT INTO ${side?.tbl} (${keys.results[0]?.name}, ${side?.col}) VALUES (?, ?)`)
+    await env.DB.prepare(
+      `INSERT INTO ${side?.tbl} (${keys.results[0]?.name}, ${side?.col}) VALUES (?, ?)`,
+    )
       .bind(dealId, lead.id)
       .run();
     expect((await getLead(lead.id)).values.status).toBe("new");

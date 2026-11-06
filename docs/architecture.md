@@ -152,7 +152,9 @@ Typed access to core tables uses Kysely ([ADR 0014](adr/0014-kysely-for-core-sch
 An **extension** is code against one contract (`packages/sdk`): `defineObject`, `defineView` /
 `defineDashboard`, `defineAutomation`, `defineTool` ([ADR 0005](adr/0005-extensions.md)).
 
-- **Shipped extensions** live in `extensions/` and ship with releases. Deals/Pipelines is the first.
+- **Shipped extensions** live in `extensions/` and ship with releases. Deals/Pipelines is the first;
+  Leads is the second business extension and depends on it. `lifecycle` is shipped but opt-in
+  (`relationshipOs.optional` in its `package.json`): an admin installs it from Settings → Extensions.
 - **Runtime extensions** are written by Claude in-app or via MCP. They are stored in an
   `@cloudflare/computer` Workspace (a Durable Object filesystem with git), approved as a diff, and
   rolled back by reverting ([ADR 0006](adr/0006-dynamic-runtime-cloudflare-computer.md)).
@@ -191,6 +193,16 @@ How stage 3a built it ([ADR 0040](adr/0040-extension-runtime-build.md)):
     reinstalls an earlier commit.
 - **Shipped extensions** (`extensions/<id>/`; Deals is the first) are bundled as source at build time
   and installed through the same `extension.install` path at boot.
+- **Leads** ([ADR 0246](adr/0246-leads-as-an-extension-and-assignment-rules-in-core.md)) is built on
+  the public contract like Deals. A relation to `deals.deal` refuses the install where Deals is
+  missing. Conversion is a tool making several CRM calls, written to be run again. The contract
+  keys it added are general: `owner`, `navigationOrder`, `requireOneOf`, `titleDefault`, field
+  `default`, `defaultSetting` and `editableOptions`, tool `recordAction`, automation `enabled`.
+- **Assignment rules** (`packages/core/src/assignment`, ADR 0246) are core, because they apply to
+  people and organisations too and must set the owner in the create's own insert. Every create path
+  calls `assignOwner` in its handler. A round-robin rule's state is read there and advanced in the
+  same batch by a guarded write; if another create moved it, the batch fails and the pipeline runs
+  the call again, so rotation is exact.
 - **Stage behaviour** ([ADR 0100](adr/0100-stage-behaviour-and-object-contract-additions.md)):
   an object's declarative `stages` key is enforced by the host inside `record.create`,
   `record.update` and `import.records.commit` (`packages/core/src/records/stages.ts`): stage rules
@@ -713,7 +725,8 @@ packages/
                        ros-runner as GATEKEEPER_<NAME> per deployment (docs/integrations.md)
 extensions/
   deals/               (stage 4) Deals: pipelines, stages, deals, participants (ADR 0026, 0100)
-  deals/               (stage 4) first real shipped extension
+  leads/               (stage 15) Leads: inbox, conversion to deals (ADR 0246)
+  lifecycle/           (stage 15) opt-in lifecycle stage on people (ADR 0246)
 docs/
   architecture.md      this file
   roadmap.md           stage order and status

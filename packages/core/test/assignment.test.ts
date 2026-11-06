@@ -151,14 +151,21 @@ describe("rules", () => {
       object: "leads.lead",
       conditions: [
         { via: "organisation", field: "firmo.employees", op: "between", value: [50, 500] },
-        { via: "organisation", field: "firmo.foundedOn", op: "between", value: ["2000-01-01", "2010-12-31"] },
+        {
+          via: "organisation",
+          field: "firmo.foundedOn",
+          op: "between",
+          value: ["2000-01-01", "2010-12-31"],
+        },
       ],
       method: "user",
       userIds: [sam.id],
     });
     await rule({
       object: "leads.lead",
-      conditions: [{ via: "organisation", field: "industry", op: "in", value: ["Mining", "Energy"] }],
+      conditions: [
+        { via: "organisation", field: "industry", op: "in", value: ["Mining", "Energy"] },
+      ],
       method: "user",
       userIds: [kim.id],
     });
@@ -268,14 +275,27 @@ describe("rules", () => {
   });
 
   it("reorders, updates, deletes and lists rules", async () => {
-    const first = await rule({ object: "person", conditions: [], method: "user", userIds: [sam.id] });
-    const second = await rule({ object: "person", conditions: [], method: "user", userIds: [kim.id] });
+    const first = await rule({
+      object: "person",
+      conditions: [],
+      method: "user",
+      userIds: [sam.id],
+    });
+    const second = await rule({
+      object: "person",
+      conditions: [],
+      method: "user",
+      userIds: [kim.id],
+    });
     await call("assignment.reorder", { object: "person", ids: [second.id, first.id] });
     expect((await newPerson()).ownerId).toBe(kim.id);
     await call("assignment.update", { id: second.id, enabled: false });
     expect((await newPerson()).ownerId).toBe(sam.id);
     await call("assignment.delete", { id: first.id });
-    const listed = await call<{ objects: { object: string; rules: Rule[] }[] }>("assignment.list", {});
+    const listed = await call<{ objects: { object: string; rules: Rule[] }[] }>(
+      "assignment.list",
+      {},
+    );
     expect(listed.objects.map((o) => o.object)).toEqual(
       expect.arrayContaining(["person", "organisation", "leads.lead", "deals.deal"]),
     );
@@ -348,7 +368,10 @@ describe("authority", () => {
       userIds: [sam.id],
     });
     const attempts: [string, unknown][] = [
-      ["assignment.create", { object: "person", name: "x", conditions: [], method: "user", userIds: [sam.id] }],
+      [
+        "assignment.create",
+        { object: "person", name: "x", conditions: [], method: "user", userIds: [sam.id] },
+      ],
       ["assignment.update", { id: existing.id, enabled: false }],
       ["assignment.delete", { id: existing.id }],
       ["assignment.reorder", { object: "person", ids: [existing.id] }],
