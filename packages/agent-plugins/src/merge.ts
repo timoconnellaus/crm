@@ -4,7 +4,7 @@
 // at a time. Its answers can land only on those conflicts: it cannot add an item, change a clean
 // hunk or touch anything else, and a person applies the result.
 import { z } from "zod";
-import { bodyDiff, type DiffLine, threeWay, type ThreeWayConflict } from "./diff.ts";
+import { bodyDiff, type DiffLine, type ThreeWayConflict, threeWay } from "./diff.ts";
 import { canonicalJson } from "./fingerprint.ts";
 import type { PluginItem } from "./manifest.ts";
 
@@ -59,7 +59,12 @@ function mergeItem(
   if (!theirs) {
     if (!mine) return { ...out, status: "removed", merged: null, conflicts: [] };
     if (!base || sameItem(base, mine)) {
-      return { ...out, status: base ? "removed" : "yours", merged: base ? null : mine, conflicts: [] };
+      return {
+        ...out,
+        status: base ? "removed" : "yours",
+        merged: base ? null : mine,
+        conflicts: [],
+      };
     }
     return { ...out, status: "removed_but_changed", merged: mine, conflicts: [] };
   }
@@ -76,11 +81,8 @@ function mergeItem(
   if (base && sameItem(base, theirs)) {
     return { ...out, status: "yours", merged: mine, conflicts: [] };
   }
-  const result = threeWay(
-    base ? content(base) : {},
-    content(mine),
-    content(theirs),
-    (conflict) => resolve(key, conflict),
+  const result = threeWay(base ? content(base) : {}, content(mine), content(theirs), (conflict) =>
+    resolve(key, conflict),
   );
   const merged = result.merged as { label: string; body: Record<string, unknown> };
   return {

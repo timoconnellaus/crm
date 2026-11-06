@@ -1,6 +1,7 @@
 // Where plugins come from (ADR 0347): first-party (shipped with releases), the workspace's private
 // registry, and the hosted marketplace. Admins can turn the marketplace off or make members ask.
 import {
+  compareVersions,
   listingOf,
   type MarketplaceClient,
   type PluginListing,
@@ -10,7 +11,6 @@ import {
 import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
-import { compareVersions } from "@relationship-os/agent-plugins";
 import { FIRST_PARTY_PLUGINS } from "./first-party.ts";
 
 type Db = Kysely<CoreDatabase>;

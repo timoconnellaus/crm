@@ -74,10 +74,10 @@ import {
   loadCacheRails,
   loadGeneralSettings,
   memoryForTurn,
-  pluginPromptBlock,
   memorySaveOf,
   parseFloor,
   personsWordsInThread,
+  pluginPromptBlock,
   type RateLimitBinding,
   RateLimitedError,
   ROLES,
@@ -753,7 +753,12 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
       const memory = await memoryForTurn(db.query, user.id, { state: this.#memoryState() });
       const assembled = await assembleContext({
         prefix: {
-          instructions: this.#instructions(settings, user, mcp, await pluginPromptBlock(db.query, user)),
+          instructions: this.#instructions(
+            settings,
+            user,
+            mcp,
+            await pluginPromptBlock(db.query, user),
+          ),
           tools: mcp.tools,
           memory: memory.block,
         },
@@ -1071,7 +1076,12 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
     const mcp = await this.#connectTools(user, threadId, "");
     const memory = await memoryForTurn(db.query, user.id, { state: this.#memoryState() });
     const prefix = {
-      instructions: this.#instructions(settings, user, mcp, await pluginPromptBlock(db.query, user)),
+      instructions: this.#instructions(
+        settings,
+        user,
+        mcp,
+        await pluginPromptBlock(db.query, user),
+      ),
       tools: mcp.tools as AssistantTool[],
       memory: memory.block,
       note: this.#compaction.note(),
@@ -1172,7 +1182,12 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
         }
         const assembled = await assembleContext({
           prefix: {
-            instructions: this.#instructions(settings, user, mcp, await pluginPromptBlock(db.query, user)),
+            instructions: this.#instructions(
+              settings,
+              user,
+              mcp,
+              await pluginPromptBlock(db.query, user),
+            ),
             tools: mcp.tools,
             memory: memory.block,
             note,

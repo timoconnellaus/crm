@@ -8,8 +8,8 @@
 // became (a routine's definition, a view's spec), so editing a routine in My routines changes the
 // copy just as editing a skill does.
 import {
-  accessWidening,
   type AccessWidening,
+  accessWidening,
   canonicalJson,
   compareVersions,
   manifestFingerprint,
@@ -64,9 +64,7 @@ function swapDeep<T>(value: T, swap: Adaptation): T {
   if (typeof value === "string") return swapWords(value, swap.from, swap.to) as T;
   if (Array.isArray(value)) return value.map((v) => swapDeep(v, swap)) as T;
   if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [k, swapDeep(v, swap)]),
-    ) as T;
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, swapDeep(v, swap)])) as T;
   }
   return value;
 }
@@ -80,9 +78,7 @@ export function assertAdaptations(manifest: PluginManifest, swaps: readonly Adap
     const allowed = manifest.items.some((item) => {
       if (!(NEED_KINDS as readonly string[]).includes(item.kind)) return false;
       const need = item.body as ConnectionNeedBody;
-      return (
-        need.service === swap.from && need.alternatives.some((a) => a.service === swap.to)
-      );
+      return need.service === swap.from && need.alternatives.some((a) => a.service === swap.to);
     });
     if (!allowed) {
       throw new ValidationError(`This plugin cannot use ${swap.to} in place of ${swap.from}`, {
@@ -161,7 +157,8 @@ export async function needStatus(
     );
   return needs.map((item) => {
     const need = item.body as ConnectionNeedBody;
-    const met = need.integration === "mcp" ? held(["mcp"], need.level) : held(need.vendors, need.level);
+    const met =
+      need.integration === "mcp" ? held(["mcp"], need.level) : held(need.vendors, need.level);
     const swap = met ? undefined : need.alternatives.find((a) => held(a.vendors, need.level));
     return {
       key: item.key,
@@ -278,9 +275,7 @@ export async function applyItems(ctx: HandlerContext, input: ApplyInput): Promis
     queueItem(ctx, installId, item, state);
 
     for (const holder of targetHolders(item.kind, scope, holders)) {
-      const target = targets.find(
-        (t) => t.item_key === item.key && t.holder_user_id === holder,
-      );
+      const target = targets.find((t) => t.item_key === item.key && t.holder_user_id === holder);
       if (target) await MATERIALISERS[item.kind]?.update(ctx, item, target);
       else {
         await createTarget(ctx, installId, {
@@ -447,7 +442,10 @@ export async function copyState(
     upstream.manifest.version !== install.row.skipped_version;
   const widening =
     upstream && newer
-      ? accessWidening(pluginKinds.accessOf(install.manifest), pluginKinds.accessOf(upstream.manifest))
+      ? accessWidening(
+          pluginKinds.accessOf(install.manifest),
+          pluginKinds.accessOf(upstream.manifest),
+        )
       : NO_WIDENING;
   return {
     changed,

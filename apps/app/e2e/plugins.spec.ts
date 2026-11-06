@@ -44,7 +44,9 @@ const copyOf = (page: Page, id: string) =>
   page.locator(`[data-testid="plugin-copy"][data-plugin="${id}"]`);
 
 test("an unchanged copy follows updates, and new access waits", async ({ page }) => {
-  const id = unique("desk").toLowerCase().replace(/[^a-z]/g, "x");
+  const id = unique("desk")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "x");
   await addToWorkspace(page, manifest(id, "1.0.0", "One"));
   await installFromPage(page, id);
 
@@ -74,7 +76,9 @@ test("an unchanged copy follows updates, and new access waits", async ({ page })
 });
 
 test("a changed copy offers compare and merge, and stop and resume work", async ({ page }) => {
-  const id = unique("desk").toLowerCase().replace(/[^a-z]/g, "x");
+  const id = unique("desk")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "x");
   const base = "List attendees.\nShow open deals.\nKeep it under 300 words.";
   await addToWorkspace(page, manifest(id, "2.0.0", base));
   await installFromPage(page, id);
@@ -138,7 +142,9 @@ test("the assistant offers a plugin, and a person installs it", async ({ page })
 });
 
 test("an admin locks a plugin for a team, and sees it on Settings", async ({ page }) => {
-  const id = unique("desk").toLowerCase().replace(/[^a-z]/g, "x");
+  const id = unique("desk")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "x");
   await addToWorkspace(page, manifest(id, "1.0.0", "One"));
   await open(page, "/settings/plugins");
   await page.getByRole("combobox", { name: "Plugin" }).click();

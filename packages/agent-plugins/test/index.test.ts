@@ -17,11 +17,11 @@ import {
   manifestFingerprint,
   mergedItems,
   mergeQuestions,
-  parseSkillFile,
   type PluginItem,
-  pluginManifestSchema,
+  parseSkillFile,
   planMerge,
   planUpdate,
+  pluginManifestSchema,
   proposeMerge,
   type ScopedInstall,
   threeWay,
@@ -91,8 +91,10 @@ describe("the three-way merge", () => {
 
   it("merges the mockup's skill: their line and yours, with one real conflict", () => {
     const base = "List attendees.\nShow open deals.\nKeep it under 300 words.";
-    const mine = "List attendees.\nPut the buying committee first.\nShow open deals.\nKeep it under 300 words.\nNo exclamation marks.";
-    const theirs = "List attendees.\nAdd each attendee's last email.\nShow open deals.\nKeep it under 250 words.";
+    const mine =
+      "List attendees.\nPut the buying committee first.\nShow open deals.\nKeep it under 300 words.\nNo exclamation marks.";
+    const theirs =
+      "List attendees.\nAdd each attendee's last email.\nShow open deals.\nKeep it under 250 words.";
     const result = threeWay({ text: base }, { text: mine }, { text: theirs });
     // Both added after line one, and both changed the end.
     expect(result.conflicts.map((c) => c.path)).toEqual(["text#0", "text#1"]);
@@ -115,7 +117,9 @@ describe("the three-way merge", () => {
     const result = threeWay({ days: 14 }, { days: 21 }, { days: 30 });
     expect(result.conflicts).toEqual([{ path: "days", base: 14, mine: 21, theirs: 30 }]);
     expect(result.merged).toEqual({ days: 21 });
-    expect(threeWay({ days: 14 }, { days: 21 }, { days: 30 }, () => 30).merged).toEqual({ days: 30 });
+    expect(threeWay({ days: 14 }, { days: 21 }, { days: 30 }, () => 30).merged).toEqual({
+      days: 30,
+    });
   });
 
   it("lets a key be removed on one side", () => {
@@ -329,7 +333,11 @@ describe("the Agent Plugins format", () => {
 
   it("brings skills and remote servers across, and says what it left out", () => {
     const { manifest: loaded, skipped } = loadAgentPlugin(files);
-    expect(loaded).toMatchObject({ id: "deal-desk", version: "2.1.0", publisher: "Fieldnote Labs" });
+    expect(loaded).toMatchObject({
+      id: "deal-desk",
+      version: "2.1.0",
+      publisher: "Fieldnote Labs",
+    });
     expect(loaded.items.map((i) => i.kind)).toEqual(["skill", "connectionNeed"]);
     expect(loaded.items[0]?.body).toMatchObject({
       name: "deal-review",

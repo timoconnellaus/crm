@@ -47,7 +47,6 @@ import { useEnrichAction } from "#/components/integrations/enrich-action";
 import { useMergeAction } from "#/components/merge/merge-action";
 import { faviconUrl } from "#/components/organisations/config";
 import { OrganisationDetailsCard } from "#/components/organisations/organisation-details-card";
-import { PluginRecordPanels } from "#/components/plugins/record-panels";
 import {
   OrganisationFamilyCard,
   OrganisationPeopleCard,
@@ -57,6 +56,7 @@ import {
   useChildOrganisations,
   useOrganisationPeople,
 } from "#/components/organisations/record-adapters";
+import { PluginRecordPanels } from "#/components/plugins/record-panels";
 import {
   type ActivityType,
   timelineQueryOptions,

@@ -162,7 +162,13 @@ export const PLUGIN_KINDS: readonly PluginItemKind[] = [
     body: scriptBody,
     access: scriptAccess,
   },
-  { kind: "producer", label: "Chat card", scopes: EVERYONE, body: scriptBody, access: scriptAccess },
+  {
+    kind: "producer",
+    label: "Chat card",
+    scopes: EVERYONE,
+    body: scriptBody,
+    access: scriptAccess,
+  },
   {
     kind: "routine",
     label: "Routine",
@@ -187,7 +193,12 @@ export const PLUGIN_KINDS: readonly PluginItemKind[] = [
   { kind: "savedSearch", label: "Saved search", scopes: EVERYONE, body: savedSearchBody },
   { kind: "quickAction", label: "Quick action", scopes: EVERYONE, body: quickActionBody },
   { kind: "recordPanel", label: "Record panel", scopes: EVERYONE, body: recordPanelBody },
-  { kind: "notificationPreset", label: "Notification preset", scopes: PEOPLE, body: notificationBody },
+  {
+    kind: "notificationPreset",
+    label: "Notification preset",
+    scopes: PEOPLE,
+    body: notificationBody,
+  },
   {
     kind: "connectionNeed",
     label: "Connection",
@@ -195,7 +206,13 @@ export const PLUGIN_KINDS: readonly PluginItemKind[] = [
     body: connectionBody,
     access: connectionAccess,
   },
-  { kind: "extension", label: "Extension", scopes: ORG, body: extensionBody, access: extensionAccess },
+  {
+    kind: "extension",
+    label: "Extension",
+    scopes: ORG,
+    body: extensionBody,
+    access: extensionAccess,
+  },
   {
     kind: "workspaceAutomation",
     label: "Workspace automation",

@@ -41,9 +41,7 @@ function PluginPage() {
     <PageLayout
       title={manifest?.name ?? "Plugin"}
       back={{ to: "/plugins", label: "Plugins" }}
-      description={
-        manifest && `${manifest.publisher} · version ${manifest.version}`
-      }
+      description={manifest && `${manifest.publisher} · version ${manifest.version}`}
       titleAddon={
         plugin.data && <Badge variant="outline">{SOURCE_WORDS[plugin.data.source]}</Badge>
       }
@@ -69,7 +67,7 @@ function PluginPage() {
       }
     >
       {plugin.isPending && <Skeleton className="h-48 w-full" />}
-      {plugin.isError && <ErrorState error={plugin.error} />}
+      {plugin.isError && <ErrorState title="Could not load this plugin" error={plugin.error} />}
       {manifest && (
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
           <div className="grid content-start gap-4">

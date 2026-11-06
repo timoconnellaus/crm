@@ -47,8 +47,7 @@ export function marketplaceClientFor(
     });
   };
 
-  const fail = (response: Response) =>
-    new Error(`The marketplace answered ${response.status}`);
+  const fail = (response: Response) => new Error(`The marketplace answered ${response.status}`);
 
   return {
     async search(input) {
@@ -58,10 +57,7 @@ export function marketplaceClientFor(
       return marketplaceSearchResultSchema.parse(await response.json());
     },
     async get(id) {
-      const response = await send(
-        "GET",
-        `${MARKETPLACE_LISTINGS_PATH}/${encodeURIComponent(id)}`,
-      );
+      const response = await send("GET", `${MARKETPLACE_LISTINGS_PATH}/${encodeURIComponent(id)}`);
       if (response.status === 404) return null;
       if (!response.ok) throw fail(response);
       return marketplaceListingResultSchema.parse(await response.json());

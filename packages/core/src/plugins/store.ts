@@ -83,9 +83,7 @@ export async function installsFor(
   const rows = await db
     .selectFrom("core_plugin_install")
     .selectAll()
-    .where((eb) =>
-      eb.or([eb("owner_user_id", "=", viewer.userId), eb("scope", "<>", "personal")]),
-    )
+    .where((eb) => eb.or([eb("owner_user_id", "=", viewer.userId), eb("scope", "<>", "personal")]))
     .orderBy("created_at")
     .execute();
   return hydrate(db, rows);
@@ -173,11 +171,7 @@ export async function namedItem(
   const rows = await db
     .selectFrom("core_plugin_install")
     .selectAll()
-    .where(
-      "id",
-      "in",
-      jsonList(hits.map((h) => h.install_id)),
-    )
+    .where("id", "in", jsonList(hits.map((h) => h.install_id)))
     .execute();
   const installs = effectiveInstalls(await hydrate(db, rows), viewerOf(user));
   const items = await itemsOf(

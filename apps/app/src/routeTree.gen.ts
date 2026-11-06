@@ -35,6 +35,8 @@ import { Route as AppOrganisationsIndexRouteImport } from './routes/_app/organis
 import { Route as AppOrganisationsIdRouteImport } from './routes/_app/organisations/$id'
 import { Route as AppPeopleIndexRouteImport } from './routes/_app/people/index'
 import { Route as AppPeopleIdRouteImport } from './routes/_app/people/$id'
+import { Route as AppPluginsIndexRouteImport } from './routes/_app/plugins/index'
+import { Route as AppPluginsIdRouteImport } from './routes/_app/plugins/$id'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsAdjudicatorRouteImport } from './routes/_app/settings/adjudicator'
 import { Route as AppSettingsAiRouteImport } from './routes/_app/settings/ai'
@@ -53,6 +55,7 @@ import { Route as AppSettingsNotificationDeliveryRouteImport } from './routes/_a
 import { Route as AppSettingsNotificationRoutesRouteImport } from './routes/_app/settings/notification-routes'
 import { Route as AppSettingsNotificationsRouteImport } from './routes/_app/settings/notifications'
 import { Route as AppSettingsPlanRouteImport } from './routes/_app/settings/plan'
+import { Route as AppSettingsPluginsRouteImport } from './routes/_app/settings/plugins'
 import { Route as AppSettingsStorageRouteImport } from './routes/_app/settings/storage'
 import { Route as AppSettingsSupportAccessRouteImport } from './routes/_app/settings/support-access'
 import { Route as AppSettingsUpdatesRouteImport } from './routes/_app/settings/updates'
@@ -61,6 +64,7 @@ import { Route as AppSettingsVoiceRouteImport } from './routes/_app/settings/voi
 import { Route as ApiAssistantThreadRouteImport } from './routes/api/assistant/thread'
 import { Route as ApiAssistantTurnRouteImport } from './routes/api/assistant/turn'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppPluginsCompareInstallIdRouteImport } from './routes/_app/plugins/compare.$installId'
 import { Route as AppXObjectIndexRouteImport } from './routes/_app/x/$object/index'
 import { Route as AppXObjectIdRouteImport } from './routes/_app/x/$object/$id'
 import { Route as ApiAssistantThreadStopRouteImport } from './routes/api/assistant/thread.stop'
@@ -195,6 +199,16 @@ const AppPeopleIdRoute = AppPeopleIdRouteImport.update({
   path: '/people/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPluginsIndexRoute = AppPluginsIndexRouteImport.update({
+  id: '/plugins/',
+  path: '/plugins/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPluginsIdRoute = AppPluginsIdRouteImport.update({
+  id: '/plugins/$id',
+  path: '/plugins/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   id: '/settings/',
   path: '/settings/',
@@ -293,6 +307,11 @@ const AppSettingsPlanRoute = AppSettingsPlanRouteImport.update({
   path: '/settings/plan',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsPluginsRoute = AppSettingsPluginsRouteImport.update({
+  id: '/settings/plugins',
+  path: '/settings/plugins',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsStorageRoute = AppSettingsStorageRouteImport.update({
   id: '/settings/storage',
   path: '/settings/storage',
@@ -334,6 +353,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppPluginsCompareInstallIdRoute =
+  AppPluginsCompareInstallIdRouteImport.update({
+    id: '/plugins/compare/$installId',
+    path: '/plugins/compare/$installId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppXObjectIndexRoute = AppXObjectIndexRouteImport.update({
   id: '/x/$object/',
   path: '/x/$object/',
@@ -378,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
+  '/plugins/$id': typeof AppPluginsIdRoute
   '/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/settings/ai': typeof AppSettingsAiRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
@@ -395,6 +421,7 @@ export interface FileRoutesByFullPath {
   '/settings/notification-routes': typeof AppSettingsNotificationRoutesRoute
   '/settings/notifications': typeof AppSettingsNotificationsRoute
   '/settings/plan': typeof AppSettingsPlanRoute
+  '/settings/plugins': typeof AppSettingsPluginsRoute
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
@@ -407,7 +434,9 @@ export interface FileRoutesByFullPath {
   '/dashboards/': typeof AppDashboardsIndexRoute
   '/organisations/': typeof AppOrganisationsIndexRoute
   '/people/': typeof AppPeopleIndexRoute
+  '/plugins/': typeof AppPluginsIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
+  '/plugins/compare/$installId': typeof AppPluginsCompareInstallIdRoute
   '/x/$object/$id': typeof AppXObjectIdRoute
   '/api/assistant/thread/stop': typeof ApiAssistantThreadStopRoute
   '/api/assistant/thread/stream': typeof ApiAssistantThreadStreamRoute
@@ -435,6 +464,7 @@ export interface FileRoutesByTo {
   '/dashboards/$id': typeof AppDashboardsIdRoute
   '/organisations/$id': typeof AppOrganisationsIdRoute
   '/people/$id': typeof AppPeopleIdRoute
+  '/plugins/$id': typeof AppPluginsIdRoute
   '/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/settings/ai': typeof AppSettingsAiRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
@@ -452,6 +482,7 @@ export interface FileRoutesByTo {
   '/settings/notification-routes': typeof AppSettingsNotificationRoutesRoute
   '/settings/notifications': typeof AppSettingsNotificationsRoute
   '/settings/plan': typeof AppSettingsPlanRoute
+  '/settings/plugins': typeof AppSettingsPluginsRoute
   '/settings/storage': typeof AppSettingsStorageRoute
   '/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
@@ -464,7 +495,9 @@ export interface FileRoutesByTo {
   '/dashboards': typeof AppDashboardsIndexRoute
   '/organisations': typeof AppOrganisationsIndexRoute
   '/people': typeof AppPeopleIndexRoute
+  '/plugins': typeof AppPluginsIndexRoute
   '/settings': typeof AppSettingsIndexRoute
+  '/plugins/compare/$installId': typeof AppPluginsCompareInstallIdRoute
   '/x/$object/$id': typeof AppXObjectIdRoute
   '/api/assistant/thread/stop': typeof ApiAssistantThreadStopRoute
   '/api/assistant/thread/stream': typeof ApiAssistantThreadStreamRoute
@@ -494,6 +527,7 @@ export interface FileRoutesById {
   '/_app/dashboards/$id': typeof AppDashboardsIdRoute
   '/_app/organisations/$id': typeof AppOrganisationsIdRoute
   '/_app/people/$id': typeof AppPeopleIdRoute
+  '/_app/plugins/$id': typeof AppPluginsIdRoute
   '/_app/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/_app/settings/ai': typeof AppSettingsAiRoute
   '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
@@ -511,6 +545,7 @@ export interface FileRoutesById {
   '/_app/settings/notification-routes': typeof AppSettingsNotificationRoutesRoute
   '/_app/settings/notifications': typeof AppSettingsNotificationsRoute
   '/_app/settings/plan': typeof AppSettingsPlanRoute
+  '/_app/settings/plugins': typeof AppSettingsPluginsRoute
   '/_app/settings/storage': typeof AppSettingsStorageRoute
   '/_app/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/_app/settings/updates': typeof AppSettingsUpdatesRoute
@@ -523,7 +558,9 @@ export interface FileRoutesById {
   '/_app/dashboards/': typeof AppDashboardsIndexRoute
   '/_app/organisations/': typeof AppOrganisationsIndexRoute
   '/_app/people/': typeof AppPeopleIndexRoute
+  '/_app/plugins/': typeof AppPluginsIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
+  '/_app/plugins/compare/$installId': typeof AppPluginsCompareInstallIdRoute
   '/_app/x/$object/$id': typeof AppXObjectIdRoute
   '/api/assistant/thread/stop': typeof ApiAssistantThreadStopRoute
   '/api/assistant/thread/stream': typeof ApiAssistantThreadStreamRoute
@@ -553,6 +590,7 @@ export interface FileRouteTypes {
     | '/dashboards/$id'
     | '/organisations/$id'
     | '/people/$id'
+    | '/plugins/$id'
     | '/settings/adjudicator'
     | '/settings/ai'
     | '/settings/approval-policy'
@@ -570,6 +608,7 @@ export interface FileRouteTypes {
     | '/settings/notification-routes'
     | '/settings/notifications'
     | '/settings/plan'
+    | '/settings/plugins'
     | '/settings/storage'
     | '/settings/support-access'
     | '/settings/updates'
@@ -582,7 +621,9 @@ export interface FileRouteTypes {
     | '/dashboards/'
     | '/organisations/'
     | '/people/'
+    | '/plugins/'
     | '/settings/'
+    | '/plugins/compare/$installId'
     | '/x/$object/$id'
     | '/api/assistant/thread/stop'
     | '/api/assistant/thread/stream'
@@ -610,6 +651,7 @@ export interface FileRouteTypes {
     | '/dashboards/$id'
     | '/organisations/$id'
     | '/people/$id'
+    | '/plugins/$id'
     | '/settings/adjudicator'
     | '/settings/ai'
     | '/settings/approval-policy'
@@ -627,6 +669,7 @@ export interface FileRouteTypes {
     | '/settings/notification-routes'
     | '/settings/notifications'
     | '/settings/plan'
+    | '/settings/plugins'
     | '/settings/storage'
     | '/settings/support-access'
     | '/settings/updates'
@@ -639,7 +682,9 @@ export interface FileRouteTypes {
     | '/dashboards'
     | '/organisations'
     | '/people'
+    | '/plugins'
     | '/settings'
+    | '/plugins/compare/$installId'
     | '/x/$object/$id'
     | '/api/assistant/thread/stop'
     | '/api/assistant/thread/stream'
@@ -668,6 +713,7 @@ export interface FileRouteTypes {
     | '/_app/dashboards/$id'
     | '/_app/organisations/$id'
     | '/_app/people/$id'
+    | '/_app/plugins/$id'
     | '/_app/settings/adjudicator'
     | '/_app/settings/ai'
     | '/_app/settings/approval-policy'
@@ -685,6 +731,7 @@ export interface FileRouteTypes {
     | '/_app/settings/notification-routes'
     | '/_app/settings/notifications'
     | '/_app/settings/plan'
+    | '/_app/settings/plugins'
     | '/_app/settings/storage'
     | '/_app/settings/support-access'
     | '/_app/settings/updates'
@@ -697,7 +744,9 @@ export interface FileRouteTypes {
     | '/_app/dashboards/'
     | '/_app/organisations/'
     | '/_app/people/'
+    | '/_app/plugins/'
     | '/_app/settings/'
+    | '/_app/plugins/compare/$installId'
     | '/_app/x/$object/$id'
     | '/api/assistant/thread/stop'
     | '/api/assistant/thread/stream'
@@ -899,6 +948,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPeopleIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/plugins/': {
+      id: '/_app/plugins/'
+      path: '/plugins'
+      fullPath: '/plugins/'
+      preLoaderRoute: typeof AppPluginsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/plugins/$id': {
+      id: '/_app/plugins/$id'
+      path: '/plugins/$id'
+      fullPath: '/plugins/$id'
+      preLoaderRoute: typeof AppPluginsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/': {
       id: '/_app/settings/'
       path: '/settings'
@@ -1025,6 +1088,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsPlanRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/plugins': {
+      id: '/_app/settings/plugins'
+      path: '/settings/plugins'
+      fullPath: '/settings/plugins'
+      preLoaderRoute: typeof AppSettingsPluginsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/storage': {
       id: '/_app/settings/storage'
       path: '/settings/storage'
@@ -1081,6 +1151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/plugins/compare/$installId': {
+      id: '/_app/plugins/compare/$installId'
+      path: '/plugins/compare/$installId'
+      fullPath: '/plugins/compare/$installId'
+      preLoaderRoute: typeof AppPluginsCompareInstallIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/x/$object/': {
       id: '/_app/x/$object/'
       path: '/x/$object'
@@ -1130,6 +1207,7 @@ interface AppRouteChildren {
   AppDashboardsIdRoute: typeof AppDashboardsIdRoute
   AppOrganisationsIdRoute: typeof AppOrganisationsIdRoute
   AppPeopleIdRoute: typeof AppPeopleIdRoute
+  AppPluginsIdRoute: typeof AppPluginsIdRoute
   AppSettingsAdjudicatorRoute: typeof AppSettingsAdjudicatorRoute
   AppSettingsAiRoute: typeof AppSettingsAiRoute
   AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
@@ -1147,6 +1225,7 @@ interface AppRouteChildren {
   AppSettingsNotificationRoutesRoute: typeof AppSettingsNotificationRoutesRoute
   AppSettingsNotificationsRoute: typeof AppSettingsNotificationsRoute
   AppSettingsPlanRoute: typeof AppSettingsPlanRoute
+  AppSettingsPluginsRoute: typeof AppSettingsPluginsRoute
   AppSettingsStorageRoute: typeof AppSettingsStorageRoute
   AppSettingsSupportAccessRoute: typeof AppSettingsSupportAccessRoute
   AppSettingsUpdatesRoute: typeof AppSettingsUpdatesRoute
@@ -1156,7 +1235,9 @@ interface AppRouteChildren {
   AppDashboardsIndexRoute: typeof AppDashboardsIndexRoute
   AppOrganisationsIndexRoute: typeof AppOrganisationsIndexRoute
   AppPeopleIndexRoute: typeof AppPeopleIndexRoute
+  AppPluginsIndexRoute: typeof AppPluginsIndexRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+  AppPluginsCompareInstallIdRoute: typeof AppPluginsCompareInstallIdRoute
   AppXObjectIdRoute: typeof AppXObjectIdRoute
   AppXObjectIndexRoute: typeof AppXObjectIndexRoute
 }
@@ -1179,6 +1260,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardsIdRoute: AppDashboardsIdRoute,
   AppOrganisationsIdRoute: AppOrganisationsIdRoute,
   AppPeopleIdRoute: AppPeopleIdRoute,
+  AppPluginsIdRoute: AppPluginsIdRoute,
   AppSettingsAdjudicatorRoute: AppSettingsAdjudicatorRoute,
   AppSettingsAiRoute: AppSettingsAiRoute,
   AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
@@ -1196,6 +1278,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsNotificationRoutesRoute: AppSettingsNotificationRoutesRoute,
   AppSettingsNotificationsRoute: AppSettingsNotificationsRoute,
   AppSettingsPlanRoute: AppSettingsPlanRoute,
+  AppSettingsPluginsRoute: AppSettingsPluginsRoute,
   AppSettingsStorageRoute: AppSettingsStorageRoute,
   AppSettingsSupportAccessRoute: AppSettingsSupportAccessRoute,
   AppSettingsUpdatesRoute: AppSettingsUpdatesRoute,
@@ -1205,7 +1288,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardsIndexRoute: AppDashboardsIndexRoute,
   AppOrganisationsIndexRoute: AppOrganisationsIndexRoute,
   AppPeopleIndexRoute: AppPeopleIndexRoute,
+  AppPluginsIndexRoute: AppPluginsIndexRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
+  AppPluginsCompareInstallIdRoute: AppPluginsCompareInstallIdRoute,
   AppXObjectIdRoute: AppXObjectIdRoute,
   AppXObjectIndexRoute: AppXObjectIndexRoute,
 }

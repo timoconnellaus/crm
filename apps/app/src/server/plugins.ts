@@ -3,13 +3,14 @@
 // it also moves unchanged copies to new versions and makes copies for people who joined a role.
 // It calls the operations as `automation`, which can only do what a person already agreed to:
 // `plugin.update` leaves anything that asks for more access or has local edits for its owner.
-import { createCrmDb } from "@relationship-os/db";
+
 import {
   type ActingUser,
   type InvocationContext,
   invokeByName,
   marketplaceClientFor,
 } from "@relationship-os/core";
+import { createCrmDb } from "@relationship-os/db";
 import { assistantThreadsFor, type OperationsEnv } from "./operations.ts";
 
 export async function runPluginCron(
@@ -21,13 +22,7 @@ export async function runPluginCron(
     const installs = await db.query
       .selectFrom("core_plugin_install as i")
       .innerJoin("core_user as u", (join) =>
-        join.on((eb) =>
-          eb(
-            "u.id",
-            "=",
-            eb.fn.coalesce("i.owner_user_id", "i.installed_by"),
-          ),
-        ),
+        join.on((eb) => eb("u.id", "=", eb.fn.coalesce("i.owner_user_id", "i.installed_by"))),
       )
       .select([
         "i.id",

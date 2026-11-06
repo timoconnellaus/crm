@@ -1,6 +1,11 @@
 // Record page panels from plugins (ADR 0347): a saved card, run for the record in view. No plugin
 // panels for this object: nothing renders.
-import { Card as Surface, CardContent, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
+import {
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Card as Surface,
+} from "@relationship-os/ui/components/card";
 import { Card } from "#/components/assistant/cards";
 import { useOp } from "#/lib/query";
 

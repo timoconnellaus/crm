@@ -23,9 +23,7 @@ const openManifestSchema = z.object({
 
 const mcpFileSchema = z.object({ mcpServers: z.record(z.string(), z.unknown()) });
 
-const remoteServerSchema = z
-  .object({ url: z.string().url(), type: z.string().optional() })
-  .loose();
+const remoteServerSchema = z.object({ url: z.string().url(), type: z.string().optional() }).loose();
 
 export interface AgentPluginLoad {
   manifest: PluginManifest;
@@ -98,7 +96,9 @@ export function loadAgentPlugin(files: Readonly<Record<string, string>>): AgentP
 
   const mcpPath = MCP_PATHS.find((p) => files[p] !== undefined);
   const servers = {
-    ...(mcpPath ? mcpFileSchema.parse(parseJson(mcpPath, files[mcpPath] as string)).mcpServers : {}),
+    ...(mcpPath
+      ? mcpFileSchema.parse(parseJson(mcpPath, files[mcpPath] as string)).mcpServers
+      : {}),
     ...open.mcpServers,
   };
   const connections: string[] = [];

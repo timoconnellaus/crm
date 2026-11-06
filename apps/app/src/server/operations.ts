@@ -12,6 +12,8 @@ import {
   errorForLog,
   type InvocationContext,
   invokeByName,
+  type MarketplaceEnv,
+  marketplaceClientFor,
   parseFloor,
   queueEventSink,
   type RateLimitBinding,
@@ -19,8 +21,6 @@ import {
   type SerializedOperationError,
   toOperationError,
   withCodeModeRateLimit,
-  type MarketplaceEnv,
-  marketplaceClientFor,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { getAgentByName } from "agents";

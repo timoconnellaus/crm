@@ -8,49 +8,98 @@
 // extension.propose and waits in the approvals queue like any other.
 import { type A2uiPart, a2uiPartSchema, prepareCard } from "@relationship-os/agent-a2ui";
 import {
+  accessWidening,
   canEdit,
   canInstall,
   compareItems,
   effectiveInstalls,
-  loadAgentPlugin,
   type ItemCompare,
-  manifestFingerprint,
+  loadAgentPlugin,
   MERGE_INSTRUCTIONS,
-  membersGetCopies,
   type MergeAnswer,
+  manifestFingerprint,
+  membersGetCopies,
   mergeAnswerSchema,
   mergedItems,
   mergeQuestions,
   type PluginManifest,
+  planMerge,
   pluginIdSchema,
   pluginItemSchema,
   pluginListingSchema,
   pluginManifestSchema,
   pluginVersionSchema,
-  planMerge,
   proposeMerge,
-  accessWidening,
   widens,
 } from "@relationship-os/agent-plugins";
 import { z } from "zod";
 import { CARD_STATUS } from "../assistant/events.ts";
+import {
+  customersNamedIn,
+  duplicateOf,
+  idOrEmailIn,
+  memoryRefs,
+  memoryRows,
+  queueMemoryRefs,
+} from "../assistant/memory.ts";
 import { assertRoutine, routineDefinitionSchema } from "../assistant/routines.ts";
-import { duplicateOf, memoryRows, queueMemoryRefs, memoryRefs, customersNamedIn, idOrEmailIn } from "../assistant/memory.ts";
-import { ConfigError, ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../errors.ts";
+import {
+  ConfigError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../errors.ts";
 import { requireHost } from "../extensions/install.ts";
 import { newId } from "../ids.ts";
 import { askPluginPreset, pluginPresetState } from "../judge/questions/plugin-preset.ts";
 import { placementAvailable } from "../judge/types.ts";
 import { judgeUsageStatement } from "../judge/usage.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
-import { adapt, assertAdaptations, childrenOf, copyState, type CopyState, currentItems, holdersOf, moveTo, type NeedStatus, needStatus, normalise, proposeExtensions, queueInstallRow, queueNeedStates, queueNewCopy, queueRemoveCopy, sameItems, upstreamOf } from "../plugins/engine.ts";
+import {
+  adapt,
+  assertAdaptations,
+  type CopyState,
+  childrenOf,
+  copyState,
+  currentItems,
+  holdersOf,
+  moveTo,
+  type NeedStatus,
+  needStatus,
+  normalise,
+  proposeExtensions,
+  queueInstallRow,
+  queueNeedStates,
+  queueNewCopy,
+  queueRemoveCopy,
+  sameItems,
+  upstreamOf,
+} from "../plugins/engine.ts";
 import { FIRST_PARTY_PLUGINS } from "../plugins/first-party.ts";
-import { EXTENSION_KINDS, itemName, pluginKinds, } from "../plugins/kinds.ts";
+import { EXTENSION_KINDS, itemName, pluginKinds } from "../plugins/kinds.ts";
 import { createTarget, MATERIALISERS, targetsOf } from "../plugins/materialise.ts";
 import { comingNames, installCard, previewPlugin } from "../plugins/preview.ts";
 import { pluginSkill } from "../plugins/resolve.ts";
-import { locate, localListings, MARKETPLACE_MODES, type MarketplaceMode, marketplaceMode, PLUGIN_MARKETPLACE_SETTING, PLUGIN_SOURCES } from "../plugins/sources.ts";
-import { effectiveFor, type Install, installsFor, itemsForViewer, itemsOf, loadInstall, SKILL_KINDS, viewerOf } from "../plugins/store.ts";
+import {
+  localListings,
+  locate,
+  MARKETPLACE_MODES,
+  type MarketplaceMode,
+  marketplaceMode,
+  PLUGIN_MARKETPLACE_SETTING,
+  PLUGIN_SOURCES,
+} from "../plugins/sources.ts";
+import {
+  effectiveFor,
+  type Install,
+  installsFor,
+  itemsForViewer,
+  itemsOf,
+  loadInstall,
+  SKILL_KINDS,
+  viewerOf,
+} from "../plugins/store.ts";
 import { loadGeneralSettings } from "../settings.ts";
 
 const installId = z
@@ -142,7 +191,9 @@ const installViewSchema = z.object({
 type InstallView = z.infer<typeof installViewSchema>;
 
 const previewSchema = z.object({
-  adds: z.array(z.object({ kind: z.string(), label: z.string(), description: z.string().nullable() })),
+  adds: z.array(
+    z.object({ kind: z.string(), label: z.string(), description: z.string().nullable() }),
+  ),
   access: z.array(z.string()),
   needs: z.array(
     z.object({
@@ -188,7 +239,11 @@ function scopeLabel(install: Install): string {
   }
 }
 
-async function viewOf(ctx: HandlerContext, install: Install, state?: CopyState): Promise<InstallView> {
+async function viewOf(
+  ctx: HandlerContext,
+  install: Install,
+  state?: CopyState,
+): Promise<InstallView> {
   const s = state ?? (await copyState(ctx, install));
   const items = await itemsOf(ctx.db, [install.id]);
   return {
@@ -307,20 +362,38 @@ export const pluginList = defineOperation({
     const v = viewer(ctx);
     const all = await installedBy(ctx);
     const effective = new Set(effectiveInstalls(all, v).map((i) => i.id));
-    const shown = all.filter((i) => effective.has(i.id) || (isAdmin(ctx) && i.scope !== "personal"));
+    const shown = all.filter(
+      (i) => effective.has(i.id) || (isAdmin(ctx) && i.scope !== "personal"),
+    );
     const installed = await Promise.all(shown.map((i) => viewOf(ctx, i)));
     const have = new Set(installed.map((i) => i.plugin));
     const listings = await localListings(ctx.db, input.query);
     const registry = await ctx.db
       .selectFrom("core_plugin_registry")
-      .select(["plugin_id", "version", "name", "status", "marketplace_status", "marketplace_reason"])
+      .select([
+        "plugin_id",
+        "version",
+        "name",
+        "status",
+        "marketplace_status",
+        "marketplace_reason",
+      ])
       .where("status", "=", "published")
       .orderBy("updated_at", "desc")
       .execute();
     const requests = await ctx.db
       .selectFrom("core_plugin_request as r")
       .innerJoin("core_user as u", "u.id", "r.requested_by")
-      .select(["r.id", "r.plugin_id", "r.name", "r.publisher", "r.version", "r.requested_by", "r.status", "u.name as requester"])
+      .select([
+        "r.id",
+        "r.plugin_id",
+        "r.name",
+        "r.publisher",
+        "r.version",
+        "r.requested_by",
+        "r.status",
+        "u.name as requester",
+      ])
       .where((eb) =>
         isAdmin(ctx)
           ? eb("r.status", "=", "pending")
@@ -942,7 +1015,8 @@ function updatedLine(install: Install, version: string): A2uiPart {
 }
 
 async function goBack(ctx: HandlerContext, install: Install) {
-  if (!install.row.previous_manifest) throw new ValidationError("There is no version to go back to");
+  if (!install.row.previous_manifest)
+    throw new ValidationError("There is no version to go back to");
   const previous = pluginManifestSchema.parse(JSON.parse(install.row.previous_manifest));
   const version = install.row.version;
   await moveTo(ctx, install, {
@@ -1119,7 +1193,12 @@ function mergeCard(input: {
             label: "Apply",
             style: "primary",
             operation: "plugin.applyMerge",
-            input: { id: install.id, merge: input.mergeId, action: "apply", approveAccess: input.widening },
+            input: {
+              id: install.id,
+              merge: input.mergeId,
+              action: "apply",
+              approveAccess: input.widening,
+            },
             done: `Updated to ${version}. Your edits are kept.`,
           },
           {
@@ -1139,7 +1218,10 @@ function mergeCard(input: {
         ],
       },
     },
-    { source: "host", text: `${install.row.name} ${version} is out, and you've changed your copy.` },
+    {
+      source: "host",
+      text: `${install.row.name} ${version} is out, and you've changed your copy.`,
+    },
   );
 }
 
@@ -1147,9 +1229,7 @@ const storedProposal = z.object({
   manifest: pluginManifestSchema,
   fingerprint: z.string(),
   items: z.array(pluginItemSchema),
-  resolved: z.array(
-    z.object({ id: z.string(), source: z.string(), why: z.string().optional() }),
-  ),
+  resolved: z.array(z.object({ id: z.string(), source: z.string(), why: z.string().optional() })),
 });
 
 export const pluginMergeProposal = defineOperation({
@@ -1653,7 +1733,10 @@ export const pluginAcceptPreset = defineOperation({
     const { personal } = await memoryRows(ctx.db, ctx.user.id);
     const held = personal.map((l) => ({ id: l.id, text: l.text }));
     const lines = [
-      ...((item.body.shortcuts as string[]) ?? []).map((line) => ({ line, kind: "shortcut" as const })),
+      ...((item.body.shortcuts as string[]) ?? []).map((line) => ({
+        line,
+        kind: "shortcut" as const,
+      })),
       ...((item.body.style as string[]) ?? []).map((line) => ({ line, kind: "style" as const })),
     ];
     const useJudge = await placementAvailable(ctx.judge, "plugin.preset");
@@ -1692,7 +1775,10 @@ export const pluginAcceptPreset = defineOperation({
           status: "active",
           source_thread_id: null,
           source_message_seq: null,
-          checked: JSON.stringify({ by: useJudge ? "plugin.preset" : "read_back", plugin: install.pluginId }),
+          checked: JSON.stringify({
+            by: useJudge ? "plugin.preset" : "read_back",
+            plugin: install.pluginId,
+          }),
           author_id: ctx.user.id,
           history: null,
           active_since: ctx.now,

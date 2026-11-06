@@ -21,9 +21,7 @@ export function accessWidening(from: PluginAccess, to: PluginAccess): AccessWide
 
 export function widens(widening: AccessWidening): boolean {
   return (
-    widening.operations.length > 0 ||
-    widening.connections.length > 0 ||
-    widening.schema.length > 0
+    widening.operations.length > 0 || widening.connections.length > 0 || widening.schema.length > 0
   );
 }
 

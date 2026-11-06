@@ -117,7 +117,7 @@ function ComparePage() {
       }
     >
       {compare.isPending && <Skeleton className="h-48 w-full" />}
-      {compare.isError && <ErrorState error={compare.error} />}
+      {compare.isError && <ErrorState title="Could not compare" error={compare.error} />}
       {widening && (
         <p className="mb-3 text-sm text-amber-700 dark:text-amber-300">
           This version asks for more access. Applying it agrees to that.

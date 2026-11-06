@@ -201,10 +201,10 @@ function PluginSettingsPage() {
       title="Plugins"
       back={{ to: "/settings", label: "Settings" }}
       description="Plugins installed for the whole workspace, teams or roles, and who can install from the marketplace."
-      width="narrow"
+      width="md"
     >
       {list.isPending && <Skeleton className="h-48 w-full" />}
-      {list.isError && <ErrorState error={list.error} />}
+      {list.isError && <ErrorState title="Could not load plugins" error={list.error} />}
       {list.data && (
         <div className="grid gap-4">
           <Card>

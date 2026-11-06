@@ -2,8 +2,8 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@relationship-os/ui/components/card";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  BlocksIcon,
   BellIcon,
+  BlocksIcon,
   BookmarkIcon,
   ChevronRightIcon,
   CoinsIcon,

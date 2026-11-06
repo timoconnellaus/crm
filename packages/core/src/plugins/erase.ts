@@ -93,10 +93,7 @@ export async function queueErasePlugins(
     );
   }
 
-  const requests = await ctx.db
-    .selectFrom("core_plugin_request")
-    .select(["id", "name"])
-    .execute();
+  const requests = await ctx.db.selectFrom("core_plugin_request").select(["id", "name"]).execute();
   for (const row of requests) {
     if (!mentions(row.name, pattern)) continue;
     count += 1;

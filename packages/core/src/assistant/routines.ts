@@ -20,8 +20,8 @@ import {
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { parseCron, shortestCronGap } from "../automations/cron.ts";
-import { triggerObject } from "../automations/registry.ts";
 import { idsMatchingConditions, type TriggerRecord, titleOf } from "../automations/records.ts";
+import { triggerObject } from "../automations/registry.ts";
 import { triggerText } from "../automations/summary.ts";
 import { ConfigError, ValidationError } from "../errors.ts";
 import { refreshSchemaRegistry } from "../extensions/schema.ts";

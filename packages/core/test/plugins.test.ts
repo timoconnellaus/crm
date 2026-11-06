@@ -16,9 +16,9 @@ import {
   type InvocationContext,
   invokeByName,
   offJudge,
+  pluginKinds,
   pluginProducer,
   pluginSkill,
-  pluginKinds,
 } from "../src/index.ts";
 import { context, createUser, db, unique } from "./helpers.ts";
 
@@ -169,7 +169,8 @@ describe("installing", () => {
         body: {
           name,
           description: "A card",
-          source: "export default async () => ({ a2ui: 1, root: { type: 'emptyState', title: 'x' } });",
+          source:
+            "export default async () => ({ a2ui: 1, root: { type: 'emptyState', title: 'x' } });",
         },
       },
     ]);
@@ -203,13 +204,7 @@ describe("installing", () => {
       context(other),
     );
     expect(out.status).toBe("installed");
-    await expect(
-      call(
-        "view.list",
-        { object: "person" },
-        context(other),
-      ),
-    ).resolves.toBeDefined();
+    await expect(call("view.list", { object: "person" }, context(other))).resolves.toBeDefined();
   });
 
   it("holds routines back until the connection is there", async () => {
@@ -587,11 +582,7 @@ describe("updates", () => {
     const user = await createUser("member");
     const copy = await install(v1, user);
     const list = await call<CoreOutput<"routine.list">>("routine.list", {}, context(user));
-    await call(
-      "routine.update",
-      { id: list.routines[0]?.id, cron: "0 9 * * 1" },
-      context(user),
-    );
+    await call("routine.update", { id: list.routines[0]?.id, cron: "0 9 * * 1" }, context(user));
     expect((await get(copy.id, user)).changed).toEqual(["Weekly list"]);
     await publish(manifest(id, "1.1.0", [routine("send you the better list")]));
     const proposal = await call<CoreOutput<"plugin.mergeProposal">>(
@@ -790,9 +781,9 @@ describe("presets", () => {
     const user = await createUser("member");
     const copy = await install(m, user);
     expect(copy.offered).toEqual(["starter"]);
-    expect(
-      (await call<CoreOutput<"memory.list">>("memory.list", {}, context(user))).lines,
-    ).toEqual([]);
+    expect((await call<CoreOutput<"memory.list">>("memory.list", {}, context(user))).lines).toEqual(
+      [],
+    );
 
     let n = 0;
     const answers = ["preference", "instruction"] as const;
@@ -931,12 +922,11 @@ describe("the marketplace", () => {
     const user = await createUser("member");
 
     await setMode("off");
-    expect(
-      await call("marketplace.search", {}, context(user, { marketplace })),
-    ).toEqual({ available: false, listings: [] });
-    await expect(
-      call("plugin.install", input, context(user, { marketplace })),
-    ).rejects.toThrow();
+    expect(await call("marketplace.search", {}, context(user, { marketplace }))).toEqual({
+      available: false,
+      listings: [],
+    });
+    await expect(call("plugin.install", input, context(user, { marketplace }))).rejects.toThrow();
 
     await setMode("approval");
     const asked = await call<CoreOutput<"plugin.install">>(

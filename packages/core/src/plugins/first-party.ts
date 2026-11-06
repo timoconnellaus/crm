@@ -187,7 +187,8 @@ const MEETING_PREP = pluginManifestSchema.parse({
         service: "calendar",
         vendors: ["google", "microsoft"],
         level: "personal",
-        reason: "It reads your meetings to build each brief. Only you can sign in to your calendar.",
+        reason:
+          "It reads your meetings to build each brief. Only you can sign in to your calendar.",
       },
     },
   ],

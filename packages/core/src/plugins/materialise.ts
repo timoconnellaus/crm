@@ -7,10 +7,10 @@ import type { PluginItem } from "@relationship-os/agent-plugins";
 import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import {
-  type RoutineDefinition,
   queueDeleteRoutine,
   queueInsertRoutine,
   queueUpdateRoutine,
+  type RoutineDefinition,
   routineDefinitionSchema,
 } from "../assistant/routines.ts";
 import { validateDashboardSpec } from "../dashboards/run.ts";
@@ -139,9 +139,7 @@ const view: Materialiser = {
       .select(["name", "spec"])
       .where("id", "=", target.target_id)
       .executeTakeFirst();
-    return row
-      ? { label: row.name, body: { spec: JSON.parse(row.spec) as ObjectViewSpec } }
-      : null;
+    return row ? { label: row.name, body: { spec: JSON.parse(row.spec) as ObjectViewSpec } } : null;
   },
   async remove(ctx, target) {
     ctx.write(ctx.db.deleteFrom("core_views").where("id", "=", target.target_id));
@@ -225,9 +223,7 @@ const notification: Materialiser = {
     const held = (await loadPreferences(ctx.db, [holder])).get(holder) ?? {
       ...DEFAULT_PREFERENCES,
     };
-    ctx.write(
-      savePreferencesStatement(ctx.db, holder, preferencesFrom(held, item.body), ctx.now),
-    );
+    ctx.write(savePreferencesStatement(ctx.db, holder, preferencesFrom(held, item.body), ctx.now));
     return { id: holder, restore: JSON.stringify(held) };
   },
   async update(ctx, item, target) {

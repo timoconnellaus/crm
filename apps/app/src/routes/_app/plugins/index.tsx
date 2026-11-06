@@ -258,11 +258,7 @@ function CopyCard({ copy }: { copy: Copy }) {
     invalidates: ["plugin.", "memory."],
   });
   const widened = widenedWords(copy);
-  const label = copy.locked
-    ? "Locked"
-    : copy.changed.length
-      ? "Your copy, changed"
-      : "Your copy";
+  const label = copy.locked ? "Locked" : copy.changed.length ? "Your copy, changed" : "Your copy";
   return (
     <Card data-testid="plugin-copy" data-plugin={copy.plugin}>
       <CardContent className="grid gap-2">
@@ -351,11 +347,7 @@ function CopyCard({ copy }: { copy: Copy }) {
             </Button>
           ))}
           {copy.scope === "personal" && copy.following && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => detach.mutate({ id: copy.id }, on)}
-            >
+            <Button size="sm" variant="ghost" onClick={() => detach.mutate({ id: copy.id }, on)}>
               Stop updates
             </Button>
           )}
@@ -545,7 +537,9 @@ function PluginsPage() {
         >
           <TabsList>
             <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
-            <TabsTrigger value="installed">Installed ({list.data?.installed.length ?? 0})</TabsTrigger>
+            <TabsTrigger value="installed">
+              Installed ({list.data?.installed.length ?? 0})
+            </TabsTrigger>
             <TabsTrigger value="workspace">
               Your workspace ({list.data?.workspace.length ?? 0})
             </TabsTrigger>
@@ -554,7 +548,7 @@ function PluginsPage() {
       }
     >
       {list.isPending && <Skeleton className="h-48 w-full" />}
-      {list.isError && <ErrorState error={list.error} />}
+      {list.isError && <ErrorState title="Could not load plugins" error={list.error} />}
       {list.data && tab === "marketplace" && <Marketplace list={list.data} />}
       {list.data && tab === "installed" && <Installed list={list.data} />}
       {list.data && tab === "workspace" && <Workspace list={list.data} isAdmin={isAdmin} />}

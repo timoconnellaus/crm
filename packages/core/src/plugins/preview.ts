@@ -17,7 +17,7 @@ import { ValidationError } from "../errors.ts";
 import { askPluginRisk, pluginRiskState } from "../judge/questions/plugin-risk.ts";
 import { judgeUsageStatement } from "../judge/usage.ts";
 import type { HandlerContext } from "../operation.ts";
-import { adapt, needStatus, type NeedStatus } from "./engine.ts";
+import { adapt, type NeedStatus, needStatus } from "./engine.ts";
 import { pluginKinds } from "./kinds.ts";
 import type { PluginSource } from "./sources.ts";
 import { type Adaptation, SKILL_KINDS } from "./store.ts";
@@ -48,9 +48,7 @@ export interface PluginPreview {
 }
 
 const routinesOf = (items: readonly PluginItem[]): [PluginItem, RoutineDefinition][] =>
-  items
-    .filter((i) => i.kind === "routine")
-    .map((i) => [i, routineDefinitionSchema.parse(i.body)]);
+  items.filter((i) => i.kind === "routine").map((i) => [i, routineDefinitionSchema.parse(i.body)]);
 
 /** The names the plugin itself brings, so its routines can refer to them. */
 export function comingNames(items: readonly PluginItem[]) {
@@ -63,9 +61,9 @@ export function comingNames(items: readonly PluginItem[]) {
 function doesWords(definition: RoutineDefinition, when: string): string[] {
   const m = definition.message;
   const out = [`Runs ${when}`];
-  if (m.kind === "producer") out.push(`Sends the saved card ${m.producer} to the person's chat`);
-  if (m.kind === "skill") out.push(`Writes a message from the skill ${m.skill}`);
-  if (m.kind === "turn") out.push(`Asks the model: ${m.prompt}`);
+  if (m.kind === "producer") out.push("Messages the person in their own chat with a saved card");
+  if (m.kind === "skill") out.push("Writes the person a message in their own chat");
+  if (m.kind === "turn") out.push(`Writes the person a message in their own chat: ${m.prompt}`);
   if (m.kind === "agent") out.push(`Starts a background agent with the brief: ${m.brief}`);
   return out;
 }
@@ -234,7 +232,9 @@ export function installCard(
         routines: preview.routines.slice(0, 10).map((r) => ({
           name: r.name,
           when: r.when,
-          ...(r.fired === null ? {} : { tried: `Would have messaged you ${words(r.fired, "time")} in ${r.days} days` }),
+          ...(r.fired === null
+            ? {}
+            : { tried: `Would have messaged you ${words(r.fired, "time")} in ${r.days} days` }),
           ...(r.note ? { note: r.note } : {}),
         })),
         checks: preview.checks.slice(0, 8),
