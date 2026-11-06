@@ -106,13 +106,15 @@ provisioned by name on deploy:
 | --- | --- | --- |
 | `AUTOMATION_EVENTS` (queue producer) | ros-app, ros-runner | Committed record changes and approval decisions, queue `ros-automation-events` |
 | queue consumer | ros-runner | Starts runs: batches of up to 100, 5 s, 5 retries, then the dead-letter queue `ros-automation-events-dlq` |
+| `ROUTINE_DELIVERY` (queue producer) | ros-runner | A routine's messages (ADR 0343), queue `ros-routine-delivery`: ids only |
+| queue consumer | ros-app | Delivers each into its owner's assistant thread: batches of up to 10, 5 s, 3 retries, then the dead-letter queue `ros-routine-delivery-dlq` |
 | `AUTOMATION_WORKFLOW` | ros-runner | Workflow `ros-automation` (class `AutomationWorkflow`), one instance per run |
 | `AUTOMATION_RATE_LIMIT` | ros-runner | Runs per minute per automation (default 60 per 60 s, `namespace_id` 4201); above it the automation auto-pauses and admins are notified |
 | cron `* * * * *` | ros-runner | Schedule triggers and the daily date-relative scan |
 
-Create the queues once per account before the first deploy (`wrangler queues create
-ros-automation-events` and `wrangler queues create ros-automation-events-dlq`); Workflows need no
-setup. Queues and Workflows are billed per use (see ADR 0130). The kill switch, the automation
+Create the queues once per account before the first deploy (`wrangler queues create` for
+`ros-automation-events`, `ros-automation-events-dlq`, `ros-routine-delivery` and
+`ros-routine-delivery-dlq`); Workflows need no setup. Queues and Workflows are billed per use (see ADR 0130). The kill switch, the automation
 timezone and the debounce window are in Settings → Automations; only human admins can engage the
 kill switch.
 

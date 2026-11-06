@@ -22,7 +22,7 @@ import { z } from "zod";
 import { parseCron, shortestCronGap } from "../automations/cron.ts";
 import { idsMatchingConditions, type TriggerRecord, titleOf } from "../automations/records.ts";
 import { triggerText } from "../automations/summary.ts";
-import { ValidationError } from "../errors.ts";
+import { ConfigError, ValidationError } from "../errors.ts";
 import { refreshSchemaRegistry } from "../extensions/schema.ts";
 import { getObject } from "../fields/index.ts";
 import { compileFilter, type Filter } from "../filter.ts";
@@ -56,6 +56,7 @@ const TRIGGERS = ["schedule", "record", "fieldChanged", "dateRelative", "syncEve
 const existsSchema = z.object({
   object: z.string().min(1).max(80).describe("The record type, such as task or deals.deal"),
   filter: automationConditionSchema.describe("The view filter shape; values may be $relative"),
+  label: z.string().trim().max(120).optional().describe("It in plain words, for the read-back"),
 });
 
 const messageSchema = z.discriminatedUnion("kind", [
@@ -262,9 +263,10 @@ export function plainGateWords(definition: RoutineDefinition): string[] {
   }
   const sources = (definition.exists ?? []).flatMap((source) => {
     const def = getObject(source.object);
+    if (source.label) return [source.label];
     return def ? [filterInWords(def, source.filter as Filter)] : [];
   });
-  if (sources.length) words.push(`There is at least one of: ${sources.join("; or ")}`);
+  if (sources.length) words.push(sources.join(", or "));
   return words;
 }
 
@@ -649,7 +651,7 @@ export function isEmptyCard(part: A2uiPart): boolean {
  * Routines whose words or filters name the erased subject lose those mentions, in the routine and
  * in its automation's spec, and pause: a filter that named someone matches nothing useful now. A
  * person holds at most ROUTINE_MAX_PER_USER, so this reads them all and matches in code, which
- * also catches a name in the person's own words.
+ * also catches a name in the person's own words. The owner's thread is scrubbed too.
  */
 export async function queueEraseRoutines(
   ctx: HandlerContext,
@@ -660,12 +662,23 @@ export async function queueEraseRoutines(
   const rows = await ctx.db
     .selectFrom("core_routine as r")
     .innerJoin("core_automations as a", "a.id", "r.automation_id")
-    .select(["r.id", "r.automation_id", "r.name", "r.what", "r.asked", "r.definition", "a.spec"])
+    .select([
+      "r.id",
+      "r.automation_id",
+      "r.owner_user_id",
+      "r.name",
+      "r.what",
+      "r.asked",
+      "r.definition",
+      "a.spec",
+    ])
     .execute();
   let count = 0;
+  const owners = new Set<string>();
   for (const row of rows) {
     if (!mentions(row, pattern)) continue;
     count += 1;
+    owners.add(row.owner_user_id);
     const clean = scrubValue(
       { name: row.name, what: row.what, asked: row.asked, definition: row.definition },
       pattern,
@@ -688,6 +701,18 @@ export async function queueEraseRoutines(
         })
         .where("id", "=", row.automation_id),
     );
+  }
+  // Its messages quote the person's words, which name the subject though no record ref may lead
+  // here. As in queueScrubConversations, a thread that cannot be reached fails the erase.
+  if (owners.size && !ctx.simulation) {
+    const store = ctx.assistantThreads;
+    if (!store) {
+      throw new ConfigError(
+        `${owners.size} assistant chat(s) mention this record, and they cannot be reached from ` +
+          "here. Erase it from the app, which can redact them.",
+      );
+    }
+    await Promise.all([...owners].map((owner) => store.scrub(owner, scrub)));
   }
   return count;
 }

@@ -404,7 +404,17 @@ describe("erase", () => {
         { assistantTurn: { threadId: "ath_test000000", messageSeq: 2, text: "watch Ottoline" } },
       ),
     );
-    await invokeByName("person.erase", { id: person.id }, context(owner));
+    const scrubbed: string[] = [];
+    await invokeByName(
+      "person.erase",
+      { id: person.id },
+      context(owner, {
+        assistantThreads: {
+          scrub: async (userId: string) => void scrubbed.push(userId),
+        } as unknown as InvocationContext["assistantThreads"],
+      }),
+    );
+    expect(scrubbed).toEqual([owner.id]);
     const row = await db.query
       .selectFrom("core_routine as r")
       .innerJoin("core_automations as a", "a.id", "r.automation_id")

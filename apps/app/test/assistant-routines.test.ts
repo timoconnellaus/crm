@@ -105,7 +105,7 @@ describe("asking for one in the chat", () => {
     const card = events.find((e) => e.type === "tool-result" && e.card);
     const part = (card as { card?: A2uiPart }).card as A2uiPart;
     expect(part.source).toBe("host");
-    expect((part.document?.root as { type: string }).type).toBe("routineReadBack");
+    expect(part.document?.root.type).toBe("routineReadBack");
     expect(part.fallback).toContain("Would have messaged you");
     const state = await thread(person);
     expect(state.items.some((i) => i.kind === "card")).toBe(true);
@@ -204,17 +204,27 @@ describe("delivery", () => {
     expect(state.items.some((i) => whyOf(i)?.runId === "arn_delivery_3")).toBe(true);
   });
 
-  it("a saved card with nothing in it sends nothing", async () => {
+  it("a saved card is the message, with no model call", async () => {
     const person = await member();
     const routineId = await create(person, {
       ...turnDefinition,
       message: { kind: "producer", producer: "tasks.overdueCard", input: {} },
     });
     const delivered = await deliver(person, routineId, "arn_delivery_4");
-    // The stub runner's card is a task list: it is sent, with the card in the message.
     expect(delivered).toMatchObject({ outcome: "delivered" });
     const state = await thread(person);
-    expect(state.items.some((i) => i.kind === "card")).toBe(true);
+    expect(state.items.filter((i) => i.kind === "assistant")).toEqual([]);
+    expect(state.items.filter((i) => i.kind === "card")).toHaveLength(2);
+  });
+
+  it("a saved card with nothing in it sends nothing", async () => {
+    const person = await member();
+    const routineId = await create(person, {
+      ...turnDefinition,
+      message: { kind: "producer", producer: "briefing.morningCard", input: {} },
+    });
+    expect(await deliver(person, routineId, "arn_delivery_6")).toEqual({ outcome: "quiet" });
+    expect((await thread(person)).items).toEqual([]);
   });
 
   it("Test sends it marked as a test, and a miss sends nothing", async () => {

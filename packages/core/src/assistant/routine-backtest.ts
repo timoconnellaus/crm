@@ -328,10 +328,10 @@ export async function backtestRoutine(input: {
       backtest = emptyResult();
     }
   }
-  if (!events) {
+  if (!events || (definition.exists && !backtest.fired)) {
     backtest.flags.push({
       code: "no_data",
-      text: "Nothing in the last 30 days would have started this, so I can't show how often it would message you.",
+      text: "Nothing in the last 30 days would have set this off, so I can't show how often it would message you.",
     });
   }
   const gated = Boolean(definition.conditions || definition.exists || definition.checks.length);

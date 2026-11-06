@@ -228,6 +228,7 @@ export const MORNING_BRIEFING: RoutineDefinition = {
   exists: [
     {
       object: "task",
+      label: "You have a task due or overdue",
       filter: {
         and: [
           { field: "status", op: "eq", value: "open" },
@@ -238,6 +239,7 @@ export const MORNING_BRIEFING: RoutineDefinition = {
     },
     {
       object: "activity",
+      label: "you have a meeting today",
       filter: {
         and: [
           { field: "type", op: "eq", value: "meeting" },

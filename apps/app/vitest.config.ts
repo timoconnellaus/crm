@@ -29,7 +29,10 @@ export default class extends WorkerEntrypoint {
   // Echoes extension tool calls (the real runtime is tested in apps/runner).
   async runTool(input) { return { ok: true, value: { tool: input.tool, input: input.input, caller: input.caller.actor }, runId: "xrn_stub" }; }
   // A saved card (the real run is tested in apps/runner).
-  async runProducer() {
+  async runProducer(input) {
+    if (String(input.ref).startsWith("briefing.")) {
+      return { ok: true, durationMs: 1, value: { a2ui: 1, root: { type: "emptyState", title: "Nothing on today" } } };
+    }
     const record = { object: "person", id: "per_01KA8ZQ7Y2V3N4M5P6R7S8T9W0", label: "Ada" };
     return { ok: true, durationMs: 1, value: { a2ui: 1, root: { type: "taskList", title: "From the stub runner", tasks: [{ id: "tsk_1", title: "Call Ada", record }] } } };
   }
