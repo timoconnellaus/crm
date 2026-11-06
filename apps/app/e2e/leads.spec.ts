@@ -130,10 +130,13 @@ test("Leads sits above Deals, and Lifecycle stage installs from Settings", async
   expect(leads?.y ?? Infinity).toBeLessThan(deals?.y ?? 0);
 
   await open(page, "/settings/extensions");
+  // Wait for the list: it shows one or the other, depending on an earlier run.
   const available = page.getByTestId("extension-available-lifecycle");
+  const installed = page.getByTestId("extension-lifecycle");
+  await expect(available.or(installed)).toBeVisible();
   if (await available.isVisible()) {
     await available.getByRole("button", { name: "Install" }).click();
   }
-  await expect(page.getByTestId("extension-lifecycle")).toBeVisible();
+  await expect(installed).toBeVisible();
   await expect(page.getByTestId("field-options-status")).toBeVisible();
 });
