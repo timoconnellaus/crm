@@ -8,8 +8,14 @@ import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import type { RoutineSkill } from "../assistant/skills.ts";
 import { ForbiddenError } from "../errors.ts";
-import { SKILL_KINDS } from "./kinds.ts";
-import { itemsForViewer, lockedPluginOf, namedItem, type StoredItem, type Viewable } from "./store.ts";
+import {
+  itemsForViewer,
+  lockedPluginOf,
+  namedItem,
+  SKILL_KINDS,
+  type StoredItem,
+  type Viewable,
+} from "./store.ts";
 
 type Db = Kysely<CoreDatabase>;
 

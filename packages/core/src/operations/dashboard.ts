@@ -29,6 +29,7 @@ import {
 } from "../judge/questions/widget-shape.ts";
 import type { ModelRunner } from "../models.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
+import { assertNotLocked } from "../plugins/resolve.ts";
 
 const dashboardId = z.string().min(1).max(64).describe("Dashboard id (dsh_…)");
 

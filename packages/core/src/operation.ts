@@ -1,6 +1,7 @@
 // defineOperation (ADR 0003, ADR 0016): every operation is defined once with zod schemas, a
 // model-facing description, a permission and a risk class. Adapters (server functions now, MCP in
 // stage 2, the `codemode:crm` host module in stage 3) are generated from these definitions.
+import type { MarketplaceClient } from "@relationship-os/agent-plugins";
 import type { AuditChangeAction, CoreDatabase, CrmDb } from "@relationship-os/db";
 import type { PermissionsManifest } from "@relationship-os/sdk";
 import type { Compilable, CompiledQuery, Kysely } from "kysely";
@@ -183,6 +184,8 @@ export interface HandlerContext {
   readonly assistantThreads?: AssistantThreadStore;
   /** Speech providers for voice.* operations (ADR 0349). Absent: voice is off. */
   readonly voice?: VoiceRuntime;
+  /** The hosted plugin marketplace (ADR 0347). Absent: this deployment has none. */
+  readonly marketplace?: MarketplaceClient;
 }
 
 /** The person's message a chat turn answers. */

@@ -9,6 +9,7 @@ import { ForbiddenError, NotFoundError } from "../errors.ts";
 import { getObject } from "../fields/index.ts";
 import { newId } from "../ids.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
+import { assertNotLocked } from "../plugins/resolve.ts";
 import {
   type ObjectViewSpec,
   objectViewSpecSchema,

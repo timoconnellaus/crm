@@ -14,6 +14,8 @@ export interface AssistantPromptInput {
   orgName?: string | null | undefined;
   /** The MCP server's instructions (from `initialize`). */
   serverInstructions?: string | undefined;
+  /** What the person's plugins add (ADR 0347): it changes only when their plugins do. */
+  plugins?: string | undefined;
 }
 
 export interface AssistantTailInput {
@@ -209,6 +211,18 @@ export function assistantInstructions(input: AssistantPromptInput): string {
         "routine.list gives ids. To change one, use offer_standing_help with replaces.",
     ].join("\n"),
   ];
+  sections.push(
+    [
+      "Plugins:",
+      "- Plugins add skills, saved cards and things you do on your own. To find one or install one, use " +
+        "call_operation plugin.list or marketplace.search, then offer_plugin: it shows an install card " +
+        "and the person presses Install. You cannot install anything yourself.",
+      '- "Save what we just did as a skill" or "bundle this as a plugin": write it with offer_plugin and a ' +
+        "draft. Keep customer names, emails and record ids out of it, so it works for anyone.",
+      "- When an update waits on a person's edits, call_operation plugin.mergeProposal shows them the merge.",
+    ].join("\n"),
+  );
+  if (input.plugins?.trim()) sections.push(input.plugins.trim());
   if (input.serverInstructions?.trim()) {
     sections.push(`About the CRM's tools:\n${input.serverInstructions.trim()}`);
   }

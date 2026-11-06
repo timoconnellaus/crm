@@ -103,6 +103,7 @@ const FOLLOW_THROUGH = pluginManifestSchema.parse({
         spec: {
           type: "table",
           object: "person",
+          columns: ["displayName", "createdAt"],
           sort: { field: "createdAt", direction: "desc" },
         },
       },

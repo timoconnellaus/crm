@@ -231,6 +231,5 @@ export function itemName(kind: string, body: Record<string, unknown>): string | 
   }
 }
 
-export const SKILL_KINDS = ["skill", "workspaceSkill"] as const;
 export const EXTENSION_KINDS = ["extension", "workspaceAutomation"] as const;
 export const NEED_KINDS = ["connectionNeed", "sharedConnection"] as const;

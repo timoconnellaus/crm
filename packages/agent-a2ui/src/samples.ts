@@ -545,6 +545,11 @@ export const SAMPLES: Record<ComponentType, A2uiNode> = {
     needs: ["Deals"],
     actions: [operation("Install", "settings.update")],
   },
+  pluginUpdated: {
+    type: "pluginUpdated",
+    text: "Pipeline hygiene updated to 3.3.0 by itself, since you hadn't changed your copy.",
+    actions: [open("What's new", "/plugins/pipeline-hygiene")],
+  },
   pluginUpdate: {
     type: "pluginUpdate",
     name: "Pipeline hygiene",

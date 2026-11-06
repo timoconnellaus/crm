@@ -7,6 +7,7 @@
 // A gate `review` dry-runs the handler and queues a pending action instead (approvals/queue.ts);
 // reads by an MCP session see its pending actions applied (approvals/simulation.ts).
 
+import type { MarketplaceClient } from "@relationship-os/agent-plugins";
 import type { AuditChangeAction, CrmDb, ReviewSource } from "@relationship-os/db";
 import { checkGrant } from "@relationship-os/sdk";
 import { type Compilable, type CompiledQuery, sql } from "kysely";
@@ -143,6 +144,8 @@ export interface InvocationContext {
   assistantThreads?: AssistantThreadStore;
   /** Speech providers (ADR 0349). Absent: voice is off. */
   voice?: VoiceRuntime;
+  /** The hosted plugin marketplace (ADR 0347). Absent: this deployment has none. */
+  marketplace?: MarketplaceClient;
   /**
    * Test mode (ADR 0133): the call is simulated against this in-memory overlay. The gate is
    * evaluated and recorded, writes are dry-run, nothing is written and no events are sent.
@@ -679,6 +682,7 @@ async function invokeOnce<O extends AnyOperation>(
     ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
     ...(ctx.assistantThreads ? { assistantThreads: ctx.assistantThreads } : {}),
     ...(ctx.voice ? { voice: ctx.voice } : {}),
+    ...(ctx.marketplace ? { marketplace: ctx.marketplace } : {}),
     pipeline: {
       crm: ctx.db,
       invoke: (name, nestedInput, nested) => {
@@ -712,6 +716,7 @@ async function invokeOnce<O extends AnyOperation>(
           ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
           ...(ctx.assistantThreads ? { assistantThreads: ctx.assistantThreads } : {}),
           ...(ctx.voice ? { voice: ctx.voice } : {}),
+          ...(ctx.marketplace ? { marketplace: ctx.marketplace } : {}),
           ...(ctx.simulate ? { simulate: ctx.simulate } : {}),
         });
       },

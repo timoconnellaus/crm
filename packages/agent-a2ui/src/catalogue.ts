@@ -1039,17 +1039,49 @@ const pluginInstall = define({
       .array(z.object({ kind: line(40), label: line(200) }))
       .max(20)
       .default([]),
-    scopes: z.array(line(80)).max(10).default([]),
+    scopes: z.array(line(200)).max(10).default([]),
     needs: z.array(line(120)).max(10).default([]),
+    /** What it would do on its own, with how each behaved on past data. */
+    routines: z
+      .array(
+        z.object({
+          name: line(120),
+          when: line(200),
+          tried: line(200).optional(),
+          note: line(300).optional(),
+        }),
+      )
+      .max(10)
+      .default([]),
+    checks: z
+      .array(z.object({ text: line(200), passed: z.boolean() }))
+      .max(8)
+      .default([]),
+    /** What was swapped to fit this workspace (Gmail to Outlook). */
+    swaps: z.array(line(200)).max(5).default([]),
     actions: actionsSchema.optional(),
   }),
   fallback: (p) =>
     joinLines(
       `Install ${p.name}${p.publisher ? ` by ${p.publisher}` : ""}`,
       p.adds.length ? `Adds: ${p.adds.map((a) => `${a.label} (${a.kind})`).join(", ")}` : null,
+      p.routines.length
+        ? `Does on its own: ${p.routines.map((r) => `${r.name} (${r.when})`).join(", ")}`
+        : null,
       p.scopes.length ? `Access: ${p.scopes.join(", ")}` : null,
       p.needs.length ? `Needs: ${p.needs.join(", ")}` : null,
+      p.swaps.length ? p.swaps.join(", ") : null,
     ),
+});
+
+const pluginUpdated = define({
+  type: "pluginUpdated",
+  group: "host",
+  since: 1,
+  hostOnly: true,
+  description: "A quiet line: a plugin updated by itself",
+  props: z.object({ text: line(300), actions: actionsSchema.optional() }),
+  fallback: (p) => p.text,
 });
 
 const pluginUpdate = define({
@@ -1060,6 +1092,7 @@ const pluginUpdate = define({
   description: "A plugin update: upstream changes, your edits and the merged proposal",
   props: z.object({
     name: line(120),
+    note: line(300).optional(),
     upstream: z.array(line(300)).max(10).default([]),
     yours: z.array(line(300)).max(10).default([]),
     merged: z
@@ -1190,6 +1223,7 @@ export const CATALOGUE = [
   memorySaved,
   conditionalMemoryReadBack,
   pluginInstall,
+  pluginUpdated,
   pluginUpdate,
   connectionNeeded,
   agentConnectionRequest,

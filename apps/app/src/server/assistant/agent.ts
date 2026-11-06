@@ -74,6 +74,7 @@ import {
   loadCacheRails,
   loadGeneralSettings,
   memoryForTurn,
+  pluginPromptBlock,
   memorySaveOf,
   parseFloor,
   personsWordsInThread,
@@ -752,7 +753,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
       const memory = await memoryForTurn(db.query, user.id, { state: this.#memoryState() });
       const assembled = await assembleContext({
         prefix: {
-          instructions: this.#instructions(settings, user, mcp),
+          instructions: this.#instructions(settings, user, mcp, await pluginPromptBlock(db.query, user)),
           tools: mcp.tools,
           memory: memory.block,
         },
@@ -1029,12 +1030,14 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
     settings: Awaited<ReturnType<typeof loadGeneralSettings>>,
     user: ActingUser,
     mcp: Pick<AssistantMcp, "instructions">,
+    plugins?: string,
   ): string {
     return assistantInstructions({
       name: settings.assistantName,
       user: { name: user.name, role: user.role },
       orgName: settings.orgName,
       serverInstructions: mcp.instructions,
+      plugins,
     });
   }
 
@@ -1068,7 +1071,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
     const mcp = await this.#connectTools(user, threadId, "");
     const memory = await memoryForTurn(db.query, user.id, { state: this.#memoryState() });
     const prefix = {
-      instructions: this.#instructions(settings, user, mcp),
+      instructions: this.#instructions(settings, user, mcp, await pluginPromptBlock(db.query, user)),
       tools: mcp.tools as AssistantTool[],
       memory: memory.block,
       note: this.#compaction.note(),
@@ -1169,7 +1172,7 @@ export class AssistantAgent extends withAssistantVoice(Agent<Cloudflare.Env>) im
         }
         const assembled = await assembleContext({
           prefix: {
-            instructions: this.#instructions(settings, user, mcp),
+            instructions: this.#instructions(settings, user, mcp, await pluginPromptBlock(db.query, user)),
             tools: mcp.tools,
             memory: memory.block,
             note,

@@ -14,6 +14,9 @@ import type { CoreDatabase, CorePluginInstallTable } from "@relationship-os/db";
 import type { Kysely, Selectable } from "kysely";
 import { jsonList } from "../records/common.ts";
 
+/** Kinds a person can run as a skill. Here, not in kinds.ts: routines.ts reaches this module. */
+export const SKILL_KINDS = ["skill", "workspaceSkill"] as const;
+
 export type InstallRow = Selectable<CorePluginInstallTable>;
 
 export interface Adaptation {

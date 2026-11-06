@@ -37,6 +37,7 @@ import { notificationDeliveryOperations } from "./notification-delivery.ts";
 import { organisationOperations } from "./organisation.ts";
 import { personOperations } from "./person.ts";
 import { planOperations } from "./plan.ts";
+import { pluginOperations } from "./plugin.ts";
 import { policyOperations } from "./policy.ts";
 import { queryOperations } from "./query.ts";
 import { recordOperations } from "./record.ts";
@@ -101,6 +102,7 @@ export const coreOperations = [
   ...a2uiOperations,
   ...memoryOperations,
   ...routineOperations,
+  ...pluginOperations,
   ...aiCacheOperations,
   ...planOperations,
   ...supportOperations,
