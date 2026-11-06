@@ -11,6 +11,8 @@ import {
 import { MEMORY_CONDITION_CALIBRATED } from "./questions/memory-condition.ts";
 import { MEMORY_WRITE_CALIBRATED } from "./questions/memory-write.ts";
 import { OUTBOUND_CALIBRATED } from "./questions/outbound-message.ts";
+import { PLUGIN_PRESET_CALIBRATED } from "./questions/plugin-preset.ts";
+import { PLUGIN_RISK_CALIBRATED } from "./questions/plugin-risk.ts";
 import { ROUTINE_GATE_CALIBRATED } from "./questions/routine-gate.ts";
 import { STATEMENTS_CALIBRATED } from "./questions/summary-statements.ts";
 import { JOB_CHANGE_CALIBRATED } from "./questions/sync-job-change.ts";
@@ -32,4 +34,6 @@ export const CALIBRATED: Record<string, { question: Question; threshold: number 
   ...MEMORY_WRITE_CALIBRATED,
   ...MEMORY_CONDITION_CALIBRATED,
   ...ROUTINE_GATE_CALIBRATED,
+  ...PLUGIN_RISK_CALIBRATED,
+  ...PLUGIN_PRESET_CALIBRATED,
 };

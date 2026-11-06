@@ -757,6 +757,105 @@ export interface CoreMemoryTable {
   updated_at: string;
 }
 
+/** Migration 0375 (ADR 0347): an installed plugin, a copy in its scope. */
+export interface CorePluginInstallTable {
+  id: string;
+  plugin_id: string;
+  name: string;
+  publisher: string;
+  source: "first_party" | "workspace" | "marketplace";
+  scope: "personal" | "team" | "role" | "org";
+  owner_user_id: string | null;
+  role: string | null;
+  team_name: string | null;
+  locked: ColumnType<number, number | undefined, number>;
+  parent_install_id: string | null;
+  version: string;
+  fingerprint: string;
+  /** JSON: the version it was copied from, whole. The base of every compare. */
+  manifest: string;
+  previous_manifest: string | null;
+  /** JSON `[{ from, to }]`. */
+  adaptations: ColumnType<string, string | undefined, string>;
+  following: ColumnType<number, number | undefined, number>;
+  detached_at: string | null;
+  skipped_version: string | null;
+  installed_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CorePluginMemberTable {
+  install_id: string;
+  user_id: string;
+}
+
+/** Migration 0375: a copy's items as they stand now. */
+export interface CorePluginItemTable {
+  install_id: string;
+  key: string;
+  kind: string;
+  name: string | null;
+  label: string;
+  description: string | null;
+  body: string;
+  state: ColumnType<"active" | "waiting" | "offered", string | undefined, string>;
+  state_reason: string | null;
+}
+
+/** Migration 0375: what an item became in the workspace, per person it was made for. */
+export interface CorePluginTargetTable {
+  install_id: string;
+  item_key: string;
+  /** '' for one shared row. */
+  holder_user_id: string;
+  target_kind: string;
+  target_id: string;
+  restore: string | null;
+}
+
+/** Migration 0375: the workspace's private registry and the assistant's proposals. */
+export interface CorePluginRegistryTable {
+  plugin_id: string;
+  version: string;
+  name: string;
+  manifest: string;
+  fingerprint: string;
+  status: "proposed" | "published";
+  marketplace_status: "in_review" | "approved" | "rejected" | null;
+  marketplace_id: string | null;
+  marketplace_reason: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Migration 0375: a member's request for a marketplace plugin. */
+export interface CorePluginRequestTable {
+  id: string;
+  plugin_id: string;
+  name: string;
+  publisher: string;
+  version: string;
+  requested_by: string;
+  status: ColumnType<"pending" | "approved" | "declined", string | undefined, string>;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+}
+
+/** Migration 0375: an update's merge proposal. */
+export interface CorePluginMergeTable {
+  id: string;
+  install_id: string;
+  version: string;
+  proposal: string;
+  status: ColumnType<"proposed" | "applied" | "kept", string | undefined, string>;
+  created_by: string;
+  created_at: string;
+  decided_at: string | null;
+}
+
 /** Migration 0352 (ADR 0342): the people, organisations and email hashes a memory line names. */
 export interface CoreMemoryRefsTable {
   memory_id: string;
@@ -1521,6 +1620,13 @@ export interface CoreDatabase {
   core_memory: CoreMemoryTable;
   core_memory_refs: CoreMemoryRefsTable;
   core_memory_settings: CoreMemorySettingsTable;
+  core_plugin_install: CorePluginInstallTable;
+  core_plugin_member: CorePluginMemberTable;
+  core_plugin_item: CorePluginItemTable;
+  core_plugin_target: CorePluginTargetTable;
+  core_plugin_registry: CorePluginRegistryTable;
+  core_plugin_request: CorePluginRequestTable;
+  core_plugin_merge: CorePluginMergeTable;
   core_erased_address: CoreErasedAddressTable;
   core_blob_deletion: CoreBlobDeletionTable;
   core_assignment_rule: CoreAssignmentRuleTable;

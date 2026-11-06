@@ -22,6 +22,7 @@ import { ConfigError, ForbiddenError, NotFoundError, PendingApprovalError } from
 import type { CodeCaller } from "../extensions/host.ts";
 import { requireHost } from "../extensions/install.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
+import { pluginProducer, pluginProducers } from "../plugins/resolve.ts";
 import { loadGeneralSettings } from "../settings.ts";
 
 const cardResultSchema = z.object({
@@ -86,7 +87,10 @@ function producerCaller(ctx: HandlerContext): CodeCaller {
   };
 }
 
-const PRODUCE_DESCRIPTION = `Show a saved card: a script that reads the CRM as the viewer and returns a card with no model call, so it is fast, free and the same every time. Prefer it to show_card when one fits. Read-only: it cannot change anything or show what the viewer cannot see. Saved cards:
+// First-party cards are listed here. A plugin's are the viewer's own and can change with each
+// install, so they are not in this fixed description: they reach the model through the skills
+// block of its instructions, and `a2ui.producers` lists them all.
+const PRODUCE_DESCRIPTION = `Show a saved card: a script that reads the CRM as the viewer and returns a card with no model call, so it is fast, free and the same every time. Prefer it to show_card when one fits. Read-only: it cannot change anything or show what the viewer cannot see. Plugins add more: call_operation a2ui.producers lists every one you can use. Saved cards:
 ${producers
   .list()
   .map((p) => `- ${p.name}: ${p.description}`)
@@ -110,7 +114,9 @@ export const a2uiProduce = defineOperation({
   actors: ["human", "assistant", "mcp", "automation"],
   mcp: { curated: true, title: "Show a saved card", toolName: "a2ui_produce" },
   async handler(input, ctx) {
-    const producer = producers.get(input.producer, input.version);
+    const producer =
+      producers.get(input.producer, input.version) ??
+      (await pluginProducer(ctx.db, ctx.user, input.producer));
     if (!producer) throw new NotFoundError("saved card", input.producer);
     const ref = producerRef(producer);
     const words = `${producer.description.split(".")[0]}.`;
@@ -208,4 +214,37 @@ export const a2uiAct = defineOperation({
   },
 });
 
-export const a2uiOperations = [a2uiShow, a2uiProduce, a2uiAct] as const;
+export const a2uiProducers = defineOperation({
+  name: "a2ui.producers",
+  description:
+    "Every saved card you can use: the app's own and those from plugins you have, with what " +
+    "input each takes. Read-only.",
+  input: z.object({}),
+  output: z.object({
+    items: z.array(
+      z.object({ name: z.string(), description: z.string(), source: z.enum(["app", "plugin"]) }),
+    ),
+  }),
+  permission: "records:read",
+  risk: "read",
+  actors: ["human", "assistant", "mcp"],
+  mcp: { title: "List saved cards", idempotent: true },
+  async handler(_input, ctx) {
+    return {
+      items: [
+        ...producers.list().map((p) => ({
+          name: p.name,
+          description: p.description,
+          source: "app" as const,
+        })),
+        ...(await pluginProducers(ctx.db, ctx.user)).map((p) => ({
+          name: p.name,
+          description: p.description,
+          source: "plugin" as const,
+        })),
+      ],
+    };
+  },
+});
+
+export const a2uiOperations = [a2uiShow, a2uiProduce, a2uiProducers, a2uiAct] as const;

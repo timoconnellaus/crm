@@ -19,6 +19,8 @@
     "./judge-memory-write": "./src/judge/questions/memory-write.ts",
     "./judge-memory-condition": "./src/judge/questions/memory-condition.ts",
     "./judge-routine-gate": "./src/judge/questions/routine-gate.ts",
+    "./judge-plugin-risk": "./src/judge/questions/plugin-risk.ts",
+    "./judge-plugin-preset": "./src/judge/questions/plugin-preset.ts",
     "./adjudicator-agreement": "./src/adjudicator/agreement.ts",
     "./cron": "./src/automations/cron.ts"
   },
@@ -41,6 +43,7 @@
     "@ai-sdk/openai-compatible": "3.0.73",
     "@ai-sdk/provider": "4.0.30",
     "@relationship-os/agent-a2ui": "workspace:*",
+    "@relationship-os/agent-plugins": "workspace:*",
     "@relationship-os/agent-core": "workspace:*",
     "@relationship-os/db": "workspace:*",
     "@relationship-os/release": "workspace:*",

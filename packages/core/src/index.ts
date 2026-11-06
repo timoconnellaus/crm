@@ -90,6 +90,8 @@ export * from "./judge/questions/adjudicator-policy.ts";
 export * from "./judge/questions/authoring-intent.ts";
 export * from "./judge/questions/memory-condition.ts";
 export * from "./judge/questions/memory-write.ts";
+export * from "./judge/questions/plugin-preset.ts";
+export * from "./judge/questions/plugin-risk.ts";
 export * from "./judge/questions/outbound-message.ts";
 export * from "./judge/questions/summary-statements.ts";
 export * from "./judge/questions/sync-job-change.ts";

@@ -24,6 +24,7 @@ import {
   routineActions,
   routineAgentStarter,
   routineRunChecks,
+  pluginSkill,
   routineSkills,
   routinesQuery,
   routineWhy,
@@ -88,7 +89,9 @@ async function message(
       return { text: "", cards: [made.part] };
     }
     case "skill": {
-      const skill = routineSkills.get(source.skill);
+      const skill =
+        routineSkills.get(source.skill) ??
+        (await pluginSkill(createCrmDb(host.env.DB).query, host.user, source.skill));
       if (!skill) throw new CouldNotMake(`There is no skill called ${source.skill}`);
       return host.write(turnPrompt({ task: skill.instructions, event }));
     }

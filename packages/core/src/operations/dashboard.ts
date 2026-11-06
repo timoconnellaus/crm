@@ -375,6 +375,7 @@ export const dashboardUpdate = defineOperation({
   risk: "write",
   async handler(input, ctx) {
     const before = await requireEditable(ctx, input.id);
+    await assertNotLocked(ctx, "dashboard", input.id);
     if (input.shared === false && before.ownerId !== ctx.user.id) {
       throw new ForbiddenError("Only the owner can make a shared dashboard personal again");
     }
@@ -425,6 +426,7 @@ export const dashboardDelete = defineOperation({
   risk: "write",
   async handler(input, ctx) {
     const before = await requireEditable(ctx, input.id);
+    await assertNotLocked(ctx, "dashboard", input.id);
     ctx.write(
       ctx.db.deleteFrom("core_dashboards").where("id", "=", input.id),
       ctx.db.deleteFrom("core_user_home").where("dashboard_id", "=", input.id),

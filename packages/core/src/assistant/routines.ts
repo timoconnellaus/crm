@@ -20,6 +20,7 @@ import {
 import { type Kysely, sql } from "kysely";
 import { z } from "zod";
 import { parseCron, shortestCronGap } from "../automations/cron.ts";
+import { triggerObject } from "../automations/registry.ts";
 import { idsMatchingConditions, type TriggerRecord, titleOf } from "../automations/records.ts";
 import { triggerText } from "../automations/summary.ts";
 import { ConfigError, ValidationError } from "../errors.ts";
@@ -30,6 +31,7 @@ import { askRoutineGate, routineGateState } from "../judge/questions/routine-gat
 import { type Judge, placementAvailable } from "../judge/types.ts";
 import type { HandlerContext } from "../operation.ts";
 import { summaryContext } from "../operations/automation.ts";
+import { pluginProducer, pluginSkill } from "../plugins/resolve.ts";
 import { resolveRelative } from "../relative.ts";
 import { ROUTINE_WHY_NOTICE, type RoutineCheckView, type RoutineWhy } from "./events.ts";
 import { filterInWords } from "./memory.ts";
@@ -170,8 +172,10 @@ const triggerObjectOf = (definition: RoutineDefinition): string | null => {
  * they cannot run. The same whether it is drafted, turned on or changed.
  */
 export async function assertRoutine(
-  ctx: Pick<HandlerContext, "db" | "judge" | "now"> & { user: { id: string } },
+  ctx: Pick<HandlerContext, "db" | "judge" | "now"> & { user: { id: string; role?: string } },
   definition: RoutineDefinition,
+  /** What a plugin is about to bring with it (ADR 0347): names that exist once it installs. */
+  coming: { producers?: readonly string[]; skills?: readonly string[] } = {},
 ): Promise<void> {
   const { trigger, message } = definition;
   if (/\broutines?\b/i.test(`${definition.name} ${definition.what}`)) {
@@ -216,12 +220,20 @@ export async function assertRoutine(
   }
   switch (message.kind) {
     case "producer":
-      if (!producers.get(message.producer)) {
+      if (
+        !producers.get(message.producer) &&
+        !coming.producers?.includes(message.producer) &&
+        !(await pluginProducer(ctx.db, viewable(ctx.user), message.producer))
+      ) {
         fail(`There is no saved card called ${message.producer}`, "message.producer");
       }
       break;
     case "skill":
-      if (!routineSkills.get(message.skill)) {
+      if (
+        !routineSkills.get(message.skill) &&
+        !coming.skills?.includes(message.skill) &&
+        !(await pluginSkill(ctx.db, viewable(ctx.user), message.skill))
+      ) {
         fail(`There is no skill called ${message.skill}`, "message.skill");
       }
       break;
@@ -230,6 +242,125 @@ export async function assertRoutine(
       break;
     default:
   }
+}
+
+const viewable = (user: { id: string; role?: string }) => ({
+  id: user.id,
+  role: user.role ?? "member",
+});
+
+/**
+ * Queues the two rows of a new routine. `pausedReason` makes it wait (a plugin's routine with a
+ * connection still to come, ADR 0347): it starts when the reason is cleared.
+ */
+export function queueInsertRoutine(
+  ctx: Pick<HandlerContext, "db" | "now" | "write">,
+  input: {
+    id: string;
+    ownerId: string;
+    definition: RoutineDefinition;
+    asked?: string | null;
+    askedAt?: string | null;
+    draftId: string;
+    pausedReason?: string | null;
+  },
+) {
+  const automationId = automationIdOf(input.id);
+  const spec = routineSpec(input.definition);
+  const pausedReason = input.pausedReason ?? null;
+  ctx.write(
+    ctx.db.insertInto("core_automations").values({
+      id: automationId,
+      extension_id: ROUTINE_EXTENSION,
+      key: input.id,
+      label: spec.label,
+      trigger_type: spec.trigger.type,
+      trigger_object: triggerObject(spec),
+      spec: JSON.stringify(spec),
+      commit_oid: null,
+      enabled: 1,
+      paused_reason: pausedReason,
+      paused_at: pausedReason ? ctx.now : null,
+      removed_at: null,
+      owner_user_id: input.ownerId,
+      scope: "personal",
+      created_at: ctx.now,
+      updated_at: ctx.now,
+    }),
+  );
+  const row = {
+    id: input.id,
+    automation_id: automationId,
+    owner_user_id: input.ownerId,
+    name: input.definition.name,
+    what: input.definition.what,
+    asked: input.asked ?? null,
+    asked_at: input.asked ? (input.askedAt ?? ctx.now) : null,
+    definition: JSON.stringify(input.definition),
+    draft_id: input.draftId,
+    paused_until: null,
+    last_delivered_at: null,
+    last_error: null,
+    created_at: ctx.now,
+    updated_at: ctx.now,
+  };
+  ctx.write(ctx.db.insertInto("core_routine").values(row));
+  return row;
+}
+
+/** Queues a routine's new definition on both its rows. */
+export function queueUpdateRoutine(
+  ctx: Pick<HandlerContext, "db" | "now" | "write">,
+  row: { id: string; automation_id: string },
+  definition: RoutineDefinition,
+) {
+  const spec = routineSpec(definition);
+  ctx.write(
+    ctx.db
+      .updateTable("core_automations")
+      .set({
+        label: spec.label,
+        trigger_type: spec.trigger.type,
+        trigger_object: triggerObject(spec),
+        spec: JSON.stringify(spec),
+        updated_at: ctx.now,
+      })
+      .where("id", "=", row.automation_id),
+  );
+  const values = {
+    name: definition.name,
+    what: definition.what,
+    definition: JSON.stringify(definition),
+  };
+  ctx.write(
+    ctx.db
+      .updateTable("core_routine")
+      .set({ ...values, updated_at: ctx.now })
+      .where("id", "=", row.id),
+  );
+  return values;
+}
+
+/** Queues deleting a routine and its run history. */
+export function queueDeleteRoutine(
+  ctx: Pick<HandlerContext, "db" | "write">,
+  row: { id: string; automation_id: string },
+) {
+  ctx.write(
+    ctx.db
+      .deleteFrom("core_automation_run_records")
+      .where("run_id", "in", (eb) =>
+        eb
+          .selectFrom("core_automation_runs")
+          .select("id")
+          .where("automation_id", "=", row.automation_id),
+      ),
+  );
+  ctx.write(
+    ctx.db.deleteFrom("core_automation_runs").where("automation_id", "=", row.automation_id),
+  );
+  ctx.write(ctx.db.deleteFrom("core_routine").where("id", "=", row.id));
+  ctx.write(ctx.db.deleteFrom("core_automations").where("id", "=", row.automation_id));
 }
 
 /** The automation a routine runs as. Its one step is declared so the engine's views stay true. */

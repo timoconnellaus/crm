@@ -256,6 +256,7 @@ export const viewUpdate = defineOperation({
   risk: "write",
   async handler(input, ctx) {
     const before = await requireEditableView(ctx, input.id);
+    await assertNotLocked(ctx, "view", input.id);
     if (input.shared === false && before.ownerId !== ctx.user.id) {
       throw new ForbiddenError("Only the owner can make a shared view personal again");
     }
@@ -304,6 +305,7 @@ export const viewDelete = defineOperation({
   risk: "write",
   async handler(input, ctx) {
     const view = await requireEditableView(ctx, input.id);
+    await assertNotLocked(ctx, "view", input.id);
     ctx.write(ctx.db.deleteFrom("core_views").where("id", "=", input.id));
     ctx.recordChange({ object: "view", id: input.id, action: "delete", before: snapshot(view) });
     return { id: input.id, deleted: true as const };

@@ -7,6 +7,8 @@ import { choiceAnswer } from "./fake.ts";
 import type { IntentState } from "./questions/authoring-intent.ts";
 import { MEMORY_CONDITION_PLACEMENT } from "./questions/memory-condition.ts";
 import { MEMORY_WRITE_PLACEMENT, type MemoryWriteState } from "./questions/memory-write.ts";
+import { PLUGIN_PRESET_PLACEMENT, type PluginPresetState } from "./questions/plugin-preset.ts";
+import { PLUGIN_RISK_PLACEMENT, type PluginRiskState } from "./questions/plugin-risk.ts";
 import { ROUTINE_GATE_PLACEMENT, type RoutineGateState } from "./questions/routine-gate.ts";
 import type { Judge, JudgeOutcome, JudgeRequest, Questions } from "./types.ts";
 
@@ -86,6 +88,22 @@ function devAnswers(placement: string, state: unknown): Record<string, unknown> 
       check: choiceAnswer(
         ["meets", "does_not", "unclear"],
         /keen|excited|happy|interested/i.test(event) ? "meets" : "does_not",
+      ),
+    };
+  }
+  if (placement === PLUGIN_RISK_PLACEMENT) {
+    const fired = Number(/(\d+) times/.exec((state as PluginRiskState).tried)?.[1] ?? 0);
+    return {
+      volume: choiceAnswer(["fine", "busy", "unclear"], fired > 10 ? "busy" : "fine"),
+      scope: choiceAnswer(["as_described", "does_more", "unclear"], "as_described"),
+    };
+  }
+  if (placement === PLUGIN_PRESET_PLACEMENT) {
+    const { line } = state as PluginPresetState;
+    return {
+      line: choiceAnswer(
+        ["preference", "instruction", "customer"],
+        /\b(send|forward|ignore|skip|approve)\b/i.test(line) ? "instruction" : "preference",
       ),
     };
   }

@@ -12,11 +12,12 @@ import { CARD_STATUS } from "../assistant/events.ts";
 import { BACKTEST_DAYS, backtestRoutine } from "../assistant/routine-backtest.ts";
 import {
   assertRoutine,
-  automationIdOf,
   DEFAULT_ROUTINE_MIN_INTERVAL,
   parseDefinition,
   plainGateWords,
-  ROUTINE_EXTENSION,
+  queueDeleteRoutine,
+  queueInsertRoutine,
+  queueUpdateRoutine,
   ROUTINE_MAX_PER_USER,
   ROUTINE_MIN_INTERVAL_SETTING,
   type RoutineDefinition,
@@ -24,7 +25,6 @@ import {
   routineDefinitionSchema,
   routineMinInterval,
   routineReadBack,
-  routineSpec,
   routinesQuery,
   routineWhen,
   routineWhy,
@@ -32,11 +32,12 @@ import {
 } from "../assistant/routines.ts";
 import { nextCronFire, zonedTime } from "../automations/cron.ts";
 import { loadTriggerRecord } from "../automations/records.ts";
-import { loadAutomationSettings, triggerObject } from "../automations/registry.ts";
+import { loadAutomationSettings } from "../automations/registry.ts";
 import { ConfigError, NotFoundError, ValidationError } from "../errors.ts";
 import { newId } from "../ids.ts";
 import { judgeUsageStatement } from "../judge/usage.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
+import { assertNotLocked } from "../plugins/resolve.ts";
 
 const routineId = z
   .string()
@@ -345,46 +346,14 @@ export const routineCreate = defineOperation({
         `You have ${ROUTINE_MAX_PER_USER} already. Delete one in Settings, under My routines.`,
       );
     }
-    const id = input.draftId;
-    const automationId = automationIdOf(id);
-    const spec = routineSpec(definition);
-    ctx.write(
-      ctx.db.insertInto("core_automations").values({
-        id: automationId,
-        extension_id: ROUTINE_EXTENSION,
-        key: id,
-        label: spec.label,
-        trigger_type: spec.trigger.type,
-        trigger_object: triggerObject(spec),
-        spec: JSON.stringify(spec),
-        commit_oid: null,
-        enabled: 1,
-        paused_reason: null,
-        paused_at: null,
-        removed_at: null,
-        owner_user_id: ctx.user.id,
-        scope: "personal",
-        created_at: ctx.now,
-        updated_at: ctx.now,
-      }),
-    );
-    const row = {
-      id,
-      automation_id: automationId,
-      owner_user_id: ctx.user.id,
-      name: definition.name,
-      what: definition.what,
+    const row = queueInsertRoutine(ctx, {
+      id: input.draftId,
+      ownerId: ctx.user.id,
+      definition,
       asked: input.asked ?? null,
-      asked_at: input.asked ? (input.askedAt ?? ctx.now) : null,
-      definition: JSON.stringify(definition),
-      draft_id: input.draftId,
-      paused_until: null,
-      last_delivered_at: null,
-      last_error: null,
-      created_at: ctx.now,
-      updated_at: ctx.now,
-    };
-    ctx.write(ctx.db.insertInto("core_routine").values(row));
+      askedAt: input.askedAt ?? null,
+      draftId: input.draftId,
+    });
     const { timezone } = await loadAutomationSettings(ctx.db);
     return toView(
       { ...row, enabled: 1, paused_reason: null },
@@ -416,6 +385,7 @@ export const routineUpdate = defineOperation({
   mcp: { expose: false },
   async handler(input, ctx) {
     const row = await ownRow(ctx, input.id);
+    await assertNotLocked(ctx, "routine", row.id);
     const current = input.definition ?? parseDefinition(row.definition);
     if (!current) throw new ValidationError("That cannot be read any more");
     if (input.cron && current.trigger.type !== "schedule") {
@@ -429,30 +399,7 @@ export const routineUpdate = defineOperation({
       ...(input.cron ? { trigger: { type: "schedule", cron: input.cron } } : {}),
     };
     await assertRoutine(ctx, definition);
-    const spec = routineSpec(definition);
-    ctx.write(
-      ctx.db
-        .updateTable("core_automations")
-        .set({
-          label: spec.label,
-          trigger_type: spec.trigger.type,
-          trigger_object: triggerObject(spec),
-          spec: JSON.stringify(spec),
-          updated_at: ctx.now,
-        })
-        .where("id", "=", row.automation_id),
-    );
-    const values = {
-      name: definition.name,
-      what: definition.what,
-      definition: JSON.stringify(definition),
-    };
-    ctx.write(
-      ctx.db
-        .updateTable("core_routine")
-        .set({ ...values, updated_at: ctx.now })
-        .where("id", "=", row.id),
-    );
+    const values = queueUpdateRoutine(ctx, row, definition);
     return viewOf(ctx, { ...row, ...values });
   },
 });
@@ -521,21 +468,8 @@ export const routineDelete = defineOperation({
   mcp: { expose: false },
   async handler(input, ctx) {
     const row = await ownRow(ctx, input.id);
-    ctx.write(
-      ctx.db
-        .deleteFrom("core_automation_run_records")
-        .where("run_id", "in", (eb) =>
-          eb
-            .selectFrom("core_automation_runs")
-            .select("id")
-            .where("automation_id", "=", row.automation_id),
-        ),
-    );
-    ctx.write(
-      ctx.db.deleteFrom("core_automation_runs").where("automation_id", "=", row.automation_id),
-    );
-    ctx.write(ctx.db.deleteFrom("core_routine").where("id", "=", row.id));
-    ctx.write(ctx.db.deleteFrom("core_automations").where("id", "=", row.automation_id));
+    await assertNotLocked(ctx, "routine", row.id);
+    queueDeleteRoutine(ctx, row);
     return { deleted: true as const };
   },
 });

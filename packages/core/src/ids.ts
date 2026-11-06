@@ -47,6 +47,12 @@ export const ID_PREFIXES = {
   memory: "mem",
   /** A personal routine (ADR 0343). */
   routine: "rtn",
+  /** An installed plugin (ADR 0347). */
+  pluginInstall: "pli",
+  /** A member's request for a plugin (ADR 0347). */
+  pluginRequest: "plr",
+  /** An update's merge proposal (ADR 0347). */
+  pluginMerge: "plm",
   /** Policy adjudicator verdicts (ADR 0204). */
   adjudication: "adj",
   /** Assignment rules (ADR 0246). */
