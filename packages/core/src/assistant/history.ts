@@ -7,6 +7,8 @@ import {
   type AssistantPending,
   parseToolOutput,
   pendingOf,
+  ROUTINE_WHY_NOTICE,
+  type RoutineWhy,
   type TranscriptItem,
 } from "./events.ts";
 
@@ -107,6 +109,12 @@ export function transcriptFromThread(messages: readonly ThreadMessage[]): Transc
           const reply = items[items.length - 1] as Extract<TranscriptItem, { kind: "assistant" }>;
           if (message.via === "voice") reply.spoken = true;
           if (message.playout) reply.playout = message.playout;
+        } else if (part.type === "notice" && part.kind === ROUTINE_WHY_NOTICE) {
+          // The dot sits under the message, so it goes on the message's last item.
+          const last = items[items.length - 1];
+          if (last?.turn === turn && (last.kind === "assistant" || last.kind === "card")) {
+            last.why = part.data as RoutineWhy;
+          }
         } else if (part.type === "tool-call") {
           const item = {
             kind: "tool" as const,

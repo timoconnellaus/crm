@@ -398,10 +398,11 @@ describe("a2ui.produce", () => {
     user = await createUser("member");
   });
 
-  it("ships the two first-party producers, listed for the model", () => {
+  it("ships the first-party producers, listed for the model", () => {
     expect(FIRST_PARTY_PRODUCERS.map(producerRef)).toEqual([
       "tasks.overdueCard@1",
       "pipeline.staleDealsCard@1",
+      "briefing.morningCard@1",
     ]);
   });
 

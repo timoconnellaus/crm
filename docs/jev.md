@@ -161,6 +161,12 @@ Proposed by later stages, after stage 11:
   say it. Sends the person's words, the line and the lines held, no record content, so it is on by
   default, also on hosted deployments. Fails closed: the deterministic checks decide what they can
   and the line is read back for the person to confirm.
+- **`routine.gate`** (stage 17, [ADR 0343](adr/0343-personal-routines-on-the-automation-engine.md),
+  built): one Choice, does an event meet a check in the person's words? The question is fixed and the
+  check and the event are its state, so one calibration covers every routine. Asked in a routine's
+  run after its plain gates and before any model call, on the newest 5 events of a backtest, and by
+  `routine.test`. It sends record content, so it is off by default and stays off on hosted. Fails
+  closed: no answer means no message. New checks are refused while it is off.
 - **`memory.condition`** (stage 17, ADR 0342, built): does a conditional line's filter, written out
   in words by code, pick out the records the person described. Fails closed to the read-back alone.
 - **`approval.intent`** (stage 17, [ADR 0345](adr/0345-approvals-by-tap-typing-or-voice.md), built):
@@ -565,6 +571,7 @@ Stage 17's memory placements (6 November 2026, jev-1.14.0, three runs a case, no
 | `memory.write/already` (P(already), 41 cases) | 0.5 | 0.02 → 0.96 | none |
 | `memory.write/not_said` (P(not_said), 41 cases) | 0.5 | 0.14 → 0.92 | none |
 | `memory.condition/as_said` (P(as_said), 27 cases) | 0.55 | 0.42 → 0.70 | "the bigger ones" with a number (0.42, below); the mockup's condition (0.70, above) |
+| `routine.gate/meets` (P(meets), 34 cases) | 0.6 | 0.50 → 0.70 | a question against "ready to buy" (0.50, below); a large deal's fields against "a big deal" (0.70, above) |
 
 Stage 17's agent and approval placements (7 November 2026, jev-1.14.0, three runs a case, none
 wrong, and every question separates; report `evals/judge/reports/2026-11-06T19-52-54-738Z.md`):

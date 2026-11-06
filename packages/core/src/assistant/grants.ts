@@ -28,7 +28,7 @@ const operationName = z.string().min(3).max(120);
 
 export const grantTargetSchema = z.union([
   z.object({
-    ids: z.array(z.string().min(1).max(64)).min(1).max(1_000).describe("The records, by id"),
+    ids: z.array(z.string().min(1).max(64)).max(1_000).describe("The records, by id"),
   }),
   z.object({
     object: z.string().min(1).max(64).describe("The kind of record"),

@@ -206,6 +206,7 @@ function grantFrom(
   },
   profile: AgentProfile | null,
   now: string,
+  starter: JobStarter,
 ): Grant {
   const operations = input.operations ?? [...(profile?.defaultGrant.operations ?? [])];
   if (!operations.length) {
@@ -213,8 +214,12 @@ function grantFrom(
       field: "operations",
     });
   }
+  // A routine's brief names no records: with an empty target, nothing applies without review.
   const target =
-    input.target ?? (input.records.length ? { ids: input.records.map((r) => r.id) } : null);
+    input.target ??
+    (input.records.length || starter.kind !== "user"
+      ? { ids: input.records.map((r) => r.id) }
+      : null);
   if (!target) {
     throw new ValidationError("Name the records this agent works on, or a target filter", {
       field: "target",
@@ -357,7 +362,7 @@ export const agentStart = defineOperation({
     if (input.profile && !profile) throw new NotFoundError("agent profile", input.profile);
     const settings = await loadAgentSettings(ctx.db);
     const starter = starterOf(ctx);
-    const grant = grantFrom(input, profile, ctx.now);
+    const grant = grantFrom(input, profile, ctx.now, starter);
     // In code, before anything else: never wider than whatever started it.
     await assertWithinStarter(grant, {
       db: ctx.db,
@@ -686,7 +691,7 @@ export const agentReport = defineOperation({
   name: "agent.report",
   description:
     "Internal: the AgentJob object's bookkeeping, as its person. What it has used, and how it " +
-    "ended. Returns the job's state, which may be stopped.",
+    "ended. Returns the job's state, which may be stopped. Refused for anything but that object.",
   input: z.object({
     jobId,
     steps: z.number().int().min(0),
@@ -714,6 +719,11 @@ export const agentReport = defineOperation({
   bookkeeping: true,
   mcp: { expose: false },
   async handler(input, ctx) {
+    // Only the job's own object: adapters set the origin, so a person's call is `ui` and cannot
+    // rewrite their job's counters or state.
+    if (ctx.origin.surface !== "system" || ctx.origin.jobId !== input.jobId) {
+      throw new ForbiddenError("Only the agent's own object reports on it");
+    }
     const row = await ownJob(ctx, input.jobId);
     const stopped = row.state === "stopped" || row.state === "cancelled";
     const end = input.end && !stopped ? input.end : undefined;

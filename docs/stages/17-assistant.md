@@ -111,7 +111,7 @@ The full record is in "Decided (2026-11-05/06, user interview)" at the end. In s
    ├─ voice (agent-voice: withVoice / withVoiceInput) ─ AssemblyAI STT + TTS
    └─ spawns ──► AgentJob DO  name job:<jobId>   (assistant.subagent; brief, grant, budget)
                     └─ stages change sets; reports progress to the parent; never chats
- ros-runner: AutomationWorkflow ─ personal routine ─ gates (plain, Jev) ─ step "message me" ─► AssistantAgent
+ ros-runner: AutomationWorkflow ─ personal routine ─ gates (plain, Jev) ─ step "message me" ─► queue ─► AssistantAgent
  Connected assistants: AssistantAgent ⇄ AssistantAgent via core.agentMessage (Jev-adjudicated, logged)
  Plugins: core_plugin_* ─ install = copy into the owning scope; saved code on LOADER.get(stableId)
  Marketplace: ros-control hosts listings (reviewed); workspaces read it with a workspace token
@@ -270,6 +270,13 @@ pre-compaction context and the compaction then completes and re-bases on it.
 - **Unread** count on the sidebar toggle and the nav, cleared when the thread is seen.
 - "My routines" (Settings → Assistant): list with status, last and next run; pause, edit, delete,
   test.
+
+> Amended 2026-11-07 (W4 as built): delivery reaches the thread through a new queue,
+> `ros-routine-delivery`, because ros-runner cannot bind back to ros-app; a schedule's plain gate is
+> `exists`; the first offer is `routine.offer`, called from a first-chat tail; besides the operations
+> below there are `routine.offer`, `routine.list`, `routine.updateSettings` and
+> `routine.recordDelivery`; Approve is not added by delivery. Details and reasons: ADR 0343's
+> amendment of the same date.
 
 ### W5. Orchestrator, agents and approvals (ADR 0344, 0345)
 

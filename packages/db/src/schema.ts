@@ -557,6 +557,27 @@ export interface CoreAutomationsTable {
   paused_reason: string | null;
   paused_at: string | null;
   removed_at: string | null;
+  /** A routine's owner (ADR 0343); null for an extension's automation. */
+  owner_user_id: ColumnType<string | null, string | null | undefined, string | null>;
+  scope: ColumnType<"org" | "personal", "org" | "personal" | undefined, "org" | "personal">;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A personal routine (ADR 0343): what its core_automations row does not hold. */
+export interface CoreRoutineTable {
+  id: string;
+  automation_id: string;
+  owner_user_id: string;
+  name: string;
+  what: string;
+  asked: string | null;
+  asked_at: string | null;
+  definition: string;
+  draft_id: string | null;
+  paused_until: string | null;
+  last_delivered_at: string | null;
+  last_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1539,6 +1560,7 @@ export interface CoreDatabase {
   core_extension_fields: CoreExtensionFieldsTable;
   core_stage_history: CoreStageHistoryTable;
   core_automations: CoreAutomationsTable;
+  core_routine: CoreRoutineTable;
   core_automation_runs: CoreAutomationRunsTable;
   core_automation_run_records: CoreAutomationRunRecordsTable;
   core_automation_counters: CoreAutomationCountersTable;

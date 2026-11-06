@@ -21,6 +21,7 @@
     "./judge-approval-intent": "./src/judge/questions/approval-intent.ts",
     "./judge-grant": "./src/judge/questions/grant-least-privilege.ts",
     "./judge-orchestrator": "./src/judge/questions/orchestrator-suggest.ts",
+    "./judge-routine-gate": "./src/judge/questions/routine-gate.ts",
     "./adjudicator-agreement": "./src/adjudicator/agreement.ts",
     "./cron": "./src/automations/cron.ts"
   },

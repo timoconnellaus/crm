@@ -8,6 +8,7 @@ import { deleteSummariesStatement } from "../ai/summaries.ts";
 import { queueScrubAgentJobs } from "../assistant/agent-jobs.ts";
 import { queueScrubConversations } from "../assistant/erase.ts";
 import { queueEraseMemory } from "../assistant/memory.ts";
+import { queueEraseRoutines } from "../assistant/routines.ts";
 import { emailRef } from "../assistant/scrub.ts";
 import type { HandlerContext } from "../operation.ts";
 import { chunk, jsonList } from "./common.ts";
@@ -306,6 +307,9 @@ export async function queueErase(ctx: HandlerContext, request: EraseRequest): Pr
     names: subject.names,
     refs: await Promise.all(terms.filter((t) => t.includes("@")).map(emailRef)),
   });
+
+  // Routines that named the subject (ADR 0343): their words and filters, and they pause.
+  await queueEraseRoutines(ctx, { terms: [...terms], names: [...subject.names] });
 
   // 3f. The erase log outside D1 (R2), so an erasure can be re-applied after a restore. Written
   // before the commit: if it cannot be written the erase fails and can be retried.

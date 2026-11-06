@@ -61,6 +61,8 @@ describe("tasks", () => {
         "extension_read",
         "extension_write",
         "integration_call",
+        "offer_morning_briefing",
+        "offer_standing_help",
         "organisation_create",
         "organisation_get",
         "organisation_update",

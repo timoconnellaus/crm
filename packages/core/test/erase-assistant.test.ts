@@ -133,6 +133,9 @@ function memoryStore(): AssistantThreadStore & {
     async search() {
       return [];
     },
+    async deliverRoutine() {
+      return { outcome: "quiet" as const };
+    },
     async postCard() {
       return { seq: 0 };
     },

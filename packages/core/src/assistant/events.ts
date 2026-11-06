@@ -49,6 +49,37 @@ interface Placed {
   at?: string;
 }
 
+/** A kind of `notice` part: why a delivered message came (ADR 0343). Not sent to the model. */
+export const ROUTINE_WHY_NOTICE = "routine.why" as const;
+
+/** One check a run made, in plain words. No scores. */
+export interface RoutineCheckView {
+  text: string;
+  passed: boolean;
+  /** The judge could not answer it. */
+  unavailable?: boolean;
+}
+
+/** What the info dot beside a delivered message opens: plain facts, in the person's terms. */
+export interface RoutineWhy {
+  routineId: string;
+  runId: string | null;
+  name: string;
+  /** What they said when they asked for it. */
+  asked: string | null;
+  askedAt: string | null;
+  /** The trigger, in words. */
+  when: string;
+  /** When it ran. */
+  at: string;
+  /** The record it is about. */
+  about?: string;
+  checks: RoutineCheckView[];
+  jev: RoutineCheckView[];
+  /** Sent by Test on My routines. */
+  test?: boolean;
+}
+
 /** One item of the thread as the UI shows it. */
 export type TranscriptItem =
   | ({ kind: "user"; turn: number; text: string; via?: string } & Placed)
@@ -60,6 +91,8 @@ export type TranscriptItem =
       playout?: Playout;
       /** The reply was spoken: the chat says how much was. */
       spoken?: boolean;
+      /** A delivered message: the why panel behind its info dot. */
+      why?: RoutineWhy;
     } & Placed)
   | ({
       kind: "tool";
@@ -72,7 +105,7 @@ export type TranscriptItem =
       pending?: AssistantPending;
     } & Placed)
   /** A card (ADR 0346), or just its text fallback when it cannot be drawn. */
-  | ({ kind: "card"; turn: number; part: A2uiPart } & Placed)
+  | ({ kind: "card"; turn: number; part: A2uiPart; why?: RoutineWhy } & Placed)
   | ({ kind: "error"; turn: number; message: string } & Placed);
 
 /** The thread for the UI: a window of stored items, plus the live turn if one is running. */

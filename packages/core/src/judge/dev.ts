@@ -18,6 +18,7 @@ import {
   ORCHESTRATOR_PLACEMENT,
   type OrchestratorState,
 } from "./questions/orchestrator-suggest.ts";
+import { ROUTINE_GATE_PLACEMENT, type RoutineGateState } from "./questions/routine-gate.ts";
 import type { Judge, JudgeOutcome, JudgeRequest, Questions } from "./types.ts";
 
 const NOTIFY = /\b(notif\w*|tell|alert|remind\w*|message)\b/i;
@@ -164,6 +165,15 @@ function devAnswers(placement: string, state: unknown): Record<string, unknown> 
   if (placement === GRANT_PLACEMENT) return { grant: grantAnswer(state as GrantState) };
   if (placement === ORCHESTRATOR_PLACEMENT) {
     return { size: orchestratorAnswer(state as OrchestratorState) };
+  }
+  if (placement === ROUTINE_GATE_PLACEMENT) {
+    const { event } = state as RoutineGateState;
+    return {
+      check: choiceAnswer(
+        ["meets", "does_not", "unclear"],
+        /keen|excited|happy|interested/i.test(event) ? "meets" : "does_not",
+      ),
+    };
   }
   return null;
 }

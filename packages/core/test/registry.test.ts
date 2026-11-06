@@ -67,9 +67,10 @@ describe("core registry", () => {
     expect(curated.length).toBeGreaterThanOrEqual(12);
     // Stage 2's ~15, the extension authoring tools and Code Mode (stage 3b), and connections,
     // integration.call and suggested contacts (stage 6a), and the assistant's cards (stage 17;
-    // show_card is the assistant's only, so external clients gain one), and agents and approvals
-    // (stage 17 W5: five tools, none of them for external clients).
-    expect(curated.length).toBeLessThanOrEqual(37);
+    // show_card is the assistant's only, so external clients gain one), the assistant's two offers
+    // (stage 17 W4), and agents and approvals (stage 17 W5: five tools). None of the last seven is
+    // listed to external clients: createCrmMcpServer leaves out what their actor cannot call.
+    expect(curated.length).toBeLessThanOrEqual(39);
     for (const op of curated) expect(op.description.trim().length).toBeGreaterThanOrEqual(60);
   });
 

@@ -330,6 +330,25 @@
       "mode": "replay",
       "date": "2026-11-05"
     },
+    "routine.gate/meets": {
+      "hash": "4cd28649682fb76d4ca9f8fd134cff0011d2b9ab46facb41c2225a12d27af784",
+      "model": "jev-1.14.0",
+      "threshold": 0.6,
+      "label": "meets",
+      "cases": 34,
+      "right": 32,
+      "wrong": 0,
+      "close": 2,
+      "unanswered": 0,
+      "closeCalls": ["a record's fields", "a question is not keen"],
+      "highestBelow": 0.5,
+      "belowGap": 0.1,
+      "lowestAbove": 0.7,
+      "aboveGap": 0.1,
+      "runs": 3,
+      "mode": "auto",
+      "date": "2026-11-06"
+    },
     "summary.statements/statement": {
       "hash": "b7c039b23d7ec2e4e3190f2f9732e3faac71fb8f39d24e69c3ff4a49558c4157",
       "model": "jev-1.14.0",

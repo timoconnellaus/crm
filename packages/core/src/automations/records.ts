@@ -43,7 +43,7 @@ function decode(object: ObjectDefinition, row: Record<string, unknown>): Record<
   return data;
 }
 
-function titleOf(object: ObjectDefinition, row: Record<string, unknown>): string | null {
+export function titleOf(object: ObjectDefinition, row: Record<string, unknown>): string | null {
   const column = object.titleField
     ? object.fields.find((f) => f.name === object.titleField)?.column
     : undefined;

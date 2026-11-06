@@ -198,6 +198,21 @@ export const JUDGE_PLACEMENTS = [
     spendCounted: true,
   }),
   place({
+    id: "routine.gate",
+    label: "A routine's checks in the person's own words",
+    askedWhen: "A routine's run, before any model call; its read-back's backtest; and routine.test",
+    failMode: "closed",
+    onFailure:
+      "The check does not pass: no message and no model call. New routines can use plain checks only",
+    timeoutMs: 4_000,
+    sends: "The person's check and the event: the record's fields, or an email's subject and text",
+    sendsRecordContent: true,
+    defaultOn: false,
+    switchable: true,
+    built: true,
+    spendCounted: true,
+  }),
+  place({
     id: "grant.leastPrivilege",
     label: "An agent's access against its brief",
     askedWhen: "An agent is started, and once more if the starter resubmits with a reason",

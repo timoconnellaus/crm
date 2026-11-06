@@ -968,6 +968,7 @@ const routineReadBack = define({
   hostOnly: true,
   description: "A routine read back for confirmation, with its backtest",
   props: z.object({
+    title: line(120).optional(),
     summary: line(500),
     trigger: line(300),
     gates: z.array(gate).max(8).default([]),
@@ -975,21 +976,26 @@ const routineReadBack = define({
       .object({
         days: z.number().int().min(1),
         fired: z.number().int().min(0),
+        /** One entry per day, oldest first: would it have sent anything that day? */
+        fires: z.array(z.boolean()).max(31).optional(),
         examples: z
           .array(z.object({ text: line(300), passed: z.boolean() }))
           .max(6)
           .default([]),
       })
       .optional(),
+    /** Plain warnings: no data to try it on, a very broad trigger. */
+    notes: z.array(line(300)).max(4).default([]),
     actions: actionsSchema.optional(),
   }),
   fallback: (p) =>
     joinLines(
+      p.title,
       p.summary,
       `When: ${p.trigger}`,
       ...p.gates.map((g) => `Only if: ${g.text}`),
-      p.backtest &&
-        `In the last ${p.backtest.days} days it would have run ${p.backtest.fired} times.`,
+      p.backtest && `Would have messaged you ${p.backtest.fired} times in ${p.backtest.days} days.`,
+      ...p.notes,
       buttons(p.actions),
     ),
 });

@@ -482,6 +482,8 @@ const OP_WORDS: Record<string, string> = {
   is_not_null: "is not empty",
 };
 
+const RELATIVE_WORDS: Record<string, string> = { me: "you", now: "now" };
+
 function valueWords(value: unknown): string {
   if (Array.isArray(value)) return value.map(valueWords).join(", ");
   if (typeof value === "string") return `"${value}"`;
@@ -490,6 +492,7 @@ function valueWords(value: unknown): string {
     const v = value as Record<string, unknown>;
     if ("from" in v || "to" in v) return `${valueWords(v.from)} and ${valueWords(v.to)}`;
     if ("relative" in v) return String(v.relative).replace(/_/g, " ");
+    if ("$relative" in v) return RELATIVE_WORDS[String(v.$relative)] ?? String(v.$relative);
   }
   return String(value);
 }
@@ -511,6 +514,11 @@ function filterWords(object: ObjectDefinition, filter: Filter, depth = 0): strin
     return `${label} ${op} ${valueWords(filter.value[0])} and ${valueWords(filter.value[1])}`;
   }
   return `${label} ${op} ${valueWords(filter.value)}`;
+}
+
+/** A filter in words, with no checks: "Tasks where Status is "open"". */
+export function filterInWords(object: ObjectDefinition, filter: Filter): string {
+  return `${objectPlural(object)} where ${filterWords(object, filter)}`;
 }
 
 /** The object's plural label ("Organisations"). */

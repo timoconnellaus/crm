@@ -531,7 +531,8 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
    ├─ voice (agent-voice: withVoice, own socket per call) ─ AssemblyAI STT + TTS, direct
    └─ spawns ──► AgentJob DO  name job:<jobId>   (assistant.subagent; brief, grant, budget)
                     └─ stages change sets; reports progress to the parent; never chats
- ros-runner: AutomationWorkflow ─ personal routine ─ gates (plain, Jev) ─ step "message me" ─► AssistantAgent
+ ros-runner: AutomationWorkflow ─ personal routine ─ gates (plain, Jev) ─ step "message me"
+   ─► Queue ros-routine-delivery ─► ros-app queue() ─► AssistantAgent
  Connected assistants: AssistantAgent ⇄ AssistantAgent via core.agentMessage (Jev-adjudicated, logged)
  Plugins: core_plugin_* ─ install = copy into the owning scope; saved code on LOADER.get(stableId)
  Marketplace: ros-control hosts listings (reviewed); workspaces read it with a workspace token
@@ -560,7 +561,9 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   until compaction calls `foldPendingLines()`, and conditional lines join the tail only on a
   matching record. Deleting a line's source message deletes it, an erase reaches it through
   `core_memory_refs`, and only the chat can write it, never an agent (ADR 0342). **Routines** are personal automations on the existing engine
-  that message the thread (ADR 0343). Longer work runs as **agents**, child `AgentJob` objects
+  (`core_automations` with `scope = 'personal'`, plus `core_routine`) that message the thread. Their
+  Workflow runs plain then Jev gates and queues ids on `ros-routine-delivery`, which ros-app consumes
+  to post the message, since ros-runner cannot bind back to ros-app (ADR 0343). Longer work runs as **agents**, child `AgentJob` objects
   (`job:<id>`, `apps/app/src/server/assistant/job.ts`) that stage changes for review and never block
   (ADR 0344). `agent.start` checks a **grant** in code against what its starter may do, the judge's
   `grant.leastPrivilege` checks it against the brief (off: the person confirms it first), and a job

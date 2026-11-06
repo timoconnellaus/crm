@@ -77,3 +77,6 @@ these **agents**; in code they are **jobs**, and CRM tasks keep the name "tasks"
 - **Spend** is counted from the model registry's prices. A model with no price counts as free, so only the step and time limits hold it.
 - **Judge passes, no card.** The mockup shows the grant card before every start. The spec shows it only with the judge off, and the spec wins: a grant the judge accepts starts at once. "Start, but ask me for every change" is on the card, and stages every write.
 - **One resubmission** is keyed by the brief: the same brief refused once comes back only with a justification, and is then refused for good.
+- **Routines.** A routine's step starts an agent through `registerRoutineAgentStarter`, filled in ros-app (`assistant/routine-agents.ts`), as actor `automation`. Its brief names no records, so its target is empty and nothing applies without review; the default profile is the read-only analyst.
+- **`agent.report`** is refused unless the call comes from the job's own object (`origin` surface `system` with its `jobId`, set by the object, never by a request), so a person cannot rewrite their job's counters or state.
+- **Retention.** Finished rows go after 180 days, with their refs (`purgeAgentJobs`, daily cron). Live jobs stay however old.

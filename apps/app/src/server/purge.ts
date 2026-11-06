@@ -9,6 +9,7 @@ import {
   expirePendingActions,
   measureStorage,
   parseFloor,
+  purgeAgentJobs,
   purgeCacheReview,
   purgeIntegrationEvents,
   purgeNotificationDeliveries,
@@ -78,6 +79,8 @@ export async function runScheduledMaintenance(env: PurgeEnv, clock?: () => Date)
   }
   const runs = await step("run history", () => purgeRunHistory(db.query, now));
   if (runs?.deleted) console.log(`run history: ${runs.deleted} run(s) purged`);
+  const agents = await step("finished agents", () => purgeAgentJobs(db.query, now));
+  if (agents?.deleted) console.log(`agents: ${agents.deleted} finished job(s) purged`);
   const compacted = await step("pending action compaction", () =>
     compactPendingActions(db.query, now),
   );

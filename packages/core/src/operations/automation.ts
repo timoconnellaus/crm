@@ -52,6 +52,8 @@ import { loadRecordTitles } from "../records/links.ts";
 import { assertConnectionsBound, connectionViews } from "./automation-binding.ts";
 
 const DAY_MS = 86_400_000;
+/** routine.* owns these rows (assistant/routines.ts imports this file, so it is not imported). */
+const ROUTINE_EXTENSION = "routine";
 
 function host(ctx: HandlerContext): AutomationHost {
   if (!ctx.automationHost) {
@@ -126,6 +128,8 @@ async function loadAutomation(db: Kysely<CoreDatabase>, id: string) {
       "e.version",
     ])
     .where("a.id", "=", id)
+    // A routine belongs to its owner (ADR 0343): routine.* is its way in.
+    .where("a.scope", "=", "org")
     .executeTakeFirst();
   if (!row) throw new NotFoundError("automation", id);
   const spec = parseSpec(row.spec);
@@ -226,6 +230,7 @@ export const automationList = defineOperation({
       .selectFrom("core_automations as a")
       .leftJoin("core_extensions as e", "e.id", "a.extension_id")
       .select([...AUTOMATION_COLUMNS, "e.manifest"])
+      .where("a.scope", "=", "org")
       .orderBy("a.id");
     if (input.extensionId) q = q.where("a.extension_id", "=", input.extensionId);
     if (input.manualFor) {
@@ -605,7 +610,8 @@ export const automationRuns = defineOperation({
     let q = ctx.db
       .selectFrom("core_automation_runs as r")
       .leftJoin("core_automations as a", "a.id", "r.automation_id")
-      .select([...RUN_COLUMNS]);
+      .select([...RUN_COLUMNS])
+      .where("r.extension_id", "!=", ROUTINE_EXTENSION);
     if (input.runId) {
       q = q.where("r.id", "=", input.runId);
     } else if (input.record) {
@@ -698,6 +704,7 @@ function runOperation(
         .selectFrom("core_automation_runs")
         .select(["id", "status"])
         .where("id", "=", input.runId)
+        .where("extension_id", "!=", ROUTINE_EXTENSION)
         .executeTakeFirst();
       if (!run) throw new NotFoundError("automation run", input.runId);
       return call(host(ctx), input.runId);

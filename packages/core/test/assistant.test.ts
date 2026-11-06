@@ -395,6 +395,9 @@ function memoryThreads(): AssistantThreadStore & { seen: Map<string, number> } {
       seen.set(userId, last);
       return { unread: 0, lastSeenSeq: last };
     },
+    async deliverRoutine() {
+      return { outcome: "quiet" as const };
+    },
     async postCard() {
       return { seq: 0 };
     },

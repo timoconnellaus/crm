@@ -14,7 +14,9 @@ import {
   fakeStandIn,
   grantGuard,
   invokeByName,
+  purgeAgentJobs,
   resolveActingUser,
+  routineAgentStarter,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -387,6 +389,55 @@ describe("what an agent is told and may do", () => {
       release();
       await invokeByName("agent.updateSettings", settings, human(m.user));
     }
+  });
+
+  it("a person cannot rewrite their own job's report; only its object can", async () => {
+    const m = await member();
+    const org = await orgIn(m, "Honest Ltd");
+    const start = started(await research(m, [org.id]));
+    await finished(m, start.jobId);
+    await expect(
+      invokeByName(
+        "agent.report",
+        { jobId: start.jobId, steps: 0, spentMicrousd: 0, fieldsFilled: 99 },
+        human(m.user),
+      ),
+    ).rejects.toMatchObject({ code: "forbidden" });
+    expect((await status(m, start.jobId)).fieldsFilled).toBe(1);
+  });
+
+  it("a routine's step starts an agent as the routine, with nothing applying unreviewed", async () => {
+    const m = await member();
+    const start = routineAgentStarter();
+    if (!start) throw new Error("the starter is not registered");
+    const out = await start({ userId: m.user.id, brief: "Check the renewals due this month." });
+    expect(out.text).toBeTruthy();
+    const { jobs } = (await invokeByName(
+      "agent.status",
+      {},
+      human(m.user),
+    )) as CoreOutput<"agent.status">;
+    expect(jobs[0]).toMatchObject({
+      profile: "analyst",
+      mode: "background",
+      startedBy: { kind: "routine", id: "routine" },
+      grant: { target: { ids: [] } },
+    });
+  });
+
+  it("purges finished jobs past their retention and keeps live ones", async () => {
+    const m = await member();
+    const org = await orgIn(m, "Old Ltd");
+    const done = started(await research(m, [org.id]));
+    await finished(m, done.jobId);
+    fakeStandIn.holdAgent = new Promise<void>(() => {});
+    const live = started(await research(m, [org.id]));
+    const future = new Date(Date.now() + 181 * 86_400_000).toISOString();
+    await purgeAgentJobs(db.query, future);
+    await expect(status(m, done.jobId)).rejects.toThrow();
+    expect((await status(m, live.jobId)).state).toBe("running");
+    await invokeByName("agent.stop", { jobId: live.jobId }, human(m.user));
+    fakeStandIn.holdAgent = null;
   });
 
   it("cannot reach bookkeeping outside its grant", async () => {

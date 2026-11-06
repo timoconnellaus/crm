@@ -104,6 +104,59 @@ export default async function (input, { crm, now }) {
 }
 `;
 
+const MORNING_BRIEFING = `
+const MEETINGS = \`
+SELECT a.id AS id, a.subject AS subject, a.occurred_at AS at
+FROM crm_activities a
+WHERE a.type = 'meeting' AND a.occurred_at >= ? AND a.occurred_at < ?
+ORDER BY a.occurred_at LIMIT 10
+\`;
+
+export default async function (input, { crm, now, timezone }) {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date(now));
+  const tomorrow = new Date(Date.parse(today + "T00:00:00Z") + 86400000).toISOString().slice(0, 10);
+  const mine = await crm.call("task.listMine", { timezone });
+  const meetings = await crm.call("query.sql", { sql: MEETINGS, params: [today, tomorrow], maxRows: 10 });
+  const due = [...mine.buckets.overdue, ...mine.buckets.today];
+  if (!due.length && !meetings.rows.length) {
+    return {
+      a2ui: 1,
+      root: { type: "emptyState", title: "Nothing on today", text: "No meetings and nothing overdue." },
+    };
+  }
+  const clock = new Intl.DateTimeFormat("en-AU", { timeZone: timezone, hour: "numeric", minute: "2-digit" });
+  const day = new Intl.DateTimeFormat("en-AU", {
+    timeZone: timezone, weekday: "short", day: "numeric", month: "short",
+  });
+  const children = [];
+  if (meetings.rows.length) {
+    children.push({ type: "heading", text: "Today, " + day.format(new Date(now)) });
+    children.push({
+      type: "list",
+      items: meetings.rows.map((m) => ({
+        text: String(m.subject || "Meeting").slice(0, 400),
+        secondary: clock.format(new Date(m.at)),
+      })),
+    });
+  }
+  if (due.length) {
+    children.push({
+      type: "taskList",
+      title: "Due and overdue",
+      tasks: due.slice(0, input.limit).map((task) => ({
+        id: task.id,
+        title: task.title.slice(0, 300),
+        overdue: mine.buckets.overdue.includes(task),
+        ...(task.dueAt ? { dueAt: task.dueAt, dueLabel: "Due " + day.format(new Date(task.dueAt)) } : {}),
+      })),
+      total: due.length,
+      viewAll: "/tasks",
+    });
+  }
+  return { a2ui: 1, root: children.length > 1 ? { type: "stack", children } : children[0] };
+}
+`;
+
 const limit = z.number().int().min(1).max(20).default(20);
 
 /** Shipped with the app. */
@@ -123,6 +176,14 @@ export const FIRST_PARTY_PRODUCERS: readonly SavedProducer[] = [
     description: "Open deals with no activity for some days. Input: { days? (14), limit? }",
     input: z.object({ days: z.number().int().min(1).max(365).default(14), limit }),
     source: STALE_DEALS,
+  },
+  {
+    name: "briefing.morningCard",
+    version: 1,
+    catalogue: 1,
+    description: "Today's meetings and what is due or overdue. Input: { limit? }",
+    input: z.object({ limit }),
+    source: MORNING_BRIEFING,
   },
 ];
 

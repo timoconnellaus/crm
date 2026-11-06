@@ -42,6 +42,7 @@ import { policyOperations } from "./policy.ts";
 import { queryOperations } from "./query.ts";
 import { recordOperations } from "./record.ts";
 import { retentionOperations } from "./retention.ts";
+import { routineOperations } from "./routine.ts";
 import { searchOperations } from "./search.ts";
 import { settingsOperations } from "./settings.ts";
 import { setupOperations } from "./setup.ts";
@@ -101,6 +102,7 @@ export const coreOperations = [
   ...voiceOperations,
   ...a2uiOperations,
   ...memoryOperations,
+  ...routineOperations,
   ...aiCacheOperations,
   ...planOperations,
   ...supportOperations,

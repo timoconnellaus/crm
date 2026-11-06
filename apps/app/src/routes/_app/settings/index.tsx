@@ -18,6 +18,7 @@ import {
   PlugIcon,
   PlugZapIcon,
   PuzzleIcon,
+  RepeatIcon,
   ScrollTextIcon,
   ShieldCheckIcon,
   SparklesIcon,
@@ -44,6 +45,7 @@ function Section({
     | "/settings/approval-policy"
     | "/settings/agents"
     | "/settings/assistant-memory"
+    | "/settings/assistant-routines"
     | "/settings/adjudicator"
     | "/settings/users"
     | "/settings/assignment-rules"
@@ -196,6 +198,12 @@ function SettingsPage() {
                 : "The kinds of agent your assistant can start."
             }
             to="/settings/agents"
+          />
+          <Section
+            icon={<RepeatIcon className="size-5" />}
+            title="My routines"
+            description="What your assistant does on its own: pause, edit, test or delete it."
+            to="/settings/assistant-routines"
           />
           <Section
             icon={<PlugIcon className="size-5" />}
