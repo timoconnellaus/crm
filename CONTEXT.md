@@ -532,8 +532,10 @@ _Avoid_: permission (that is a role's), scope
 
 **A2UI producer**
 A saved Code Mode script, usually shipped in a plugin, that queries the CRM and returns an A2UI card
-from the versioned catalogue with no model call, run on a stable loader id (ADR 0346). An A2UI card
-is a rich message from that catalogue, stored with a text fallback.
+from the versioned catalogue with no model call, run on a stable loader id (ADR 0346). It reads as
+the viewer and can change nothing. An A2UI card is a rich message from that catalogue, stored with
+a text fallback. A button on a card the model or a producer wrote runs as the assistant, so the
+approval policy applies.
 _Avoid_: widget (that is on a dashboard), template
 
 **Plugin**

@@ -138,3 +138,5 @@ source goes straight into the worker (no more `/code/<uuid>` directories). Its l
   follow-up (audit D1, option a). Nothing here depends on it.
 
 > Amended 2026-11-05: the ros-runner main-module budget is raised from 4,096 to 5,120 KiB (stage 5's automation engine reached 4,221 KiB; stage 7a's AI SDK adds about 1.1 MB). The rule that the TypeScript compiler must not be in the main module is unchanged.
+
+> Amended 2026-11-06 (stage 17 W6, ADR 0346): saved A2UI producers are a fourth stable id, `a2ui:<name>@<version>:<hash>`, hashing the version, its source, the entry module and the compatibility date. They run on `LOADER.get`, with a fixed entry that patches no globals, and the viewer's host as a per-run argument.

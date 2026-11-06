@@ -50,3 +50,37 @@ is wasteful.
   first-party cards would look foreign and be heavier. May be added later for external MCP tools.
 - **A handful of bespoke message types.** Rejected: plugins could not add cards.
 - **A model call per routine card.** Rejected: cost and variation; saved producers replace it.
+
+## Amendment, 2026-11-06 (as built in stage 17 W6)
+- **Buttons on model and producer cards run as the assistant (`a2ui.act`).** The decision says every
+  action is an operation call with the viewer's permissions and that nothing bypasses the gate. The
+  gate gives humans `auto` everywhere, so calling the operation as the viewer would let a
+  prompt-injected button labelled "Open" delete a record with one press. Those two statements only
+  hold together if the press runs as actor `assistant` with the viewer's user: role permissions
+  are the viewer's, and the approval policy applies as if the assistant had called it. A queued
+  change shows "Waiting for approval". `a2ui.act` refuses `a2ui.*`, `approval.*`, `code.*` and
+  `extension.*`. Only cards the host wrote call operations directly, as the viewer. The cost: under
+  the Cautious preset, ticking a task on a model's card asks for approval.
+- **`a2ui.show` is the model's tool** (`show_card`, assistant only): the card plus the same answer
+  in words, which is the fallback if the card is invalid. Its description holds the catalogue with
+  each component's props (`catalogueGuide`, about 12,000 characters of cached prefix).
+- **The model reads the fallback, not the card.** A card's tool result goes to the reader whole, and
+  the model gets `{ status, text }`, so a card is not paid for twice. `TurnTool.call` gained
+  `modelText` for this.
+- **Where cards are stored.** An `a2ui` message part beside the tool result that made it, or alone
+  in an assistant message when posted outside a turn. `AssistantAgent.postCard` is that path, reached
+  with `a2ui.produce { post: true }`. W4's routines use it. Search and unread read the fallback, and
+  erase drops a whole card that mentions the subject, keeping its fallback with them removed.
+- **Producers are read-only and imports-free.** They are a registry in code, not D1 rows, so W6 adds
+  no migration. `a2ui.produce` needs only `records:read`. The script's default export receives
+  `(input, { crm, now, timezone })`. The viewer's host is an argument of each run, because the
+  warm worker serves every viewer: Code Mode's module-level host binding would mix two people's
+  concurrent runs. The run host answers only `read` operations, and never `x.*` or `a2ui.*`.
+  Producers share Code Mode's limits (30 s, 100 calls) but not its per-user gate or rate limit,
+  since they cannot write and their code is not model-written.
+- **Links.** External links show only for an allow-list in the app (`isAllowedHref`: meeting and mail
+  sites); anything else is plain text. A card's Markdown drops images and disallowed links.
+- **Cards are snapshots.** A stored card shows what was true when it was made. A task ticked on a
+  card shows unticked after a reload, though the task is done and ticking again changes nothing.
+- **Stage 12 to 16 components** are listed in `RESERVED_COMPONENTS`, and a card naming one shows its
+  fallback until those stages add them.

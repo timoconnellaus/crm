@@ -325,6 +325,12 @@ never forces. Single lookups stay direct tool calls.
   fallback so the model can refer to "the second task". Data respects visibility (stage 14).
 - The catalogue is versioned; plugins declare the version they target.
 
+> Amended 2026-11-06 (W6 as built): buttons on model and producer cards run through a new
+> `a2ui.act` as actor `assistant` with the viewer's permissions, because the gate lets a human do
+> anything; the model's tool is a new `a2ui.show` (`show_card`); first-party producers are
+> `tasks.overdueCard` and `pipeline.staleDealsCard` in a code registry that W7 registers into, so
+> there are no migrations. Details and reasons: ADR 0346's amendment of the same date.
+
 ### W7. Plugins and the marketplace (ADR 0347)
 
 - **Manifest** `plugin.json` (our schema, in `agent-plugins`), which can also load the open Agent
@@ -422,7 +428,8 @@ never forces. Single lookups stay direct tool calls.
 `routine.draft`, `routine.backtest`, `routine.create`, `routine.update`, `routine.pause`,
 `routine.delete`, `routine.test`; `agent.start`, `agent.stop`, `agent.status`, `agent.allowSpend`,
 `agentProfile.*`; `approval.decide` (gains `via: tap | typed | spoken` and `words`);
-`a2ui.produce` (run a saved producer); `plugin.list`, `plugin.get`, `plugin.install`,
+`a2ui.show` (the model sends a card), `a2ui.produce` (run a saved producer), `a2ui.act` (a button on
+a model's or producer's card); `plugin.list`, `plugin.get`, `plugin.install`,
 `plugin.update`, `plugin.compare`, `plugin.mergeProposal`, `plugin.applyMerge`, `plugin.detach`,
 `plugin.reattach`, `plugin.uninstall`, `plugin.propose` (from chat), `plugin.publish`
 (marketplace submission), `marketplace.search`; `assistantConnection.request`, `assistantConnection.accept`,
