@@ -20,6 +20,7 @@ import {
   ScrollTextIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  UserCheckIcon,
   UsersIcon,
   WorkflowIcon,
 } from "lucide-react";
@@ -43,6 +44,7 @@ function Section({
     | "/settings/assistant-memory"
     | "/settings/adjudicator"
     | "/settings/users"
+    | "/settings/assignment-rules"
     | "/settings/audit"
     | "/settings/connected-apps"
     | "/settings/extensions"
@@ -198,6 +200,12 @@ function SettingsPage() {
             title="Extensions"
             description="Installed extensions, their permissions, runs and versions."
             to="/settings/extensions"
+          />
+          <Section
+            icon={<UserCheckIcon className="size-5" />}
+            title="Assignment rules"
+            description="Who owns new people, organisations, leads and deals: round-robin or by field values, with a fallback owner."
+            to="/settings/assignment-rules"
           />
           <Section
             icon={<WorkflowIcon className="size-5" />}

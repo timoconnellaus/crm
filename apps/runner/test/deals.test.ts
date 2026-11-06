@@ -87,24 +87,27 @@ async function history(id: string) {
 beforeAll(async () => {
   admin = await createAdmin();
   const results = await installShippedExtensions({ db, host });
-  expect(results).toEqual([{ id: "deals", outcome: "installed" }]);
+  expect(results.find((r) => r.id === "deals")).toEqual({ id: "deals", outcome: "installed" });
   const org = await call<{ id: string }>(admin, "organisation.create", { name: unique("Acme") });
   orgId = org.id;
 });
 
 describe("the shipped Deals extension", () => {
   it("is bundled and installed as a shipped extension, as its own principal", async () => {
-    expect(await host.shipped()).toEqual([{ id: "deals", version: "1.1.0" }]);
+    expect(await host.shipped()).toContainEqual(
+      expect.objectContaining({ id: "deals", version: "1.2.0" }),
+    );
     const row = await extensionRow("deals");
     expect(row).toMatchObject({
       source: "shipped",
       status: "active",
-      version: "1.1.0",
+      version: "1.2.0",
       user_id: "extension:deals",
     });
-    expect(await installShippedExtensions({ db, host })).toEqual([
-      { id: "deals", outcome: "unchanged" },
-    ]);
+    expect(await installShippedExtensions({ db, host })).toContainEqual({
+      id: "deals",
+      outcome: "unchanged",
+    });
   });
 
   it("seeds the New business and Renewals pipelines with their stages", async () => {

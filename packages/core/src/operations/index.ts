@@ -10,6 +10,7 @@ import { affiliationOperations } from "./affiliation.ts";
 import { aiOperations } from "./ai.ts";
 import { aiCacheOperations } from "./ai-cache.ts";
 import { approvalOperations } from "./approval.ts";
+import { assignmentOperations } from "./assignment.ts";
 import { assistantOperations } from "./assistant.ts";
 import { auditOperations } from "./audit.ts";
 import { automationOperations } from "./automation.ts";
@@ -25,6 +26,7 @@ import { exportOperations } from "./export.ts";
 import { extensionOperations } from "./extension.ts";
 import { extensionAuthoringOperations } from "./extension-authoring.ts";
 import { extensionUiOperations } from "./extension-ui.ts";
+import { fieldOptionsOperations } from "./field-options.ts";
 import { importOperations } from "./import.ts";
 import { importRecordsOperations } from "./import-records.ts";
 import { integrationOperations } from "./integration.ts";
@@ -103,4 +105,6 @@ export const coreOperations = [
   ...erasureOperations,
   ...judgeOperations,
   ...duplicateOperations,
+  ...assignmentOperations,
+  ...fieldOptionsOperations,
 ] as const;

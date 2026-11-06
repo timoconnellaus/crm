@@ -6,6 +6,7 @@ export const personObject = defineObject({
   label: "Person",
   source: "crm_people",
   defaultSort: { field: "displayName", direction: "asc" },
+  ownerField: "ownerId",
   fields: [
     { name: "id", label: "ID", type: "id", column: "id", filterable: true, sortable: true },
     {

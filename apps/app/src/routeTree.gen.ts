@@ -39,6 +39,7 @@ import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/ind
 import { Route as AppSettingsAdjudicatorRouteImport } from './routes/_app/settings/adjudicator'
 import { Route as AppSettingsAiRouteImport } from './routes/_app/settings/ai'
 import { Route as AppSettingsApprovalPolicyRouteImport } from './routes/_app/settings/approval-policy'
+import { Route as AppSettingsAssignmentRulesRouteImport } from './routes/_app/settings/assignment-rules'
 import { Route as AppSettingsAssistantMemoryRouteImport } from './routes/_app/settings/assistant-memory'
 import { Route as AppSettingsAuditRouteImport } from './routes/_app/settings/audit'
 import { Route as AppSettingsAutomationsRouteImport } from './routes/_app/settings/automations'
@@ -214,6 +215,12 @@ const AppSettingsApprovalPolicyRoute =
     path: '/settings/approval-policy',
     getParentRoute: () => AppRoute,
   } as any)
+const AppSettingsAssignmentRulesRoute =
+  AppSettingsAssignmentRulesRouteImport.update({
+    id: '/settings/assignment-rules',
+    path: '/settings/assignment-rules',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSettingsAssistantMemoryRoute =
   AppSettingsAssistantMemoryRouteImport.update({
     id: '/settings/assistant-memory',
@@ -367,6 +374,7 @@ export interface FileRoutesByFullPath {
   '/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/settings/ai': typeof AppSettingsAiRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/settings/assignment-rules': typeof AppSettingsAssignmentRulesRoute
   '/settings/assistant-memory': typeof AppSettingsAssistantMemoryRoute
   '/settings/audit': typeof AppSettingsAuditRoute
   '/settings/automations': typeof AppSettingsAutomationsRoute
@@ -422,6 +430,7 @@ export interface FileRoutesByTo {
   '/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/settings/ai': typeof AppSettingsAiRoute
   '/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/settings/assignment-rules': typeof AppSettingsAssignmentRulesRoute
   '/settings/assistant-memory': typeof AppSettingsAssistantMemoryRoute
   '/settings/audit': typeof AppSettingsAuditRoute
   '/settings/automations': typeof AppSettingsAutomationsRoute
@@ -479,6 +488,7 @@ export interface FileRoutesById {
   '/_app/settings/adjudicator': typeof AppSettingsAdjudicatorRoute
   '/_app/settings/ai': typeof AppSettingsAiRoute
   '/_app/settings/approval-policy': typeof AppSettingsApprovalPolicyRoute
+  '/_app/settings/assignment-rules': typeof AppSettingsAssignmentRulesRoute
   '/_app/settings/assistant-memory': typeof AppSettingsAssistantMemoryRoute
   '/_app/settings/audit': typeof AppSettingsAuditRoute
   '/_app/settings/automations': typeof AppSettingsAutomationsRoute
@@ -536,6 +546,7 @@ export interface FileRouteTypes {
     | '/settings/adjudicator'
     | '/settings/ai'
     | '/settings/approval-policy'
+    | '/settings/assignment-rules'
     | '/settings/assistant-memory'
     | '/settings/audit'
     | '/settings/automations'
@@ -591,6 +602,7 @@ export interface FileRouteTypes {
     | '/settings/adjudicator'
     | '/settings/ai'
     | '/settings/approval-policy'
+    | '/settings/assignment-rules'
     | '/settings/assistant-memory'
     | '/settings/audit'
     | '/settings/automations'
@@ -647,6 +659,7 @@ export interface FileRouteTypes {
     | '/_app/settings/adjudicator'
     | '/_app/settings/ai'
     | '/_app/settings/approval-policy'
+    | '/_app/settings/assignment-rules'
     | '/_app/settings/assistant-memory'
     | '/_app/settings/audit'
     | '/_app/settings/automations'
@@ -901,6 +914,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsApprovalPolicyRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/assignment-rules': {
+      id: '/_app/settings/assignment-rules'
+      path: '/settings/assignment-rules'
+      fullPath: '/settings/assignment-rules'
+      preLoaderRoute: typeof AppSettingsAssignmentRulesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/assistant-memory': {
       id: '/_app/settings/assistant-memory'
       path: '/settings/assistant-memory'
@@ -1093,6 +1113,7 @@ interface AppRouteChildren {
   AppSettingsAdjudicatorRoute: typeof AppSettingsAdjudicatorRoute
   AppSettingsAiRoute: typeof AppSettingsAiRoute
   AppSettingsApprovalPolicyRoute: typeof AppSettingsApprovalPolicyRoute
+  AppSettingsAssignmentRulesRoute: typeof AppSettingsAssignmentRulesRoute
   AppSettingsAssistantMemoryRoute: typeof AppSettingsAssistantMemoryRoute
   AppSettingsAuditRoute: typeof AppSettingsAuditRoute
   AppSettingsAutomationsRoute: typeof AppSettingsAutomationsRoute
@@ -1140,6 +1161,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsAdjudicatorRoute: AppSettingsAdjudicatorRoute,
   AppSettingsAiRoute: AppSettingsAiRoute,
   AppSettingsApprovalPolicyRoute: AppSettingsApprovalPolicyRoute,
+  AppSettingsAssignmentRulesRoute: AppSettingsAssignmentRulesRoute,
   AppSettingsAssistantMemoryRoute: AppSettingsAssistantMemoryRoute,
   AppSettingsAuditRoute: AppSettingsAuditRoute,
   AppSettingsAutomationsRoute: AppSettingsAutomationsRoute,

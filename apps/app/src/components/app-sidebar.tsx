@@ -22,6 +22,7 @@ import {
   FolderKanbanIcon,
   HandshakeIcon,
   type LucideIcon,
+  TargetIcon,
 } from "lucide-react";
 import { MAIN_NAV, type NavItem, SETTINGS_NAV } from "#/lib/nav";
 import { useExtensionObjects } from "#/lib/schema";
@@ -71,6 +72,7 @@ const OBJECT_ICONS: Record<string, LucideIcon> = {
   "folder-kanban": FolderKanbanIcon,
   briefcase: BriefcaseIcon,
   handshake: HandshakeIcon,
+  target: TargetIcon,
 };
 
 /** Extension objects (from the field registry), each with a generic list page. */

@@ -4,6 +4,7 @@
 import type { CoreDatabase } from "@relationship-os/db";
 import type { Kysely } from "kysely";
 import { z } from "zod";
+import { assignOwner, recordAssignment } from "../assignment/index.ts";
 import { checkOrganisation } from "../duplicates/check.ts";
 import { organisationNameKey } from "../duplicates/normalise.ts";
 import { queueClosePairs } from "../duplicates/pairs.ts";
@@ -499,6 +500,13 @@ export const organisationCreate = defineOperation({
       created_by: ctx.user.id,
       updated_at: ctx.now,
     };
+    // No owner given: assignment rules choose one, in this same insert (ADR 0246).
+    const assignment = row.owner_id
+      ? null
+      : await assignOwner(ctx, getObject("organisation") ?? organisationObject, {
+          get: (field) => newOrganisationValue(field, row, domains),
+        });
+    if (assignment?.ownerId) row.owner_id = assignment.ownerId;
     ctx.write(ctx.db.insertInto("core_organisation").values(row));
     queueDomains(ctx, id, domains);
     queueAddresses(ctx, id, addresses);
@@ -528,10 +536,42 @@ export const organisationCreate = defineOperation({
       id,
       action: "create",
       after: organisationSnapshot(organisation),
+      assignment: assignment
+        ? recordAssignment(ctx, getObject("organisation") ?? organisationObject, id, assignment)
+        : undefined,
     });
     return { ...organisation, possibleDuplicates };
   },
 });
+
+/** A new organisation's value of a registry field, for assignment rule conditions. */
+export function newOrganisationValue(
+  field: string,
+  row: {
+    name: string;
+    website: string | null;
+    industry: string | null;
+    parent_id: string | null;
+  },
+  domains: readonly { domain: string; primary: boolean }[],
+): unknown {
+  switch (field) {
+    case "name":
+      return row.name;
+    case "website":
+      return row.website;
+    case "industry":
+      return row.industry;
+    case "parentId":
+      return row.parent_id;
+    case "primaryDomain":
+      return (domains.find((d) => d.primary) ?? domains[0])?.domain ?? null;
+    case "currentPeopleCount":
+      return 0;
+    default:
+      return null;
+  }
+}
 
 export const organisationGet = defineOperation({
   name: "organisation.get",

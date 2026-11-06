@@ -41,11 +41,17 @@ export interface ObjectDefinitionJson {
   indexes?: string[][];
   timelineLinks?: string[];
   stages?: StagesManifest;
+  owner?: string;
+  navigationOrder?: number;
+  requireOneOf?: string[][];
+  titleDefault?: { from: string[]; suffix?: string | undefined };
 }
 
 export type FieldDefinitionJson = FieldManifest & {
   /** Formula fields: the result type, set when the formula compiled. */
   resultType?: string;
+  /** Fields with editableOptions whose options an admin edited: the declared options. */
+  declaredOptions?: FieldManifest["options"];
 };
 
 export interface ObjectState {
@@ -327,6 +333,9 @@ function registryField(field: FieldState, object: string): FieldDefinition {
     field.type === "formula" ? formulaFilterType(def.resultType ?? "text") : spec.filterType(def);
   const options = {
     ...(def.options ? { choices: def.options } : {}),
+    ...(def.editableOptions ? { editableOptions: true } : {}),
+    ...(def.default !== undefined ? { default: def.default } : {}),
+    ...(def.defaultSetting ? { defaultSetting: def.defaultSetting } : {}),
     ...(def.to ? { to: def.to } : {}),
     ...(def.many !== undefined ? { many: def.many } : {}),
     // No currency of its own: the deployment's base currency applies (ADR 0101).
@@ -431,6 +440,14 @@ export function buildRegistry(state: SchemaState): Map<string, ObjectDefinition>
         ? { timelineLinks: object.definition.timelineLinks }
         : {}),
       ...(object.definition.stages ? { stages: object.definition.stages } : {}),
+      ...(object.definition.owner ? { ownerField: object.definition.owner } : {}),
+      ...(object.definition.navigationOrder !== undefined
+        ? { navigationOrder: object.definition.navigationOrder }
+        : {}),
+      ...(object.definition.titleDefault ? { titleDefault: object.definition.titleDefault } : {}),
+      ...(object.definition.requireOneOf?.length
+        ? { requireOneOf: object.definition.requireOneOf }
+        : {}),
     });
   }
   return map;
@@ -475,11 +492,14 @@ export function objectTableOf(object: string): string | undefined {
 export async function refreshSchemaRegistry(db: Kysely<CoreDatabase>): Promise<void> {
   const row = await sql<{ stamp: string }>`
     SELECT (SELECT count(*) || ':' || coalesce(max(updated_at), '') || ':' || coalesce(max(id), 0) FROM core_extension_fields)
-      || '/' || (SELECT count(*) || ':' || coalesce(max(updated_at), '') FROM core_extension_objects) AS stamp
+      || '/' || (SELECT count(*) || ':' || coalesce(max(updated_at), '') FROM core_extension_objects)
+      || '/' || (SELECT count(*) || ':' || coalesce(max(updated_at), '') FROM core_field_options) AS stamp
   `.execute(db);
   const stamp = row.rows[0]?.stamp ?? "";
   if (cached?.stamp === stamp) return;
-  const state = await loadSchemaState(db);
+  const loaded = await loadSchemaState(db);
+  const overrides = await db.selectFrom("core_field_options").selectAll().execute();
+  const state = withEditedOptions(loaded, overrides);
   const objects = buildRegistry(state);
   const storage = new Map<string, FieldStorage>();
   for (const f of state.fields) {
@@ -499,6 +519,65 @@ export async function refreshSchemaRegistry(db: Kysely<CoreDatabase>): Promise<v
   );
   cached = { stamp, objects, storage, tables };
   setExtensionObjects(objects);
+}
+
+/** One declared or edited option of a select field. */
+export interface FieldOption {
+  value: string;
+  label: string;
+  color?: string;
+  requires?: string[];
+  fixed?: boolean;
+}
+
+/**
+ * The options a field with `editableOptions` has once an admin's edit is applied: the edited
+ * list in its order (labels and colours as edited, `requires` and `fixed` as declared), then any
+ * fixed option the edit lacks (a later release may add one).
+ */
+export function mergeOptions(
+  declared: readonly FieldOption[],
+  edited: readonly { value: string; label: string; color?: string | undefined }[] | null,
+): FieldOption[] {
+  if (!edited) return [...declared];
+  const byValue = new Map(declared.map((o) => [o.value, o]));
+  const merged: FieldOption[] = edited.map((o) => {
+    const base = byValue.get(o.value);
+    return {
+      value: o.value,
+      label: o.label,
+      ...(o.color ? { color: o.color } : {}),
+      ...(base?.requires?.length ? { requires: base.requires } : {}),
+      ...(base?.fixed ? { fixed: true } : {}),
+    };
+  });
+  const have = new Set(merged.map((o) => o.value));
+  for (const option of declared) if (option.fixed && !have.has(option.value)) merged.push(option);
+  return merged;
+}
+
+/** Applies admin-edited options (core_field_options) to fields declared with editableOptions. */
+function withEditedOptions(
+  state: SchemaState,
+  overrides: { object_type: string; field: string; options: string }[],
+): SchemaState {
+  if (!overrides.length) return state;
+  const byKey = new Map(overrides.map((o) => [`${o.object_type}|${o.field}`, o.options]));
+  return {
+    ...state,
+    fields: state.fields.map((field) => {
+      const edited = byKey.get(`${field.object}|${field.name}`);
+      if (!edited || !field.definition.editableOptions) return field;
+      const options = mergeOptions(
+        (field.definition.options ?? []) as FieldOption[],
+        JSON.parse(edited) as FieldOption[],
+      );
+      return {
+        ...field,
+        definition: { ...field.definition, options, declaredOptions: field.definition.options },
+      };
+    }),
+  };
 }
 
 /** Forgets the cache (tests that rebuild state by hand). */

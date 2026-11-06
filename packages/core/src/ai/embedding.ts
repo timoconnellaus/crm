@@ -234,7 +234,7 @@ export async function embeddingTexts(
     const fields = extensionTextFields(object);
     if (!def?.extension || !fields.length) return out;
     const rows = await sql<Record<string, string | null>>`
-      SELECT id, ${sql.join(fields.map((f) => sql`${sql.ref(f.column)} AS ${sql.ref(`f_${f.name}`)}`))}
+      SELECT id, ${sql.join(fields.map((f) => sql`${sql.ref(f.column)} AS ${sql.id(`f_${f.name}`)}`))}
       FROM ${sql.table(def.source)} WHERE id IN ${list}`.execute(db);
     for (const r of rows.rows) {
       const parts = fields

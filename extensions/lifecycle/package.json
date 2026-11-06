@@ -1,0 +1,30 @@
+{
+  "name": "@relationship-os/extension-lifecycle",
+  "version": "1.0.0",
+  "license": "FSL-1.1-ALv2",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "description": "Lifecycle stage on people (stage 15, ADR 0246): opt-in, installed by an admin. Bundled as source into ros-runner.",
+  "relationshipOs": {
+    "optional": true,
+    "label": "Lifecycle stage",
+    "description": "A lifecycle stage on every person (subscriber, lead, marketing qualified, sales qualified, opportunity, customer, evangelist, other), tracked on the timeline, with a board of people by stage."
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@relationship-os/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@cloudflare/workers-types": "5.20261104.1",
+    "@relationship-os/config": "workspace:*",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

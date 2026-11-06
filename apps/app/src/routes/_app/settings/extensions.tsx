@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { EmptyState } from "#/components/empty-state";
 import { PageLayout } from "#/components/layout/page-layout";
 import { ExtensionSettingsForm } from "#/components/settings/extension-settings";
+import { FieldOptionsEditor } from "#/components/settings/field-options-editor";
 import { formatDateTime } from "#/lib/format";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
 
@@ -85,7 +86,53 @@ function ExtensionsPage() {
       {items.map((ext) => (
         <ExtensionCard key={ext.id} ext={ext} isAdmin={isAdmin} />
       ))}
+      {(list.data?.available ?? []).map((ext) => (
+        <AvailableCard key={ext.id} ext={ext} isAdmin={isAdmin} />
+      ))}
     </PageLayout>
+  );
+}
+
+/** An opt-in shipped extension no one has installed yet (ADR 0246). */
+function AvailableCard({
+  ext,
+  isAdmin,
+}: {
+  ext: { id: string; version: string; label: string | null; description: string | null };
+  isAdmin: boolean;
+}) {
+  const install = useOpMutation("extension.install", { invalidates: ["schema.", "record."] });
+  const label = ext.label ?? ext.id;
+
+  async function onInstall() {
+    try {
+      await install.mutateAsync({ id: ext.id, shipped: true });
+      toast.success(`${label} installed`);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  }
+
+  return (
+    <Card data-testid={`extension-available-${ext.id}`}>
+      <CardHeader className="flex flex-row flex-wrap items-start gap-3">
+        <div className="grid min-w-0 flex-1 gap-1">
+          <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+            {label}
+            <Badge variant="outline">available</Badge>
+          </CardTitle>
+          <CardDescription>
+            {ext.id} · v{ext.version}
+          </CardDescription>
+          {ext.description && <p className="text-sm">{ext.description}</p>}
+        </div>
+        {isAdmin && (
+          <Button variant="outline" size="sm" onClick={onInstall} disabled={install.isPending}>
+            Install
+          </Button>
+        )}
+      </CardHeader>
+    </Card>
   );
 }
 
@@ -146,6 +193,7 @@ function ExtensionCard({ ext, isAdmin }: { ext: Summary; isAdmin: boolean }) {
       </CardHeader>
       <CardContent className="grid gap-2 text-sm">
         {ext.status === "active" && <ExtensionSettingsForm extension={ext.id} canEdit={isAdmin} />}
+        {ext.status === "active" && <FieldOptionsEditor extension={ext.id} canEdit={isAdmin} />}
         <PermissionList label="Reads" values={ext.permissions.read} />
         <PermissionList label="Writes" values={ext.permissions.write} />
         <PermissionList label="Operations" values={ext.permissions.operations} />

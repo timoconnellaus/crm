@@ -28,7 +28,20 @@ export function CreateRecordDialog({
   onCreated: (id: string) => void;
 }) {
   const fields = object.fields.filter((f) => f.extension === object.extension && !f.readOnly);
-  const [values, setValues] = useState<Record<string, unknown>>({});
+  // Declared defaults show in the form; a default an admin's setting chooses is left to the host.
+  const initial = () =>
+    Object.fromEntries(
+      fields.flatMap((f) =>
+        f.options?.default !== undefined && !f.options.defaultSetting
+          ? [[f.name, f.options.default]]
+          : [],
+      ),
+    );
+  const [values, setValues] = useState<Record<string, unknown>>(initial);
+  // An object that names untitled records (a lead) lets the title be left blank.
+  const namedFrom = object.titleDefaultFrom
+    .map((name) => object.fields.find((f) => f.name === name)?.label.toLowerCase() ?? name)
+    .join(" or ");
   const create = useOpMutation("record.create", { invalidates: ["record."] });
 
   async function submit(event: FormEvent) {
@@ -39,7 +52,7 @@ export function CreateRecordDialog({
     try {
       const record = await create.mutateAsync({ object: object.name, values: filled });
       toast.success(`${object.label} created`);
-      setValues({});
+      setValues(initial());
       onCreated(record.id);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -58,7 +71,9 @@ export function CreateRecordDialog({
             <div key={field.name} className="grid gap-1.5">
               <Label htmlFor={`new-${field.name}`}>
                 {field.label}
-                {field.required && <span className="text-destructive"> *</span>}
+                {field.required && !(namedFrom && field.name === object.titleField) && (
+                  <span className="text-destructive"> *</span>
+                )}
               </Label>
               <FieldEditor
                 id={`new-${field.name}`}
@@ -66,6 +81,11 @@ export function CreateRecordDialog({
                 value={values[field.name] ?? null}
                 onChange={(value) => setValues((v) => ({ ...v, [field.name]: value }))}
               />
+              {namedFrom && field.name === object.titleField && (
+                <p className="text-xs text-muted-foreground">
+                  Leave blank to name it after the {namedFrom}.
+                </p>
+              )}
             </div>
           ))}
           <DialogFooter>

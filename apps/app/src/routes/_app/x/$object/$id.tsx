@@ -16,6 +16,7 @@ import { EmptyState } from "#/components/empty-state";
 import { FieldsCard } from "#/components/fields/fields-card";
 import { useRecordHistory, useTimeline } from "#/components/record/adapters";
 import { HistoryList } from "#/components/record/history";
+import { RecordActionButtons } from "#/components/record/record-actions";
 import { RecordLayout, RecordLayoutSkeleton } from "#/components/record/record-layout";
 import { isRecordViewTab, useRecordViews } from "#/components/record/record-views";
 import { Timeline } from "#/components/record/timeline";
@@ -112,6 +113,7 @@ function RecordPage({ info, id }: { info: ObjectInfo; id: string }) {
       }
       actions={
         <>
+          <RecordActionButtons object={info.name} id={id} values={data.values} />
           <ManualAutomationButtons object={info.name} id={id} />
           <AskAiButton
             record={{ object: info.name, id, ...(data.title ? { label: data.title } : {}) }}

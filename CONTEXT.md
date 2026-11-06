@@ -308,6 +308,36 @@ in the base currency, stage, probability, owner, organisation, expected close, a
 set automatically. **Deal participants** are the people on it, each with a role.
 _Avoid_: opportunity
 
+**Lead**
+Inbound interest (`leads.lead`, from the shipped Leads extension, which requires Deals): a
+lightweight item linked to a real person, a real organisation or both, with a lead status, a source
+and an owner. A lead never holds copies of the person's or organisation's details.
+_Avoid_: prospect, a "lead" person record
+
+**Lead status**
+Where a lead is: new, contacted, qualified, unqualified (with a reason) or converted. Admins can
+add, rename and reorder statuses and sources under Settings → Extensions. Converted is set only by
+conversion.
+
+**Conversion**
+Turning a lead into a deal with `leads.convert`: a deal on the lead's organisation and owner, with
+the lead's person as a participant and each record linked to the other. Nothing is copied. Safe to
+run again after a failure; a converted lead cannot be converted again.
+
+**Lifecycle stage**
+Where a person is in their relationship with you (subscriber, lead, marketing qualified, sales
+qualified, opportunity, customer, evangelist, other), from the opt-in shipped `lifecycle` extension.
+Conversion moves a person to opportunity; nothing else moves it automatically.
+
+**Assignment rule**
+A core rule per object with an owner field (person, organisation, leads, deals): ordered conditions
+on the record or a record it links to, and a method (round-robin among chosen users, or one user).
+The first enabled rule that matches owns a record created without an owner. Rules run on create and
+when someone chooses Assign by rules, never on update.
+
+**Fallback owner**
+The owner an object's records get when no assignment rule matches. "No owner" is allowed.
+
 **Pipeline**
 An ordered set of stages deals move through ("New business", "Renewals"). Pipelines and their
 stages are records, edited under Settings or by AI through record operations.

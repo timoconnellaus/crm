@@ -15,7 +15,7 @@ export const CODE_MAX_VALUE_BYTES = 256_000;
 export type ScriptBuild = { ok: true; script: string } | { ok: false; message: string };
 
 const IMPORT_FROM_RE = /(\b(?:import|export)\b[^'"`;]*?\bfrom\s*)(["'])([^"'\n]+)\2/g;
-const BARE_IMPORT_RE = /(\bimport\s*)(["'])([^"'\n]+)\2/g;
+const BARE_IMPORT_RE = /(?<!["'`])(\bimport\s*)(["'])([^"'\n]+)\2/g;
 
 function stripComments(code: string): string {
   return code.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:\\])\/\/.*$/gm, "$1");

@@ -138,8 +138,9 @@ export const extensionList = defineOperation({
     "List installed extensions (shipped and runtime) with version, status (active, disabled or " +
     "quarantined), declared permissions, objects and tools, plus `workspace`: every extension " +
     "directory in the extension workspace with whether it has uncommitted edits or is " +
-    "installed (extension.read lists its files), and `shipped`: the shipped extension ids (extend them, don't " +
-    "modify them). Read-only.",
+    "installed (extension.read lists its files), `shipped`: the shipped extension ids (extend them, don't " +
+    "modify them), and `available`: shipped extensions that are opt-in and not installed yet " +
+    "(an admin installs one with extension.install { id, shipped: true }). Read-only.",
   input: z.object({}),
   output: z.object({
     items: z.array(extensionSummarySchema),
@@ -152,6 +153,14 @@ export const extensionList = defineOperation({
       }),
     ),
     shipped: z.array(z.string()),
+    available: z.array(
+      z.object({
+        id: z.string(),
+        version: z.string(),
+        label: z.string().nullable(),
+        description: z.string().nullable(),
+      }),
+    ),
   }),
   permission: "records:read",
   risk: "read",
@@ -167,6 +176,14 @@ export const extensionList = defineOperation({
       items: rows.map(summary),
       workspace: workspace.map((w) => ({ ...w, installed: installed.has(w.id) })),
       shipped: shipped.map((s) => s.id),
+      available: shipped
+        .filter((s) => !installed.has(s.id))
+        .map((s) => ({
+          id: s.id,
+          version: s.version,
+          label: s.label ?? null,
+          description: s.description ?? null,
+        })),
     };
   },
 });

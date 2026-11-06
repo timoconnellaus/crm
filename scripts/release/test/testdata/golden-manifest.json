@@ -334,6 +334,10 @@
       "sha256": "121016373844f8cc2c4e816ec8ff9b573bd3d8ec74aaaac0419fa96a008710c3"
     },
     {
+      "name": "0310_assignment_rules.sql",
+      "sha256": "81e1090afbda0ad96c8f9635f0fd01f86401420bc061de881edfc32ae68ae09a"
+    },
+    {
       "name": "0320_duplicates.sql",
       "sha256": "3a7c4d2f9ee3dbcdc489091e1db2c7a6f76dc46b2b462c4fedf0ca90afe206cf"
     },

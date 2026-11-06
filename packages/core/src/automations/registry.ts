@@ -50,7 +50,8 @@ export function automationSyncStatements(
           extension_id: input.extensionId,
           key,
           ...values,
-          enabled: 1,
+          // Shipped turned off (ADR 0246) until a person turns it on.
+          enabled: spec.enabled === false ? 0 : 1,
           // An automation that needs connections waits until a person binds them (ADR 0170).
           paused_reason: spec.connections?.length ? WAITING_FOR_CONNECTIONS : null,
           paused_at: spec.connections?.length ? input.now : null,
