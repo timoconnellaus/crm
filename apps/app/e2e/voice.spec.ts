@@ -34,7 +34,11 @@ async function startCall(page: Page, mode: "hands_free" | "push_to_talk") {
   if (await setup.isVisible()) {
     // AssemblyAI-TTS-1 has no speed control, so setup asks for voice and mode only.
     await expect(setup.getByLabel(/^Speed/)).toHaveCount(0);
-    await setup.getByTestId(`voice-mode-${mode}`).check({ force: true });
+    // Click the label, as a person does: the radio is a 1px sr-only input, and a forced check of
+    // it fails while the dialog zooms in, because Playwright doesn't wait and it measures under 1px.
+    const radio = setup.getByTestId(`voice-mode-${mode}`);
+    await radio.locator("xpath=ancestor::label[1]").click();
+    await expect(radio).toBeChecked();
     await setup.getByTestId("voice-start").click();
   }
   await expect(bar).toBeVisible();
