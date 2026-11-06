@@ -114,3 +114,8 @@ call on a thread that has outgrown its window. The object's first alarm is compa
 (ADR 0341 amendment). The words `authoring.intent` checks against still come from the newest 200
 messages, whatever was compacted. Deleting a message the compaction note covers also drops the note,
 so "gone from what the model sees" stays true.
+
+## Amendment (2026-11-07)
+
+The wrangler migration list no longer carries `AssistantConversation`: nothing was ever deployed, so
+ros-app starts at one step that creates `AssistantAgent` (ADR 0352).

@@ -10,7 +10,8 @@ const HEALTHY = {
   database: { ok: true, schemaVersion: 365, upToDate: true },
   runner: { ok: true, worker: "ros-runner", latencyMs: 3 },
 };
-const PAGE = '<script src="/assets/main.js"></script><link href="/assets/app.css" rel="stylesheet">';
+const PAGE =
+  '<script src="/assets/main.js"></script><link href="/assets/app.css" rel="stylesheet">';
 
 async function withServer(routes, run) {
   const methods = [];

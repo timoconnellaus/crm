@@ -24,7 +24,8 @@ prints the URL. Re-running it repairs an install. Update from **Settings → Upd
 stored token) or with `npx create-relationship-os upgrade`; roll back from either. Requires Workers Paid.
 
 The Deploy button above is the developer path: it forks the repository and deploys from source.
-Details, token permissions, rollback and the manual route: [`docs/deploying.md`](docs/deploying.md).
+Deploying from a checkout for the first time: [`docs/first-deploy.md`](docs/first-deploy.md). Details,
+token permissions, rollback and the other routes: [`docs/deploying.md`](docs/deploying.md).
 
 ## Privacy: no telemetry
 

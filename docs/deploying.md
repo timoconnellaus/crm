@@ -1,5 +1,7 @@
 # Deploying
 
+Deploying for the first time? Follow [first-deploy.md](first-deploy.md). This page is the reference.
+
 One deployment = one Cloudflare account (ADR 0001). It has two Workers and one D1 database:
 
 | Resource | Name | Notes |
@@ -91,7 +93,7 @@ not an exact quota. Each `namespace_id` must be an integer that is unique in you
 since bindings that share a namespace share counters. If a binding is missing, requests are not
 limited and the Worker logs a warning. Rate-limited requests show up in Workers Logs as 429s.
 
-`ros-runner` has no secrets. It runs extension code, which calls operations there, so set its
+`ros-runner`'s only secrets are the AI ones ([In-app AI](#in-app-ai)). It runs extension code, which calls operations there, so set its
 `APPROVAL_FLOOR` var (in `apps/runner/wrangler.jsonc`) to the same value as ros-app's. Shipped
 extensions (`extensions/`) are installed through `extension.install` on the first request after a
 deploy. AI (model roles for `codemode:ai`, "Describe a widget", summaries and semantic search) is
@@ -112,9 +114,7 @@ provisioned by name on deploy:
 | `AUTOMATION_RATE_LIMIT` | ros-runner | Runs per minute per automation (default 60 per 60 s, `namespace_id` 4201); above it the automation auto-pauses and admins are notified |
 | cron `* * * * *` | ros-runner | Schedule triggers and the daily date-relative scan |
 
-Create the queues once per account before the first deploy (`wrangler queues create` for
-`ros-automation-events`, `ros-automation-events-dlq`, `ros-routine-delivery` and
-`ros-routine-delivery-dlq`); Workflows need no setup. Queues and Workflows are billed per use (see ADR 0130). The kill switch, the automation
+`pnpm run deploy` and `create-relationship-os` create the four queues when they are missing; Workflows need no setup. Queues and Workflows are billed per use (see ADR 0130). The kill switch, the automation
 timezone and the debounce window are in Settings → Automations; only human admins can engage the
 kill switch.
 
@@ -482,16 +482,12 @@ ROS_AI_GATEWAY_BYOK=deepseek        # only when the key is in the gateway (below
 ```
 
 The deploy script does not create a gateway (ADR 0180), so choose one way to supply the key:
-- **With a gateway:** set `AI_GATEWAY_ID`, `CLOUDFLARE_ACCOUNT_ID` and `AI_GATEWAY_TOKEN` as
-  above. Add the DeepSeek key in the dashboard (AI Gateway → your gateway → Provider keys →
-  DeepSeek), and keep `ROS_AI_GATEWAY_BYOK=deepseek`.
-- **Without a gateway:** leave `ROS_AI_GATEWAY_BYOK` unset, and store the key as a Workers secret
-  on both Workers. Calls then go straight to `https://api.deepseek.com`:
-
-  ```sh
-  pnpm exec wrangler secret put AI_KEY_DEEPSEEK --name ros-app
-  pnpm exec wrangler secret put AI_KEY_DEEPSEEK --name ros-runner
-  ```
+- **With a gateway, key in the gateway:** set `ROS_AI_GATEWAY_ID`, `CLOUDFLARE_ACCOUNT_ID` and
+  `AI_GATEWAY_TOKEN` in the env file. Add the DeepSeek key in the dashboard (AI Gateway → your
+  gateway → Provider keys → DeepSeek), and keep `ROS_AI_GATEWAY_BYOK=deepseek`.
+- **Key as a Workers secret:** leave `ROS_AI_GATEWAY_BYOK` unset and put `AI_KEY_DEEPSEEK` in the
+  env file; the deploy sets it on both Workers. Calls go through the gateway if you set one, and
+  straight to `https://api.deepseek.com` if not.
 
 **Things to know.**
 - **The `review` role is no longer independent.** The policy adjudicator (ADR 0031) is meant to
@@ -518,8 +514,9 @@ database, asks for the secrets in `apps/app/.dev.vars.example`, and connects Wor
 Workers Builds then runs `apps/app`'s `deploy` script, which is the same deploy script as below:
 it deploys `ros-runner`, applies migrations and deploys `ros-app`.
 
-After it finishes, open `https://ros-app.<your-subdomain>.workers.dev/sign-in` and sign up: the
-first user to sign up is the only one allowed to while `AUTH_ALLOW_SIGNUP=false`.
+After it finishes, open `https://ros-app.<your-subdomain>.workers.dev/sign-in` and create the first
+account: the page offers it until the deployment has a user, and that user is the only one allowed
+to sign up while `AUTH_ALLOW_SIGNUP=false`.
 
 ## Option 3: From a checkout (manual)
 
@@ -537,20 +534,27 @@ never reaches our script.
 
 `scripts/deploy.mjs` runs, in order:
 
-1. with AI on (the default; `ROS_AI=off` skips it): `wrangler vectorize create ros-records
-   --dimensions=384 --metric=cosine` and its `object` metadata index, if the index does not exist
-   yet, and a generated `wrangler.deploy.jsonc` for each Worker that adds the `ai` binding (both)
-   and the `vectorize` binding (both) (see [In-app AI](#in-app-ai));
-2. `wrangler deploy` for `ros-runner` (creates the `ros` D1 database on a fresh account);
-3. `wrangler d1 migrations apply DB --remote` (core migrations, tracked in `core_migrations`);
-4. `vite build` and `wrangler deploy` for `ros-app`, passing any of the secrets above that are set
-   in the environment with `--secrets-file`. A first deploy needs at least `BETTER_AUTH_SECRET`;
-   later deploys keep the secrets already set.
+1. checks that a first deploy has `BETTER_AUTH_SECRET`, and builds ros-runner's generated modules;
+2. creates what is missing: the four queues, the `ros-app-oauth-kv` namespace and, with AI on (the
+   default; `ROS_AI=off` skips it), the `ros-records` index and its `object` metadata index;
+3. writes a `wrangler.deploy.jsonc` for each Worker, with the `ai` and `vectorize` bindings (see
+   [In-app AI](#in-app-ai)), this deployment's AI vars, and without bindings for local development
+   (`deploy-inputs.json` `devOnly`);
+4. `wrangler deploy` for `ros-runner` (creates the `ros` D1 database and `ros-blobs`);
+5. `wrangler d1 migrations apply DB --remote` (core migrations, tracked in `core_migrations`);
+6. `vite build` and `wrangler deploy` for `ros-app`.
+
+Secrets in the environment are passed with `--secrets-file`: the AI ones (`AI_GATEWAY_TOKEN`,
+`AI_KEY_*`, `TYPESAFE_API_KEY`) to both Workers, and the rest to ros-app. Later deploys keep the
+secrets already set. `ROS_AI_GATEWAY_ID`, `CLOUDFLARE_ACCOUNT_ID`, `ROS_AI_GATEWAY_REST`,
+`ROS_AI_MODEL_ROLES` and `ROS_AI_GATEWAY_BYOK` become vars on both Workers, and `BETTER_AUTH_URL`
+also sets ros-runner's `APP_ORIGIN`. A deploy without them resets those vars, so keep them in one
+env file. Re-running after a failure is safe.
 
 `pnpm run deploy -- --dry-run` builds and validates both Workers without touching an account.
 
-Check the result: `curl https://ros-app.<subdomain>.workers.dev/api/health` should return
-`"status": "ok"`, the latest migration and `"runner": { "ok": true }`.
+Check the result with `node scripts/smoke-deployment.mjs https://ros-app.<subdomain>.workers.dev`,
+which reads `/api/health`, the sign-in page and its static assets and changes nothing.
 
 ## Cloudflare Access
 

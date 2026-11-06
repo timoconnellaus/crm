@@ -51,7 +51,9 @@ async function checkSignIn(origin) {
   if (!type.includes("text/html")) throw new Error(`content-type ${type}`);
   const html = await response.text();
   const assets = [
-    ...new Set([...html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1])),
+    ...new Set(
+      [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1]),
+    ),
   ];
   if (!assets.length) throw new Error("the page links no /assets/ scripts or stylesheets");
   return { note: `${html.length} bytes, ${assets.length} assets linked`, assets };
