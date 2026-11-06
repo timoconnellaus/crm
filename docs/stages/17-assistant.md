@@ -199,6 +199,17 @@ pre-compaction context and the compaction then completes and re-bases on it.
 - A published lifetime always overrides the learned one. Estimates are stored per workspace,
   provider and model (`core_ai_cache_estimate`), updated transparently, visible read-only in
   Settings → AI.
+- **Review data** (so the maths can be checked and retuned later; no message content is stored):
+  - every observation goes to D1 `core_ai_cache_observation` (workspace, provider, model, role,
+    gap, prefix unchanged, cached and prompt tokens, time), kept 180 days;
+  - every planner decision goes to `core_ai_compaction_decision`: the inputs, the lifetime
+    estimate and its confidence, both expected costs, the decision and the rule that made it, and
+    afterwards the **actual** cost of the following turns, so predicted and real cost can be
+    compared;
+  - each change of a learned estimate is appended to its history;
+  - `ai.cacheReport` (admin operation, JSON or CSV) exports all three, and
+    `pnpm ai:replay-cache <export>` reruns the learner and planner over an export, so changed
+    parameters can be tried offline against real data.
 - **Unit tests** (required): the 10-second stray miss in a 15-minute cache; a real change from 60
   to 5 minutes is followed after consistent evidence; no data; published value overrides;
   changed-prefix misses ignored; the planner at warm and cold cache, cheap and expensive cached

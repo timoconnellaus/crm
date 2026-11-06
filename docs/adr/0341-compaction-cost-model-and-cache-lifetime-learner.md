@@ -153,6 +153,7 @@ planner at warm and cold cache, with cheap and expensive cached reads, at the 24
   bars for rising (lower bound) and falling (upper bound) give the hysteresis the user asked for.
 
 ## Consequences
+- Every cache observation and every planner decision (inputs, both expected costs, the decision, and the actual cost of the following turns) is stored in D1 for review, without message content; `ai.cacheReport` exports it and `pnpm ai:replay-cache` reruns the maths offline, so the parameters here can be checked and retuned against real data (spec W2, "Review data").
 - The registry must carry cache prices and published lifetimes (ADR 0351).
 - The constants above (bucket edges, prior strengths, the 0.9 bar, the 5th and 95th percentiles, the
   half-life, the horizon cap) live in code beside the tests. The two rails are admin settings.
