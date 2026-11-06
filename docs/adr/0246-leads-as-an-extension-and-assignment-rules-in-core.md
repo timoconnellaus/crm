@@ -81,3 +81,7 @@ differently:
   extension tool. The spec's `leads.convert` is shorthand.
 - **Index:** `["status", "createdAt"]` replaces the spec's `["status"]`, because the inbox filters
   by status and sorts by newest.
+- **Two bugs the build exposed, fixed here.** The extension build read the string `"import"` (a
+  lead source value) as a bare import. Summaries and embeddings used a field's dotted name as a
+  column alias, which failed for any record holding another extension's field (`leads.lead` on a
+  deal, `lifecycle.lifecycleStage` on a person).

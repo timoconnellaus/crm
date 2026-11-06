@@ -706,6 +706,15 @@ describe("the lead object", () => {
   });
 });
 
+describe("summaries", () => {
+  it("read records holding another extension's field (its name has a dot)", async () => {
+    const { id } = await newOrganisation();
+    await expect(
+      call("summary.get", { subject: { kind: "record", object: "organisation", id } }),
+    ).resolves.toMatchObject({ aiGenerated: true });
+  });
+});
+
 describe("editable options", () => {
   it("lets an admin add and relabel options, keeps fixed ones, and goes back to defaults", async () => {
     const { id: organisation } = await newOrganisation();
