@@ -60,6 +60,8 @@ export function heardText(segments: readonly SpokenSegment[], playedMs: number):
   let offset = 0;
   for (const segment of segments) {
     const length = Math.max(0, segment.audioMs);
+    // A sentence that produced no audio yet was not heard, however far playback got.
+    if (length === 0) break;
     if (playedMs >= offset + length - END_SLACK_MS / 2) {
       out.push(segment.text);
       offset += length;
