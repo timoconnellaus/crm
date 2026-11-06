@@ -144,7 +144,13 @@ export function AssistantPanel({ canApprove }: { canApprove: boolean }) {
       >
         <SearchIcon />
       </Button>
-      <Button variant="ghost" size="icon" aria-label="Open full page" title="Open full page" asChild>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Open full page"
+        title="Open full page"
+        asChild
+      >
         <Link to="/assistant" onClick={() => assistant.setOpen(false)}>
           <MaximizeIcon />
         </Link>

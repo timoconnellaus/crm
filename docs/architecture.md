@@ -112,7 +112,7 @@ One **D1** database per deployment, with real tables ([ADR 0002](adr/0002-d1-rea
   ([ADR 0019](adr/0019-audit-redaction-for-erasure.md)).
 - **Erase reaches every store** ([ADR 0320](adr/0320-erase-reaches-every-store.md)): besides the
   record and the audit log, an erase scrubs or deletes shared activities, pending actions, AI
-  summaries and vectors, assistant conversations, sync's suggestions and signatures, extension
+  summaries and vectors, assistant threads, sync's suggestions and signatures, extension
   data (generically, through relation metadata), automation run history, notifications,
   integration events and the outbox, and the R2 bodies of synced email (through
   `core_blob_deletion`, drained after the commit and by the 10-minute cron). Erased people's
@@ -541,6 +541,20 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   (ADR 0348); **voice** runs on `agents/voice` (ADR 0349). The general machinery lives in
   MIT-licensed `packages/agent-*`, which never import CRM code; the CRM binding is in
   `packages/core/src/assistant/` and `apps/app/src/server/assistant/` (ADR 0350).
+
+  As built in wave 1 (W1, W10): `agent-core` holds the thread model (`ThreadMessage` with `seq`,
+  `turn`, `role`, `via`, `parts`, `playout`, `deletedAt`), the SQLite message store with an FTS5
+  index, context assembly (`assembleContext`, `prefixHash`), pending-line slots, the unread count,
+  the turn loop (`runTurn`) and the channel seam. `AssistantAgent`
+  (`apps/app/src/server/assistant/agent.ts`) keeps the thread in its SQLite, stores each user
+  message with its tail block so history replays byte for byte, and streams a turn's events to
+  every WebSocket (`/api/assistant/socket`, routed in `src/server.ts` before TanStack Start) and to
+  the HTTP turn route. The browser keeps one socket per tab (`ThreadProvider`): both views show the
+  same items, and a reply that arrives while the chat is on screen on any device is already seen.
+  `thread.search`, `thread.deleteMessage`, `thread.markSeen` and `thread.status` are operations
+  over the `assistantThreads` port; `thread.open` and `thread.finishTurn` are the object's own
+  bookkeeping. Until compaction (W2) lands, the history sent is the newest whole turns within a
+  character budget. `pnpm lint` runs `scripts/check-agent-imports.mjs` and its test.
   In the app (ADR 0030 amendment) the panel is docked on the right of the shell on tablets and
   desktops, beside the page, and stays mounted across page changes; on phones it is a sheet.
 
@@ -685,7 +699,8 @@ packages/
   ui/                  shared shadcn/ui components and the view-spec renderer
   config/              shared tsconfig, biome and vitest presets
   agent-core/, agent-a2ui/, agent-voice/, agent-plugins/
-                       (stage 17, planned) the assistant's general machinery, MIT, no CRM imports (ADR 0350)
+                       the assistant's general machinery, MIT, no CRM imports (ADR 0350; agent-core is
+                       real since stage 17 W1, the others are placeholders for later waves)
   release/             release bundles, manifest types, verification, the Cloudflare API deploy
                        engine, preflight and the update procedure (Node and Workers)
   create-relationship-os/          the installer CLI: npx create-relationship-os, ros upgrade / rollback / status

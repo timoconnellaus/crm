@@ -44,7 +44,11 @@
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["AssistantConversation"] },
-    { "tag": "v2", "new_sqlite_classes": ["AssistantAgent"], "deleted_classes": ["AssistantConversation"] }
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["AssistantAgent"],
+      "deleted_classes": ["AssistantConversation"]
+    }
   ],
   // Workers Rate Limiting (ADR 0056, docs/deploying.md). Limits are per Cloudflare location and
   // approximate; change them here and redeploy. namespace_id must be an integer unique within

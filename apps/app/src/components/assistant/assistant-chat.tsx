@@ -264,7 +264,10 @@ export function Transcript({
         const day = item.at ? dayLabel(item.at) : "";
         const divider =
           day && day !== lastDay ? (
-            <li className="text-center text-xs font-medium text-muted-foreground" data-testid="assistant-day">
+            <li
+              className="text-center text-xs font-medium text-muted-foreground"
+              data-testid="assistant-day"
+            >
               {day}
             </li>
           ) : null;
@@ -274,11 +277,21 @@ export function Transcript({
         switch (item.kind) {
           case "user":
             row = (
-              <li className="group/msg flex flex-col items-end" data-testid="assistant-user" {...seqAttr}>
+              <li
+                className="group/msg flex flex-col items-end"
+                data-testid="assistant-user"
+                {...seqAttr}
+              >
                 <div className="max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm whitespace-pre-wrap text-primary-foreground">
                   {item.text}
                 </div>
-                <Meta at={item.at} seq={item.seq} onDelete={onDelete} align="end" label="your message" />
+                <Meta
+                  at={item.at}
+                  seq={item.seq}
+                  onDelete={onDelete}
+                  align="end"
+                  label="your message"
+                />
               </li>
             );
             break;
@@ -330,17 +343,29 @@ export function Transcript({
 function Highlighted({ text, query }: { text: string; query: string }) {
   const terms = (query.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).slice(0, 8);
   if (!terms.length) return <>{text}</>;
-  const pattern = new RegExp(`(${terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "giu");
+  const pattern = new RegExp(
+    `(${terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`,
+    "giu",
+  );
+  // Segments keyed by where they start in the text; odd ones are the matches.
+  let offset = 0;
+  const segments = text.split(pattern).map((part, i) => {
+    const segment = { at: offset, part, hit: i % 2 === 1 };
+    offset += part.length;
+    return segment;
+  });
   return (
     <>
-      {text.split(pattern).map((part, i) =>
-        i % 2 === 1 ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: the split is stable for one text.
-          <mark key={i} className="rounded-sm bg-amber-200/70 px-0.5 text-foreground dark:bg-amber-500/30">
-            {part}
+      {segments.map((s) =>
+        s.hit ? (
+          <mark
+            key={s.at}
+            className="rounded-sm bg-amber-200/70 px-0.5 text-foreground dark:bg-amber-500/30"
+          >
+            {s.part}
           </mark>
         ) : (
-          part
+          <span key={s.at}>{s.part}</span>
         ),
       )}
     </>
@@ -396,8 +421,9 @@ export function ThreadSearch({
           </span>
         )}
       </div>
-      {debounced && results.data && (
-        hits.length ? (
+      {debounced &&
+        results.data &&
+        (hits.length ? (
           <ul className="divide-y rounded-md border" data-testid="assistant-search-results">
             {hits.map((hit) => (
               <li key={hit.seq} className="space-y-1 px-3 py-2">
@@ -422,8 +448,7 @@ export function ThreadSearch({
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">Nothing in your chat matches that.</p>
-        )
-      )}
+        ))}
     </div>
   );
 }

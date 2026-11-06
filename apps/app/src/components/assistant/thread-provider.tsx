@@ -137,28 +137,25 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
     [client, frame],
   );
 
-  const applyState = useCallback(
-    (state: AssistantThreadState, mode: "replace" | "prepend") => {
-      setLoading(false);
-      if (state.id) setId(state.id);
-      setUnread(state.unread);
-      if (mode === "prepend") {
-        setItems((current) => [...state.items, ...current]);
-        firstSeq.current = state.firstSeq ?? firstSeq.current;
-        setHasEarlier(state.hasEarlier);
-        return;
-      }
-      let next = state.items;
-      for (const event of state.running?.events ?? []) next = applyEvent(next, event);
-      setItems(next);
-      firstSeq.current = state.firstSeq;
+  const applyState = useCallback((state: AssistantThreadState, mode: "replace" | "prepend") => {
+    setLoading(false);
+    if (state.id) setId(state.id);
+    setUnread(state.unread);
+    if (mode === "prepend") {
+      setItems((current) => [...state.items, ...current]);
+      firstSeq.current = state.firstSeq ?? firstSeq.current;
       setHasEarlier(state.hasEarlier);
-      setRunning(Boolean(state.running));
-      const last = state.running?.events.at(-1);
-      setThinking(last?.type === "thinking");
-    },
-    [],
-  );
+      return;
+    }
+    let next = state.items;
+    for (const event of state.running?.events ?? []) next = applyEvent(next, event);
+    setItems(next);
+    firstSeq.current = state.firstSeq;
+    setHasEarlier(state.hasEarlier);
+    setRunning(Boolean(state.running));
+    const last = state.running?.events.at(-1);
+    setThinking(last?.type === "thinking");
+  }, []);
 
   // The socket: open while signed in, reconnecting with backoff.
   useEffect(() => {
@@ -268,7 +265,8 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
 
   const jumpTo = useCallback(
     (seq: number) => {
-      if (firstSeq.current === null || seq < firstSeq.current) frame({ type: "sync", fromSeq: seq });
+      if (firstSeq.current === null || seq < firstSeq.current)
+        frame({ type: "sync", fromSeq: seq });
       setJumpTarget(seq);
     },
     [frame],

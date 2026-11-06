@@ -111,11 +111,13 @@ EVAL_VIA=assistant node evals/automations/runner.ts --base-url http://localhost:
 ```
 
 The runner signs in as the eval user as usual (fixtures and checks still use their own MCP
-connections), but each task's prompts go to `POST /api/assistant/turn` as one conversation, and
-the tool calls the assistant streams back (`lib/assistant.ts`) are recorded and graded exactly as
-an MCP run's. The model is the deployment's `assistant` model role (Settings → AI, or
-`AI_MODEL_ROLES`), not `EVAL_MODEL`. The targets are each stage's own (17 of 20 here; the others'
-READMEs give theirs). Two differences: the assistant's pending actions belong to its conversation's
+connections), but each task's prompts go to `POST /api/assistant/turn`, and the tool calls the
+assistant streams back (`lib/assistant.ts`) are recorded and graded exactly as an MCP run's. Since
+stage 17 (ADR 0340) every person has one thread that never resets, so all tasks run in the eval
+user's single thread, one after another, as a real person's chat would: earlier tasks stay in the
+context until compaction trims them. The model is the deployment's `assistant.core` model role
+(Settings → AI, or `AI_MODEL_ROLES`), not `EVAL_MODEL`. The targets are each stage's own (17 of 20
+here; the others' READMEs give theirs). Two differences: the assistant's pending actions belong to its thread's
 change set, so checks that ask the agent's MCP session for `approval_status` see none; and under
 Balanced the assistant applies bulk writes of up to 25 records (its own policy column, ADR 0200).
 

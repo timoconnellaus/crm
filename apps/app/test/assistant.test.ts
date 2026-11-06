@@ -4,8 +4,9 @@
 // Covers the page context in the tail, the pipeline as for MCP (gate, pending actions in the
 // thread's change set, audit), one thread per user that survives the object restarting and is
 // shared by two devices, a byte-stable prefix across turns, search, delete, unread, and erase.
-import { env } from "cloudflare:workers";
+
 import { evictDurableObject } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import type { Principal } from "@relationship-os/auth";
 import {
   type AssistantEvent,
@@ -115,8 +116,10 @@ async function device(principal: Principal) {
   if (!ws) throw new Error("no WebSocket");
   ws.accept();
   const frames: ThreadServerFrame[] = [];
-  const waiters: { test: (f: ThreadServerFrame) => boolean; resolve: (f: ThreadServerFrame) => void }[] =
-    [];
+  const waiters: {
+    test: (f: ThreadServerFrame) => boolean;
+    resolve: (f: ThreadServerFrame) => void;
+  }[] = [];
   ws.addEventListener("message", (message) => {
     const frame = JSON.parse(String(message.data)) as ThreadServerFrame;
     frames.push(frame);
@@ -316,7 +319,9 @@ describe("the in-app assistant", () => {
       { type: "state" }
     >;
     expect(synced.state.items.map((i) => i.kind)).toEqual(["user", "assistant"]);
-    expect(JSON.stringify(synced.state.items)).toEqual(JSON.stringify((await state(principal)).items));
+    expect(JSON.stringify(synced.state.items)).toEqual(
+      JSON.stringify((await state(principal)).items),
+    );
     phone.ws.close();
     laptop.ws.close();
   });
@@ -326,7 +331,10 @@ describe("the in-app assistant", () => {
     await turn(principal, { text: "Hello" });
     expect(await invokeByName("thread.status", {}, human(user))).toMatchObject({ unread: 1 });
     expect((await state(principal)).unread).toBe(1);
-    const seen = await runOperation(env as never, principal, { name: "thread.markSeen", input: {} });
+    const seen = await runOperation(env as never, principal, {
+      name: "thread.markSeen",
+      input: {},
+    });
     expect(seen).toMatchObject({ ok: true, data: { unread: 0 } });
     expect(await invokeByName("thread.status", {}, human(user))).toMatchObject({ unread: 0 });
   });

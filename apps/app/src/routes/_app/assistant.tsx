@@ -75,8 +75,8 @@ function AssistantPage() {
           {thread.items.length === 0 && !thread.running && !thread.loading ? (
             <p className="text-sm text-muted-foreground">
               Ask {name} anything about your CRM, or to change it. This is one chat that keeps
-              going: the sidebar shows it too. Changes that need approval show here with Approve
-              and Reject.
+              going: the sidebar shows it too. Changes that need approval show here with Approve and
+              Reject.
             </p>
           ) : (
             <Transcript
@@ -86,7 +86,9 @@ function AssistantPage() {
               thinking={thread.thinking}
               running={thread.running}
               onDelete={(seq) => void remove(seq)}
-              before={thread.hasEarlier ? <EarlierButton onClick={thread.loadEarlier} /> : undefined}
+              before={
+                thread.hasEarlier ? <EarlierButton onClick={thread.loadEarlier} /> : undefined
+              }
             />
           )}
           <div ref={bottom} />
@@ -107,4 +109,3 @@ function AssistantPage() {
     </div>
   );
 }
-

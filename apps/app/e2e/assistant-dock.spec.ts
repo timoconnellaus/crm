@@ -83,7 +83,9 @@ test.describe("docked (tablet and desktop)", () => {
     await expect(page).toHaveURL(/\/tasks$/);
     await expect(panel.getByTestId("assistant-transcript")).toContainText(`Hello ${token}`);
     await expect(panel.getByTestId("assistant-context")).toHaveText("On: Tasks");
-    await expect(panel.getByTestId("assistant-user").filter({ hasText: `Hello ${token}` })).toHaveCount(1);
+    await expect(
+      panel.getByTestId("assistant-user").filter({ hasText: `Hello ${token}` }),
+    ).toHaveCount(1);
     await expectReflowed(page);
   });
 
@@ -107,7 +109,9 @@ test.describe("docked (tablet and desktop)", () => {
         expect(Math.round(a.y)).toBe(Math.round(b.y));
         expect(Math.round(a.height)).toBe(Math.round(b.height));
         if (SCREENSHOTS) {
-          await page.screenshot({ path: `${SCREENSHOTS}/dock-header-${viewport.width}-${scheme}.png` });
+          await page.screenshot({
+            path: `${SCREENSHOTS}/dock-header-${viewport.width}-${scheme}.png`,
+          });
         }
       });
     }

@@ -229,7 +229,12 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
         t.status === "running"
           ? "This reply was interrupted. Ask again to continue."
           : (t.error ?? "This reply failed.");
-      items.push({ kind: "error", turn: t.turn, message, ...(t.finished_at ? { at: t.finished_at } : {}) });
+      items.push({
+        kind: "error",
+        turn: t.turn,
+        message,
+        ...(t.finished_at ? { at: t.finished_at } : {}),
+      });
     }
     if (firstSeq === null) return items;
     const firstTurn = this.#messages.get(firstSeq)?.turn ?? 0;
@@ -237,7 +242,9 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
   }
 
   /** A window of the thread for the UI, plus the running turn to resume. */
-  #state(options: { beforeSeq?: number | undefined; fromSeq?: number | undefined } = {}): AssistantThreadState {
+  #state(
+    options: { beforeSeq?: number | undefined; fromSeq?: number | undefined } = {},
+  ): AssistantThreadState {
     const store = this.#messages;
     const messages =
       options.fromSeq !== undefined
@@ -321,7 +328,9 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
             .map((m) => m.seq);
     this.#messages.delete(seqs, new Date().toISOString());
     const pending = this.#pendingLines();
-    const kept = pending.filter((l) => l.sourceMessageSeq === undefined || !seqs.includes(l.sourceMessageSeq));
+    const kept = pending.filter(
+      (l) => l.sourceMessageSeq === undefined || !seqs.includes(l.sourceMessageSeq),
+    );
     if (kept.length !== pending.length) this.#setMeta("pending_lines", JSON.stringify(kept));
     this.#broadcast({ type: "deleted", seqs });
     return { deleted: seqs };
@@ -377,7 +386,11 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
       for (const row of errors) {
         const error = scrubText(row.error, pattern);
         if (error !== row.error) {
-          this.ctx.storage.sql.exec("UPDATE thread_turns SET error = ? WHERE turn = ?", error, row.turn);
+          this.ctx.storage.sql.exec(
+            "UPDATE thread_turns SET error = ? WHERE turn = ?",
+            error,
+            row.turn,
+          );
         }
       }
     });
@@ -524,7 +537,13 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     const now = new Date().toISOString();
     // The person's words are kept at once (the tail is added when the turn is assembled).
     const [user] = store.append([
-      { turn, role: "user", via: "text", parts: [{ type: "text", text: request.text }], createdAt: now },
+      {
+        turn,
+        role: "user",
+        via: "text",
+        parts: [{ type: "text", text: request.text }],
+        createdAt: now,
+      },
     ]);
     this.ctx.storage.sql.exec(
       "INSERT INTO thread_turns (turn, status, started_at) VALUES (?, 'running', ?)",
@@ -653,7 +672,9 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
       threadId = await this.#threadId(user);
       await ensureShippedExtensions(env);
       const ai = aiContextFor(env, db);
-      const chatModels = ai.models?.chatModels ? await ai.models.chatModels("assistant.core") : null;
+      const chatModels = ai.models?.chatModels
+        ? await ai.models.chatModels("assistant.core")
+        : null;
       if (!chatModels?.length) {
         throw new ThreadError(503, "AI is not configured for this deployment (Settings → AI).");
       }

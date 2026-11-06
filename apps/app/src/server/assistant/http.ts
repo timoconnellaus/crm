@@ -64,7 +64,10 @@ interface Caller {
   namespace: DurableObjectNamespace<AssistantAgent>;
 }
 
-async function caller(env: AssistantHttpEnv, principal: Principal | null): Promise<Caller | Response> {
+async function caller(
+  env: AssistantHttpEnv,
+  principal: Principal | null,
+): Promise<Caller | Response> {
   if (!principal) return problem(401, "Sign in to continue");
   const namespace = env.ASSISTANT;
   if (!namespace) return problem(503, "The assistant is not available on this deployment");
