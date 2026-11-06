@@ -252,13 +252,17 @@ describe("rows read on hot deal queries", () => {
 
   it("stage history of one deal reads by its index", async () => {
     const one = await env.DB.prepare("SELECT id FROM x_deals_deal LIMIT 1").first<{ id: string }>();
+    const schema = await env.DB.prepare("SELECT count(*) AS n FROM sqlite_master").first<{
+      n: number;
+    }>();
     expect(
       await read("query.sql", {
         sql: "SELECT stage_id, entered_at, left_at FROM crm_stage_history WHERE object_type = 'deals.deal' AND record_id = ? ORDER BY entered_at",
         params: [one?.id ?? ""],
       }),
-      // query.sql's guard reads sqlite_master (~300 rows); the history itself a few index rows.
-    ).toBeLessThan(400);
+      // query.sql's guard reads sqlite_master, which grows with the schema; the history itself
+      // reads a few index rows, and a scan would read far more than this margin.
+    ).toBeLessThan((schema?.n ?? 0) + 100);
   });
 
   it("a stage move reads a handful of rows", async () => {
