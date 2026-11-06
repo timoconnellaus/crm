@@ -262,6 +262,13 @@ function describeResult(text: string): string {
     if (o.status === "pending_approval") {
       return `That change is waiting for approval (${String(o.operation ?? "")}). You can approve or reject it here, or in the Approvals inbox.`;
     }
+    if (typeof o.result === "string" && typeof o.message === "string") {
+      if (o.result === "saved") return "Got it, I'll remember that.";
+      if (o.result === "confirm") return "Here's how I've read that. Is this right?";
+      if (o.result === "duplicate") return "I already remember that.";
+      if (o.result === "customer") return "That's about a customer, so it belongs on their record.";
+      return o.message;
+    }
     if (o.error && typeof o.error === "object") {
       return `That didn't work: ${String((o.error as Record<string, unknown>).message ?? "error")}`;
     }
@@ -270,6 +277,35 @@ function describeResult(text: string): string {
     if (typeof name === "string") return `Here is what I found about ${name}.`;
   }
   return text.startsWith("ERROR") ? `That didn't work: ${text.slice(7, 200)}` : "Done.";
+}
+
+/**
+ * After `memory.propose` refuses a customer fact: on a record's page, offer it as a note on that
+ * record, as the instructions say.
+ */
+function noteForRefusedFact(
+  messages: NonNullable<ChatRequestBody["messages"]>,
+  result: string,
+): ScriptedToolCall | null {
+  if (!/"result":\s*"customer"/.test(result)) return null;
+  const said = messages.findLast((m) => m.role === "user");
+  const raw = textOf(said?.content);
+  const tailEnd = raw.lastIndexOf("</context>");
+  if (tailEnd < 0) return null;
+  const [object, id] = lineValue(raw.slice(0, tailEnd), "Current record")?.split(/\s+/) ?? [];
+  if (!object || !id) return null;
+  const body = raw
+    .slice(tailEnd + "</context>".length)
+    .trim()
+    .replace(/^(?:please )?remember(?: that)?\s+/i, "");
+  return {
+    name: "call_operation",
+    arguments: {
+      name: "activity.proposeNote",
+      input: { record: { object, id }, body },
+      reason: "The person asked to keep this, and it belongs on the record.",
+    },
+  };
 }
 
 /** The rules: deterministic answers and tool calls for the e2e scenarios. */
@@ -293,6 +329,8 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
     return withReasoning({ content: `We were talking about: ${firstWords}` });
   }
   if (last?.role === "tool") {
+    const note = noteForRefusedFact(messages, textOf(last.content));
+    if (note) return withReasoning({ toolCalls: [note] });
     return withReasoning({ content: describeResult(textOf(last.content)) });
   }
   // The page context rides in the user message's <context> block (the tail, ADR 0341).
@@ -308,6 +346,42 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
     const [object, ...ids] = selection.split(/\s+/);
     return withReasoning({
       content: `You selected ${ids.length} ${object} record${ids.length === 1 ? "" : "s"}: ${ids.join(", ")}.`,
+    });
+  }
+  const conditional =
+    /^when i'?m on an? (organisation|person) with more than (\d+) people,?\s+(.+)$/i.exec(text);
+  if (conditional?.[3]) {
+    return withReasoning({
+      toolCalls: [
+        {
+          name: "call_operation",
+          arguments: {
+            name: "memory.propose",
+            input: {
+              text: conditional[3].replace(/[.!?]+$/, ""),
+              kind: "conditional",
+              condition: {
+                object: conditional[1]?.toLowerCase(),
+                filter: { field: "currentPeopleCount", op: "gt", value: Number(conditional[2]) },
+              },
+            },
+          },
+        },
+      ],
+    });
+  }
+  const remember = /^(?:please )?remember(?: that)?\s+(.+)$/i.exec(text);
+  if (remember?.[1]) {
+    return withReasoning({
+      toolCalls: [
+        {
+          name: "call_operation",
+          arguments: {
+            name: "memory.propose",
+            input: { text: remember[1].replace(/[.!?]+$/, "").slice(0, 200) },
+          },
+        },
+      ],
     });
   }
   const task = /\b(?:create|add) (?:a )?task(?: to| called| for)?\s+(.+)$/i.exec(text);

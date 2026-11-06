@@ -37,6 +37,9 @@ pnpm --filter @relationship-os/evals-judge probe     # one call through judgeRou
   schema changes. Its sample policy is the one `evals/adjudicator` reads, and a test runs the Jev
   reviewer end to end over it. `sets/sync-job-change.ts` holds 29 changed signatures (the same
   employer written differently, a new title, a new employer, not a signature, planted text).
+  `sets/memory-write.ts` holds 41 lines the assistant might save (about the person, about a
+  customer, already held, not said, planted text), and `sets/memory-condition.ts` 27 conditional
+  filters against the person's words.
 - `lib/calibrate.ts`: medians, close calls, gaps, records and the report.
 - `lib/recorder.ts`: record and replay at the `fetch` level, keyed by the request as sent.
 - `calibrate.ts`: the CLI. `probe.ts`: the route probe (ADR 0230's gateway checks).

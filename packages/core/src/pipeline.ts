@@ -56,6 +56,7 @@ import { notifyStatements } from "./notifications/send.ts";
 import {
   type AnyOperation,
   type ApplyingApproval,
+  type AssistantTurn,
   afterCommit,
   type ExtensionCaller,
   type HandlerContext,
@@ -123,6 +124,8 @@ export interface InvocationContext {
    * automation against them. Not inherited by nested invocations.
    */
   personsWords?: string | undefined;
+  /** The chat turn the call is part of (ADR 0342). Passed by code. Not inherited when nested. */
+  assistantTurn?: AssistantTurn | undefined;
   /** Widget result cache (ADR 0057); absent means the Workers Cache API. */
   widgetCache?: WidgetCache;
   /** The self-updater (ADR 0164): GitHub Releases and the Cloudflare API. */
@@ -640,6 +643,7 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.models ? { models: ctx.models } : {}),
     ...(ctx.judge ? { judge: ctx.judge } : {}),
     ...(ctx.personsWords ? { personsWords: ctx.personsWords } : {}),
+    ...(ctx.assistantTurn ? { assistantTurn: ctx.assistantTurn } : {}),
     ...(ctx.widgetCache ? { widgetCache: ctx.widgetCache } : {}),
     ...(ctx.updater ? { updater: ctx.updater } : {}),
     ...(ctx.vectors ? { vectors: ctx.vectors } : {}),

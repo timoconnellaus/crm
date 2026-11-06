@@ -19,14 +19,22 @@ import { VoiceStartButton } from "#/components/assistant/voice";
 import { errorMessage } from "#/lib/query";
 
 export const Route = createFileRoute("/_app/assistant")({
+  // `seq` jumps to a message: a memory line's source link (ADR 0342).
+  validateSearch: (search: Record<string, unknown>): { seq?: number } =>
+    typeof search.seq === "number" ? { seq: search.seq } : {},
   component: AssistantPage,
 });
 
 function AssistantPage() {
   const { user } = Route.useRouteContext();
+  const { seq } = Route.useSearch();
   const name = useAssistantName();
   const assistant = useAssistant();
   const thread = useThread();
+  const { jumpTo } = thread;
+  useEffect(() => {
+    if (seq !== undefined) jumpTo(seq);
+  }, [seq, jumpTo]);
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);

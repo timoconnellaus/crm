@@ -72,3 +72,36 @@ visibility (stage 14) and erase (ADR 0320). Memory that copies those facts would
   customer facts and duplicates; the user asked for Jev to block both.
 - **Ask the person to confirm every save.** Rejected: too many prompts. Saves are reversible with
   undo instead.
+
+> **Amended 2026-11-06 (stage 17 W3, as built):**
+>
+> - **No record-note check.** Decision 2's third question ("does it duplicate a record note") is
+>   not asked. Sending notes would make `memory.write` a placement that sends record content, off
+>   by default and on hosted deployments, and memory would fall back to the read-back for everyone
+>   there. A line that repeats a record note is a fact about a customer, so the first question
+>   refuses it anyway.
+> - **A third question, `not_said`.** The model writes the line, so text planted in an email or a
+>   record could reach memory, and from there every later turn. `memory.write` also asks whether
+>   the person said it; a line they did not say is read back instead of saved.
+> - **Pending lines are not stored in the thread.** The object keeps only `foldedAt`. A line active
+>   since then rides in the tail, and an older one is in the block; both are read live from D1 each
+>   turn, so undo, delete, pause and erase take effect at once with nothing to keep in step.
+>   `foldPendingLines()` on `AssistantAgent` moves `foldedAt` forward; compaction calls it just
+>   before it commits, and its summary call sends the same block, so it reads the same cache. Editing
+>   a folded line, or resuming one, makes it pending again. A thread with no history folds at once.
+> - **Tails stay in history** (ADR 0341), so a line undone or edited after it was sent is still in
+>   old messages. The next tail says those lines changed or were removed, until the fold.
+> - **`activity.proposeNote`** is added: the note a refused customer fact becomes. It is
+>   `alwaysReview`, so it waits for the person under every preset; `activity.log` would apply at
+>   once under Balanced.
+> - **`teamMemory.setGovernance`** is added, human-only, needing `settings:manage`. "Permitted
+>   people" means `settings:manage` until stage 14 brings finer roles.
+> - **Agents cannot write** is enforced by code: `ctx.assistantTurn` is set only by the chat turn,
+>   and an assistant call without it is refused. `memoryForAgent` is the read for W5.
+> - **Names in the fallback** come from one search-index lookup on record titles: a person by any
+>   word of their name, an organisation by its whole name. The same lookup fills
+>   `core_memory_refs`, so a line that names someone in words is found by an erase, as is the
+>   thread it was said in.
+> - **A person's own lines** (the memory page, Redo) skip the judge: they typed them. The id, email
+>   and duplicate checks still hold.
+> - `core_memory_settings` (memory on or paused per person) is added beside the two tables.

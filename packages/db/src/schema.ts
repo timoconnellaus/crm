@@ -690,6 +690,42 @@ export interface CoreAssistantThreadRefsTable {
   ref: string;
 }
 
+/** Migration 0352 (ADR 0342): what each person's assistant remembers, and team lines. */
+export interface CoreMemoryTable {
+  id: string;
+  /** The owner; null for team lines. */
+  user_id: string | null;
+  kind: "personal" | "shortcut" | "style" | "conditional" | "team";
+  text: string;
+  /** JSON `{ object, filter }` for conditional lines. */
+  condition: string | null;
+  condition_label: string | null;
+  status: "active" | "proposed" | "paused";
+  source_thread_id: string | null;
+  source_message_seq: number | null;
+  /** JSON: what checked the line before it was saved. */
+  checked: string | null;
+  author_id: string | null;
+  /** JSON: team lines' changes, oldest first. */
+  history: string | null;
+  active_since: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Migration 0352 (ADR 0342): the people, organisations and email hashes a memory line names. */
+export interface CoreMemoryRefsTable {
+  memory_id: string;
+  ref: string;
+}
+
+/** Migration 0352 (ADR 0342): memory paused per person (no row: on). */
+export interface CoreMemorySettingsTable {
+  user_id: string;
+  paused: ColumnType<number, number | undefined, number>;
+  updated_at: string;
+}
+
 /**
  * Migration 0330 (ADR 0320): erased people's addresses, as `sha256:<hex>` of the lower-cased
  * address (never the address), so sync does not collect them again.
@@ -1393,6 +1429,9 @@ export interface CoreDatabase {
   core_assistant_conversation_refs: CoreAssistantConversationRefsTable;
   core_assistant_thread: CoreAssistantThreadTable;
   core_assistant_thread_refs: CoreAssistantThreadRefsTable;
+  core_memory: CoreMemoryTable;
+  core_memory_refs: CoreMemoryRefsTable;
+  core_memory_settings: CoreMemorySettingsTable;
   core_erased_address: CoreErasedAddressTable;
   core_blob_deletion: CoreBlobDeletionTable;
   crm_stage_history: CrmStageHistoryView;

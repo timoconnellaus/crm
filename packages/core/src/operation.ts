@@ -154,6 +154,12 @@ export interface HandlerContext {
    * what `authoring.intent` checks an automation against.
    */
   readonly personsWords?: string;
+  /**
+   * The chat turn this call is part of, passed by code (the assistant's Durable Object), never by
+   * a model. `memory.propose` checks a line against the person's words and links it to their
+   * message; an assistant call without it (an agent) cannot write memory (ADR 0342).
+   */
+  readonly assistantTurn?: AssistantTurn;
   /** The dashboard widget result cache (ADR 0057). Absent: the Workers Cache API. */
   readonly widgetCache?: WidgetCache;
   /** The self-updater (ADR 0164), when the adapter provides one (update.*). */
@@ -172,6 +178,14 @@ export interface HandlerContext {
   readonly assistantThreads?: AssistantThreadStore;
   /** Speech providers for voice.* operations (ADR 0349). Absent: voice is off. */
   readonly voice?: VoiceRuntime;
+}
+
+/** The person's message a chat turn answers. */
+export interface AssistantTurn {
+  threadId: string;
+  messageSeq: number;
+  /** The person's words this turn. */
+  text: string;
 }
 
 /** The extension an `extension`-actor call runs for, and its approved permissions. */
