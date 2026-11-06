@@ -72,7 +72,7 @@ export type MemorySaidLabel = keyof typeof MEMORY_SAID_QUESTION.criteria;
  * customer fact where visibility and erase do not reach it. Erring towards refusing, below the
  * middle of the gap.
  */
-export const MEMORY_CUSTOMER_THRESHOLD = 0.5;
+export const MEMORY_CUSTOMER_THRESHOLD = 0.35;
 
 /**
  * P(already) at or above this saves nothing. A false "already" loses a line the person can say
@@ -97,11 +97,11 @@ export interface MemoryWriteState {
 }
 
 const KIND_WORDS: Record<string, string> = {
-  personal: "a preference or fact about the person",
-  shortcut: "what the person means by a word or phrase",
-  style: "how the person likes their writing",
+  personal: "something to remember",
+  shortcut: "what a word or phrase means",
+  style: "something about writing",
   conditional: "something to remember on some records only",
-  team: "how the person's team works",
+  team: "something for the team's assistants to remember",
 };
 
 const clip = (text: string, max: number) => {

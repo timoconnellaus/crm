@@ -22,9 +22,9 @@ export const MEMORY_CONDITION_QUESTION = choice(
   "A CRM assistant will remember `line` only on records that match `condition`, a filter it wrote from what the person said (`said`). `condition` is written out in words: the kind of record, then each field, comparison and value. Does `condition` pick out the records the person described?",
   {
     as_said:
-      "Yes: the same kind of record, and fields, comparisons and values that mean what the person said. A field that clearly means the person's word counts, such as Employees for people working there",
+      "Yes: the kind of record the person named, and fields, comparisons and values that mean what they said. A field that clearly means the person's word counts, such as Employees for people working there",
     different:
-      "No: it picks out other records than the person described: another kind of record, another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
+      "No: it picks out other records than the person described: the wrong kind of record (organisations where the person meant people, or people where they meant organisations), another field, a different comparison (such as at least for more than), another value, or a part of what they said left out or added",
     unclear: "`said` does not say which records the person means",
   },
 );
@@ -35,9 +35,10 @@ export type MemoryConditionLabel = keyof typeof MEMORY_CONDITION_QUESTION.criter
  * P(as_said) at or above this is a match. Set from the labelled set
  * (evals/judge/sets/memory-condition.ts, calibration.json). A false match puts a wrong condition
  * on a card the person still reads and confirms; a missed one sends the assistant back to rewrite
- * a correct filter once. The person's confirmation backs both, so the threshold sits mid-gap.
+ * a correct filter once. The person's confirmation backs both, so the threshold sits mid-gap,
+ * leaning low: a vague "the bigger ones" sits just under it, and the person still reads it.
  */
-export const MEMORY_CONDITION_THRESHOLD = 0.5;
+export const MEMORY_CONDITION_THRESHOLD = 0.55;
 
 export interface MemoryConditionState {
   said: string;
