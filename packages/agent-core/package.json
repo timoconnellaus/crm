@@ -1,0 +1,27 @@
+{
+  "name": "@relationship-os/agent-core",
+  "version": "0.0.0",
+  "description": "One long-lived assistant thread: message store, context assembly, pending lines, unread state, the turn loop and the channel seam.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ai": "7.0.145",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@ai-sdk/openai-compatible": "3.0.73",
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@cloudflare/workers-types": "5.20261104.1",
+    "@relationship-os/config": "workspace:*",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
