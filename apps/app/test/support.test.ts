@@ -239,7 +239,7 @@ describe("/support/enter", () => {
       await token(claimsFor(id, email, { iss: "someone-else" })),
       await token(claimsFor(id, email, { aud: "other.relationshiposcrm.com" })),
       await token(claimsFor(id, email, { iat: now - 400, exp: now - 1 })),
-      await token(claimsFor(id, email, { exp: now + SUPPORT_TOKEN_MAX_LIFETIME + 1 })),
+      await token(claimsFor(id, email, { iat: now, exp: now + SUPPORT_TOKEN_MAX_LIFETIME + 1 })),
       await token(claimsFor(id, "intruder@relationshiposcrm.com")),
       await token(claimsFor("sgr_unknown", email)),
       "not-a-token",
