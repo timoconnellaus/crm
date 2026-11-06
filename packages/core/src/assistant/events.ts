@@ -1,5 +1,6 @@
-// What the in-app assistant streams to the UI and how a stored conversation is shown (ADR 0200).
+// What the in-app assistant streams to the UI and how its thread is shown (ADR 0200, ADR 0340).
 // Browser-safe: no Workers or AI SDK imports, so the app's client bundle can use these types.
+import type { AssistantContext } from "./context.ts";
 
 /** A pending change the assistant's tool call created (the MCP `pending_approval` result). */
 export interface AssistantPending {
@@ -12,7 +13,7 @@ export interface AssistantPending {
 
 /** One event of a turn, in order. `seq` numbers events within the turn from 1. */
 export type AssistantEvent =
-  | { seq: number; type: "turn-start"; turn: number; text: string; at: string }
+  | { seq: number; type: "turn-start"; turn: number; text: string; at: string; via?: string }
   | { seq: number; type: "text"; delta: string }
   /** The model is reasoning (thinking). Content is not streamed, only that it is happening. */
   | { seq: number; type: "thinking" }
@@ -36,11 +37,19 @@ export type AssistantEventInput = AssistantEvent extends infer E
     : never
   : never;
 
-/** One item of a conversation as the UI shows it. */
+/** Where a thread item sits: its first stored message (`seq`) and when it was written. */
+interface Placed {
+  /** The first stored message of the item; absent while its turn is still streaming. */
+  seq?: number;
+  /** ISO time it was written. */
+  at?: string;
+}
+
+/** One item of the thread as the UI shows it. */
 export type TranscriptItem =
-  | { kind: "user"; turn: number; text: string; at?: string }
-  | { kind: "assistant"; turn: number; text: string }
-  | {
+  | ({ kind: "user"; turn: number; text: string; via?: string } & Placed)
+  | ({ kind: "assistant"; turn: number; text: string } & Placed)
+  | ({
       kind: "tool";
       turn: number;
       id: string;
@@ -49,16 +58,56 @@ export type TranscriptItem =
       output?: unknown;
       isError?: boolean;
       pending?: AssistantPending;
-    }
-  | { kind: "error"; turn: number; message: string };
+    } & Placed)
+  | ({ kind: "error"; turn: number; message: string } & Placed);
 
-/** The state of a conversation for the UI: what is stored, plus the live turn if one is running. */
-export interface AssistantConversationState {
-  id: string;
+/** The thread for the UI: a window of stored items, plus the live turn if one is running. */
+export interface AssistantThreadState {
+  /** The thread id (ath_…), or null before the first turn. */
+  id: string | null;
   items: TranscriptItem[];
-  /** The running turn and the events streamed so far (resume from the last `seq`). */
-  running: { turn: number; lastSeq: number } | null;
+  /** The running turn, and the events it has streamed so far (replay them, then follow). */
+  running: { turn: number; lastSeq: number; events: AssistantEvent[] } | null;
+  /** The oldest seq in `items` (null when empty); earlier messages exist when `hasEarlier`. */
+  firstSeq: number | null;
+  hasEarlier: boolean;
+  /** The newest stored seq. */
+  lastSeq: number;
+  lastSeenSeq: number;
+  unread: number;
 }
+
+/** A hit of "Search this chat" (`thread.search`). */
+export interface ThreadSearchHit {
+  seq: number;
+  turn: number;
+  role: "user" | "assistant" | "tool" | "notice";
+  at: string;
+  /** The message's words, cut to about 300 characters around the first match. */
+  text: string;
+}
+
+/** What the browser sends over the thread's WebSocket. */
+export type ThreadClientFrame =
+  /** A new message from the person. */
+  | { type: "send"; text: string; context?: AssistantContext }
+  /** Stop the running reply. */
+  | { type: "stop" }
+  /** Ask for the thread: the newest window, or the window before `beforeSeq`, or from `fromSeq`. */
+  | { type: "sync"; beforeSeq?: number; fromSeq?: number }
+  /** Whether the chat is on screen on this device (replies then arrive already seen). */
+  | { type: "visible"; visible: boolean };
+
+/** What the thread sends to the browser over its WebSocket. */
+export type ThreadServerFrame =
+  /** The thread: `replace` the view, or `prepend` an earlier window. */
+  | { type: "state"; state: AssistantThreadState; mode: "replace" | "prepend" }
+  /** One event of the running turn (whichever device started it). */
+  | { type: "event"; event: AssistantEvent }
+  | { type: "unread"; unread: number; lastSeenSeq: number }
+  /** Messages were deleted (on any device). */
+  | { type: "deleted"; seqs: number[] }
+  | { type: "error"; message: string };
 
 /** Recognises an MCP `pending_approval` tool result (PendingApproval in errors.ts). */
 export function pendingOf(output: unknown): AssistantPending | undefined {
@@ -90,7 +139,16 @@ export function parseToolOutput(text: string): unknown {
 export function applyEvent(items: TranscriptItem[], event: AssistantEvent): TranscriptItem[] {
   switch (event.type) {
     case "turn-start":
-      return [...items, { kind: "user", turn: event.turn, text: event.text, at: event.at }];
+      return [
+        ...items,
+        {
+          kind: "user",
+          turn: event.turn,
+          text: event.text,
+          at: event.at,
+          ...(event.via ? { via: event.via } : {}),
+        },
+      ];
     case "text": {
       const last = items[items.length - 1];
       const turn = currentTurn(items);

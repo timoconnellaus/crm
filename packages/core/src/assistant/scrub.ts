@@ -1,10 +1,11 @@
-// Erasing a person or organisation from assistant conversations (ADR 0019 and ADR 0200
-// amendments). A conversation's history lives in its Durable Object, so D1 keeps an index of the
-// records each conversation referenced (`core_assistant_conversation_refs`), written with the
-// once-per-turn `assistant.finishTurn`. An erase looks the subject up there and has each
-// conversation redact its stored messages the way the audit log is redacted: a tool call or tool
-// result that mentions the subject loses its whole input or output, and free text (what the
-// person and the assistant wrote, and reasoning) has each mention replaced with "[erased]".
+// Erasing a person or organisation from assistant threads (ADR 0019 and ADR 0200 amendments,
+// ADR 0340). A thread lives in its user's Durable Object, so D1 keeps an index of the records each
+// thread referenced (`core_assistant_thread_refs`), written with the once-per-turn
+// `thread.finishTurn`. An erase looks the subject up there and has each thread redact its stored
+// messages the way the audit log is redacted: a tool call or tool result that mentions the subject
+// loses its whole input or output, and free text (what the person and the assistant wrote, the
+// tail blocks and reasoning) has each mention replaced with "[erased]".
+import type { MessagePart } from "@relationship-os/agent-core";
 import type { ModelMessage } from "ai";
 
 export const ERASED = "[erased]";
@@ -15,12 +16,6 @@ export interface ConversationScrub {
   terms: string[];
   /** Names (a person's full and given/family names, an organisation's name), matched as words. */
   names: string[];
-}
-
-/** Erases a conversation's mentions of a subject. ros-app implements it with the Durable Object. */
-export interface AssistantConversationStore {
-  /** Redacts the subject from one conversation's stored history. Idempotent. */
-  scrub(conversationId: string, scrub: ConversationScrub): Promise<void>;
 }
 
 const MIN_TERM = 6;
@@ -101,6 +96,31 @@ export function scrubMessage(message: ModelMessage, pattern: RegExp | null): Mod
     return scrubValue(p, pattern);
   });
   return { ...message, content } as ModelMessage;
+}
+
+/**
+ * A thread message's parts with the subject removed: whole tool inputs and outputs that mention
+ * them, and mentions in text, tail blocks, reasoning and notices. Returns the same array when
+ * nothing matched.
+ */
+export function scrubParts(parts: MessagePart[], pattern: RegExp | null): MessagePart[] {
+  if (!pattern || !mentions(parts, pattern)) return parts;
+  return parts.map((part): MessagePart => {
+    switch (part.type) {
+      case "tool-call":
+        return mentions(part.input, pattern) ? { ...part, input: ERASED_TOOL_INPUT } : part;
+      case "tool-result":
+        return mentions(part.output, pattern)
+          ? { ...part, output: { type: "text", value: ERASED } }
+          : part;
+      case "text":
+      case "context":
+      case "reasoning":
+        return { ...part, text: scrubText(part.text, pattern) };
+      default:
+        return scrubValue(part, pattern);
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------------------------

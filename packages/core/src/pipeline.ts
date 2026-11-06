@@ -21,7 +21,7 @@ import {
   overlayRead,
   simulatedTitle,
 } from "./approvals/simulation.ts";
-import type { AssistantConversationStore } from "./assistant/scrub.ts";
+import type { AssistantThreadStore } from "./assistant/threads.ts";
 import { eventOriginOf, isBulkOperation, recordEventMessages } from "./automations/events.ts";
 import {
   deliverOutbox,
@@ -133,8 +133,8 @@ export interface InvocationContext {
   events?: EventSink;
   /** ros-runner's automation host (automation.test, run, retry, replay, cancel). */
   automationHost?: AutomationHost;
-  /** The in-app assistant's conversations (ros-app), which an erase scrubs. */
-  assistantConversations?: AssistantConversationStore;
+  /** The assistant threads (ros-app): thread.* operations and erase reach them (ADR 0340). */
+  assistantThreads?: AssistantThreadStore;
   /**
    * Test mode (ADR 0133): the call is simulated against this in-memory overlay. The gate is
    * evaluated and recorded, writes are dry-run, nothing is written and no events are sent.
@@ -644,7 +644,7 @@ export async function invokeOperation<O extends AnyOperation>(
     ...(ctx.aiEnv ? { aiEnv: ctx.aiEnv } : {}),
     ...(ctx.events && !ctx.simulate ? { events: ctx.events } : {}),
     ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
-    ...(ctx.assistantConversations ? { assistantConversations: ctx.assistantConversations } : {}),
+    ...(ctx.assistantThreads ? { assistantThreads: ctx.assistantThreads } : {}),
     pipeline: {
       crm: ctx.db,
       invoke: (name, nestedInput, nested) => {
@@ -676,9 +676,7 @@ export async function invokeOperation<O extends AnyOperation>(
           ...(ctx.embedViaEvents ? { embedViaEvents: true } : {}),
           ...(ctx.events ? { events: ctx.events } : {}),
           ...(ctx.automationHost ? { automationHost: ctx.automationHost } : {}),
-          ...(ctx.assistantConversations
-            ? { assistantConversations: ctx.assistantConversations }
-            : {}),
+          ...(ctx.assistantThreads ? { assistantThreads: ctx.assistantThreads } : {}),
           ...(ctx.simulate ? { simulate: ctx.simulate } : {}),
         });
       },

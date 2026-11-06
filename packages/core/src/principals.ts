@@ -29,7 +29,7 @@ export const originSchema = z.object({
    * The MCP session: the connected app (cap_…) the token belongs to (ADR 0032). Pending actions
    * group by it, and only it sees their simulated state.
    */
-  // For the in-app assistant (surface `assistant`, ADR 0200) the session is the conversation (asc_…).
+  // For the in-app assistant (surface `assistant`, ADR 0340) the session is the thread (ath_…).
   sessionId: z.string().optional(),
   /** The automation id (`<extension>.<key>`, or a system job such as `trash.purge`). */
   automationId: z.string().optional(),

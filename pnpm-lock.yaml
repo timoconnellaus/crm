@@ -561,6 +561,9 @@ importers:
       '@ai-sdk/provider':
         specifier: 4.0.30
         version: 4.0.30
+      '@relationship-os/agent-core':
+        specifier: workspace:*
+        version: link:../agent-core
       '@relationship-os/db':
         specifier: workspace:*
         version: link:../db

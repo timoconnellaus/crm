@@ -225,9 +225,13 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
   if (last?.role === "tool") {
     return withReasoning({ content: describeResult(textOf(last.content)) });
   }
-  const text = textOf(last?.content).trim();
-  const record = lineValue(system, "Current record");
-  const selection = lineValue(system, "Selected records");
+  // The page context rides in the user message's <context> block (the tail, ADR 0341).
+  const raw = textOf(last?.content);
+  const tailEnd = raw.lastIndexOf("</context>");
+  const page = tailEnd >= 0 ? raw.slice(0, tailEnd) : system;
+  const text = (tailEnd >= 0 ? raw.slice(tailEnd + "</context>".length) : raw).trim();
+  const record = lineValue(page, "Current record");
+  const selection = lineValue(page, "Selected records");
   const reason = `Asked in the assistant: ${text.slice(0, 120)}`;
 
   if (selection && /\b(selected|these|them)\b/i.test(text)) {

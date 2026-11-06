@@ -1,175 +1,136 @@
-// assistant.* operations (ADR 0030, ADR 0200): the list of a person's in-app assistant
-// conversations. The conversation itself (history, streaming, turns) lives in its Durable Object;
-// D1 keeps one row per conversation for /assistant. Every operation is scoped to ctx.user, human
-// only (the UI and the conversation object acting for its owner) and invisible to MCP.
+// thread.* operations (ADR 0340): each person's one assistant thread. The thread itself
+// (messages, turns, search, unread) lives in their AssistantAgent Durable Object, reached through
+// `ctx.assistantThreads`; D1 keeps one bookkeeping row per user (`core_assistant_thread`) and the
+// records each thread referenced, for erase. Every operation is scoped to ctx.user. Only
+// `thread.search` is open to the assistant itself (to find older messages); the rest are the
+// person's, through the UI or their thread object acting for them.
 import { sql } from "kysely";
 import { z } from "zod";
+import { type AssistantContext, assistantContextSchema } from "../assistant/context.ts";
 import { conversationRefPattern, MAX_REFS_PER_TURN } from "../assistant/scrub.ts";
-import { ForbiddenError, NotFoundError } from "../errors.ts";
+import { ConfigError, NotFoundError } from "../errors.ts";
 import { newId } from "../ids.ts";
 import { defineOperation, type HandlerContext } from "../operation.ts";
 
-export const conversationId = z
-  .string()
-  .regex(/^asc_[0-9A-Za-z]{10,40}$/)
-  .describe("An assistant conversation id (asc_…)");
-
-import { type AssistantContext, assistantContextSchema } from "../assistant/context.ts";
-
 export { type AssistantContext, assistantContextSchema };
 
-const conversationSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  context: assistantContextSchema.nullable(),
-  turns: z.number(),
-  preview: z.string().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-export type AssistantConversationSummary = z.infer<typeof conversationSchema>;
+export const threadId = z
+  .string()
+  .regex(/^ath_[0-9A-Za-z]{10,40}$/)
+  .describe("An assistant thread id (ath_…)");
 
-interface ConversationRow {
+const threadSchema = z.object({
+  id: z.string(),
+  turns: z.number(),
+  unread: z.number(),
+  preview: z.string().nullable(),
+  lastActivityAt: z.string().nullable(),
+});
+export type AssistantThreadSummary = z.infer<typeof threadSchema>;
+
+interface ThreadRow {
   id: string;
   user_id: string;
-  title: string;
-  context: string | null;
   turns: number;
+  unread: number;
   preview: string | null;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
+  last_activity_at: string | null;
 }
 
-function parseContext(value: string | null): AssistantContext | null {
-  if (!value) return null;
-  try {
-    const parsed = assistantContextSchema.safeParse(JSON.parse(value));
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
-}
-
-function fromRow(row: ConversationRow): AssistantConversationSummary {
+function fromRow(row: ThreadRow): AssistantThreadSummary {
   return {
     id: row.id,
-    title: row.title,
-    context: parseContext(row.context),
     turns: row.turns,
+    unread: row.unread,
     preview: row.preview,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    lastActivityAt: row.last_activity_at,
   };
 }
 
-async function loadOwn(ctx: HandlerContext, id: string): Promise<ConversationRow | null> {
+async function loadOwn(ctx: HandlerContext): Promise<ThreadRow | null> {
   const row = (await ctx.db
-    .selectFrom("core_assistant_conversation")
-    .selectAll()
-    .where("id", "=", id)
-    .executeTakeFirst()) as ConversationRow | undefined;
-  if (!row || row.deleted_at) return null;
-  if (row.user_id !== ctx.user.id) {
-    throw new ForbiddenError("This conversation belongs to someone else", { id });
-  }
-  return row;
+    .selectFrom("core_assistant_thread")
+    .select(["id", "user_id", "turns", "unread", "preview", "last_activity_at"])
+    .where("user_id", "=", ctx.user.id)
+    .executeTakeFirst()) as ThreadRow | undefined;
+  return row ?? null;
 }
 
-/** A title from the first message: its first line, shortened at a word. */
-export function conversationTitle(text: string): string {
-  const line = text.trim().split(/\r?\n/)[0]?.trim() ?? "";
-  if (!line) return "New conversation";
-  if (line.length <= 80) return line;
-  const cut = line.slice(0, 80);
-  const space = cut.lastIndexOf(" ");
-  return `${(space > 40 ? cut.slice(0, space) : cut).trimEnd()}…`;
+function threads(ctx: HandlerContext) {
+  const store = ctx.assistantThreads;
+  if (!store) throw new ConfigError("The assistant is not available on this deployment");
+  return store;
 }
 
-export const assistantConversations = defineOperation({
-  name: "assistant.conversations",
+export const threadOpen = defineOperation({
+  name: "thread.open",
   description:
-    "Your in-app assistant conversations, newest first, with their titles, where they started " +
-    "and a preview of the last reply. Read-only.",
-  input: z.object({
-    limit: z.number().int().min(1).max(100).default(30),
-    before: z.string().max(40).optional().describe("Only conversations updated before this time"),
-  }),
-  output: z.object({ conversations: z.array(conversationSchema) }),
-  permission: "records:read",
-  risk: "read",
-  actors: ["human"],
-  mcp: { expose: false },
-  async handler(input, ctx) {
-    let query = ctx.db
-      .selectFrom("core_assistant_conversation")
-      .selectAll()
-      .where("user_id", "=", ctx.user.id)
-      .where("deleted_at", "is", null);
-    if (input.before) query = query.where("updated_at", "<", input.before);
-    const rows = (await query
-      .orderBy("updated_at", "desc")
-      .limit(input.limit)
-      .execute()) as ConversationRow[];
-    return { conversations: rows.map(fromRow) };
-  },
-});
-
-export const assistantConversation = defineOperation({
-  name: "assistant.conversation",
-  description: "One of your assistant conversations, or not_found. Read-only.",
-  input: z.object({ id: conversationId }),
-  output: conversationSchema,
-  permission: "records:read",
-  risk: "read",
-  actors: ["human"],
-  mcp: { expose: false },
-  async handler(input, ctx) {
-    const row = await loadOwn(ctx, input.id);
-    if (!row) throw new NotFoundError("conversation", input.id);
-    return fromRow(row);
-  },
-});
-
-export const assistantStartConversation = defineOperation({
-  name: "assistant.startConversation",
-  description:
-    "Start an assistant conversation: returns its id. The title comes from the first message.",
-  input: z.object({
-    text: z.string().max(20_000).describe("The first message (for the title)"),
-    context: assistantContextSchema.optional(),
-  }),
-  output: conversationSchema,
+    "Your assistant thread's id, creating its bookkeeping row the first time. Called by the " +
+    "thread itself before its first turn.",
+  input: z.object({}),
+  output: threadSchema,
   permission: "records:read",
   risk: "write",
   bookkeeping: true,
   actors: ["human"],
   mcp: { expose: false },
-  async handler(input, ctx) {
-    const row: ConversationRow = {
-      id: newId("assistantConversation"),
+  async handler(_input, ctx) {
+    const existing = await loadOwn(ctx);
+    if (existing) return fromRow(existing);
+    const row = {
+      id: newId("assistantThread"),
       user_id: ctx.user.id,
-      title: conversationTitle(input.text),
-      context: input.context ? JSON.stringify(input.context) : null,
       turns: 0,
+      unread: 0,
       preview: null,
+      last_activity_at: null,
       created_at: ctx.now,
       updated_at: ctx.now,
-      deleted_at: null,
     };
-    ctx.write(ctx.db.insertInto("core_assistant_conversation").values(row));
+    ctx.write(
+      ctx.db
+        .insertInto("core_assistant_thread")
+        .values(row)
+        .onConflict((oc) => oc.column("user_id").doNothing()),
+    );
     return fromRow(row);
   },
 });
 
-export const assistantFinishTurn = defineOperation({
-  name: "assistant.finishTurn",
+export const threadStatus = defineOperation({
+  name: "thread.status",
   description:
-    "Record that a turn of your conversation finished (the list's preview and turn count). " +
-    "Called by the conversation itself once per turn.",
+    "Your assistant thread at a glance: how many replies you have not seen, and when it was " +
+    "last active. Read-only.",
+  input: z.object({}),
+  output: z.object({
+    id: z.string().nullable(),
+    unread: z.number(),
+    lastActivityAt: z.string().nullable(),
+  }),
+  permission: "records:read",
+  risk: "read",
+  actors: ["human"],
+  mcp: { expose: false },
+  async handler(_input, ctx) {
+    const row = await loadOwn(ctx);
+    return {
+      id: row?.id ?? null,
+      unread: row?.unread ?? 0,
+      lastActivityAt: row?.last_activity_at ?? null,
+    };
+  },
+});
+
+export const threadFinishTurn = defineOperation({
+  name: "thread.finishTurn",
+  description:
+    "Record that a turn of your thread finished: its preview, the unread count, and the records " +
+    "it referenced (for erase). Called by the thread itself once per turn.",
   input: z.object({
-    id: conversationId,
+    id: threadId,
     preview: z.string().max(2000).nullable(),
+    unread: z.number().int().min(0),
     refs: z
       .array(z.string().regex(conversationRefPattern))
       .max(MAX_REFS_PER_TURN)
@@ -178,70 +139,129 @@ export const assistantFinishTurn = defineOperation({
         "People and organisations (ids) and emails (email:<sha256>) the turn referenced, for erase",
       ),
   }),
-  output: conversationSchema,
+  output: threadSchema,
   permission: "records:read",
   risk: "write",
   bookkeeping: true,
   actors: ["human"],
   mcp: { expose: false },
   async handler(input, ctx) {
-    const row = await loadOwn(ctx, input.id);
-    if (!row) throw new NotFoundError("conversation", input.id);
+    const row = await loadOwn(ctx);
+    if (!row || row.id !== input.id) throw new NotFoundError("thread", input.id);
     const preview = input.preview?.trim().split(/\r?\n/)[0]?.slice(0, 200) ?? null;
     ctx.write(
       ctx.db
-        .updateTable("core_assistant_conversation")
-        .set({ turns: row.turns + 1, preview, updated_at: ctx.now })
+        .updateTable("core_assistant_thread")
+        .set({
+          turns: row.turns + 1,
+          unread: input.unread,
+          preview,
+          last_activity_at: ctx.now,
+          updated_at: ctx.now,
+        })
         .where("id", "=", input.id),
     );
-    // The erase index (migration 0270): one statement in the same batch, whatever the count.
+    // The erase index: one statement in the same batch, whatever the count.
     if (input.refs?.length) {
       ctx.write(
         ctx.db
-          .insertInto("core_assistant_conversation_refs")
+          .insertInto("core_assistant_thread_refs")
           .orIgnore()
-          .columns(["conversation_id", "ref"])
+          .columns(["thread_id", "ref"])
           .expression(
             ctx.db
               .selectFrom(sql<{ value: string }>`json_each(${JSON.stringify(input.refs)})`.as("j"))
-              .select([sql<string>`${input.id}`.as("conversation_id"), "j.value as ref"]),
+              .select([sql<string>`${input.id}`.as("thread_id"), "j.value as ref"]),
           ),
       );
     }
-    return fromRow({ ...row, turns: row.turns + 1, preview, updated_at: ctx.now });
+    return fromRow({
+      ...row,
+      turns: row.turns + 1,
+      unread: input.unread,
+      preview,
+      last_activity_at: ctx.now,
+    });
   },
 });
 
-export const assistantDeleteConversation = defineOperation({
-  name: "assistant.deleteConversation",
+const searchHit = z.object({
+  seq: z.number(),
+  turn: z.number(),
+  role: z.enum(["user", "assistant", "tool", "notice"]),
+  at: z.string(),
+  text: z.string(),
+});
+
+export const threadSearch = defineOperation({
+  name: "thread.search",
   description:
-    "Delete one of your assistant conversations: it leaves the list and its history is " +
-    "erased. Pending changes it proposed stay in the Approvals inbox.",
-  input: z.object({ id: conversationId }),
-  output: z.object({ id: z.string(), deleted: z.literal(true) }),
+    "Search your whole chat with the assistant, including messages from long ago that are no " +
+    "longer in view. Matches every word given (as a word prefix), newest first, and returns each " +
+    "message's seq, who wrote it, when, and its words around the match. Read-only.",
+  input: z.object({
+    query: z.string().trim().min(1).max(200).describe("Words to look for"),
+    limit: z.number().int().min(1).max(50).default(20),
+  }),
+  output: z.object({ hits: z.array(searchHit) }),
+  permission: "records:read",
+  risk: "read",
+  actors: ["human", "assistant"],
+  mcp: { title: "Search this chat" },
+  async handler(input, ctx) {
+    return { hits: await threads(ctx).search(ctx.user.id, input.query, input.limit) };
+  },
+});
+
+export const threadDeleteMessage = defineOperation({
+  name: "thread.deleteMessage",
+  description:
+    "Delete a message from your assistant chat: one of yours, or a whole reply (its text, tool " +
+    "calls and results). It leaves the chat and its search, and the assistant no longer sees it. " +
+    "Changes it made or proposed are not undone.",
+  input: z.object({ seq: z.number().int().min(1).describe("The message's seq") }),
+  output: z.object({ deleted: z.array(z.number()) }),
   permission: "records:read",
   risk: "write",
   bookkeeping: true,
   actors: ["human"],
   mcp: { expose: false },
   async handler(input, ctx) {
-    const row = await loadOwn(ctx, input.id);
-    if (!row) throw new NotFoundError("conversation", input.id);
+    const result = await threads(ctx).deleteMessage(ctx.user.id, input.seq);
+    if (!result.deleted.length) throw new NotFoundError("message", String(input.seq));
+    return result;
+  },
+});
+
+export const threadMarkSeen = defineOperation({
+  name: "thread.markSeen",
+  description:
+    "Mark your assistant chat as seen up to a message (the newest when no seq is given), which " +
+    "clears the unread badge.",
+  input: z.object({ seq: z.number().int().min(0).optional() }),
+  output: z.object({ unread: z.number(), lastSeenSeq: z.number() }),
+  permission: "records:read",
+  risk: "write",
+  bookkeeping: true,
+  actors: ["human"],
+  mcp: { expose: false },
+  async handler(input, ctx) {
+    const result = await threads(ctx).markSeen(ctx.user.id, input.seq);
     ctx.write(
       ctx.db
-        .updateTable("core_assistant_conversation")
-        .set({ deleted_at: ctx.now, title: "(deleted)", preview: null, context: null })
-        .where("id", "=", input.id),
-      ctx.db.deleteFrom("core_assistant_conversation_refs").where("conversation_id", "=", input.id),
+        .updateTable("core_assistant_thread")
+        .set({ unread: result.unread })
+        .where("user_id", "=", ctx.user.id),
     );
-    return { id: input.id, deleted: true as const };
+    return result;
   },
 });
 
 export const assistantOperations = [
-  assistantConversations,
-  assistantConversation,
-  assistantStartConversation,
-  assistantFinishTurn,
-  assistantDeleteConversation,
+  threadOpen,
+  threadStatus,
+  threadFinishTurn,
+  threadSearch,
+  threadDeleteMessage,
+  threadMarkSeen,
 ] as const;
