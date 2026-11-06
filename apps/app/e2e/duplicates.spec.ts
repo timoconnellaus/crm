@@ -83,6 +83,7 @@ test("a scan lists duplicates with reasons; they are dismissed or merged in bulk
     .getByRole("checkbox", { checked: true });
   while ((await others.count()) > 0) await others.first().click();
 
+  const keptPath = await likely.locator("[data-survivor=true] a").getAttribute("href");
   await page.getByRole("button", { name: "Merge 1 selected" }).click();
   await page
     .getByRole("alertdialog", { name: "Merge 1 duplicate person?" })
@@ -91,12 +92,8 @@ test("a scan lists duplicates with reasons; they are dismissed or merged in bulk
   await expect(page.getByTestId("bulk-merge-result")).toContainText("1 merged");
   await expect(likely).toHaveCount(0);
 
-  // The kept record has both emails.
-  await open(page, `/people?q=${encodeURIComponent(likelyFamily)}`);
-  await page
-    .getByRole("link", { name: new RegExp(likelyFamily) })
-    .first()
-    .click();
+  // The record the page said it would keep has both emails.
+  await open(page, keptPath ?? "");
   const details = page.getByTestId("details-card");
   await expect(details).toContainText(`g@${domain}`);
   await expect(details).toContainText(`grace@${domain}`);
