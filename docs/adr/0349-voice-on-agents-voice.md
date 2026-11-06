@@ -64,6 +64,10 @@ The options looked at while writing the spec:
 
 ## Consequences
 - One more third-party provider, with a BYOK key. A deployment without it has no voice.
+- AssemblyAI says speed control, emotion tags and a pronunciation dictionary are coming. When they
+  ship: show the speed setting (capability flag), seed the pronunciation dictionary from CRM names
+  (people, organisations) so they are said right, and let the model add emotion tags only from a
+  small allow-list.
 - If the gateway cannot proxy the sockets, these become the one exception to "all AI calls through
   AI Gateway", with our own usage log standing in for the gateway's.
 - `agents/voice` is young; pinning and wrapping it in `agent-voice` limits the blast radius of an
