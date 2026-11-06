@@ -350,6 +350,45 @@ export function scriptedAssistant(body: ChatRequestBody): ScriptedReply {
       content: `You selected ${ids.length} ${object} record${ids.length === 1 ? "" : "s"}: ${ids.join(", ")}.`,
     });
   }
+  if (/\bsend me a morning briefing\b/i.test(text)) {
+    return withReasoning({ toolCalls: [{ name: "offer_morning_briefing", arguments: {} }] });
+  }
+  const watch = /\btell me when (?:a|an) (\w+) is created\b/i.exec(text);
+  if (watch?.[1]) {
+    return withReasoning({
+      toolCalls: [
+        {
+          name: "offer_standing_help",
+          arguments: {
+            definition: {
+              name: `New ${watch[1]}`,
+              what: `tell you about each new ${watch[1]}`,
+              trigger: { type: "record", object: watch[1].toLowerCase(), on: ["created"] },
+              message: { kind: "turn", prompt: "Say which record was created, in one line." },
+            },
+          },
+        },
+      ],
+    });
+  }
+  const often = /\bevery (\d+) minutes\b/i.exec(text);
+  if (often?.[1]) {
+    return withReasoning({
+      toolCalls: [
+        {
+          name: "offer_standing_help",
+          arguments: {
+            definition: {
+              name: "Check in",
+              what: "check in with you",
+              trigger: { type: "schedule", cron: `*/${often[1]} * * * *` },
+              message: { kind: "turn", prompt: "Say hello." },
+            },
+          },
+        },
+      ],
+    });
+  }
   if (/\bshow (?:me )?my overdue tasks\b/i.test(text)) {
     return withReasoning({
       toolCalls: [{ name: "a2ui_produce", arguments: { producer: "tasks.overdueCard" } }],

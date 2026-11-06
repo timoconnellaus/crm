@@ -4,6 +4,7 @@ import { defineObject } from "./types.ts";
 export const activityObject = defineObject({
   name: "activity",
   label: "Activity",
+  plural: "Activities",
   source: "crm_activities",
   defaultSort: { field: "occurredAt", direction: "desc" },
   fields: [

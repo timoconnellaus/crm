@@ -29,7 +29,18 @@
   // Automation events (ADR 0130): committed record changes and approval decisions go to this
   // queue; ros-runner consumes it and starts automation runs.
   "queues": {
-    "producers": [{ "binding": "AUTOMATION_EVENTS", "queue": "ros-automation-events" }]
+    "producers": [{ "binding": "AUTOMATION_EVENTS", "queue": "ros-automation-events" }],
+    // A routine's messages (ADR 0343): ros-runner produces them, and this Worker delivers each
+    // into its owner's thread. ros-runner cannot bind back to ros-app (a cycle on first deploy).
+    "consumers": [
+      {
+        "queue": "ros-routine-delivery",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "ros-routine-delivery-dlq"
+      }
+    ]
   },
   // Synced email bodies (ADR 0112), shared with ros-runner: D1 keeps a snippet only.
   "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "ros-blobs" }],

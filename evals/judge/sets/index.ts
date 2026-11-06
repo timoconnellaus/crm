@@ -6,6 +6,7 @@ import { authoringIntentSet } from "./authoring-intent.ts";
 import { memoryConditionSet } from "./memory-condition.ts";
 import { memoryWriteSet } from "./memory-write.ts";
 import { outboundMessageSet } from "./outbound-message.ts";
+import { routineGateSet } from "./routine-gate.ts";
 import { summaryStatementsSet } from "./summary-statements.ts";
 import { syncJobChangeSet } from "./sync-job-change.ts";
 import { widgetShapeSet } from "./widget-shape.ts";
@@ -20,4 +21,5 @@ export const SETS: PlacementSet<any, any>[] = [
   syncJobChangeSet,
   memoryWriteSet,
   memoryConditionSet,
+  routineGateSet,
 ];

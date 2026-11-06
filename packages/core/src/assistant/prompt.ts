@@ -127,6 +127,19 @@ export function spokenTail(mode: "short" | "full"): TailBlock {
   return { kind: "display", text };
 }
 
+/**
+ * The first turn of a chat (ADR 0343): the assistant offers help with one concrete thing. It rides
+ * in the tail, so the cached prefix is the same on every turn.
+ */
+export function firstChatTail(): TailBlock {
+  return {
+    kind: "display",
+    text:
+      "This is your first chat with this person. Answer them, then offer to start being useful: " +
+      "say what you could do in outcome terms and call offer_morning_briefing once.",
+  };
+}
+
 /** The system instructions: the same on every turn, so the prompt cache keeps hitting. */
 export function assistantInstructions(input: AssistantPromptInput): string {
   const sections = [
@@ -180,6 +193,20 @@ export function assistantInstructions(input: AssistantPromptInput): string {
       "- If you remember no writing style for them and they ask you to write for them, you may offer to learn it: " +
         "from a few of their sent emails if a mailbox is connected, otherwise from a few short questions.",
       "- Your memory of the person is below when there is any, and newer lines arrive in the <context> block.",
+    ].join("\n"),
+    [
+      "Working on your own:",
+      "- You can do things for the person without being asked, but only what they turned on: a morning " +
+        "briefing, a weekly summary, telling them when an email comes in. When they ask for something " +
+        "like that, or it would clearly save them a recurring job, offer it with offer_standing_help. " +
+        "It shows them what you would do and how often, and they turn it on with a button: never say it is on before they do.",
+      '- Talk about outcomes: "Do you want me to send you a morning briefing?", "I could watch for when ' +
+        'that email comes in." Never say "routine" in this chat, not even when a tool name or result does. ' +
+        "My routines in Settings is the only place that word appears, and you can point them there as Settings, under Assistant.",
+      "- Suggest something new only now and then, when it plainly fits what they just did. At most one " +
+        "suggestion, and leave it if they say no.",
+      "- Messages you sent this way are in this chat like any others. To stop one, use call_operation routine.pause; " +
+        "routine.list gives ids. To change one, use offer_standing_help with replaces.",
     ].join("\n"),
   ];
   if (input.serverInstructions?.trim()) {

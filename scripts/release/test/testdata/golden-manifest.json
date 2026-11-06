@@ -28,7 +28,7 @@
   },
   "channel": "stable",
   "commit": "0123456789abcdef0123456789abcdef01234567",
-  "coreSchemaVersion": 362,
+  "coreSchemaVersion": 365,
   "extensionContract": {
     "supported": [
       1
@@ -376,6 +376,10 @@
     {
       "name": "0362_voice_usage.sql",
       "sha256": "bbfc4c830d9052c91eca2b5dcddc829555de6c20e9328ddf33268af29c2a50c8"
+    },
+    {
+      "name": "0365_routines.sql",
+      "sha256": "47d96d2feece89f776aa2b0b1ab4cb54b7f4dd1340fddcef3a000a8b84fffad8"
     }
   ],
   "product": "relationship-os",
@@ -484,6 +488,27 @@
       "type": "queue",
       "usedBy": [
         "ros-runner"
+      ]
+    },
+    {
+      "implicit": false,
+      "name": "ros-routine-delivery",
+      "optional": false,
+      "placeholder": "$QUEUE_NAME(ros-routine-delivery)",
+      "type": "queue",
+      "usedBy": [
+        "ros-app",
+        "ros-runner"
+      ]
+    },
+    {
+      "implicit": false,
+      "name": "ros-routine-delivery-dlq",
+      "optional": false,
+      "placeholder": "$QUEUE_NAME(ros-routine-delivery-dlq)",
+      "type": "queue",
+      "usedBy": [
+        "ros-app"
       ]
     },
     {
@@ -833,7 +858,17 @@
       "optional": false,
       "package": "apps/app",
       "public": true,
-      "queueConsumers": [],
+      "queueConsumers": [
+        {
+          "deadLetterQueue": "$QUEUE_NAME(ros-routine-delivery-dlq)",
+          "queue": "$QUEUE_NAME(ros-routine-delivery)",
+          "settings": {
+            "batch_size": 10,
+            "max_retries": 3,
+            "max_wait_time_ms": 5000
+          }
+        }
+      ],
       "role": "app",
       "secrets": [
         {
@@ -891,7 +926,7 @@
           "source": "installer"
         }
       ],
-      "sha256": "c421719a2e1b3548298de675fac05ae1b1bec5dd63e610c256c7d05e57668559"
+      "sha256": "fb3a31b5bb9ac2b29ba7e8b8003a3801ecd0996ed5f58bd7b605145ada8c8588"
     },
     {
       "bindings": [
@@ -951,6 +986,11 @@
         {
           "name": "AUTOMATION_EVENTS",
           "queue_name": "$QUEUE_NAME(ros-automation-events)",
+          "type": "queue"
+        },
+        {
+          "name": "ROUTINE_DELIVERY",
+          "queue_name": "$QUEUE_NAME(ros-routine-delivery)",
           "type": "queue"
         },
         {
@@ -1122,7 +1162,7 @@
       ],
       "role": "runner",
       "secrets": [],
-      "sha256": "abe9f85b381a02825669382c44ef4f5961e14d84bf90e97063e7d4d377e6f63f"
+      "sha256": "ff6c6819b97755814a48da989cb3bb5128bb024c1fed14edae4786d266c82834"
     },
     {
       "bindings": [],

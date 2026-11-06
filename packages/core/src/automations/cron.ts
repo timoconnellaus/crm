@@ -184,3 +184,52 @@ export function cronMatches(expression: string | Cron, at: ZonedTime): boolean {
   if (cron.weekday.any) return dom;
   return dom || dow;
 }
+
+/** The local minutes `expression` fires on, as `YYYY-MM-DDTHH:MM`, from `fromDate` for `days` days. */
+export function cronFires(expression: string | Cron, fromDate: string, days: number): string[] {
+  const cron = typeof expression === "string" ? parseCron(expression) : expression;
+  const hours = [...cron.hour.values].sort((a, b) => a - b);
+  const minutes = [...cron.minute.values].sort((a, b) => a - b);
+  const out: string[] = [];
+  for (let i = 0; i < days; i++) {
+    const date = addDaysToDate(fromDate, i);
+    const day = new Date(`${date}T00:00:00Z`);
+    const at = {
+      month: day.getUTCMonth() + 1,
+      day: day.getUTCDate(),
+      weekday: day.getUTCDay(),
+      hour: hours[0] ?? 0,
+      minute: minutes[0] ?? 0,
+    } as ZonedTime;
+    if (!cronMatches(cron, at)) continue;
+    for (const hour of hours) {
+      for (const minute of minutes) out.push(`${date}T${pad(hour)}:${pad(minute)}`);
+    }
+  }
+  return out;
+}
+
+/** The next fire after `after` (a `YYYY-MM-DDTHH:MM` local minute) within `days`, or null. */
+export function nextCronFire(expression: string, after: string, days = 366): string | null {
+  try {
+    return cronFires(expression, after.slice(0, 10), days).find((f) => f > after) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const minuteOf = (fire: string) => Date.parse(`${fire}:00Z`) / 60_000;
+
+/**
+ * The shortest gap in minutes between two fires over the next 62 days from `fromDate`, or null when
+ * it fires less than twice in that time. Ignores daylight saving, which moves a gap by an hour.
+ */
+export function shortestCronGap(expression: string, fromDate: string): number | null {
+  const fires = cronFires(expression, fromDate, 62);
+  let shortest: number | null = null;
+  for (let i = 1; i < fires.length; i++) {
+    const gap = minuteOf(fires[i] as string) - minuteOf(fires[i - 1] as string);
+    if (shortest === null || gap < shortest) shortest = gap;
+  }
+  return shortest;
+}

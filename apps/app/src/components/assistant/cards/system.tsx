@@ -47,6 +47,7 @@ function Check({ passed, children }: { passed: boolean; children: ReactNode }) {
 export function RoutineReadBackComponent({ props }: RendererProps<"routineReadBack">) {
   return (
     <Frame type="routineReadBack" tone="pending">
+      {props.title && <Header title={props.title} />}
       <Body className="pt-2.5">
         <p className="break-words font-medium">{props.summary}</p>
         <Facts items={[{ label: "When", value: props.trigger }]} />
@@ -57,7 +58,7 @@ export function RoutineReadBackComponent({ props }: RendererProps<"routineReadBa
                 {gate.kind === "jev" && (
                   <SparklesIcon
                     className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-                    aria-label="Checked by the judge"
+                    aria-label="Jev check"
                   />
                 )}
                 <span className="min-w-0 break-words">Only if: {gate.text}</span>
@@ -67,8 +68,26 @@ export function RoutineReadBackComponent({ props }: RendererProps<"routineReadBa
         )}
         {props.backtest && (
           <div className="grid gap-1 rounded-md bg-muted/50 p-2">
-            <p className="text-xs">
-              In the last {props.backtest.days} days it would have run {props.backtest.fired} times.
+            {props.backtest.fires && (
+              <div
+                className="flex h-4 items-end gap-px"
+                role="img"
+                aria-label={`Would have messaged you ${props.backtest.fired} times in ${props.backtest.days} days`}
+              >
+                {props.backtest.fires.map((fired, day) => (
+                  <i
+                    // biome-ignore lint/suspicious/noArrayIndexKey: days in a fixed order.
+                    key={day}
+                    className={cn(
+                      "block min-w-0 flex-1 rounded-[1px]",
+                      fired ? "h-full bg-primary" : "h-1 bg-muted-foreground/30",
+                    )}
+                  />
+                ))}
+              </div>
+            )}
+            <p className="text-xs font-medium" data-testid="routine-backtest">
+              Would have messaged you {props.backtest.fired} times in {props.backtest.days} days.
             </p>
             <ul className="grid gap-0.5">
               {props.backtest.examples.map((example) => (
@@ -79,6 +98,11 @@ export function RoutineReadBackComponent({ props }: RendererProps<"routineReadBa
             </ul>
           </div>
         )}
+        {props.notes.map((note) => (
+          <p key={note} className="break-words text-xs text-muted-foreground">
+            {note}
+          </p>
+        ))}
       </Body>
       <ActionFooter actions={props.actions} />
     </Frame>

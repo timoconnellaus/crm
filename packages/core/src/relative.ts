@@ -6,6 +6,7 @@ export const RELATIVE_TOKENS = [
   "me",
   "now",
   "today",
+  "tomorrow",
   "startOfMonth",
   "startOfNextMonth",
   "startOfQuarter",
@@ -31,6 +32,8 @@ export function relativeValue(token: RelativeToken, userId: string, now: string)
       return now;
     case "today":
       return now.slice(0, 10);
+    case "tomorrow":
+      return new Date(date.getTime() + 86_400_000).toISOString().slice(0, 10);
     case "startOfMonth":
       return day(y, m);
     case "startOfNextMonth":

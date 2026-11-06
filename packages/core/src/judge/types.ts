@@ -150,6 +150,17 @@ export interface Judge {
   /** For the log: `jev`, `off` or `fake`. */
   readonly provider: string;
   ask<const Q extends Questions>(request: JudgeRequest<Q>): Promise<JudgeOutcome<Q>>;
+  /** Is this placement switched on? Absent: it is, when the judge is not `off`. No network call. */
+  isOn?(placement: JudgePlacementId): Promise<boolean>;
+}
+
+/** Could `placement` be asked at all (a key, and its switch on)? For what a feature offers. */
+export async function placementAvailable(
+  judge: Judge | undefined,
+  placement: JudgePlacementId,
+): Promise<boolean> {
+  if (!judge || judge.provider === "off") return false;
+  return judge.isOn ? judge.isOn(placement) : true;
 }
 
 export function isAnswered<Q extends Questions>(outcome: JudgeOutcome<Q>): outcome is Judged<Q> {

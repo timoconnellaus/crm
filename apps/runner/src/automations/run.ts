@@ -400,14 +400,25 @@ export async function finishRun(
   ];
   if (status === "failed") {
     try {
+      const owner = await crm.query
+        .selectFrom("core_automations")
+        .select(["owner_user_id", "label"])
+        .where("id", "=", row.automation_id)
+        .where("owner_user_id", "is not", null)
+        .executeTakeFirst();
       const plan = await notifyStatements(
         crm.query,
         {
-          to: [{ role: "admin" }],
+          // A routine is personal: its owner hears, and admins see nothing of it (ADR 0343).
+          to: owner?.owner_user_id ? [{ userId: owner.owner_user_id }] : [{ role: "admin" }],
           type: "automation.failed",
-          title: `An automation run failed: ${row.automation_id}`,
+          title: owner
+            ? `“${owner.label}” could not run`
+            : `An automation run failed: ${row.automation_id}`,
           body: detail.error?.message ?? null,
-          link: { kind: "automationRun", automationId: row.automation_id, runId },
+          ...(owner
+            ? {}
+            : { link: { kind: "automationRun", automationId: row.automation_id, runId } }),
           dedupeKey: `failed:${runId}`,
           source: { actor: "automation", automationId: row.automation_id, runId },
         },

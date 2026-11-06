@@ -571,7 +571,9 @@ _Avoid_: note (that is on a record), fact
 **Routine**
 A personal automation (`owner_user_id`, scope `personal`) that messages the person's thread: a
 trigger, plain and Jev gates, and the step "message me in my chat". "My routines" in settings and
-plugin pages; in chat the assistant offers the outcome and never says "routine" (ADR 0343).
+plugin pages; in chat the assistant offers the outcome and never says "routine" (ADR 0343). The
+person turns it on from a **read-back** card with a **backtest** over the last 30 days. A delivered
+message has an info dot with a **why panel**: what they asked, when, the trigger and the checks.
 _Avoid_: reminder, alert, task
 
 **Agent (UI) / job (code)**

@@ -81,6 +81,9 @@ export function assistantThreadsFor(env: OperationsEnv): AssistantThreadStore | 
     async postCard(userId, part) {
       return (await stub(userId)).postCard(userId, part);
     },
+    async deliverRoutine(userId, delivery) {
+      return (await stub(userId)).deliverRoutine(userId, delivery);
+    },
     async scrub(userId, scrub) {
       await (await stub(userId)).scrub(scrub);
     },

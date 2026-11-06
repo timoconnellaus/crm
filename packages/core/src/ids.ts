@@ -45,6 +45,8 @@ export const ID_PREFIXES = {
   assistantThread: "ath",
   /** A memory line (ADR 0342). */
   memory: "mem",
+  /** A personal routine (ADR 0343). */
+  routine: "rtn",
   /** Policy adjudicator verdicts (ADR 0204). */
   adjudication: "adj",
   /** Assignment rules (ADR 0246). */
