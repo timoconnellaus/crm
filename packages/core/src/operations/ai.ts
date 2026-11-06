@@ -6,7 +6,6 @@ import { z } from "zod";
 import type { AiAdminStatus } from "../ai/admin.ts";
 import { type AiAdminSettings, providerStatus, vectorDimensions } from "../ai/client.ts";
 import { isHosted } from "../ai/platform.ts";
-import { voiceUsage } from "../ai/usage.ts";
 import {
   capabilityProblems,
   isSpeechRole,
@@ -21,6 +20,7 @@ import {
   reviewIndependence,
   THINKING_LEVELS,
 } from "../ai/roles.ts";
+import { voiceUsage } from "../ai/usage.ts";
 import { ConfigError, OperationError, ValidationError } from "../errors.ts";
 import { defineOperation } from "../operation.ts";
 import { AI_SETTINGS, loadAiSettings } from "../settings.ts";

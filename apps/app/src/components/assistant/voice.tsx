@@ -124,8 +124,20 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const deviceId = useMemo(voiceDeviceId, []);
   const prefs = useOp("voice.prefs.get", { deviceId }, { staleTime: 5 * 60_000 });
   const update = useOpMutation("voice.prefs.update", { invalidates: ["voice."] });
-  const [fullScreen, setFullScreen] = useState(false);
+  const [fullScreen, setFullScreenState] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
+  // On a phone the chat is a modal sheet, which would sit over the view and block its buttons.
+  const sheetWasOpen = useRef(false);
+  const { open: panelOpen, setOpen: setPanelOpen } = assistant;
+  const setFullScreen = useCallback(
+    (on: boolean) => {
+      if (on === fullScreen) return;
+      if (on) sheetWasOpen.current = panelOpen;
+      setFullScreenState(on);
+      setPanelOpen(on ? false : sheetWasOpen.current);
+    },
+    [fullScreen, panelOpen, setPanelOpen],
+  );
 
   const chatShown = assistant.open || assistant.path.startsWith("/assistant");
   const facts = useRef<() => VoiceFacts>(() => ({ canSeeCards: true }));
@@ -136,6 +148,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   });
   const chat = useVoiceChat({ url: socketUrl, facts: () => facts.current() });
   const { sendFacts, active } = chat;
+  useFakeSay(chat);
 
   // The display fact changes mid-call when the panel closes or the view goes full screen.
   // biome-ignore lint/correctness/useExhaustiveDependencies: each of these changes what is seen.
@@ -185,7 +198,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       setupOpen,
       setSetupOpen,
     }),
-    [data, chat, mode, fullScreen, begin, switchMode, setupOpen],
+    [data, chat, mode, fullScreen, setFullScreen, begin, switchMode, setupOpen],
   );
 
   return (
@@ -597,7 +610,6 @@ function useFakeSay(chat: UseVoiceChat) {
 /** Above the chat box during a call. */
 export function VoiceBar() {
   const { chat, mode, prefs } = useVoice();
-  useFakeSay(chat);
   if (!prefs?.available || !chat.active) return null;
   return (
     <div

@@ -9,7 +9,6 @@ import type { AiAdmin } from "./ai/admin.ts";
 import type { AiEnv } from "./ai/client.ts";
 import type { VectorStore } from "./ai/vectors.ts";
 import type { AssistantThreadStore } from "./assistant/threads.ts";
-import type { VoiceRuntime } from "./operations/voice.ts";
 import type { AutomationHost, EventSink } from "./automations/types.ts";
 import type { WidgetCache } from "./dashboards/cache.ts";
 import type { FieldDiff } from "./diff.ts";
@@ -18,6 +17,7 @@ import type { GateFloor } from "./gate.ts";
 import type { BlobStore, IntegrationRuntime } from "./integrations/runtime.ts";
 import type { Judge } from "./judge/types.ts";
 import type { ModelRunner } from "./models.ts";
+import type { VoiceRuntime } from "./operations/voice.ts";
 import {
   ACTORS,
   type ActingUser,

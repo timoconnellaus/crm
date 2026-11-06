@@ -9,7 +9,6 @@ import { affiliationOperations } from "./affiliation.ts";
 import { aiOperations } from "./ai.ts";
 import { approvalOperations } from "./approval.ts";
 import { assistantOperations } from "./assistant.ts";
-import { voiceOperations } from "./voice.ts";
 import { auditOperations } from "./audit.ts";
 import { automationOperations } from "./automation.ts";
 import { automationBindingOperations } from "./automation-binding.ts";
@@ -47,6 +46,7 @@ import { trashOperations } from "./trash.ts";
 import { updateOperations } from "./update.ts";
 import { userOperations } from "./user.ts";
 import { viewOperations } from "./view.ts";
+import { voiceOperations } from "./voice.ts";
 
 // biome-ignore format: one spread per line keeps parallel additions conflict-free.
 export const coreOperations = [

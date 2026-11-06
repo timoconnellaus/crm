@@ -22,7 +22,6 @@ import {
   simulatedTitle,
 } from "./approvals/simulation.ts";
 import type { AssistantThreadStore } from "./assistant/threads.ts";
-import type { VoiceRuntime } from "./operations/voice.ts";
 import { eventOriginOf, isBulkOperation, recordEventMessages } from "./automations/events.ts";
 import {
   deliverOutbox,
@@ -66,6 +65,7 @@ import {
   runAfterCommit,
   type SystemActivityInput,
 } from "./operation.ts";
+import type { VoiceRuntime } from "./operations/voice.ts";
 import {
   type ActingUser,
   type Actor,

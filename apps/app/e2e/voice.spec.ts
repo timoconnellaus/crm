@@ -111,6 +111,23 @@ test("push to talk: nothing is heard until the button is held, and letting go en
   await bar.getByTestId("voice-end").click();
 });
 
+test("the full-screen view on a phone reads the reply out and keeps its controls", async ({
+  page,
+}) => {
+  test.skip(!isPhone(page), "the view is for phones");
+  await open(page, "/");
+  await openPanel(page);
+  await startCall(page, "hands_free");
+  await page.getByTestId("voice-fullscreen").first().click();
+  const view = page.getByTestId("voice-fullscreen-view");
+  await expect(view).toContainText("Cards aren't shown here");
+  await say(page, "tell me what you can do");
+  await expect(view).toContainText("I can look up");
+  await expect(view).not.toContainText("short version");
+  await view.getByTestId("voice-end").click();
+  await expect(view).toHaveCount(0);
+});
+
 test("dictation types into the box, cleans up with undo, and sends as typed", async ({ page }) => {
   await open(page, "/");
   const panel = await openPanel(page);
