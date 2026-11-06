@@ -92,7 +92,7 @@ The full record is in "Decided (2026-11-05/06, user interview)" at the end. In s
 10. **Connected assistants**: same workspace only; a contract in plain English agreed by both
     people; every message adjudicated by Jev; background by default, with a seam to show it.
 11. **Voice** on the Agents SDK voice module over the agent's WebSocket. AssemblyAI streaming for
-    speech-to-text, ElevenLabs (latest model) for speech. Push-to-talk or hands-free, chosen at
+    speech-to-text, AssemblyAI-TTS-1 for speech (one provider, one key). Push-to-talk or hands-free, chosen at
     first use and remembered per device. Dictation in the chat box with a cleanup pass.
 12. **Packages**: the assistant lives in `packages/agent-*`, permissively licensed, which never
     import CRM code. The CRM binds them in `packages/core/src/assistant/` and `apps/app`.
@@ -108,7 +108,7 @@ The full record is in "Decided (2026-11-05/06, user interview)" at the end. In s
    │     └─ approvals (tap · typed · spoken, Jev-checked) ─ change sets ─ adjudicator
    ├─ compaction planner (pure cost model, alarm before cache expiry)
    ├─ memory writer (inline, Jev-gated) ──► D1 core_memory
-   ├─ voice (agent-voice: withVoice / withVoiceInput) ─ AssemblyAI STT ─ ElevenLabs TTS
+   ├─ voice (agent-voice: withVoice / withVoiceInput) ─ AssemblyAI STT + TTS
    └─ spawns ──► AgentJob DO  name job:<jobId>   (assistant.subagent; brief, grant, budget)
                     └─ stages change sets; reports progress to the parent; never chats
  ros-runner: AutomationWorkflow ─ personal routine ─ gates (plain, Jev) ─ step "message me" ─► AssistantAgent
@@ -131,7 +131,7 @@ done (results are copied to the parent and to D1).
 | --- | --- |
 | `@relationship-os/agent-core` | Thread model, message store interface, context assembly, compaction planner and cache-lifetime learner (pure), pending lines, search, unread, the turn loop over an injected model and tool set, the approval protocol, the job (subagent) protocol, the channel seam |
 | `@relationship-os/agent-a2ui` | A2UI schema (zod), catalogue registry and versioning, text fallbacks, the React renderer with an injected component map and action handler |
-| `@relationship-os/agent-voice` | Wrapper over `agents/voice` (pinned): STT and TTS provider interfaces, AssemblyAI and ElevenLabs providers, sentence chunking, playout truth, dictation cleanup hook, React hooks |
+| `@relationship-os/agent-voice` | Wrapper over `agents/voice` (pinned): STT and TTS provider interfaces, AssemblyAI speech-to-text and text-to-speech providers, sentence chunking, playout truth, dictation cleanup hook, React hooks |
 | `@relationship-os/agent-plugins` | `plugin.json` schema, Agent Plugins import (skills, MCP servers), fingerprinting, three-way diff, merge-proposal protocol, scope resolution |
 
 - A check in `pnpm lint` (Biome `noRestrictedImports` plus a small script in CI) fails if any
@@ -371,10 +371,14 @@ never forces. Single lookups stay direct tool calls.
   `AssistantAgent` WebSocket. Each spoken turn goes through the normal turn engine into the one
   thread (`via: voice`), not the SDK's separate voice transcript.
 - **STT**: model role `transcribe`, provider **AssemblyAI** streaming (its own end-of-turn) only
-  for now. **TTS**: role `speak`, provider **ElevenLabs**, its latest model. Keys are BYOK
-  secrets. Through AI Gateway if it can proxy the streaming sockets (check while building);
-  otherwise direct with the key as a secret, usage logged by us, and the exception recorded in
-  ADR 0349. Voice is off until both keys are set.
+  for now. **TTS**: role `speak`, provider **AssemblyAI** (`assemblyai-tts-1`, streaming
+  WebSocket with word timestamps and a cancel message for barge-in; launched 2026-10-27). One key,
+  `AI_KEY_ASSEMBLYAI`, a BYOK secret. Through AI Gateway if it can proxy the streaming sockets
+  (check while building); otherwise direct with the key as a secret, usage logged by us, and the
+  exception recorded in ADR 0349. Voice is off until the key is set.
+- **Speed**: AssemblyAI-TTS-1 has no speed control at launch. The speed setting is shown only
+  when the `speak` provider reports it supports speed (a provider capability flag); until then
+  the first-use setup asks for voice and mode only.
 - **First use** asks for voice, speed and mode (push-to-talk or hands-free). Voice and speed are
   per user; **mode is per device**: the first setup seeds every device, a change on one device
   sticks to that device.
@@ -531,7 +535,8 @@ marked:
   adjustable; narrow auto-accept; background, with a hook for others to display it; same workspace.
 - Packages `packages/agent-*`, MIT, no CRM imports (enforced); distribution decided later.
 - Voice: Agents SDK voice on the agent's WebSocket, pinned and wrapped; AssemblyAI only for STT;
-  ElevenLabs latest for TTS; first use asks for voice, speed and mode; mode per device; barge-in on
+  AssemblyAI-TTS-1 for TTS too (changed from ElevenLabs on 2026-11-06), speed setting hidden until
+  supported; first use asks for voice, speed and mode; mode per device; barge-in on
   the first word, record only what was heard; short spoken version when the screen is visible,
   read out when it isn't; voice messages italic with a mic, not cleaned up; dictation with a
   cleanup pass and undo, shown as typed; voice picker and speed in settings.

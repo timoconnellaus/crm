@@ -17,7 +17,7 @@ be lifted out. The rest of the repository is FSL-1.1-ALv2 (ADR 0190).
    | --- | --- |
    | `@relationship-os/agent-core` | Thread model, message store interface, context assembly, compaction planner and cache-lifetime learner, pending lines, search, unread, the turn loop over an injected model and tool set, the approval and job protocols, the channel seam |
    | `@relationship-os/agent-a2ui` | A2UI schema, catalogue registry and versioning, text fallbacks, the React renderer with an injected component map and action handler |
-   | `@relationship-os/agent-voice` | Wrapper over `agents/voice` (pinned): provider interfaces, AssemblyAI and ElevenLabs providers, sentence chunking, playout, the dictation cleanup hook, React hooks |
+   | `@relationship-os/agent-voice` | Wrapper over `agents/voice` (pinned): provider interfaces, AssemblyAI speech-to-text and text-to-speech providers, sentence chunking, playout, the dictation cleanup hook, React hooks |
    | `@relationship-os/agent-plugins` | `plugin.json` schema, Agent Plugins import, fingerprinting, three-way diff, the merge-proposal protocol, scope resolution |
 
 2. **Allowed dependencies**: each other, `zod`, `ai`, `agents`, and React as a peer. Nothing from

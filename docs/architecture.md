@@ -449,7 +449,7 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
   settings for thinking, max output tokens and temperature. The registry carries prices for
   uncached input, cache writes, cached reads and output, and a published cache lifetime where
   known, for the compaction planner ([ADR 0341](adr/0341-compaction-cost-model-and-cache-lifetime-learner.md)).
-  `transcribe` (AssemblyAI streaming) and `speak` (ElevenLabs) are BYOK; they go through AI Gateway
+  `transcribe` (AssemblyAI streaming) and `speak` (AssemblyAI-TTS-1) share one BYOK key; they go through AI Gateway
   if it can proxy their streaming sockets, otherwise directly with usage logged by us
   ([ADR 0349](adr/0349-voice-on-agents-voice.md)). `dictation.cleanup` runs with thinking off.
 - **Hosted placement** ([ADR 0213 amendment](adr/0213-ai-usage-billing.md),
@@ -503,7 +503,7 @@ assistant, speech and dictation roles from stage 17, [ADR 0351](adr/0351-assista
    │     └─ approvals (tap · typed · spoken, Jev-checked) ─ change sets ─ adjudicator
    ├─ compaction planner (pure cost model, alarm before cache expiry)
    ├─ memory writer (inline, Jev-gated) ──► D1 core_memory
-   ├─ voice (agent-voice: withVoice / withVoiceInput) ─ AssemblyAI STT ─ ElevenLabs TTS
+   ├─ voice (agent-voice: withVoice / withVoiceInput) ─ AssemblyAI STT + TTS
    └─ spawns ──► AgentJob DO  name job:<jobId>   (assistant.subagent; brief, grant, budget)
                     └─ stages change sets; reports progress to the parent; never chats
  ros-runner: AutomationWorkflow ─ personal routine ─ gates (plain, Jev) ─ step "message me" ─► AssistantAgent

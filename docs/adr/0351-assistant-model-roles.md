@@ -18,7 +18,7 @@ fixed "thinking off" would lose quality on models that do better with it.
    - **`assistant.core`**: the front agent (ADR 0344);
    - **`assistant.subagent`**: the default for agents; a profile may name another role;
    - **`transcribe`**: speech-to-text (AssemblyAI streaming, ADR 0349);
-   - **`speak`**: text-to-speech (ElevenLabs, ADR 0349);
+   - **`speak`**: text-to-speech (AssemblyAI-TTS-1, ADR 0349);
    - **`dictation.cleanup`**: the dictation cleanup pass, no thinking.
 2. **Migration.** Existing `assistant` config maps to `assistant.core`: a migration rewrites
    `ai_settings`, and `AI_MODEL_ROLES` still accepts the old key with a deprecation warning.

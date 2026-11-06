@@ -1,4 +1,4 @@
-# ADR 0349: Voice runs on the Agents SDK voice module, with AssemblyAI for speech-to-text and ElevenLabs for speech
+# ADR 0349: Voice runs on the Agents SDK voice module, with AssemblyAI for speech-to-text and speech
 
 Status: Accepted (2026-11-06). Stage 17 spec: [`docs/stages/17-assistant.md`](../stages/17-assistant.md),
 W9. Builds on [ADR 0340](0340-one-assistant-thread-per-user.md) and the model roles in
@@ -25,10 +25,13 @@ The options looked at while writing the spec:
    separate voice transcript is not used.
 2. **Speech-to-text**: model role `transcribe`, provider **AssemblyAI** streaming, using its own
    end-of-turn detection. The only provider for now.
-3. **Text-to-speech**: model role `speak`, provider **ElevenLabs**, its latest model.
-4. **Keys are BYOK secrets. Voice is off until both keys are set.**
+3. **Text-to-speech**: model role `speak`, provider **AssemblyAI** (`assemblyai-tts-1`, launched
+   2026-10-27: streaming WebSocket, word timestamps, a cancel message for barge-in, 4,000+ voices,
+   $15 per million characters). It has no speed control yet, so the speed setting is shown only when
+   the provider reports the capability.
+4. **One BYOK key, `AI_KEY_ASSEMBLYAI`, for both. Voice is off until it is set.**
 5. **Through AI Gateway if it can proxy the streaming sockets.** This is an open check for the
-   build: whether AI Gateway can carry AssemblyAI's and ElevenLabs' streaming WebSockets with our
+   build: whether AI Gateway can carry AssemblyAI's streaming WebSockets with our
    gateway's logging and BYOK. If it cannot, the fallback is a **direct call** to each provider,
    with the key held as a Workers secret, and usage (seconds of audio in, characters out, per
    user and role) logged by us in the same place as other AI usage. The builder records the result
@@ -60,13 +63,16 @@ The options looked at while writing the spec:
 - Recording what was heard keeps the model from assuming the person heard a reply they cut off.
 
 ## Consequences
-- Two more third-party providers, both with BYOK keys. A deployment without them has no voice.
+- One more third-party provider, with a BYOK key. A deployment without it has no voice.
 - If the gateway cannot proxy the sockets, these become the one exception to "all AI calls through
   AI Gateway", with our own usage log standing in for the gateway's.
 - `agents/voice` is young; pinning and wrapping it in `agent-voice` limits the blast radius of an
   upstream change.
 
 ## Alternatives considered
+- **ElevenLabs for speech.** Chosen first, then replaced on 2026-11-06 by AssemblyAI-TTS-1: one
+  provider and key for both directions, and streaming built for voice agents. ElevenLabs
+  stays possible later behind the `speak` provider interface.
 - **RealtimeKit's agent.** Rejected for now: it cannot speak yet.
 - **A speech-to-speech model.** Rejected: one provider, outside our roles, turn engine and
   approvals.
