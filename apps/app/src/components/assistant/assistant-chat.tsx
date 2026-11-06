@@ -1,6 +1,7 @@
-// The conversation view shared by the Cmd-J panel and /assistant (ADR 0200): the transcript
-// (Markdown replies, tool calls folded away, pending changes with Approve / Reject for people who
-// may approve them, test-mode reports of proposed automations), and the composer.
+// The thread view shared by the docked sidebar and /assistant (ADR 0200, ADR 0340): the
+// transcript (Markdown replies, tool calls folded away, pending changes with Approve / Reject for
+// people who may approve them, test-mode reports of proposed automations, day dividers, times,
+// and Delete on each message), "Search this chat", and the composer.
 import type {
   AssistantContext,
   AssistantPending,
@@ -8,6 +9,7 @@ import type {
 } from "@relationship-os/core/client";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
+import { Input } from "@relationship-os/ui/components/input";
 import { Textarea } from "@relationship-os/ui/components/textarea";
 import { cn } from "@relationship-os/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
@@ -17,16 +19,18 @@ import {
   CircleAlertIcon,
   FlaskConicalIcon,
   LoaderCircleIcon,
+  SearchIcon,
   SendIcon,
   SquareIcon,
+  Trash2Icon,
   WrenchIcon,
   XIcon,
 } from "lucide-react";
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { Fragment, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Markdown } from "#/components/markdown";
 import { errorMessage, useOp, useOpMutation } from "#/lib/query";
-import type { ConversationView } from "./use-conversation.ts";
+import type { ThreadView } from "./thread-provider.tsx";
 
 /** A tool call's name for people: `person_get` → "person get", call_operation → its operation. */
 function toolLabel(item: Extract<TranscriptItem, { kind: "tool" }>): string {
@@ -174,58 +178,143 @@ function ToolItem({
   );
 }
 
+/** "Today", "Yesterday", or the date, for the divider before a new day's messages. */
+function dayLabel(at: string): string {
+  const day = new Date(at);
+  const today = new Date();
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diff = Math.round((startOf(today) - startOf(day)) / 86_400_000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return day.toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    ...(day.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}),
+  });
+}
+
+function timeLabel(at: string): string {
+  return new Date(at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+/** The time under a message, and Delete when it is stored. */
+function Meta({
+  at,
+  seq,
+  onDelete,
+  align = "start",
+  label,
+}: {
+  at?: string | undefined;
+  seq?: number | undefined;
+  onDelete?: ((seq: number) => void) | undefined;
+  align?: "start" | "end";
+  label: string;
+}) {
+  if (!at && seq === undefined) return null;
+  return (
+    <div
+      className={cn(
+        "mt-1 flex items-center gap-1 text-xs text-muted-foreground",
+        align === "end" && "justify-end",
+      )}
+    >
+      {at && <time dateTime={at}>{timeLabel(at)}</time>}
+      {seq !== undefined && onDelete && (
+        <button
+          type="button"
+          className="rounded p-0.5 opacity-0 group-hover/msg:opacity-100 hover:text-foreground focus-visible:opacity-100"
+          aria-label={`Delete ${label}`}
+          data-testid="assistant-delete"
+          onClick={() => onDelete(seq)}
+        >
+          <Trash2Icon className="size-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function Transcript({
   items,
   name,
   canApprove,
   thinking,
   running,
+  onDelete,
+  before,
 }: {
   items: TranscriptItem[];
   name: string;
   canApprove: boolean;
   thinking: boolean;
   running: boolean;
+  /** Deletes a stored message (a reply goes as a whole). */
+  onDelete?: (seq: number) => void;
+  /** Shown above the first message ("Show earlier messages"). */
+  before?: ReactNode;
 }) {
+  let lastDay = "";
   return (
     <ol className="space-y-4" aria-live="polite" data-testid="assistant-transcript">
+      {before && <li>{before}</li>}
       {items.map((item, index) => {
-        const key = `${item.kind}-${item.turn}-${index}`;
+        const key = `${item.kind}-${item.turn}-${item.seq ?? `i${index}`}`;
+        const day = item.at ? dayLabel(item.at) : "";
+        const divider =
+          day && day !== lastDay ? (
+            <li className="text-center text-xs font-medium text-muted-foreground" data-testid="assistant-day">
+              {day}
+            </li>
+          ) : null;
+        if (day) lastDay = day;
+        const seqAttr = item.seq !== undefined ? { "data-seq": item.seq } : {};
+        let row: ReactNode = null;
         switch (item.kind) {
           case "user":
-            return (
-              <li key={key} className="flex justify-end">
+            row = (
+              <li className="group/msg flex flex-col items-end" data-testid="assistant-user" {...seqAttr}>
                 <div className="max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm whitespace-pre-wrap text-primary-foreground">
                   {item.text}
                 </div>
+                <Meta at={item.at} seq={item.seq} onDelete={onDelete} align="end" label="your message" />
               </li>
             );
+            break;
           case "assistant":
-            return (
-              <li key={key} data-testid="assistant-reply">
+            row = (
+              <li className="group/msg" data-testid="assistant-reply" {...seqAttr}>
                 <span className="sr-only">{name}: </span>
                 <Markdown>{item.text}</Markdown>
+                <Meta at={item.at} seq={item.seq} onDelete={onDelete} label={`${name}'s reply`} />
               </li>
             );
+            break;
           case "tool":
-            return (
-              <li key={key}>
+            row = (
+              <li {...seqAttr}>
                 <ToolItem item={item} canApprove={canApprove} />
               </li>
             );
+            break;
           case "error":
-            return (
-              <li
-                key={key}
-                className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-sm text-destructive"
-              >
+            row = (
+              <li className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-sm text-destructive">
                 <CircleAlertIcon className="mt-0.5 size-4 shrink-0" />
                 {item.message}
               </li>
             );
+            break;
           default:
-            return null;
+            row = null;
         }
+        return (
+          <Fragment key={key}>
+            {divider}
+            {row}
+          </Fragment>
+        );
       })}
       {running && (
         <li className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -235,6 +324,126 @@ export function Transcript({
       )}
     </ol>
   );
+}
+
+/** Highlights each search term in `text` (as the person typed them, case-insensitive). */
+function Highlighted({ text, query }: { text: string; query: string }) {
+  const terms = (query.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).slice(0, 8);
+  if (!terms.length) return <>{text}</>;
+  const pattern = new RegExp(`(${terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "giu");
+  return (
+    <>
+      {text.split(pattern).map((part, i) =>
+        i % 2 === 1 ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: the split is stable for one text.
+          <mark key={i} className="rounded-sm bg-amber-200/70 px-0.5 text-foreground dark:bg-amber-500/30">
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
+/**
+ * "Search this chat" (thread.search): the whole thread, newest first, each hit with who and when,
+ * and "Jump to" it.
+ */
+export function ThreadSearch({
+  query,
+  onQueryChange,
+  name,
+  onJump,
+  autoFocus,
+  className,
+}: {
+  query: string;
+  onQueryChange: (query: string) => void;
+  name: string;
+  onJump: (seq: number) => void;
+  autoFocus?: boolean;
+  className?: string;
+}) {
+  const [debounced, setDebounced] = useState(query.trim());
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(query.trim()), 200);
+    return () => clearTimeout(timer);
+  }, [query]);
+  const results = useOp(
+    "thread.search",
+    { query: debounced, limit: 30 },
+    { enabled: debounced.length > 0, staleTime: 0 },
+  );
+  const hits = results.data?.hits ?? [];
+  return (
+    <div className={cn("space-y-2", className)} data-testid="assistant-search">
+      <div className="relative">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Search this chat"
+          aria-label="Search this chat"
+          className="pl-8"
+          autoFocus={autoFocus}
+          data-testid="assistant-search-input"
+        />
+        {debounced && results.data && (
+          <span className="absolute top-1/2 right-2.5 -translate-y-1/2 text-xs text-muted-foreground">
+            {hits.length} result{hits.length === 1 ? "" : "s"}
+          </span>
+        )}
+      </div>
+      {debounced && results.data && (
+        hits.length ? (
+          <ul className="divide-y rounded-md border" data-testid="assistant-search-results">
+            {hits.map((hit) => (
+              <li key={hit.seq} className="space-y-1 px-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {hit.role === "user" ? "You" : name} · {dayLabel(hit.at)}, {timeLabel(hit.at)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="ml-auto h-6 px-2 text-xs"
+                    onClick={() => onJump(hit.seq)}
+                  >
+                    Jump to
+                  </Button>
+                </div>
+                <p className="text-sm">
+                  <Highlighted text={hit.text} query={debounced} />
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nothing in your chat matches that.</p>
+        )
+      )}
+    </div>
+  );
+}
+
+/** Scrolls a jumped-to message into view and flashes it, once it is loaded. */
+export function useJumpToMessage(thread: ThreadView, root: HTMLElement | null) {
+  const { jumpTarget, clearJump, items } = thread;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retried when new items arrive.
+  useEffect(() => {
+    if (jumpTarget === null || !root) return;
+    const all = [...root.querySelectorAll<HTMLElement>("[data-seq]")];
+    const target =
+      all.find((el) => Number(el.dataset.seq) === jumpTarget) ??
+      all.find((el) => Number(el.dataset.seq) >= jumpTarget);
+    if (!target) return;
+    target.scrollIntoView({ block: "center" });
+    target.classList.add("ring-2", "ring-ring", "rounded-md");
+    setTimeout(() => target.classList.remove("ring-2", "ring-ring", "rounded-md"), 1600);
+    clearJump();
+  }, [jumpTarget, root, items]);
 }
 
 /** What the next message is about, shown subtly above the composer: "On: Acme Ltd". */
@@ -271,7 +480,7 @@ export function Composer({
   onDraftChange,
   autoFocus,
 }: {
-  conversation: ConversationView;
+  conversation: ThreadView;
   context: AssistantContext;
   name: string;
   draft: string;

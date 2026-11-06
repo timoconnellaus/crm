@@ -29,6 +29,9 @@ importers:
       '@modelcontextprotocol/server':
         specifier: 2.4.0
         version: 2.4.0
+      '@relationship-os/agent-core':
+        specifier: workspace:*
+        version: link:../../packages/agent-core
       '@relationship-os/auth':
         specifier: workspace:*
         version: link:../../packages/auth

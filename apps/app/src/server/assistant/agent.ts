@@ -136,7 +136,7 @@ function int(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-export class AssistantAgent extends Agent<Env> {
+export class AssistantAgent extends Agent<Cloudflare.Env> {
   static override options = { sendIdentityOnConnect: false };
 
   #store: SqliteMessageStore | null = null;
@@ -277,7 +277,7 @@ export class AssistantAgent extends Agent<Env> {
   }
 
   /** The thread for the UI: the newest window, the one before `beforeSeq`, or from `fromSeq`. */
-  async state(
+  async threadState(
     userId: string,
     options: { beforeSeq?: number; fromSeq?: number } = {},
   ): Promise<AssistantThreadState> {

@@ -6,8 +6,8 @@
 //
 // Two contexts, so most of the app subscribes narrowly: the actions (ask, toggle, publish a
 // record or selection) never change, so entry-point buttons and record pages do not re-render
-// when the panel opens or the page context changes. The conversation itself, and its streaming,
-// lives in the panel (AssistantPanel), never here.
+// when the panel opens or the page context changes. The thread itself, and its streaming,
+// lives in ThreadProvider, never here.
 import type { AssistantContext } from "@relationship-os/core/client";
 import { useRouterState } from "@tanstack/react-router";
 import {
@@ -34,8 +34,6 @@ export interface AskOptions {
   record?: AssistantRecord;
   /** Scope the question to these records (otherwise the list's selection, if any). */
   selection?: AssistantSelection;
-  /** Start a new conversation rather than continuing the panel's current one. */
-  fresh?: boolean;
 }
 
 export interface AssistantActions {
