@@ -1,6 +1,9 @@
-// @relationship-os/agent-a2ui (ADR 0346, ADR 0350): A2UI cards for an assistant. The schema, the
-// catalogue registry and its versioning, text fallbacks and the React renderer arrive in stage 17's
-// W6. Until then this is the package's home, and it imports nothing outside the allowed set.
-
-/** The catalogue version this package will render. Bumped when W6 lands the catalogue. */
-export const A2UI_CATALOGUE_VERSION = 0;
+// @relationship-os/agent-a2ui (ADR 0346, ADR 0350): A2UI cards for an assistant. This entry is
+// plain TypeScript with no React, so a Worker can validate and store cards: the catalogue and its
+// versioning, card validation, text fallbacks and the saved producer registry. The React renderer
+// is `@relationship-os/agent-a2ui/react`; a sample of every component, for hosts' tests and
+// galleries, is `@relationship-os/agent-a2ui/samples`.
+export * from "./catalogue.ts";
+export * from "./document.ts";
+export * from "./producers.ts";
+export * from "./schema.ts";

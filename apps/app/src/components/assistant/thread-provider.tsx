@@ -187,6 +187,7 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
             setUnread(data.unread);
             break;
           case "deleted":
+          case "appended":
             ws.send(JSON.stringify({ type: "sync" } satisfies ThreadClientFrame));
             break;
           case "error":

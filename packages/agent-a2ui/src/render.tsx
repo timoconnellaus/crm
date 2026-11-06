@@ -255,9 +255,12 @@ export function useA2uiSource(): A2uiSource {
   return useContext(RuntimeContext)?.source ?? "model";
 }
 
-/** Sets `path` ("values.name") in a copy of `target`. */
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+/** Sets `path` ("values.name") in a copy of `target`. Field names come from the card. */
 function setPath(target: Record<string, unknown>, path: string, value: unknown) {
   const keys = path.split(".");
+  if (keys.some((key) => UNSAFE_KEYS.has(key))) return;
   let at: Record<string, unknown> = target;
   for (const key of keys.slice(0, -1)) {
     const next = at[key];

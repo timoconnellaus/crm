@@ -1,11 +1,20 @@
 // One turn of the in-app assistant (ADR 0200, ADR 0340): the `assistant.core` role's models with
 // the CRM's MCP tools. The loop itself is agent-core's `runTurn`; this binds it to the CRM: a tool
 // result that is an MCP `pending_approval` envelope becomes the event's `pending`, so the UI can
-// show Approve and Reject.
+// show Approve and Reject, and a tool result that holds a card becomes the event's `card` while the
+// model reads only the card's text fallback (ADR 0346).
 import { runTurn, type TurnTool } from "@relationship-os/agent-core";
 import type { ModelMessage } from "ai";
 import type { ChatModel } from "../ai/client.ts";
-import { type AssistantEventInput, type AssistantPending, pendingOf } from "./events.ts";
+import type { A2uiPart } from "@relationship-os/agent-a2ui";
+import {
+  type AssistantEventInput,
+  type AssistantPending,
+  cardModelText,
+  cardOf,
+  parseToolOutput,
+  pendingOf,
+} from "./events.ts";
 
 /** A tool the assistant may call: one MCP tool of our own /mcp. */
 export type AssistantTool = TurnTool;
@@ -41,13 +50,34 @@ export interface AssistantTurnResult {
   text: string;
 }
 
-/** Recognises a pending change in a tool result (agent-core's `describeResult` for the CRM). */
+/** What the CRM adds to a tool result event. */
+export interface AssistantResultExtras {
+  pending: AssistantPending;
+  card: A2uiPart;
+}
+
+/** Recognises a pending change or a card in a tool result (agent-core's `describeResult`). */
 export function describeAssistantResult(
   output: unknown,
   isError: boolean,
-): { pending: AssistantPending } | undefined {
-  const pending = isError ? undefined : pendingOf(output);
-  return pending ? { pending } : undefined;
+): Partial<AssistantResultExtras> | undefined {
+  if (isError) return undefined;
+  const pending = pendingOf(output);
+  if (pending) return { pending };
+  const card = cardOf(output);
+  return card ? { card } : undefined;
+}
+
+/** The tools with each card's result cut down to what the model reads. */
+export function withCardText(tools: readonly AssistantTool[]): AssistantTool[] {
+  return tools.map((tool) => ({
+    ...tool,
+    async call(args) {
+      const result = await tool.call(args);
+      const card = result.isError ? undefined : cardOf(parseToolOutput(result.text));
+      return card ? { ...result, modelText: cardModelText(card) } : result;
+    },
+  }));
 }
 
 /**
@@ -56,11 +86,11 @@ export function describeAssistantResult(
  */
 export async function runAssistantTurn(input: AssistantTurnInput): Promise<AssistantTurnResult> {
   const userMessage: ModelMessage = { role: "user", content: input.userText };
-  const result = await runTurn<{ pending: AssistantPending }>({
+  const result = await runTurn<AssistantResultExtras>({
     models: input.models,
     system: input.instructions,
     messages: [...input.history, userMessage],
-    tools: input.tools,
+    tools: withCardText(input.tools),
     emit: (event) => input.emit(event as AssistantEventInput),
     describeResult: describeAssistantResult,
     ...(input.maxSteps ? { maxSteps: input.maxSteps } : {}),

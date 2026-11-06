@@ -8,6 +8,8 @@ import {
   type AutomationTestInput,
   type AutomationTestReport,
   type CodeResult,
+  type ProducerResult,
+  type ProducerRun,
   type EvaluateResult,
   type ExtensionHost,
   type ExtensionVersion,
@@ -94,6 +96,7 @@ export function extensionHost(env: Env, options: ExecutorOptions = {}): Extensio
     commitWorkingCopy: (input) => ws().commitWorkingCopy(input),
     eject: (id) => ws().eject(id),
     runCode: (input) => executor.runCode(input),
+    runProducer: (input) => executor.runProducer(input),
     describeChange: (input) => executor.describeChange(input),
   };
 }
@@ -158,6 +161,9 @@ export default class Runner extends WorkerEntrypoint<Env> implements RunnerRpc {
   }
   runCode(input: Parameters<ExtensionHost["runCode"]>[0]): Promise<CodeResult> {
     return extensionHost(this.env).runCode(input);
+  }
+  runProducer(input: ProducerRun): Promise<ProducerResult> {
+    return extensionHost(this.env).runProducer(input);
   }
   describeChange(input: Parameters<ExtensionHost["describeChange"]>[0]) {
     return extensionHost(this.env).describeChange(input);

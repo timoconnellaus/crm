@@ -1,20 +1,16 @@
 // The thread view shared by the docked sidebar and /assistant (ADR 0200, ADR 0340): the
-// transcript (Markdown replies, tool calls folded away, pending changes with Approve / Reject for
-// people who may approve them, test-mode reports of proposed automations, day dividers, times,
-// and Delete on each message), "Search this chat", and the composer.
-import type {
-  AssistantContext,
-  AssistantPending,
-  TranscriptItem,
-} from "@relationship-os/core/client";
+// transcript (Markdown replies, cards, tool calls folded away, pending changes with Approve /
+// Reject for people who may approve them, test-mode reports of proposed automations, day dividers,
+// times, and Delete on each message), "Search this chat", and the composer.
+import type { AssistantContext, TranscriptItem } from "@relationship-os/core/client";
 import { Badge } from "@relationship-os/ui/components/badge";
 import { Button } from "@relationship-os/ui/components/button";
 import { Input } from "@relationship-os/ui/components/input";
 import { Textarea } from "@relationship-os/ui/components/textarea";
 import { cn } from "@relationship-os/ui/lib/utils";
-import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import {
-  CheckIcon,
   ChevronRightIcon,
   CircleAlertIcon,
   FlaskConicalIcon,
@@ -24,93 +20,28 @@ import {
   SquareIcon,
   Trash2Icon,
   WrenchIcon,
-  XIcon,
 } from "lucide-react";
-import { Fragment, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import {
+  Fragment,
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Markdown } from "#/components/markdown";
-import { errorMessage, useOp, useOpMutation } from "#/lib/query";
-import type { ThreadView } from "./thread-provider.tsx";
+import { invalidateOps, useOp } from "#/lib/query";
+import { useAssistant } from "./assistant-provider.tsx";
+import { ApprovalCard } from "./cards/approval.tsx";
+import { Card, CardHostContext } from "./cards/index.tsx";
+import { type ThreadView, useThread } from "./thread-provider.tsx";
 
 /** A tool call's name for people: `person_get` → "person get", call_operation → its operation. */
 function toolLabel(item: Extract<TranscriptItem, { kind: "tool" }>): string {
   const input = item.input as Record<string, unknown> | null;
   if (item.tool === "call_operation" && typeof input?.name === "string") return input.name;
   return item.tool.replace(/_/g, " ");
-}
-
-function PendingCard({ pending, canApprove }: { pending: AssistantPending; canApprove: boolean }) {
-  const status = useOp("approval.status", { actionId: pending.actionId });
-  const approve = useOpMutation("approval.approve", { invalidates: ["approval."] });
-  const reject = useOpMutation("approval.reject", { invalidates: ["approval."] });
-  const action = status.data?.changeSets
-    .flatMap((s) => s.actions)
-    .find((a) => a.id === pending.actionId);
-  const state = action?.status ?? "pending";
-  const busy = approve.isPending || reject.isPending;
-
-  async function decide(kind: "approve" | "reject") {
-    try {
-      const result =
-        kind === "approve"
-          ? await approve.mutateAsync({ actionIds: [pending.actionId] })
-          : await reject.mutateAsync({ actionIds: [pending.actionId] });
-      const outcome = result.results[0]?.status ?? (kind === "approve" ? "applied" : "rejected");
-      if (outcome === "failed") toast.error(result.results[0]?.statusReason ?? "It failed");
-      else toast.success(kind === "approve" ? "Approved" : "Rejected");
-      await status.refetch();
-    } catch (error) {
-      toast.error(errorMessage(error));
-    }
-  }
-
-  return (
-    <div
-      className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm"
-      data-testid="assistant-pending"
-      data-status={state}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">{state === "pending" ? "Waiting for approval" : state}</Badge>
-        <span className="font-medium">{pending.operation}</span>
-      </div>
-      {action?.reason && <p className="mt-1 text-muted-foreground">{action.reason}</p>}
-      {action?.preview?.length ? (
-        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-          {action.preview.slice(0, 5).map((p) => (
-            <li key={`${p.object}:${p.id}`}>
-              {p.action} {p.object} {p.id}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {state === "pending" && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {canApprove ? (
-            <>
-              <Button size="sm" onClick={() => decide("approve")} disabled={busy}>
-                <CheckIcon />
-                Approve
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => decide("reject")} disabled={busy}>
-                <XIcon />
-                Reject
-              </Button>
-            </>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              Someone who can approve changes will review it.
-            </span>
-          )}
-          <Button size="sm" variant="ghost" asChild>
-            <Link to="/approvals" search={{ set: pending.changeSetId }}>
-              Open in Approvals
-            </Link>
-          </Button>
-        </div>
-      )}
-    </div>
-  );
 }
 
 /** automation.test's report, short: what the automation would do. */
@@ -136,13 +67,29 @@ function TestReport({ output }: { output: unknown }) {
   );
 }
 
-function ToolItem({
-  item,
-  canApprove,
-}: {
-  item: Extract<TranscriptItem, { kind: "tool" }>;
-  canApprove: boolean;
-}) {
+/** Tools that make a card: the card is what the person sees, so their row is hidden. */
+const CARD_TOOLS = new Set(["show_card", "a2ui_produce"]);
+
+/** What cards in the chat reach: the router, the thread and the page the person is on. */
+function ChatCardHost({ canApprove, children }: { canApprove: boolean; children: ReactNode }) {
+  const router = useRouter();
+  const client = useQueryClient();
+  const { id, send } = useThread();
+  const { pageContext } = useAssistant();
+  const host = useMemo(
+    () => ({
+      canApprove,
+      threadId: id,
+      navigate: (href: string) => void router.navigate({ href }),
+      reply: (text: string) => void send(text, pageContext()),
+      refresh: () => void invalidateOps(client, ""),
+    }),
+    [canApprove, id, router, send, pageContext, client],
+  );
+  return <CardHostContext.Provider value={host}>{children}</CardHostContext.Provider>;
+}
+
+function ToolItem({ item }: { item: Extract<TranscriptItem, { kind: "tool" }> }) {
   const [open, setOpen] = useState(false);
   const done = item.output !== undefined;
   return (
@@ -170,7 +117,9 @@ function ToolItem({
           {JSON.stringify({ input: item.input, output: item.output }, null, 2)}
         </pre>
       )}
-      {item.pending && <PendingCard pending={item.pending} canApprove={canApprove} />}
+      {item.pending && (
+        <ApprovalCard changeSetId={item.pending.changeSetId} actionIds={[item.pending.actionId]} />
+      )}
       {item.tool === "automation_test" && done && !item.isError && (
         <TestReport output={item.output} />
       )}
@@ -257,6 +206,7 @@ export function Transcript({
 }) {
   let lastDay = "";
   return (
+    <ChatCardHost canApprove={canApprove}>
     <ol className="space-y-4" aria-live="polite" data-testid="assistant-transcript">
       {before && <li>{before}</li>}
       {items.map((item, index) => {
@@ -305,9 +255,18 @@ export function Transcript({
             );
             break;
           case "tool":
+            row =
+              CARD_TOOLS.has(item.tool) && !item.isError ? null : (
+                <li {...seqAttr}>
+                  <ToolItem item={item} />
+                </li>
+              );
+            break;
+          case "card":
             row = (
-              <li {...seqAttr}>
-                <ToolItem item={item} canApprove={canApprove} />
+              <li className="group/msg" data-testid="assistant-card" {...seqAttr}>
+                <Card part={item.part} />
+                <Meta at={item.at} seq={item.seq} onDelete={onDelete} label={`${name}'s card`} />
               </li>
             );
             break;
@@ -336,6 +295,7 @@ export function Transcript({
         </li>
       )}
     </ol>
+    </ChatCardHost>
   );
 }
 

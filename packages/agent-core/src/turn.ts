@@ -28,7 +28,13 @@ export interface TurnModel {
 
 /** A tool the model may call. */
 export interface TurnTool extends ToolDefinition {
-  call(args: Record<string, unknown>): Promise<{ text: string; isError: boolean }>;
+  /**
+   * `text` is the result. `modelText`, when set, is what the model reads instead: a card's result
+   * holds the whole card for the reader, and the model needs only its text fallback.
+   */
+  call(
+    args: Record<string, unknown>,
+  ): Promise<{ text: string; isError: boolean; modelText?: string }>;
 }
 
 /** What a turn emits, in order. `X` is what the host adds to a tool result (e.g. a pending approval). */
@@ -56,7 +62,7 @@ export interface TurnInput<X extends object = Record<never, never>> {
   tools: readonly TurnTool[];
   emit: (event: TurnEvent<X>) => void;
   /** Extra fields for a tool-result event, from the parsed output. */
-  describeResult?: (output: unknown, isError: boolean) => X | undefined;
+  describeResult?: (output: unknown, isError: boolean) => Partial<X> | undefined;
   /** Model steps per turn (each step may call tools). */
   maxSteps?: number;
   signal?: AbortSignal;
@@ -106,7 +112,7 @@ function toolSet<X extends object>(input: TurnInput<X>, attempt: { emitted: bool
             : {};
         attempt.emitted = true;
         input.emit({ type: "tool-call", id: options.toolCallId, tool: t.name, input: callArgs });
-        let result: { text: string; isError: boolean };
+        let result: Awaited<ReturnType<TurnTool["call"]>>;
         try {
           result = await t.call(callArgs);
         } catch (error) {
@@ -125,10 +131,11 @@ function toolSet<X extends object>(input: TurnInput<X>, attempt: { emitted: bool
           isError: result.isError,
           ...(extra ?? {}),
         } as TurnEvent<X>);
+        const said = result.modelText ?? result.text;
         const text =
-          result.text.length > TOOL_RESULT_MAX_CHARS
-            ? `${result.text.slice(0, TOOL_RESULT_MAX_CHARS)}… (cut: ${result.text.length} characters; ask for less)`
-            : result.text;
+          said.length > TOOL_RESULT_MAX_CHARS
+            ? `${said.slice(0, TOOL_RESULT_MAX_CHARS)}… (cut: ${said.length} characters; ask for less)`
+            : said;
         return result.isError ? `ERROR: ${text}` : text;
       },
     });

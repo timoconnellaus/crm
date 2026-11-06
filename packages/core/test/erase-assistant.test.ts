@@ -133,6 +133,9 @@ function memoryStore(): AssistantThreadStore & {
     async search() {
       return [];
     },
+    async postCard() {
+      return { seq: 0 };
+    },
     async deleteMessage() {
       return { deleted: [] };
     },

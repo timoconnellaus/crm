@@ -143,7 +143,7 @@ const divider = define({
   since: 1,
   description: "A line between parts of a card",
   props: z.object({}),
-  fallback: () => "",
+  fallback: () => "---",
 });
 
 const keyValue = define({
@@ -1225,9 +1225,74 @@ export function componentDefinition(type: string): ComponentDefinition | undefin
   return BY_TYPE.get(type);
 }
 
-/** The catalogue as the model sees it: one line per component it may send. */
+/** The catalogue in one line per component, without props (for people and logs). */
 export function catalogueSummary(options: { includeHostOnly?: boolean } = {}): string {
   return CATALOGUE.filter((c) => options.includeHostOnly || !("hostOnly" in c && c.hostOnly))
     .map((c) => `- ${c.type}: ${c.description}`)
     .join("\n");
+}
+
+// --- The catalogue as the model reads it -----------------------------------------------------
+
+type JsonSchema = {
+  type?: string | string[];
+  properties?: Record<string, JsonSchema>;
+  required?: string[];
+  items?: JsonSchema;
+  anyOf?: JsonSchema[];
+  oneOf?: JsonSchema[];
+  enum?: unknown[];
+  const?: unknown;
+  additionalProperties?: JsonSchema | boolean;
+};
+
+/** A schema as a short shape: `{title, tasks:[{id, title, dueLabel?}], viewAll?}`. */
+function shape(schema: JsonSchema, depth = 0): string {
+  const branches = schema.anyOf ?? schema.oneOf;
+  if (branches?.some((b) => b.properties?.kind)) return "Action";
+  if (branches) return branches.map((b) => shape(b, depth)).join("|");
+  if (schema.enum) return schema.enum.join("|");
+  if (schema.const !== undefined) return String(schema.const);
+  if (schema.type === "array") {
+    return `[${schema.items ? shape(schema.items, depth + 1) : "any"}]`;
+  }
+  if (schema.type === "object" && schema.properties) {
+    const keys = Object.keys(schema.properties);
+    if (keys.includes("object") && keys.includes("id") && keys.includes("label")) return "Record";
+    if (depth > 3) return "{…}";
+    const fields = Object.entries(schema.properties).map(([key, value]) => {
+      const optional = schema.required?.includes(key) ? "" : "?";
+      return `${key}${optional}:${shape(value, depth + 1)}`;
+    });
+    return `{${fields.join(", ")}}`;
+  }
+  if (schema.type === "object") return "{…}";
+  if (schema.type === "integer") return "number";
+  return typeof schema.type === "string" ? schema.type : "any";
+}
+
+/**
+ * What the model reads to write a card: the document's form, then each component it may send with
+ * its props. Deterministic, because it sits in the cached prefix (ADR 0341).
+ */
+export function catalogueGuide(): string {
+  const lines = CATALOGUE.filter((c) => !("hostOnly" in c && c.hostOnly)).map((c) => {
+    const { children: _children, ...fields } =
+      (z.toJSONSchema(c.props, { io: "input", unrepresentable: "any" }) as JsonSchema).properties ??
+      {};
+    const props = shape({
+      type: "object",
+      properties: fields,
+      required: (z.toJSONSchema(c.props, { io: "input", unrepresentable: "any" }) as JsonSchema)
+        .required ?? [],
+    });
+    return `- ${c.type} ${"container" in c && c.container ? `${props} + children:[component]` : props}: ${c.description}`;
+  });
+  return [
+    `A card is { "a2ui": ${A2UI_CATALOGUE_VERSION}, "root": component }, and a component is { "type": name, ...props }.`,
+    'Action: { kind: "operation", label, operation, input, confirm?, done? } | { kind: "open", label, href } | { kind: "reply", label, text }.',
+    "Record: { object, id, label, subtitle? }. Links are paths such as /people/per_… or https URLs.",
+    "Components:",
+    ...lines,
+  ].join("\n");
 }

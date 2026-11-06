@@ -13,8 +13,10 @@
 // Writes to D1 go only through operations: the turn's tool calls, `thread.open` once, and one
 // `thread.finishTurn` per turn (unread count, preview, and the records it referenced, for erase).
 // No alarms yet: compaction (W2) and agent reminders will add them.
+import type { A2uiPart } from "@relationship-os/agent-a2ui";
 import {
   assembleContext,
+  attachCards,
   messagesFromResponse,
   messageText,
   type PendingLine,
@@ -30,7 +32,7 @@ import {
   type AssistantContext,
   type AssistantEvent,
   type AssistantEventInput,
-  type AssistantPending,
+  type AssistantResultExtras,
   type AssistantThreadState,
   type AssistantThreadStore,
   assistantContextSchema,
@@ -59,6 +61,7 @@ import {
   type ThreadServerFrame,
   type TranscriptItem,
   transcriptFromThread,
+  withCardText,
 } from "@relationship-os/core";
 import { createCrmDb } from "@relationship-os/db";
 import { Agent, type Connection, type ConnectionContext, type WSMessage } from "agents";
@@ -569,6 +572,52 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
     return running;
   }
 
+  /**
+   * Posts a card outside a turn (ADR 0346): a saved producer run by a routine or an app button.
+   * It waits for a running turn, is stored with its text fallback, and is indexed for erase.
+   */
+  async postCard(userId: string, part: A2uiPart): Promise<{ seq: number }> {
+    this.#assertOwner(userId);
+    await this.#running?.done;
+    const store = this.#messages;
+    const turn =
+      Math.max(
+        store.lastTurn(),
+        Number(
+          this.ctx.storage.sql
+            .exec<{ turn: number | null }>("SELECT MAX(turn) AS turn FROM thread_turns")
+            .toArray()[0]?.turn ?? 0,
+        ),
+      ) + 1;
+    const now = new Date().toISOString();
+    const [message] = store.append([
+      { turn, role: "assistant", via: "routine", parts: [part], createdAt: now },
+    ]);
+    this.ctx.storage.sql.exec(
+      "INSERT INTO thread_turns (turn, status, started_at, finished_at) VALUES (?, 'done', ?, ?)",
+      turn,
+      now,
+      now,
+    );
+    if (this.#anyoneWatching()) this.#setMeta("last_seen_seq", String(store.lastSeq()));
+    const unread = this.#unread();
+    const user = await this.#actingUser(userId);
+    const db = createCrmDb(this.#env.DB);
+    await invokeByName(
+      "thread.finishTurn",
+      {
+        id: await this.#threadId(user),
+        preview: part.fallback,
+        unread,
+        refs: await conversationRefs([part]),
+      },
+      { actor: "human", user, origin: { surface: "ui" }, db },
+    );
+    this.#broadcast({ type: "appended" });
+    this.#broadcast({ type: "unread", unread, lastSeenSeq: this.#lastSeen() });
+    return { seq: message?.seq ?? store.lastSeq() };
+  }
+
   #emit(input: AssistantEventInput) {
     const running = this.#running;
     if (!running) return;
@@ -650,6 +699,9 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
         throw new ThreadError(403, "The assistant cannot delete messages");
       },
       markSeen: async () => ({ unread: this.#unread(), lastSeenSeq: this.#lastSeen() }),
+      postCard: async () => {
+        throw new ThreadError(403, "A turn's cards come from its tool results");
+      },
       scrub: async (_userId, scrub) => {
         await this.scrub(scrub);
       },
@@ -745,16 +797,23 @@ export class AssistantAgent extends Agent<Cloudflare.Env> {
         // The user message is kept exactly as it is sent, tail and all, so history replays byte
         // for byte on the next turn.
         store.replace(running.userSeq, assembled.userMessage.parts);
-        const result = await runTurn<{ pending: AssistantPending }>({
+        const cards = new Map<string, A2uiPart>();
+        const result = await runTurn<AssistantResultExtras>({
           models: chatModels,
           system: assembled.system,
           messages: assembled.messages,
-          tools: mcp.tools,
-          emit: (event) => this.#emit(event as AssistantEventInput),
+          tools: withCardText(mcp.tools),
+          emit: (event) => {
+            if (event.type === "tool-result" && event.card) cards.set(event.id, event.card);
+            this.#emit(event as AssistantEventInput);
+          },
           describeResult: describeAssistantResult,
           signal: running.abort.signal,
         });
-        newMessages = messagesFromResponse(running.turn, "text", result.response);
+        newMessages = attachCards(
+          messagesFromResponse(running.turn, "text", result.response),
+          cards,
+        );
         status = result.status;
         error = result.error ?? null;
         model = result.model ?? null;

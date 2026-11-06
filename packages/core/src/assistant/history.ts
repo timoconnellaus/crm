@@ -78,7 +78,7 @@ function toolResultView(output: unknown): { output: unknown; isError: boolean } 
 
 /**
  * The thread as the UI shows it: the person's words, the assistant's text (one item per reply),
- * tool calls with their results and any pending change. Each item carries the seq of its first
+ * tool calls with their results and any pending change, and cards. Each item carries the seq of its first
  * stored message, so it can be deleted or jumped to.
  */
 export function transcriptFromThread(messages: readonly ThreadMessage[]): TranscriptItem[] {
@@ -98,7 +98,9 @@ export function transcriptFromThread(messages: readonly ThreadMessage[]): Transc
       });
     } else if (message.role === "assistant") {
       for (const part of message.parts) {
-        if (part.type === "text" && part.text.trim()) {
+        if (part.type === "a2ui") {
+          items.push({ kind: "card", turn, seq, at, part });
+        } else if (part.type === "text" && part.text.trim()) {
           const last = items[items.length - 1];
           if (last?.kind === "assistant" && last.turn === turn) last.text += part.text;
           else items.push({ kind: "assistant", turn, seq, at, text: part.text });
@@ -118,6 +120,7 @@ export function transcriptFromThread(messages: readonly ThreadMessage[]): Transc
       }
     } else if (message.role === "tool") {
       for (const part of message.parts) {
+        if (part.type === "a2ui") items.push({ kind: "card", turn, seq, at, part });
         if (part.type !== "tool-result") continue;
         const item = tools.get(part.toolCallId);
         if (!item) continue;

@@ -2,7 +2,7 @@
 // sits next to the thread's single writer (a Durable Object's SQLite), so it is synchronous.
 // `SqliteMessageStore` works over any SQLite with FTS5 that has the Durable Object `exec` shape;
 // `MemoryMessageStore` is for tests and tools.
-import { messageText, type NewMessage, type ThreadMessage } from "./thread.ts";
+import { type NewMessage, readableText, type ThreadMessage } from "./thread.ts";
 
 export interface ListOptions {
   /** Only messages after this seq. */
@@ -155,7 +155,7 @@ export class SqliteMessageStore implements MessageStore {
         createdAt,
       };
       if (message.role === "user" || message.role === "assistant") {
-        this.#index(stored.seq, messageText(stored));
+        this.#index(stored.seq, readableText(stored));
       }
       out.push(stored);
     }
@@ -221,7 +221,7 @@ export class SqliteMessageStore implements MessageStore {
       !message.deletedAt &&
       (message.role === "user" || message.role === "assistant")
     ) {
-      this.#index(seq, messageText(message));
+      this.#index(seq, readableText(message));
     }
   }
 
@@ -327,7 +327,7 @@ export class MemoryMessageStore implements MessageStore {
     return this.#messages
       .filter((m) => !m.deletedAt && (m.role === "user" || m.role === "assistant"))
       .filter((m) => {
-        const words = searchTerms(messageText(m));
+        const words = searchTerms(readableText(m));
         return terms.every((t) => words.some((w) => w.startsWith(t)));
       })
       .reverse()
@@ -337,7 +337,7 @@ export class MemoryMessageStore implements MessageStore {
         turn: m.turn,
         role: m.role,
         createdAt: m.createdAt,
-        text: excerpt(messageText(m), terms),
+        text: excerpt(readableText(m), terms),
       }));
   }
 

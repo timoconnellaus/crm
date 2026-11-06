@@ -187,11 +187,18 @@ export function prepareCard(
     source: options.source,
     ...(options.producer ? { producer: options.producer } : {}),
   };
-  if (result.ok) return { ...base, document: result.document, fallback: result.fallback };
+  const words = options.text?.trim();
+  if (result.ok) {
+    return {
+      ...base,
+      document: result.document,
+      fallback: result.fallback.trim() || words || NO_CARD_TEXT,
+    };
+  }
   return {
     ...base,
     document: null,
-    fallback: options.text?.trim() || NO_CARD_TEXT,
+    fallback: words || NO_CARD_TEXT,
     problems: result.problems,
   };
 }

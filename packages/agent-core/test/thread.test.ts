@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
+import type { A2uiPart } from "@relationship-os/agent-a2ui";
 import {
   addPending,
+  attachCards,
   excerpt,
   ftsQuery,
   MemoryMessageStore,
   markSeen,
+  messageText,
   pendingFromMessage,
   pendingTailBlock,
+  readableText,
   removePending,
   runTurn,
   type ThreadMessage,
@@ -179,5 +183,76 @@ describe("the turn loop", () => {
     });
     expect(result.status).toBe("error");
     expect(JSON.stringify(result.response)).toContain("This answer failed");
+  });
+});
+
+describe("cards in the thread (ADR 0346)", () => {
+  const card: A2uiPart = {
+    type: "a2ui",
+    source: "model",
+    document: { a2ui: 1, root: { type: "heading", text: "Your tasks" } },
+    fallback: "1. Call Ada",
+  };
+  const base = { seq: 1, turn: 1, via: "text" as const, createdAt: "2026-11-06T00:00:00Z" };
+
+  it("sends a posted card to the model as its fallback, so it can say 'the first task'", () => {
+    const message: ThreadMessage = { ...base, role: "assistant", parts: [card] };
+    expect(toModelMessage(message)).toEqual({
+      role: "assistant",
+      content: [{ type: "text", text: "1. Call Ada" }],
+    });
+  });
+
+  it("does not repeat a tool's card: the model read it in the tool result", () => {
+    const message: ThreadMessage = {
+      ...base,
+      role: "tool",
+      parts: [
+        {
+          type: "tool-result",
+          toolCallId: "c1",
+          toolName: "show_card",
+          output: { type: "text", value: "shown" },
+        },
+        card,
+      ],
+    };
+    const sent = toModelMessage(message);
+    expect(sent?.content).toHaveLength(1);
+    expect(JSON.stringify(sent)).not.toContain("Call Ada");
+  });
+
+  it("indexes a card's fallback, so search finds it", () => {
+    const store = new MemoryMessageStore();
+    store.append([{ turn: 1, role: "assistant", via: "routine", parts: [card] }]);
+    expect(store.search("Ada", 5).map((h) => h.text)).toEqual(["1. Call Ada"]);
+  });
+
+  it("counts a card as something to read", () => {
+    const stored = (role: ThreadMessage["role"]): ThreadMessage => ({
+      ...base,
+      role,
+      parts: [card],
+    });
+    expect(unreadCount([stored("assistant")], 0)).toBe(1);
+    expect(unreadCount([stored("tool")], 0)).toBe(1);
+    expect(readableText(stored("assistant"))).toBe("1. Call Ada");
+    expect(messageText(stored("assistant"))).toBe("");
+  });
+
+  it("puts each card beside the tool result that made it", () => {
+    const result = (id: string) => ({
+      type: "tool-result" as const,
+      toolCallId: id,
+      toolName: "show_card",
+      output: {},
+    });
+    const messages = [
+      { turn: 1, role: "assistant" as const, via: "text" as const, parts: [] },
+      { turn: 1, role: "tool" as const, via: "text" as const, parts: [result("a"), result("b")] },
+    ];
+    const out = attachCards(messages, new Map([["a", card]]));
+    expect(out[1]?.parts.map((p) => p.type)).toEqual(["tool-result", "a2ui", "tool-result"]);
+    expect(attachCards(messages, new Map())).toEqual(messages);
   });
 });
