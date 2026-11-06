@@ -14,8 +14,10 @@ import { fileURLToPath } from "node:url";
 // queue consumer, rails) took it to 4,221 KiB, and stage 7a's AI SDK adds ~1.1 MB. The compiler
 // check below is what the budget is really for, and it is unchanged. Raised to 5,632 KiB
 // (2026-11-05): stage 6b (run-as, integration-event triggers, the outbox retry and notification
-// delivery) on top of 7a and 8 took it to 5,124 KiB.
-const MAIN_BUDGET_KIB = 5_632;
+// delivery) on top of 7a and 8 took it to 5,124 KiB. Raised to 6,144 KiB (2026-11-06): stage 15's
+// assignment rules, stage 16's duplicates and stage 17's A2UI catalogue, which each fit alone,
+// took it to 5,741 KiB together. No React or compiler came with them.
+const MAIN_BUDGET_KIB = 6_144;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
