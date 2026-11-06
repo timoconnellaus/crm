@@ -8,4 +8,5 @@ Part of the assistant packages described in
 rest of the repository. It may import only other `@relationship-os/agent-*` packages, `zod`, `ai`,
 `agents` and React (as a peer); `pnpm lint` checks this.
 
-Status: a placeholder. Plugins arrive with stage 17, W7.
+A host declares its item kinds with `createKindRegistry` and supplies the storage; the CRM binding is
+`packages/core/src/plugins/`.

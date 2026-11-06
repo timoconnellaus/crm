@@ -1,7 +1,12 @@
-// @relationship-os/agent-plugins (ADR 0347, ADR 0350): assistant plugins. The `plugin.json`
-// schema, Agent Plugins import, fingerprinting, the three-way diff, the merge-proposal protocol and
-// scope resolution arrive in stage 17's W7. Until then this is the package's home.
-
-/** The scopes a plugin can be installed in. */
-export const PLUGIN_SCOPES = ["personal", "team", "org"] as const;
-export type PluginScope = (typeof PLUGIN_SCOPES)[number];
+// Assistant plugins (ADR 0347): the `plugin.json` schema, the open Agent Plugins format, fingerprints,
+// the three-way diff, the merge-proposal protocol and scope resolution. No CRM code: a host declares
+// its item kinds and supplies the storage.
+export * from "./agent-format.ts";
+export * from "./diff.ts";
+export * from "./fingerprint.ts";
+export * from "./kinds.ts";
+export * from "./manifest.ts";
+export * from "./marketplace.ts";
+export * from "./merge.ts";
+export * from "./scope.ts";
+export * from "./update.ts";
