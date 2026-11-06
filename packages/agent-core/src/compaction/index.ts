@@ -15,3 +15,4 @@ export {
   SESSION_END_GAP_SECONDS,
 } from "./types.ts";
 export * from "./usage.ts";
+export * from "./thread.ts";
