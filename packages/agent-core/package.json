@@ -1,12 +1,13 @@
 {
   "name": "@relationship-os/agent-core",
   "version": "0.0.0",
-  "description": "One long-lived assistant thread: message store, context assembly, pending lines, unread state, the turn loop and the channel seam.",
+  "description": "General agent machinery (ADR 0350): one long-lived assistant thread (message store, context assembly, pending lines, unread state, the turn loop, the channel seam) and the compaction maths. Imports nothing from the CRM.",
   "license": "MIT",
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./compaction": "./src/compaction/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
