@@ -1,0 +1,25 @@
+{
+  "name": "@relationship-os/agent-core",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "description": "General agent machinery (ADR 0350). Imports nothing from the CRM.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./compaction": "./src/compaction/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.5.1",
+    "@relationship-os/config": "workspace:*",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
