@@ -49,3 +49,14 @@ be lifted out. The rest of the repository is FSL-1.1-ALv2 (ADR 0190).
   Publishing is out of scope for this stage.
 - **FSL for the packages too.** Rejected: the user chose MIT for reuse.
 - **A written rule without a check.** Rejected: see "Why".
+
+## Amendment, 2026-11-06 (as built in stage 17 wave 1)
+The four packages exist, each `"license": "MIT"`, `"private": true`, with a `LICENSE` and a README;
+`agent-core` has real code and the other three are placeholders with a test. The check is two
+parts: a Biome `noRestrictedImports` override for `packages/agent-*/**` (any `@relationship-os/*`
+except `agent-*` and the shared config), and `scripts/check-agent-imports.mjs`, which reads each
+package's dependencies (and its licence) and scans every source file for static, dynamic,
+`export … from` and `require` specifiers and relative paths that leave the package. Test files may
+also import `vitest` and the package's own non-CRM dev dependencies. `pnpm lint` runs both, plus
+`scripts/check-agent-imports.test.mjs`, which plants forbidden imports in a temporary tree and
+expects the check to fail. `NOTICE` and the header of the root `LICENSE` name the MIT directories.

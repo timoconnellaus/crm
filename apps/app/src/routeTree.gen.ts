@@ -51,13 +51,13 @@ import { Route as AppSettingsStorageRouteImport } from './routes/_app/settings/s
 import { Route as AppSettingsSupportAccessRouteImport } from './routes/_app/settings/support-access'
 import { Route as AppSettingsUpdatesRouteImport } from './routes/_app/settings/updates'
 import { Route as AppSettingsUsersRouteImport } from './routes/_app/settings/users'
+import { Route as ApiAssistantThreadRouteImport } from './routes/api/assistant/thread'
 import { Route as ApiAssistantTurnRouteImport } from './routes/api/assistant/turn'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppXObjectIndexRouteImport } from './routes/_app/x/$object/index'
 import { Route as AppXObjectIdRouteImport } from './routes/_app/x/$object/$id'
-import { Route as ApiAssistantConversationsIdRouteImport } from './routes/api/assistant/conversations/$id'
-import { Route as ApiAssistantConversationsIdStopRouteImport } from './routes/api/assistant/conversations/$id.stop'
-import { Route as ApiAssistantConversationsIdStreamRouteImport } from './routes/api/assistant/conversations/$id.stream'
+import { Route as ApiAssistantThreadStopRouteImport } from './routes/api/assistant/thread.stop'
+import { Route as ApiAssistantThreadStreamRouteImport } from './routes/api/assistant/thread.stream'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -274,6 +274,11 @@ const AppSettingsUsersRoute = AppSettingsUsersRouteImport.update({
   path: '/settings/users',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiAssistantThreadRoute = ApiAssistantThreadRouteImport.update({
+  id: '/api/assistant/thread',
+  path: '/api/assistant/thread',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAssistantTurnRoute = ApiAssistantTurnRouteImport.update({
   id: '/api/assistant/turn',
   path: '/api/assistant/turn',
@@ -294,23 +299,16 @@ const AppXObjectIdRoute = AppXObjectIdRouteImport.update({
   path: '/x/$object/$id',
   getParentRoute: () => AppRoute,
 } as any)
-const ApiAssistantConversationsIdRoute =
-  ApiAssistantConversationsIdRouteImport.update({
-    id: '/api/assistant/conversations/$id',
-    path: '/api/assistant/conversations/$id',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiAssistantConversationsIdStopRoute =
-  ApiAssistantConversationsIdStopRouteImport.update({
-    id: '/stop',
-    path: '/stop',
-    getParentRoute: () => ApiAssistantConversationsIdRoute,
-  } as any)
-const ApiAssistantConversationsIdStreamRoute =
-  ApiAssistantConversationsIdStreamRouteImport.update({
+const ApiAssistantThreadStopRoute = ApiAssistantThreadStopRouteImport.update({
+  id: '/stop',
+  path: '/stop',
+  getParentRoute: () => ApiAssistantThreadRoute,
+} as any)
+const ApiAssistantThreadStreamRoute =
+  ApiAssistantThreadStreamRouteImport.update({
     id: '/stream',
     path: '/stream',
-    getParentRoute: () => ApiAssistantConversationsIdRoute,
+    getParentRoute: () => ApiAssistantThreadRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -350,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
+  '/api/assistant/thread': typeof ApiAssistantThreadRouteWithChildren
   '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/automations/': typeof AppAutomationsIndexRoute
@@ -358,10 +357,9 @@ export interface FileRoutesByFullPath {
   '/people/': typeof AppPeopleIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/x/$object/$id': typeof AppXObjectIdRoute
-  '/api/assistant/conversations/$id': typeof ApiAssistantConversationsIdRouteWithChildren
+  '/api/assistant/thread/stop': typeof ApiAssistantThreadStopRoute
+  '/api/assistant/thread/stream': typeof ApiAssistantThreadStreamRoute
   '/x/$object/': typeof AppXObjectIndexRoute
-  '/api/assistant/conversations/$id/stop': typeof ApiAssistantConversationsIdStopRoute
-  '/api/assistant/conversations/$id/stream': typeof ApiAssistantConversationsIdStreamRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
@@ -400,6 +398,7 @@ export interface FileRoutesByTo {
   '/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/settings/updates': typeof AppSettingsUpdatesRoute
   '/settings/users': typeof AppSettingsUsersRoute
+  '/api/assistant/thread': typeof ApiAssistantThreadRouteWithChildren
   '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/automations': typeof AppAutomationsIndexRoute
@@ -408,10 +407,9 @@ export interface FileRoutesByTo {
   '/people': typeof AppPeopleIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/x/$object/$id': typeof AppXObjectIdRoute
-  '/api/assistant/conversations/$id': typeof ApiAssistantConversationsIdRouteWithChildren
+  '/api/assistant/thread/stop': typeof ApiAssistantThreadStopRoute
+  '/api/assistant/thread/stream': typeof ApiAssistantThreadStreamRoute
   '/x/$object': typeof AppXObjectIndexRoute
-  '/api/assistant/conversations/$id/stop': typeof ApiAssistantConversationsIdStopRoute
-  '/api/assistant/conversations/$id/stream': typeof ApiAssistantConversationsIdStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -452,6 +450,7 @@ export interface FileRoutesById {
   '/_app/settings/support-access': typeof AppSettingsSupportAccessRoute
   '/_app/settings/updates': typeof AppSettingsUpdatesRoute
   '/_app/settings/users': typeof AppSettingsUsersRoute
+  '/api/assistant/thread': typeof ApiAssistantThreadRouteWithChildren
   '/api/assistant/turn': typeof ApiAssistantTurnRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/automations/': typeof AppAutomationsIndexRoute
@@ -460,10 +459,9 @@ export interface FileRoutesById {
   '/_app/people/': typeof AppPeopleIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/x/$object/$id': typeof AppXObjectIdRoute
-  '/api/assistant/conversations/$id': typeof ApiAssistantConversationsIdRouteWithChildren
+  '/api/assistant/thread/stop': typeof ApiAssistantThreadStopRoute
+  '/api/assistant/thread/stream': typeof ApiAssistantThreadStreamRoute
   '/_app/x/$object/': typeof AppXObjectIndexRoute
-  '/api/assistant/conversations/$id/stop': typeof ApiAssistantConversationsIdStopRoute
-  '/api/assistant/conversations/$id/stream': typeof ApiAssistantConversationsIdStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -504,6 +502,7 @@ export interface FileRouteTypes {
     | '/settings/support-access'
     | '/settings/updates'
     | '/settings/users'
+    | '/api/assistant/thread'
     | '/api/assistant/turn'
     | '/api/auth/$'
     | '/automations/'
@@ -512,10 +511,9 @@ export interface FileRouteTypes {
     | '/people/'
     | '/settings/'
     | '/x/$object/$id'
-    | '/api/assistant/conversations/$id'
+    | '/api/assistant/thread/stop'
+    | '/api/assistant/thread/stream'
     | '/x/$object/'
-    | '/api/assistant/conversations/$id/stop'
-    | '/api/assistant/conversations/$id/stream'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/sign-in'
@@ -554,6 +552,7 @@ export interface FileRouteTypes {
     | '/settings/support-access'
     | '/settings/updates'
     | '/settings/users'
+    | '/api/assistant/thread'
     | '/api/assistant/turn'
     | '/api/auth/$'
     | '/automations'
@@ -562,10 +561,9 @@ export interface FileRouteTypes {
     | '/people'
     | '/settings'
     | '/x/$object/$id'
-    | '/api/assistant/conversations/$id'
+    | '/api/assistant/thread/stop'
+    | '/api/assistant/thread/stream'
     | '/x/$object'
-    | '/api/assistant/conversations/$id/stop'
-    | '/api/assistant/conversations/$id/stream'
   id:
     | '__root__'
     | '/_app'
@@ -605,6 +603,7 @@ export interface FileRouteTypes {
     | '/_app/settings/support-access'
     | '/_app/settings/updates'
     | '/_app/settings/users'
+    | '/api/assistant/thread'
     | '/api/assistant/turn'
     | '/api/auth/$'
     | '/_app/automations/'
@@ -613,10 +612,9 @@ export interface FileRouteTypes {
     | '/_app/people/'
     | '/_app/settings/'
     | '/_app/x/$object/$id'
-    | '/api/assistant/conversations/$id'
+    | '/api/assistant/thread/stop'
+    | '/api/assistant/thread/stream'
     | '/_app/x/$object/'
-    | '/api/assistant/conversations/$id/stop'
-    | '/api/assistant/conversations/$id/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -625,9 +623,9 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   ConnectHandoffRoute: typeof ConnectHandoffRoute
   GatekeeperSplatRoute: typeof GatekeeperSplatRoute
+  ApiAssistantThreadRoute: typeof ApiAssistantThreadRouteWithChildren
   ApiAssistantTurnRoute: typeof ApiAssistantTurnRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiAssistantConversationsIdRoute: typeof ApiAssistantConversationsIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -926,6 +924,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsUsersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/assistant/thread': {
+      id: '/api/assistant/thread'
+      path: '/api/assistant/thread'
+      fullPath: '/api/assistant/thread'
+      preLoaderRoute: typeof ApiAssistantThreadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/assistant/turn': {
       id: '/api/assistant/turn'
       path: '/api/assistant/turn'
@@ -954,26 +959,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppXObjectIdRouteImport
       parentRoute: typeof AppRoute
     }
-    '/api/assistant/conversations/$id': {
-      id: '/api/assistant/conversations/$id'
-      path: '/api/assistant/conversations/$id'
-      fullPath: '/api/assistant/conversations/$id'
-      preLoaderRoute: typeof ApiAssistantConversationsIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/assistant/conversations/$id/stop': {
-      id: '/api/assistant/conversations/$id/stop'
+    '/api/assistant/thread/stop': {
+      id: '/api/assistant/thread/stop'
       path: '/stop'
-      fullPath: '/api/assistant/conversations/$id/stop'
-      preLoaderRoute: typeof ApiAssistantConversationsIdStopRouteImport
-      parentRoute: typeof ApiAssistantConversationsIdRoute
+      fullPath: '/api/assistant/thread/stop'
+      preLoaderRoute: typeof ApiAssistantThreadStopRouteImport
+      parentRoute: typeof ApiAssistantThreadRoute
     }
-    '/api/assistant/conversations/$id/stream': {
-      id: '/api/assistant/conversations/$id/stream'
+    '/api/assistant/thread/stream': {
+      id: '/api/assistant/thread/stream'
       path: '/stream'
-      fullPath: '/api/assistant/conversations/$id/stream'
-      preLoaderRoute: typeof ApiAssistantConversationsIdStreamRouteImport
-      parentRoute: typeof ApiAssistantConversationsIdRoute
+      fullPath: '/api/assistant/thread/stream'
+      preLoaderRoute: typeof ApiAssistantThreadStreamRouteImport
+      parentRoute: typeof ApiAssistantThreadRoute
     }
   }
 }
@@ -1064,22 +1062,18 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
-interface ApiAssistantConversationsIdRouteChildren {
-  ApiAssistantConversationsIdStopRoute: typeof ApiAssistantConversationsIdStopRoute
-  ApiAssistantConversationsIdStreamRoute: typeof ApiAssistantConversationsIdStreamRoute
+interface ApiAssistantThreadRouteChildren {
+  ApiAssistantThreadStopRoute: typeof ApiAssistantThreadStopRoute
+  ApiAssistantThreadStreamRoute: typeof ApiAssistantThreadStreamRoute
 }
 
-const ApiAssistantConversationsIdRouteChildren: ApiAssistantConversationsIdRouteChildren =
-  {
-    ApiAssistantConversationsIdStopRoute: ApiAssistantConversationsIdStopRoute,
-    ApiAssistantConversationsIdStreamRoute:
-      ApiAssistantConversationsIdStreamRoute,
-  }
+const ApiAssistantThreadRouteChildren: ApiAssistantThreadRouteChildren = {
+  ApiAssistantThreadStopRoute: ApiAssistantThreadStopRoute,
+  ApiAssistantThreadStreamRoute: ApiAssistantThreadStreamRoute,
+}
 
-const ApiAssistantConversationsIdRouteWithChildren =
-  ApiAssistantConversationsIdRoute._addFileChildren(
-    ApiAssistantConversationsIdRouteChildren,
-  )
+const ApiAssistantThreadRouteWithChildren =
+  ApiAssistantThreadRoute._addFileChildren(ApiAssistantThreadRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
@@ -1087,10 +1081,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   ConnectHandoffRoute: ConnectHandoffRoute,
   GatekeeperSplatRoute: GatekeeperSplatRoute,
+  ApiAssistantThreadRoute: ApiAssistantThreadRouteWithChildren,
   ApiAssistantTurnRoute: ApiAssistantTurnRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiAssistantConversationsIdRoute:
-    ApiAssistantConversationsIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,20 +1,22 @@
-// person.erase / organisation.erase and in-app assistant conversations (ADR 0019 and ADR 0200
-// amendments, 2026-11-05): conversations are found through the ref index finishTurn writes, each
-// is scrubbed through the conversation store before the erase commits, and their list rows and the
+// person.erase / organisation.erase and assistant threads (ADR 0019 and ADR 0200 amendments,
+// 2026-11-05; ADR 0340): threads are found through the ref index thread.finishTurn writes, each is
+// scrubbed through the thread store before the erase commits, and their bookkeeping rows and the
 // subject's refs follow in the erase's batch. The store here keeps messages in memory and applies
-// the same scrubMessage the Durable Object does (apps/app/test/assistant.test.ts runs the real one).
+// the same scrubParts the Durable Object does (apps/app/test/assistant.test.ts runs the real one).
 import { env } from "cloudflare:workers";
+import type { ThreadMessage } from "@relationship-os/agent-core";
 import type { ModelMessage } from "ai";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   type ActingUser,
-  type AssistantConversationStore,
+  type AssistantThreadStore,
   type ConversationScrub,
   conversationRefs,
   ERASED,
   emailRef,
   invoke,
   scrubMessage,
+  scrubParts,
   scrubPattern,
 } from "../src/index.ts";
 import { context, createUser, unique } from "./helpers.ts";
@@ -110,59 +112,68 @@ describe("scrubbing a stored message", () => {
   });
 });
 
-/** Conversation objects in memory: stored messages per conversation, scrubbed like the DO does. */
-function memoryStore(): AssistantConversationStore & {
-  messages: Map<string, ModelMessage[]>;
-  calls: { id: string; scrub: ConversationScrub }[];
+/** Thread objects in memory: one thread per user, scrubbed like the DO does (scrubParts). */
+function memoryStore(): AssistantThreadStore & {
+  messages: Map<string, ThreadMessage[]>;
+  calls: { userId: string; scrub: ConversationScrub }[];
 } {
-  const messages = new Map<string, ModelMessage[]>();
-  const calls: { id: string; scrub: ConversationScrub }[] = [];
+  const messages = new Map<string, ThreadMessage[]>();
+  const calls: { userId: string; scrub: ConversationScrub }[] = [];
   return {
     messages,
     calls,
-    async scrub(id, scrub) {
-      calls.push({ id, scrub });
+    async scrub(userId, scrub) {
+      calls.push({ userId, scrub });
       const pattern = scrubPattern(scrub);
       messages.set(
-        id,
-        (messages.get(id) ?? []).map((m) => scrubMessage(m, pattern)),
+        userId,
+        (messages.get(userId) ?? []).map((m) => ({ ...m, parts: scrubParts(m.parts, pattern) })),
       );
+    },
+    async search() {
+      return [];
+    },
+    async deleteMessage() {
+      return { deleted: [] };
+    },
+    async markSeen() {
+      return { unread: 0, lastSeenSeq: 0 };
     },
   };
 }
 
-/** A conversation as the object would leave it after one turn: messages kept, refs indexed. */
-async function conversation(
-  store: ReturnType<typeof memoryStore>,
-  user: ActingUser,
-  text: string,
-  reply: string,
-) {
-  const started = await invoke("assistant.startConversation", { text }, context(user));
-  const messages: ModelMessage[] = [
-    { role: "user", content: text },
-    { role: "assistant", content: reply },
+const text = (t: string): ThreadMessage["parts"] => [{ type: "text", text: t }];
+
+/** A person's thread as their object would leave it after one turn: messages kept, refs indexed. */
+async function thread(store: ReturnType<typeof memoryStore>, said: string, reply: string) {
+  const user = await createUser("member");
+  const opened = await invoke("thread.open", {}, context(user));
+  const messages: ThreadMessage[] = [
+    { seq: 1, turn: 1, role: "user", via: "text", parts: text(said), createdAt: "" },
+    { seq: 2, turn: 1, role: "assistant", via: "text", parts: text(reply), createdAt: "" },
   ];
-  store.messages.set(started.id, messages);
+  store.messages.set(user.id, messages);
   await invoke(
-    "assistant.finishTurn",
-    { id: started.id, preview: reply, refs: await conversationRefs(messages) },
+    "thread.finishTurn",
+    { id: opened.id, preview: reply, unread: 1, refs: await conversationRefs(messages) },
     context(user),
   );
-  return started.id;
+  return { userId: user.id, threadId: opened.id };
 }
 
-async function refsOf(conversationId: string) {
+async function refsOf(threadId: string) {
   const { results } = await env.DB.prepare(
-    "SELECT ref FROM core_assistant_conversation_refs WHERE conversation_id = ?",
+    "SELECT ref FROM core_assistant_thread_refs WHERE thread_id = ?",
   )
-    .bind(conversationId)
+    .bind(threadId)
     .all<{ ref: string }>();
   return results.map((r) => r.ref);
 }
 
-describe("erase and assistant conversations", () => {
-  it("scrubs every conversation that referenced the person, and only those", async () => {
+const words = (m: ThreadMessage[] | undefined) => m?.map((x) => x.parts);
+
+describe("erase and assistant threads", () => {
+  it("scrubs every thread that referenced the person, and only those", async () => {
     const store = memoryStore();
     const email = `${unique("grace")}@example.com`;
     const person = await invoke(
@@ -175,59 +186,49 @@ describe("erase and assistant conversations", () => {
       },
       context(member),
     );
-    const byId = await conversation(
+    const byId = await thread(
       store,
-      member,
       `Tell me about ${person.id}`,
       "Grace Hopper is a rear admiral.",
     );
     // Only her email: found through the hashed email ref.
-    const byEmail = await conversation(store, member, `Draft a note to ${email}`, "Done.");
-    const unrelated = await conversation(store, member, "Hello", "Hi Grace!");
-    const deleted = await conversation(store, member, `About ${person.id}`, "Sure.");
-    await invoke("assistant.deleteConversation", { id: deleted }, context(member));
-    expect(await refsOf(deleted)).toEqual([]);
+    const byEmail = await thread(store, `Draft a note to ${email}`, "Done.");
+    const unrelated = await thread(store, "Hello", "Hi Grace!");
 
     const out = await invoke(
       "person.erase",
       { id: person.id },
-      context(admin, { assistantConversations: store }),
+      context(admin, { assistantThreads: store }),
     );
     expect(out.conversationsScrubbed).toBe(2);
-    expect(store.calls.map((c) => c.id).sort()).toEqual([byId, byEmail].sort());
+    expect(store.calls.map((c) => c.userId).sort()).toEqual([byId.userId, byEmail.userId].sort());
     expect(store.calls[0]?.scrub).toEqual({
       terms: expect.arrayContaining([person.id, email, "+1 555 0100 777"]),
       names: expect.arrayContaining(["Grace Hopper", "Grace", "Hopper"]),
     });
-    expect(store.messages.get(byId)).toEqual([
-      { role: "user", content: `Tell me about ${ERASED}` },
-      { role: "assistant", content: `${ERASED} is a rear admiral.` },
+    expect(words(store.messages.get(byId.userId))).toEqual([
+      text(`Tell me about ${ERASED}`),
+      text(`${ERASED} is a rear admiral.`),
     ]);
-    expect(store.messages.get(byEmail)?.[0]).toEqual({
-      role: "user",
-      content: `Draft a note to ${ERASED}`,
-    });
+    expect(words(store.messages.get(byEmail.userId))?.[0]).toEqual(
+      text(`Draft a note to ${ERASED}`),
+    );
     // Not referenced: untouched, even though it says "Grace".
-    expect(store.messages.get(unrelated)?.[1]).toEqual({ role: "assistant", content: "Hi Grace!" });
+    expect(words(store.messages.get(unrelated.userId))?.[1]).toEqual(text("Hi Grace!"));
 
-    // The list rows (title, preview) and the index follow in the erase's batch.
-    const row = await env.DB.prepare(
-      "SELECT title, preview FROM core_assistant_conversation WHERE id = ?",
-    )
-      .bind(byId)
-      .first<{ title: string; preview: string }>();
-    expect(row).toEqual({
-      title: `Tell me about ${ERASED}`,
-      preview: `${ERASED} is a rear admiral.`,
-    });
-    expect(await refsOf(byId)).toEqual([]);
-    expect(await refsOf(byEmail)).toEqual([]);
+    // The bookkeeping row (preview) and the index follow in the erase's batch.
+    const row = await env.DB.prepare("SELECT preview FROM core_assistant_thread WHERE id = ?")
+      .bind(byId.threadId)
+      .first<{ preview: string }>();
+    expect(row).toEqual({ preview: `${ERASED} is a rear admiral.` });
+    expect(await refsOf(byId.threadId)).toEqual([]);
+    expect(await refsOf(byEmail.threadId)).toEqual([]);
   });
 
-  it("refuses to erase where conversations that mention the person cannot be reached", async () => {
+  it("refuses to erase where threads that mention the person cannot be reached", async () => {
     const store = memoryStore();
     const person = await invoke("person.create", { givenName: "Kept" }, context(member));
-    await conversation(store, member, `About ${person.id}`, "Kept is fine.");
+    await thread(store, `About ${person.id}`, "Kept is fine.");
     await expect(invoke("person.erase", { id: person.id }, context(admin))).rejects.toMatchObject({
       code: "config",
     });
@@ -241,16 +242,16 @@ describe("erase and assistant conversations", () => {
     const store = memoryStore();
     const name = unique("Contoso");
     const org = await invoke("organisation.create", { name }, context(member));
-    const id = await conversation(store, member, `Open ${org.id}`, `${name} has 3 deals.`);
+    const t = await thread(store, `Open ${org.id}`, `${name} has 3 deals.`);
     const out = await invoke(
       "organisation.erase",
       { id: org.id },
-      context(admin, { assistantConversations: store }),
+      context(admin, { assistantThreads: store }),
     );
     expect(out.conversationsScrubbed).toBe(1);
-    expect(store.messages.get(id)).toEqual([
-      { role: "user", content: `Open ${ERASED}` },
-      { role: "assistant", content: `${ERASED} has 3 deals.` },
+    expect(words(store.messages.get(t.userId))).toEqual([
+      text(`Open ${ERASED}`),
+      text(`${ERASED} has 3 deals.`),
     ]);
   });
 });

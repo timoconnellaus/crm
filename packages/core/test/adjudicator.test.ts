@@ -614,7 +614,7 @@ describe("settings operations", () => {
       run: async () => ({ text: "", model: "x" }),
       roles: async () => {
         const role = { provider: "deepseek", model: "deepseek-flash" };
-        return { review: role, assistant: role } as never;
+        return { review: role, "assistant.core": role } as never;
       },
     };
     const out = await invoke("adjudicator.get", {}, context(admin, { models: same }));

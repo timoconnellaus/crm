@@ -26,6 +26,7 @@ import {
 import { MAIN_NAV, type NavItem, SETTINGS_NAV } from "#/lib/nav";
 import { useExtensionObjects } from "#/lib/schema";
 import { usePendingCount } from "./approvals/hooks.ts";
+import { useThreadUnread } from "./assistant/thread-provider.tsx";
 import { useDuplicateCount } from "./duplicates/hooks.ts";
 
 function NavLink({
@@ -111,6 +112,7 @@ export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
   const pendingCount = usePendingCount();
   const duplicateCount = useDuplicateCount();
+  const unread = useThreadUnread().unread;
   return (
     <Sidebar
       aria-label="Main navigation"
@@ -131,6 +133,14 @@ export function AppSidebar() {
                     badge={duplicateCount}
                     badgeLabel="possible duplicates to review"
                     badgeTestId="duplicates-count"
+                  />
+                ) : item.to === "/assistant" ? (
+                  <NavLink
+                    key={item.to}
+                    item={item}
+                    badge={unread}
+                    badgeLabel="unread in your chat"
+                    badgeTestId="assistant-unread-nav"
                   />
                 ) : (
                   <NavLink

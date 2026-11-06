@@ -485,6 +485,13 @@ everything the assistant did to answer it. Older messages stay searchable (`thre
 chat" in the UI (ADR 0340).
 _Avoid_: conversation (stage 7b had many per person; there is now one), session
 
+**Prefix** and **tail**
+What a turn sends the model, in two parts (ADR 0341). The prefix (instructions, tools, memory, the
+"where we left off" note, then the messages since) is byte-stable across turns so the provider's
+prompt cache keeps hitting; its hash is recorded per turn. The tail is what changes every turn
+(pending memory lines, page context, display facts, the time), sent as a `<context>` block at the
+start of the new user message and kept with that message afterwards. The person never sees it.
+
 **Thread compaction**
 Folding a thread's older messages into a short "where we left off" note, keeping the last ~10
 exchanges, when a cost model says it is cheaper, between 24k tokens and 80% of the model's window
@@ -553,8 +560,8 @@ provider + model in the model registry. Code asks for a role, never a model.
 
 **Model role registry**
 The core table (`packages/core/src/ai/roles.ts`) that resolves each model role to
-`{ provider, model, params, fallback }` through three layers: shipped defaults (every role on
-Workers AI), deploy config (`AI_MODEL_ROLES`) and admin overrides (Settings → AI, stored in
+`{ provider, model, params, fallback }` through three layers: shipped defaults (every text role on
+Workers AI, the speech roles on AssemblyAI), deploy config (`AI_MODEL_ROLES`) and admin overrides (Settings → AI, stored in
 `core_settings`, settings only). Each role declares the capabilities it needs (tool use, JSON
 output, context size, vision, embeddings); the registry rejects a model that lacks one. "JSON
 output" is met by JSON mode (`json_object`) or a JSON schema; no role sends a schema yet

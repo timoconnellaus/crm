@@ -70,3 +70,39 @@ the voice module that ADR 0349 uses. The hand-rolled object would need all of th
   needs a single writer anyway.
 - **Keep the hand-rolled object and add WebSockets and alarms ourselves.** Rejected: it rebuilds
   what the Agents SDK already ships, including the voice module.
+
+## Amendment, 2026-11-06 (as built in stage 17 wave 1)
+Built as decided, with these details and deviations:
+- **Refs table.** "The existing refs table keyed by thread" is a new table,
+  `core_assistant_thread_refs (thread_id, ref)`: the old `core_assistant_conversation_refs` has a
+  foreign key to the conversation table, so it cannot hold thread ids. Migration 0350 empties both
+  old tables; a later cleanup migration drops them.
+- **Thread id.** The object is named `user:<userId>`; the thread's id (`ath_…`, its MCP session and
+  its D1 row) comes from `thread.open` the first time the thread runs a turn.
+- **The tail is kept with the user message.** The user message is stored with its tail block as a
+  `context` part and replayed exactly as sent, so the history after the prefix is append-only and
+  byte-stable too. The person never sees the tail; search does not index it; erase scrubs it.
+- **Deleting a message.** Deleting one of the person's messages removes that message. Deleting an
+  assistant reply removes the whole reply (every assistant and tool message of its turn), so a tool
+  call never loses its result in what the model is sent. Memory lines do not exist yet (W3); the
+  pending-line slots are cleared by source seq already.
+- **Transport.** The WebSocket is `/api/assistant/socket`, routed in `src/server.ts` before
+  TanStack Start (which does not pass a 101 through), authenticated like every route, same-origin
+  only, and forwarded to the object with the user in a header only the Worker can set. The Agents
+  SDK's own protocol frames are off; frames are ours (`ThreadClientFrame`, `ThreadServerFrame`).
+  Stream resumption on reconnect is the `state` frame, which carries the running turn's events so
+  far. We do not use `AIChatAgent`: its message format and persistence would duplicate agent-core's.
+- **Unread.** Sending a message marks everything before it seen; a reply that finishes while any
+  device reports the chat on screen is seen; otherwise the browser calls `thread.markSeen` when the
+  chat comes into view. `thread.status` reads the D1 count for the badges.
+- **Operations.** Besides `thread.search`, `thread.deleteMessage` and `thread.markSeen`, the
+  binding has `thread.status` (the badge), and `thread.open` and `thread.finishTurn` (the object's
+  bookkeeping, human-only, not exposed to MCP). `assistant.turn` is still the HTTP route rather
+  than a registry operation, as before. `thread.search` is open to the assistant itself, so the
+  model can find older messages.
+- **Until compaction (W2).** The history sent is the newest whole turns within a character budget,
+  as before. The prefix hash is recorded per turn (`thread_turns.prefix_hash`) and a test asserts
+  it is stable.
+- **Evals.** `EVAL_VIA=assistant` sends every task to the eval user's single thread, so earlier
+  tasks stay in the context, as in a real person's chat. No assistant report existed before this
+  change to compare against.

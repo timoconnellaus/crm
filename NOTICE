@@ -8,6 +8,12 @@ Relationship OS is licensed under the Functional Source License, Version 1.1, AL
 (FSL-1.1-ALv2); see LICENSE. Each version converts to the Apache License, Version 2.0 on the second
 anniversary of the date it is made available.
 
+The assistant packages are the exception. packages/agent-core, packages/agent-a2ui,
+packages/agent-voice and packages/agent-plugins (every packages/agent-* directory) are licensed
+under the MIT License, copyright 2026 Tim O'Connell; each carries its own LICENSE file, which
+applies to that directory (ADR 0350). They import no other code from this repository, so they can
+be used on their own.
+
 Relicensing
 -----------
 

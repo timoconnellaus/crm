@@ -3,6 +3,12 @@
 // the page it is looking at ("On: People").
 import { MAIN_NAV, SETTINGS_NAV } from "#/lib/nav";
 
+/**
+ * The app shell header's height (Tailwind), shared by the shell header and the docked panel's
+ * header so their bottom borders meet in one line.
+ */
+export const SHELL_HEADER_HEIGHT = "min-h-14";
+
 /** Narrowest and widest the docked panel can be dragged, in px. */
 export const PANEL_MIN = 288;
 export const PANEL_MAX = 720;

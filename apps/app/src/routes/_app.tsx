@@ -10,6 +10,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@relationship-os/ui/components/sidebar";
+import { cn } from "@relationship-os/ui/lib/utils";
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { SearchIcon, SparklesIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -27,6 +28,8 @@ import {
   PANEL_ID,
   useAssistant,
 } from "../components/assistant/assistant-provider.tsx";
+import { SHELL_HEADER_HEIGHT } from "../components/assistant/dock-state.ts";
+import { ThreadProvider, useThreadUnread } from "../components/assistant/thread-provider.tsx";
 import { CommandPalette } from "../components/command-palette.tsx";
 import { NotificationBell } from "../components/notifications/notification-bell.tsx";
 import { CreateOrganisationDialog } from "../components/organisations/create-organisation-dialog.tsx";
@@ -67,28 +70,30 @@ function AppLayout() {
   return (
     <AppCommandsProvider>
       <AssistantProvider>
-        <a
-          href="#main"
-          className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
-        >
-          Skip to content
-        </a>
-        <SidebarProvider className="h-dvh overflow-hidden">
-          <AppSidebar />
-          <SidebarInset className="min-h-0 min-w-0 overflow-hidden pr-[env(safe-area-inset-right)]">
-            <SupportBanner />
-            <AppHeader />
-            <div
-              className="min-h-0 min-w-0 flex-1 overflow-y-auto [view-transition-name:page]"
-              id="main"
-              tabIndex={-1}
-            >
-              <Outlet />
-            </div>
-          </SidebarInset>
-          <AssistantPanel canApprove={user.role !== "viewer"} />
-        </SidebarProvider>
-        <AppOverlays />
+        <ThreadProvider>
+          <a
+            href="#main"
+            className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+          >
+            Skip to content
+          </a>
+          <SidebarProvider className="h-dvh overflow-hidden">
+            <AppSidebar />
+            <SidebarInset className="min-h-0 min-w-0 overflow-hidden pr-[env(safe-area-inset-right)]">
+              <SupportBanner />
+              <AppHeader />
+              <div
+                className="min-h-0 min-w-0 flex-1 overflow-y-auto [view-transition-name:page]"
+                id="main"
+                tabIndex={-1}
+              >
+                <Outlet />
+              </div>
+            </SidebarInset>
+            <AssistantPanel canApprove={user.role !== "viewer"} />
+          </SidebarProvider>
+          <AppOverlays />
+        </ThreadProvider>
       </AssistantProvider>
     </AppCommandsProvider>
   );
@@ -117,12 +122,14 @@ function useFocusOnNavigate() {
 /** Opens and closes the assistant panel (Cmd-J). */
 function AssistantButton() {
   const assistant = useAssistant();
+  const { unread } = useThreadUnread();
   return (
     <Button
       variant={assistant.open ? "secondary" : "ghost"}
       size="sm"
+      className="relative"
       onClick={() => assistant.toggle()}
-      aria-label="Ask AI"
+      aria-label={unread ? `Ask AI, ${unread} unread` : "Ask AI"}
       aria-expanded={assistant.open}
       aria-controls={assistant.open ? PANEL_ID : undefined}
       aria-keyshortcuts="Meta+J Control+J"
@@ -131,6 +138,15 @@ function AssistantButton() {
       <SparklesIcon />
       <span className="hidden @lg:inline">Ask AI</span>
       <Kbd className="hidden @lg:inline-flex">⌘J</Kbd>
+      {unread > 0 && (
+        <span
+          className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] leading-none font-medium text-primary-foreground tabular-nums"
+          data-testid="assistant-unread"
+          aria-hidden
+        >
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
     </Button>
   );
 }
@@ -162,7 +178,13 @@ function AppHeader() {
   return (
     // A size container: the header's own width (narrower beside the docked assistant), not the
     // viewport's, decides what fits.
-    <header className="@container z-10 flex min-h-14 shrink-0 items-center gap-2 border-b bg-background px-4 pt-[env(safe-area-inset-top)]">
+    <header
+      className={cn(
+        "@container z-10 flex shrink-0 items-center gap-2 border-b bg-background px-4 pt-[env(safe-area-inset-top)]",
+        SHELL_HEADER_HEIGHT,
+      )}
+      data-testid="app-header"
+    >
       <SidebarTrigger aria-label="Toggle navigation" />
       <Button
         variant="outline"

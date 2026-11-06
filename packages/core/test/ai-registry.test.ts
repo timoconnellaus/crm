@@ -11,6 +11,7 @@ import {
   createModelRunner,
   fakeModels,
   invoke,
+  isSpeechRole,
   loadAiSettings,
   MODEL_ROLES,
   ModelCapabilityError,
@@ -35,9 +36,10 @@ beforeEach(async () => {
 });
 
 describe("shipped defaults", () => {
-  it("map every role to Workers AI, never Anthropic, and pass their own checks", () => {
+  it("map every text role to Workers AI, never Anthropic, and pass their own checks", () => {
     for (const role of MODEL_ROLES) {
-      expect(SHIPPED_ROLES[role].provider).toBe("workers-ai");
+      // Voice is AssemblyAI only (ADR 0349, ADR 0351).
+      expect(SHIPPED_ROLES[role].provider).toBe(isSpeechRole(role) ? "assemblyai" : "workers-ai");
       expect(JSON.stringify(SHIPPED_ROLES[role]).toLowerCase()).not.toMatch(/anthropic|claude/);
       expect(capabilityProblems(role, SHIPPED_ROLES[role], { vectorDimensions: 384 })).toEqual([]);
       const fallback = SHIPPED_ROLES[role].fallback;
@@ -54,12 +56,12 @@ describe("capability checks", () => {
       provider: "workers-ai" as const,
       model: "@cf/qwen/qwen2.5-coder-32b-instruct",
     };
-    expect(capabilityProblems("assistant", noTools).join()).toMatch(/tool use/);
+    expect(capabilityProblems("assistant.core", noTools).join()).toMatch(/tool use/);
     const small = {
       provider: "workers-ai" as const,
       model: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
     };
-    expect(capabilityProblems("assistant", small).join()).toMatch(/24,000-token context/);
+    expect(capabilityProblems("assistant.core", small).join()).toMatch(/24,000-token context/);
     const noVision = { provider: "workers-ai" as const, model: "@cf/openai/gpt-oss-20b" };
     expect(capabilityProblems("vision", noVision).join()).toMatch(/cannot read images/);
     const chat = { provider: "workers-ai" as const, model: "@cf/openai/gpt-oss-20b" };
@@ -112,7 +114,7 @@ describe("capability checks", () => {
       invoke(
         "ai.updateRole",
         {
-          role: "assistant",
+          role: "assistant.core",
           provider: "workers-ai",
           model: "@cf/openai/gpt-oss-120b",
           fallback: { provider: "workers-ai", model: "@cf/qwen/qwen2.5-coder-32b-instruct" },
