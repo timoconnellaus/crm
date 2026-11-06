@@ -120,7 +120,7 @@ export async function loadAiSettings(db: Kysely<CoreDatabase>): Promise<AiAdminS
   try {
     const value = JSON.parse(row.value) as { roles?: unknown; byok?: unknown };
     return {
-      roles: parseRoleLayer(JSON.stringify(value.roles ?? {})),
+      roles: parseRoleLayer(JSON.stringify(value.roles ?? {}), "Settings → AI (ai_settings)"),
       byok: Array.isArray(value.byok)
         ? (value.byok.filter((p) => (PROVIDERS as readonly unknown[]).includes(p)) as ProviderId[])
         : [],

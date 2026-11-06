@@ -382,7 +382,9 @@ export class AssistantConversation extends DurableObject<AssistantEnv> {
       const user = await this.#actingUser(request.userId);
       await ensureShippedExtensions(env);
       const ai = aiContextFor(env, db);
-      const chatModels = ai.models?.chatModels ? await ai.models.chatModels("assistant") : null;
+      const chatModels = ai.models?.chatModels
+        ? await ai.models.chatModels("assistant.core")
+        : null;
       if (!chatModels?.length) {
         throw new ConversationError(
           503,

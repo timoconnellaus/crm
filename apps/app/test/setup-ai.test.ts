@@ -49,7 +49,12 @@ describe("the setup wizard's AI step", () => {
       "This deployment is set up for Workers AI in your Cloudflare account on every role, from the shipped defaults.",
     ]);
     expect(summary.problems).toEqual([]);
+    // Voice is optional (ADR 0351): off without its key, and never a readiness problem.
+    expect(summary.voice).toMatchObject({ provider: "assemblyai", ready: false });
     expect(html(await aiSettings(shipped))).toContain("Every role is ready.");
+    expect(html(await aiSettings(shipped))).toContain(
+      "Voice is off until the AssemblyAI key is set. It is optional.",
+    );
   });
 
   it("states the deepseek-flash preset from AI_MODEL_ROLES, and the missing key", async () => {
@@ -64,7 +69,17 @@ describe("the setup wizard's AI step", () => {
         provider: "deepseek",
         label: "DeepSeek",
         reason: expect.stringMatching(/^No key/),
-        roles: ["build", "assistant", "summarise", "extract", "classify", "vision", "review"],
+        roles: [
+          "build",
+          "assistant",
+          "agents",
+          "summarise",
+          "extract",
+          "classify",
+          "vision",
+          "review",
+          "dictation",
+        ],
       },
     ]);
     const markup = html(settings);
@@ -77,6 +92,13 @@ describe("the setup wizard's AI step", () => {
     // An optional secret: not in the generated Env (docs/deploying.md "Local development").
     const withKey = { ...deepseek, AI_KEY_DEEPSEEK: "sk-test" } as typeof env;
     const summary = describeAiSetup(await aiSettings(withKey));
+    expect(summary.problems).toEqual([]);
+  });
+
+  it("says voice is on once the AssemblyAI key is set", async () => {
+    const withKey = { ...shipped, AI_KEY_ASSEMBLYAI: "aai-test" } as typeof env;
+    const summary = describeAiSetup(await aiSettings(withKey));
+    expect(summary.voice).toMatchObject({ ready: true, sentence: "Voice uses AssemblyAI." });
     expect(summary.problems).toEqual([]);
   });
 

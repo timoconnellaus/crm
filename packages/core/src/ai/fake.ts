@@ -109,6 +109,12 @@ export function fakeModels(): FakeModels {
         }
         case "extract":
           return "{}";
+        case "dictation.cleanup":
+          // The stand-in only drops filler words; the real pass also fixes punctuation.
+          return prompt
+            .replace(/\b(um+|uh+|erm+|you know)\b,?\s*/gi, "")
+            .replace(/\s+/g, " ")
+            .trim();
         case "review":
           // The policy adjudicator's stand-in never approves: there is no real judgement here.
           return JSON.stringify({
@@ -124,6 +130,8 @@ export function fakeModels(): FakeModels {
       return texts.map((t) => fakeEmbed(t));
     },
     // The scripted assistant (ADR 0200): the tool loop runs end to end without a model.
-    chat: (role: ModelRole) => (role === "assistant" ? fakeAssistantModel() : undefined),
+    // The front agent and its agents share it (ADR 0351).
+    chat: (role: ModelRole) =>
+      role === "assistant.core" || role === "assistant.subagent" ? fakeAssistantModel() : undefined,
   };
 }

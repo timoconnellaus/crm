@@ -56,3 +56,26 @@ fixed "thinking off" would lose quality on models that do better with it.
 - **Force thinking off for the assistant.** Rejected by the user: some models do better with it.
 - **Speech outside the registry.** Rejected: one place to choose providers, check capabilities and
   show spend.
+
+## Amendment, 2026-11-06 (as built, stage 17 wave 1)
+- **Old name.** `assistant` is read as `assistant.core` wherever a role name is read: `AI_MODEL_ROLES`
+  (and the deploy-time check), stored admin settings until migration 0351 rewrites them, and old
+  usage rows (normalised when read rather than rewritten). Each source warns once per process.
+- **Inheritance.** Within one config layer, `assistant.subagent` and `dictation.cleanup` follow
+  `assistant.core` when the layer does not set them; `dictation.cleanup` keeps its own params
+  (thinking off). The `deepseek-flash` preset names all three.
+- **Thinking.** `params.thinking` is `false`, `true` or `low | medium | high`. DeepSeek gets its
+  switch (a level turns it on); OpenAI, OpenRouter, Google, OpenAI-compatible and custom providers
+  get `reasoning_effort` for a level; Workers AI and `true` elsewhere send nothing.
+- **Prices.** The catalogue's `price` gains optional `cacheWrite` and `cachedInput`, and a model may
+  carry `cacheLifetimeSeconds`. `modelPricing(ref)` fills unknown cache prices with the uncached
+  input price (and returns null when a model has no prices at all); `ResolvedRole.pricing` and
+  `ChatModel.pricing` carry it. Only GPT-4.1 mini lists a cached-read price so far; no model lists a
+  published lifetime yet. DeepSeek's prices are left unknown until checked.
+- **Speech.** Provider `assemblyai` (`speechOnly`, secret `AI_KEY_ASSEMBLYAI`) serves `transcribe`
+  (`universal-streaming`, capability `streamingAudioIn`) and `speak` (`assemblyai-tts-1`, `voicesOut`,
+  `supportsSpeed: false`), with no fallback. It has no AI Gateway slug yet, so its key is a Workers
+  secret, not BYOK, until W9 checks whether the gateway can proxy the streaming sockets. Its key
+  alone does not make text AI "configured". The text runner refuses speech roles; Settings → AI's
+  Test only reports whether the provider is set up. Speech prices (`speechPrice`, per audio hour or
+  million characters) are left empty until checked.

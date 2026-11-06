@@ -14,7 +14,7 @@
 // set through the control plane, usage from the workspace's own counts.
 import { CloudflareClient } from "@relationship-os/release";
 import type { CustomerGateway } from "./platform.ts";
-import { isModelRole, type ModelRole, PROVIDER_INFO, type ProviderId } from "./roles.ts";
+import { type ModelRole, normalizeRole, PROVIDER_INFO, type ProviderId } from "./roles.ts";
 import type { ProviderUsage } from "./usage.ts";
 
 /**
@@ -348,5 +348,6 @@ function roleOf(metadata: GatewayLog["metadata"]): ModelRole | "other" {
     }
   }
   const role = (value as { role?: unknown } | null)?.role;
-  return isModelRole(role) ? role : "other";
+  // Calls logged before ADR 0351 carry the old `assistant` role.
+  return normalizeRole(role) ?? "other";
 }

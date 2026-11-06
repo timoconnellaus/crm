@@ -8,7 +8,7 @@ import type { Kysely } from "kysely";
 import { loadEntitlements } from "../entitlements.ts";
 import type { AiEnv, ModelRunnerOptions, ModelUsage } from "./client.ts";
 import { isHosted } from "./platform.ts";
-import { isModelRole, type ModelRole, PROVIDER_INFO, type ProviderId } from "./roles.ts";
+import { type ModelRole, normalizeRole, PROVIDER_INFO, type ProviderId } from "./roles.ts";
 
 /**
  * The model runner options a hosted deployment adds (ros-app and ros-runner alike): the plan for
@@ -88,7 +88,8 @@ export async function workspaceUsage(
   const roles = new Map<string, { requests: number; tokensIn: number; tokensOut: number }>();
   const providers = new Map<string, ProviderUsage>();
   for (const row of rows) {
-    const role = isModelRole(row.role) ? row.role : "other";
+    // Rows from before ADR 0351 carry the old `assistant` role.
+    const role = normalizeRole(row.role) ?? "other";
     const r = roles.get(role) ?? { requests: 0, tokensIn: 0, tokensOut: 0 };
     r.requests += row.requests;
     r.tokensIn += row.tokens_in;

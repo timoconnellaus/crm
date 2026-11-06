@@ -88,7 +88,7 @@ async function turn(
 describe("the assistant's turn loop", () => {
   it("calls tools through the role's model and streams text, tool calls and results", async () => {
     const { models, server } = deepseekRunner(lookupThenAnswer);
-    const chat = await models.chatModels?.("assistant");
+    const chat = await models.chatModels?.("assistant.core");
     expect(chat?.[0]).toMatchObject({ provider: "deepseek", modelId: "deepseek-flash" });
     const calls: unknown[] = [];
     const { result, events } = await turn(chat ?? [], [], "Who is Ada?", [lookupTool(calls)]);
@@ -106,7 +106,7 @@ describe("the assistant's turn loop", () => {
 
   it("replays stored reasoning content on later turns (DeepSeek thinking mode, ADR 0201)", async () => {
     const { models, server } = deepseekRunner(lookupThenAnswer);
-    const chat = (await models.chatModels?.("assistant")) ?? [];
+    const chat = (await models.chatModels?.("assistant.core")) ?? [];
     const first = await turn(chat, [], "Who is Ada?", [lookupTool([])]);
     const stored: StoredMessage[] = first.result.messages.map((message) => ({ turn: 1, message }));
     // The stored tool-call message keeps its reasoning part.
@@ -129,7 +129,7 @@ describe("the assistant's turn loop", () => {
 
   it("fails with DeepSeek's 400 when the history drops reasoning (the control case)", async () => {
     const { models, server } = deepseekRunner(lookupThenAnswer);
-    const chat = (await models.chatModels?.("assistant")) ?? [];
+    const chat = (await models.chatModels?.("assistant.core")) ?? [];
     const first = await turn(chat, [], "Who is Ada?", [lookupTool([])]);
     // A conversation stored as plain text parts loses the reasoning.
     const plain = first.result.messages.map((m) =>
@@ -166,7 +166,7 @@ describe("the assistant's turn loop", () => {
         return url.includes("deepseek") ? failing.fetch(input, init) : server.fetch(input, init);
       }) as typeof fetch,
     });
-    const chat = (await models.chatModels?.("assistant")) ?? [];
+    const chat = (await models.chatModels?.("assistant.core")) ?? [];
     expect(chat.map((c) => c.provider)).toEqual(["deepseek", "openai"]);
     const { result, events } = await turn(chat, [], "Hello", []);
     expect(result).toMatchObject({ status: "done", fellBack: true, text: "From the fallback." });
