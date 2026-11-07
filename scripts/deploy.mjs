@@ -32,6 +32,10 @@
 // `deploy-inputs.json` `devOnly.services` names service bindings for local development only
 // (GATEKEEPER_FAKE, ros-runner bound to itself); they are left out of the generated config.
 //
+// ROS_HOSTNAME (e.g. crm.example.com, on a zone in this account) attaches ros-app to that hostname
+// as a Worker custom domain and turns off its workers.dev URL, so there is one public origin.
+// BETTER_AUTH_URL defaults to https://<ROS_HOSTNAME>.
+//
 // Secrets are read from the environment (see docs/first-deploy.md) and passed with --secrets-file,
 // which a first deploy needs; later deploys keep the secrets already set. APP_SECRETS go on ros-app
 // and SHARED_SECRETS on both Workers, because ros-runner makes model calls too.
@@ -59,6 +63,10 @@ for (const [name, value] of Object.entries(process.env)) {
 }
 const legacyNames = (process.env.ROS_LEGACY_NAMES ?? "").toLowerCase() === "on";
 const aiOn = (process.env.ROS_AI ?? "on").toLowerCase() !== "off";
+const hostname = process.env.ROS_HOSTNAME?.trim()
+  .replace(/^https?:\/\//, "")
+  .replace(/\/.*$/, "");
+if (hostname) process.env.BETTER_AUTH_URL ||= `https://${hostname}`;
 const indexName =
   process.env.ROS_VECTORIZE_INDEX?.trim() || (legacyNames ? "crm-records" : "ros-records");
 
@@ -189,6 +197,11 @@ function deployConfig(app) {
     config.vectorize = feature.vectorize.map((index) => ({ ...index, index_name: indexName }));
   }
   if (Object.keys(extraVars).length) config.vars = { ...config.vars, ...extraVars };
+  if (hostname && app === "apps/app") {
+    config.routes = [{ pattern: hostname, custom_domain: true }];
+    config.workers_dev = false;
+    config.preview_urls = false;
+  }
   const origin = process.env.BETTER_AUTH_URL?.trim();
   if (origin && "APP_ORIGIN" in (config.vars ?? {})) config.vars.APP_ORIGIN = origin;
   for (const name of DEV_ONLY_VARS) {

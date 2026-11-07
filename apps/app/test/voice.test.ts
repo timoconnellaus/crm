@@ -2,6 +2,7 @@
 // stand-in speech providers (AI_FAKE_VOICE) and the scripted model. A spoken turn lands in the one
 // thread, the browser's played milliseconds decide what was heard, dictation only types, usage is
 // logged, and erase reaches the words not heard.
+import { runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import type { Principal } from "@relationship-os/auth";
 import {
@@ -226,6 +227,31 @@ describe("voice chat", () => {
     await stub.scrub({ terms: [], names: [word] });
     const after = await settled(principal, (i) => Boolean(replyOf(i)));
     expect(JSON.stringify(replyOf(after).playout)).not.toContain(word);
+    call.ws.close();
+  });
+});
+
+describe("call limits", () => {
+  const limit = async (user: User, limits: { callMs: number; silenceMs: number }) => {
+    const namespace = appEnv.ASSISTANT as NonNullable<typeof appEnv.ASSISTANT>;
+    await runInDurableObject(await threadStub(namespace, user.id), (agent) => {
+      agent.voiceLimits = limits;
+    });
+  };
+
+  it("ends a call nobody is talking on", async () => {
+    const { principal, user } = await member();
+    await limit(user, { callMs: 60_000, silenceMs: 300 });
+    const call = await voiceSocket(principal, "talk");
+    await call.until((f) => f.type === "status" && f.status === "idle");
+    call.ws.close();
+  });
+
+  it("ends a call at its time limit, however much is said", async () => {
+    const { principal, user } = await member();
+    await limit(user, { callMs: 300, silenceMs: 60_000 });
+    const call = await voiceSocket(principal, "dictation");
+    await call.until((f) => f.type === "status" && f.status === "idle");
     call.ws.close();
   });
 });

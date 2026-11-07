@@ -13,6 +13,7 @@ import {
   catalogueModel,
   isSpeechRole,
   MODEL_ROLES,
+  modelPricing,
   modelRolesVar,
   PROVIDER_INFO,
   parseRoleLayer,
@@ -28,6 +29,17 @@ const PRESET = () => modelRolesVar("deepseek-flash");
 
 beforeEach(async () => {
   await env.DB.prepare("DELETE FROM core_settings WHERE key = ?").bind(AI_SETTINGS).run();
+});
+
+describe("deepseek-flash prices", () => {
+  it("has a price, so an agent's spend limit counts its steps", () => {
+    expect(modelPricing({ provider: "deepseek", model: "deepseek-flash" })).toMatchObject({
+      input: 0.3,
+      cachedInput: 0.006,
+      output: 1.2,
+      cacheKnown: true,
+    });
+  });
 });
 
 describe("the deepseek provider", () => {

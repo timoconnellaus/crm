@@ -69,11 +69,23 @@ interface Call {
   transcriber: SpeechToTextSession | null;
   speech: SpeechSession | null;
   reply: Reply | null;
+  /** Ends the call at CALL_LIMIT_MS. */
+  callLimit: ReturnType<typeof setTimeout> | null;
+  /** Ends the call after SILENCE_LIMIT_MS with nothing said. */
+  silenceLimit: ReturnType<typeof setTimeout> | null;
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: a TypeScript mixin's constructor must take any[].
 type Constructor<T = object> = new (...args: any[]) => T;
 type AgentLike = Constructor<Pick<Agent<Cloudflare.Env>, "sql" | "getConnections" | "keepAlive">>;
+
+/**
+ * AssemblyAI bills a stream for as long as its socket is open, heard or not, so an abandoned tab
+ * must not hold a call open. Nothing said for this long ends the call.
+ */
+export const SILENCE_LIMIT_MS = 5 * 60_000;
+/** The longest one call runs, however much is said. */
+export const CALL_LIMIT_MS = 60 * 60_000;
 
 /** The audio the browser is told to expect: what AssemblyAI-TTS-1 sends, unchanged. */
 const OUTPUT = { audioFormat: "pcm16", sampleRate: 24_000 } as const;
@@ -105,6 +117,8 @@ export function withAssistantVoice<TBase extends AgentLike>(Base: TBase) {
     #facts = new Map<string, VoiceFacts>();
     /** The call that is talking: speech has one voice at a time, across the person's devices. */
     #talking: { id: string; connection: Connection } | null = null;
+    /** How long a call may run, and how long it may stay silent. */
+    voiceLimits = { callMs: CALL_LIMIT_MS, silenceMs: SILENCE_LIMIT_MS };
 
     get #host(): VoiceHost {
       return this as unknown as VoiceHost;
@@ -121,8 +135,12 @@ export function withAssistantVoice<TBase extends AgentLike>(Base: TBase) {
         transcriber: null,
         speech: null,
         reply: null,
+        callLimit: null,
+        silenceLimit: null,
       };
       this.#calls.set(connection.id, call);
+      call.callLimit = setTimeout(() => this.forceEndCall(connection), this.voiceLimits.callMs);
+      this.#heard(connection, call);
       if (kind === "talk") {
         // The newest device takes over.
         if (this.#talking && this.#talking.id !== connection.id) {
@@ -147,6 +165,15 @@ export function withAssistantVoice<TBase extends AgentLike>(Base: TBase) {
       return true;
     }
 
+    /** Restarts the silence limit. */
+    #heard(connection: Connection, call: Call) {
+      if (call.silenceLimit) clearTimeout(call.silenceLimit);
+      call.silenceLimit = setTimeout(
+        () => this.forceEndCall(connection),
+        this.voiceLimits.silenceMs,
+      );
+    }
+
     override createTranscriber(connection: Connection) {
       const call = this.#calls.get(connection.id);
       if (!call) return null;
@@ -163,7 +190,9 @@ export function withAssistantVoice<TBase extends AgentLike>(Base: TBase) {
 
     /** A dictated stretch goes back to the browser; a spoken one starts a turn, word for word. */
     override afterTranscribe(transcript: string, connection: Connection) {
-      if (this.#calls.get(connection.id)?.kind !== "dictation") return transcript;
+      const call = this.#calls.get(connection.id);
+      if (call) this.#heard(connection, call);
+      if (call?.kind !== "dictation") return transcript;
       send(connection, { type: "dictation.final", text: transcript });
       return null;
     }
@@ -232,6 +261,8 @@ export function withAssistantVoice<TBase extends AgentLike>(Base: TBase) {
       const call = this.#calls.get(connection.id);
       if (!call) return;
       this.#calls.delete(connection.id);
+      if (call.callLimit) clearTimeout(call.callLimit);
+      if (call.silenceLimit) clearTimeout(call.silenceLimit);
       await this.#settleReply(connection, call);
       await this.#flushUsage(connection, call);
       call.speech?.close();

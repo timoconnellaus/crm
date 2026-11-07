@@ -143,3 +143,8 @@ So this is the one exception to "all AI calls through AI Gateway". The key is th
 - **A spoken approval** is a spoken turn like any other today. Checking a spoken yes needs
   `approval.decide` and `approval.intent` from W5.
 
+
+## Amendment 2026-11-07: call limits
+
+AssemblyAI bills a stream for as long as its socket is open, heard or not, so a tab left open would
+keep costing. A call now ends after 5 minutes with nothing said, and after 60 minutes regardless.
