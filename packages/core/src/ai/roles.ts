@@ -440,6 +440,9 @@ export const MODEL_CATALOGUE: readonly CatalogueModel[] = [
     model: "deepseek-flash",
     label: "DeepSeek V4.1 Flash",
     capabilities: chat(1_048_576, { toolUse: true, jsonObject: true, vision: true }),
+    // https://api-docs.deepseek.com/quick_start/pricing/, read 2026-11-07. These are the peak
+    // rates; off-peak is half. Budgets use peak so a spend limit is never reached late.
+    price: { input: 0.3, cachedInput: 0.006, output: 1.2 },
     note: "An alias for DeepSeek's latest Flash model. JSON mode only (no json_schema). Thinks by default.",
   },
   {

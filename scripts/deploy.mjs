@@ -63,7 +63,9 @@ for (const [name, value] of Object.entries(process.env)) {
 }
 const legacyNames = (process.env.ROS_LEGACY_NAMES ?? "").toLowerCase() === "on";
 const aiOn = (process.env.ROS_AI ?? "on").toLowerCase() !== "off";
-const hostname = process.env.ROS_HOSTNAME?.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+const hostname = process.env.ROS_HOSTNAME?.trim()
+  .replace(/^https?:\/\//, "")
+  .replace(/\/.*$/, "");
 if (hostname) process.env.BETTER_AUTH_URL ||= `https://${hostname}`;
 const indexName =
   process.env.ROS_VECTORIZE_INDEX?.trim() || (legacyNames ? "crm-records" : "ros-records");
