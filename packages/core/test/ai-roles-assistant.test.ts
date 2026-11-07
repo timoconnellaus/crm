@@ -211,7 +211,7 @@ describe("prices for the compaction planner", () => {
   });
 
   it("are null for a model with no known prices, and read from a declared custom model", () => {
-    expect(modelPricing({ provider: "deepseek", model: "deepseek-flash" })).toBeNull();
+    expect(modelPricing({ provider: "openai", model: "text-embedding-3-small" })).toBeNull();
     expect(
       modelPricing({
         provider: "openai-compatible",
