@@ -34,6 +34,15 @@ In the [Cloudflare dashboard](https://dash.cloudflare.com):
 
 4. **Your account id.** It is on the right of the Workers & Pages overview.
 
+`wrangler login` works instead of steps 3 and 4 for the deploy itself: skip the token, and set
+`CLOUDFLARE_ACCOUNT_ID` if your login sees more than one account.
+
+### Optional: your own hostname
+
+Set `ROS_HOSTNAME=crm.example.com` in `.env.deploy`, on a zone in this account. The deploy attaches
+ros-app to it as a Worker custom domain, turns off its workers.dev URL and sets `BETTER_AUTH_URL`
+to match. An API token also needs Zone: Read and Workers Routes: Edit on that zone.
+
 ### Optional: an AI Gateway
 
 Skip this and AI still works: every role runs on Workers AI through the binding, and Cloudflare
