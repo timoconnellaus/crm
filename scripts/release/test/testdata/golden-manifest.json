@@ -850,15 +850,6 @@
       "durableObjectMigrations": [
         {
           "new_sqlite_classes": [
-            "AssistantConversation"
-          ],
-          "tag": "v1"
-        },
-        {
-          "deleted_classes": [
-            "AssistantConversation"
-          ],
-          "new_sqlite_classes": [
             "AssistantAgent"
           ],
           "tag": "v2"
@@ -954,7 +945,7 @@
           "source": "installer"
         }
       ],
-      "sha256": "4d2aac6a5c87349806c9d9c19a796b65f9e5386320605f2530598a1fa6dc3a68"
+      "sha256": "70aaabdeb6eaa3a047064f1afcc459db476106d5e7f8186a9587431dcc17b1eb"
     },
     {
       "bindings": [
@@ -967,12 +958,6 @@
           "bucket_name": "$R2_NAME(ros-blobs)",
           "name": "BLOBS",
           "type": "r2_bucket"
-        },
-        {
-          "entrypoint": "FakeGatekeeperVendor",
-          "name": "GATEKEEPER_FAKE",
-          "service": "$WORKER_NAME(ros-runner)",
-          "type": "service"
         },
         {
           "class_name": "ExtensionWorkspace",
@@ -1128,27 +1113,8 @@
       "durableObjectMigrations": [
         {
           "new_sqlite_classes": [
-            "SpikeWorkspace"
-          ],
-          "tag": "v1"
-        },
-        {
-          "deleted_classes": [
-            "SpikeWorkspace"
-          ],
-          "new_sqlite_classes": [
-            "ExtensionWorkspace"
-          ],
-          "tag": "v2"
-        },
-        {
-          "new_sqlite_classes": [
-            "CodeModeGate"
-          ],
-          "tag": "v3"
-        },
-        {
-          "new_sqlite_classes": [
+            "ExtensionWorkspace",
+            "CodeModeGate",
             "IntegrationHost",
             "FakeAccount",
             "FakeProvider",
@@ -1190,7 +1156,7 @@
       ],
       "role": "runner",
       "secrets": [],
-      "sha256": "ff6c6819b97755814a48da989cb3bb5128bb024c1fed14edae4786d266c82834"
+      "sha256": "bf699e39767ee681fbd414aa33b240bde4915f177b6a5a079e125b2d9d321a9f"
     },
     {
       "bindings": [],

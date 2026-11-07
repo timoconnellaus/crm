@@ -1,5 +1,6 @@
 {
-  "$comment": "Deploy inputs wrangler.jsonc cannot hold, read by scripts/release/manifest-lib.ts (the release manifest, ADR 0160) and scripts/deploy.mjs. `features.ai`: Workers AI and Vectorize (the automation events consumer embeds changed records), remote-only so left out of wrangler.jsonc (ADR 0156); turned off with ROS_AI=off or `create-relationship-os --ai off`. The ros-records index is described in apps/app/deploy-inputs.json.",
+  "$comment": "Deploy inputs wrangler.jsonc cannot hold, read by scripts/release/manifest-lib.ts (the release manifest, ADR 0160) and scripts/deploy.mjs. `features.ai`: Workers AI and Vectorize (the automation events consumer embeds changed records), remote-only so left out of wrangler.jsonc (ADR 0156); turned off with ROS_AI=off or `create-relationship-os --ai off`. The ros-records index is described in apps/app/deploy-inputs.json. `devOnly.services`: service bindings for local development and tests, never deployed; GATEKEEPER_FAKE binds ros-runner to itself, a target that does not exist yet on a first deploy.",
+  "devOnly": { "services": ["GATEKEEPER_FAKE"] },
   "features": {
     "ai": {
       "ai": { "binding": "AI" },

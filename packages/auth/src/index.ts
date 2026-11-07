@@ -85,6 +85,15 @@ export function createIdentityProvider(env: IdentityEnv): IdentityProvider {
   return betterAuthProvider(auth);
 }
 
+/**
+ * True until the deployment has its first user, who may always sign up (better-auth.ts) and
+ * becomes its admin, so the sign-in page offers to create that account.
+ */
+export async function awaitingFirstUser(db: D1Database): Promise<boolean> {
+  const row = await db.prepare("SELECT COUNT(*) AS n FROM core_user").first<{ n: number }>();
+  return (row?.n ?? 0) === 0;
+}
+
 /** Which sign-in methods the UI should offer. Safe to send to the browser. */
 export function signInMethods(env: IdentityEnv) {
   const kind = identityProviderKind(env);

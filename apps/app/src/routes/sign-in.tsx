@@ -47,13 +47,14 @@ function SignInPage() {
     const form = new FormData(event.currentTarget);
     setPending(true);
     setError(null);
-    const { error } = await authClient.signIn.email({
-      email: String(form.get("email")),
-      password: String(form.get("password")),
-    });
+    const email = String(form.get("email"));
+    const password = String(form.get("password"));
+    const { error } = methods.firstAccount
+      ? await authClient.signUp.email({ name: String(form.get("name")), email, password })
+      : await authClient.signIn.email({ email, password });
     setPending(false);
     if (error) {
-      setError(error.message ?? "Sign-in failed");
+      setError(error.message ?? (methods.firstAccount ? "Sign-up failed" : "Sign-in failed"));
       return;
     }
     // A full navigation so the server sees the new session cookie on the first request.
@@ -64,16 +65,26 @@ function SignInPage() {
     <div className="flex min-h-svh items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Sign in to Relationship OS</CardTitle>
+          <CardTitle>
+            {methods.firstAccount ? "Create the first account" : "Sign in to Relationship OS"}
+          </CardTitle>
           <CardDescription>
-            {methods.kind === "better-auth"
-              ? "Use your email and password."
-              : "This deployment signs you in with Cloudflare Access."}
+            {methods.firstAccount
+              ? "This deployment has no users yet. The first account is its admin."
+              : methods.kind === "better-auth"
+                ? "Use your email and password."
+                : "This deployment signs you in with Cloudflare Access."}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {methods.email && (
             <form className="grid gap-3" method="post" onSubmit={onSubmit}>
+              {methods.firstAccount && (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="name">Name</Label>
+                  <Input id="name" name="name" autoComplete="name" required />
+                </div>
+              )}
               <div className="grid gap-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" name="email" type="email" autoComplete="email" required />
@@ -84,7 +95,8 @@ function SignInPage() {
                   id="password"
                   name="password"
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete={methods.firstAccount ? "new-password" : "current-password"}
+                  minLength={methods.firstAccount ? 8 : undefined}
                   required
                 />
               </div>
@@ -94,7 +106,13 @@ function SignInPage() {
                 </p>
               )}
               <Button type="submit" disabled={!hydrated || pending}>
-                {pending ? "Signing in…" : "Sign in"}
+                {methods.firstAccount
+                  ? pending
+                    ? "Creating account…"
+                    : "Create account"
+                  : pending
+                    ? "Signing in…"
+                    : "Sign in"}
               </Button>
             </form>
           )}

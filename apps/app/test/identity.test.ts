@@ -1,6 +1,6 @@
 // The identity middleware's decisions (src/server/identity.ts), run in workerd against real D1.
 import { env } from "cloudflare:workers";
-import { ACCESS_JWT_HEADER, type IdentityEnv } from "@relationship-os/auth";
+import { ACCESS_JWT_HEADER, awaitingFirstUser, type IdentityEnv } from "@relationship-os/auth";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { authorize } from "../src/server/identity.ts";
 import { AUD, createAccessKeys, TEAM } from "./access-jwt.ts";
@@ -108,6 +108,7 @@ describe("with IDENTITY_PROVIDER=better-auth", () => {
   });
 
   it("resolves the Principal from a Better Auth session", async () => {
+    expect(await awaitingFirstUser(authEnv.DB as D1Database)).toBe(true);
     const signUp = await fetchAuth(authEnv, "/api/auth/sign-up/email", {
       email: "first@example.com",
       password: "correct-horse-battery",
@@ -120,6 +121,16 @@ describe("with IDENTITY_PROVIDER=better-auth", () => {
       .join("; ");
     const result = await authorize(get("/", { cookie }), authEnv, page);
     expect(result).toMatchObject({ ok: true, principal: { email: "first@example.com" } });
+  });
+
+  it("takes the first user only, unless sign-up is opened", async () => {
+    expect(await awaitingFirstUser(authEnv.DB as D1Database)).toBe(false);
+    const second = await fetchAuth(authEnv, "/api/auth/sign-up/email", {
+      email: "second@example.com",
+      password: "correct-horse-battery",
+      name: "Second User",
+    });
+    expect(second.status).not.toBe(200);
   });
 });
 

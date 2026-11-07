@@ -1,6 +1,6 @@
 // Server functions anonymous callers may use (see PUBLIC_SERVER_FN_FILE in identity.ts).
 import { env } from "cloudflare:workers";
-import { createIdentityProvider, signInMethods } from "@relationship-os/auth";
+import { awaitingFirstUser, createIdentityProvider, signInMethods } from "@relationship-os/auth";
 import { loadSupportGrant, resolveActingUser, SUPPORT_EMAIL_DOMAIN } from "@relationship-os/core";
 import { type CrmDb, createCrmDb } from "@relationship-os/db";
 import { createServerFn } from "@tanstack/react-start";
@@ -58,7 +58,8 @@ async function setupOpen(): Promise<boolean> {
   }
 }
 
-/** Which sign-in methods the sign-in page should offer. */
+/** Which sign-in methods the sign-in page should offer, and whether to create the first account. */
 export const getSignInMethods = createServerFn({ method: "GET" }).handler(async () => {
-  return signInMethods(env);
+  const methods = signInMethods(env);
+  return { ...methods, firstAccount: methods.email && (await awaitingFirstUser(env.DB)) };
 });

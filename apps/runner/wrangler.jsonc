@@ -82,20 +82,20 @@
       { "name": "FAKE_PROVIDER", "class_name": "FakeProvider" }
     ]
   },
+  // One step, tagged with the last of the history it replaced (ADR 0352): a new account has none
+  // of the classes that history created and deleted. Add new classes as v5 and on.
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["SpikeWorkspace"] },
-    // Stage 3 replaced the stage 0 spike with the real extension workspace.
-    {
-      "tag": "v2",
-      "deleted_classes": ["SpikeWorkspace"],
-      "new_sqlite_classes": ["ExtensionWorkspace"]
-    },
-    // ADR 0043: Code Mode's per-user concurrency gate.
-    { "tag": "v3", "new_sqlite_classes": ["CodeModeGate"] },
-    // Stage 6a: the integration host, and the fake gatekeeper (its facet class included).
     {
       "tag": "v4",
-      "new_sqlite_classes": ["IntegrationHost", "FakeAccount", "FakeProvider", "FakeGatekeeper"]
+      "new_sqlite_classes": [
+        "ExtensionWorkspace",
+        "CodeModeGate",
+        // Stage 6a: the integration host, and the fake gatekeeper (its facet class included).
+        "IntegrationHost",
+        "FakeAccount",
+        "FakeProvider",
+        "FakeGatekeeper"
+      ]
     }
   ],
   // Email bodies of synced mail (ADR 0112): D1 keeps a snippet only (cost audit U1).
@@ -103,7 +103,8 @@
   // Gatekeepers (ADR 0007): each is a Worker's GatekeeperVendor entrypoint, enabled per
   // deployment by an admin. Deploy the gatekeeper Workers you use and add their bindings here
   // (GATEKEEPER_GOOGLE → ros-gatekeeper-google, …); see docs/integrations.md. The fake provider
-  // is ros-runner itself and answers only when INTEGRATIONS_FAKE_PROVIDER is "true".
+  // is ros-runner itself and answers only when INTEGRATIONS_FAKE_PROVIDER is "true". It is local
+  // only: deploy-inputs.json `devOnly` keeps it out of every deployment.
   "services": [
     { "binding": "GATEKEEPER_FAKE", "service": "ros-runner", "entrypoint": "FakeGatekeeperVendor" }
   ],
